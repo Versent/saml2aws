@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/alecthomas/kingpin"
 	"github.com/aws/aws-sdk-go/aws"
@@ -57,7 +58,9 @@ func main() {
 	}
 
 	if samlAssertion == "" {
-		log.Fatalf("Response did not contain a valid SAML assertion")
+		fmt.Println("Response did not contain a valid SAML assertion")
+		fmt.Println("Please check your username and password is correct")
+		os.Exit(1)
 	}
 
 	data, err := base64.StdEncoding.DecodeString(samlAssertion)
@@ -71,7 +74,9 @@ func main() {
 	}
 
 	if len(roles) == 0 {
-		log.Fatalf("No roles to assume")
+		fmt.Println("No roles to assume")
+		fmt.Println("Please check you are permitted to assume roles for the AWS service")
+		os.Exit(1)
 	}
 
 	role, err := saml2aws.PromptForAWSRoleSelection(roles)
