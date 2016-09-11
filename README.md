@@ -1,7 +1,14 @@
 # saml2aws
 
-This command line tool enables you to connect to ADFS and authenticate using SAML, 
-then use the AWS STS service to get a temporary set of credentials and save them to your aws profile.
+CLI tool which enables you to login and retrieve [AWS](https://aws.amazon.com/) temporary credentials using SAML with [ADFS 3.x](https://msdn.microsoft.com/en-us/library/bb897402.aspx).
+
+The process goes something like this:
+
+* Prompt user for credentials
+* Authenticate to ADFS using formbased auth
+* Build a SAML assertion containing AWS roles
+* Exchange the role and SAML assertion with [AWS STS service](https://docs.aws.amazon.com/STS/latest/APIReference/Welcome.html) to get a temporary set of credentials
+* Save these creds to an aws profile named "saml"
 
 # Requirements
 
@@ -24,6 +31,26 @@ Args:
   <hostname>  Hostname of the ADFS service
 
 ```
+
+# Setup
+
+Install the AWS CLI see https://docs.aws.amazon.com/cli/latest/userguide/installing.html, in our case we are using [homebrew](http://brew.sh/) on OSX.
+
+```
+brew install awscli
+```
+
+Configure an empty default profile with your region of choice.
+
+```
+$ aws configure
+AWS Access Key ID [None]:
+AWS Secret Access Key [None]:
+Default region name [None]: us-west-2
+Default output format [None]:
+```
+
+Then your ready to use saml2aws.
 
 # Example
 
