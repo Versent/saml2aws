@@ -2,10 +2,13 @@
 
 CLI tool which enables you to login and retrieve [AWS](https://aws.amazon.com/) temporary credentials using SAML with [ADFS 3.x](https://msdn.microsoft.com/en-us/library/bb897402.aspx).
 
+This is based on python code from [
+How to Implement a General Solution for Federated API/CLI Access Using SAML 2.0](https://blogs.aws.amazon.com/security/post/TxU0AVUS9J00FP/How-to-Implement-a-General-Solution-for-Federated-API-CLI-Access-Using-SAML-2-0).
+
 The process goes something like this:
 
 * Prompt user for credentials
-* Authenticate to ADFS using formbased auth
+* Log in to ADFS using form based authentication
 * Build a SAML assertion containing AWS roles
 * Exchange the role and SAML assertion with [AWS STS service](https://docs.aws.amazon.com/STS/latest/APIReference/Welcome.html) to get a temporary set of credentials
 * Save these creds to an aws profile named "saml"
@@ -30,6 +33,15 @@ Flags:
 Args:
   <hostname>  Hostname of the ADFS service
 
+```
+
+# install
+
+If your on OSX you can install saml2aws using homebrew!
+
+```
+brew tap versent/homebrew-taps
+brew install saml2aws
 ```
 
 # Setup
@@ -70,7 +82,17 @@ Note that it will expire at 2016-09-10 23:01:50 +1000 AEST
 To use this credential, call the AWS CLI with the --profile option (e.g. aws --profile saml ec2 describe-instances).
 ```
 
+# Dependencies
+
+This tool would not be possible without some great opensource libraries.
+
+* [goquery](https://github.com/PuerkitoBio/goquery) html querying
+* [etree](github.com/beevik/etree) xpath selector
+* [kingpin](github.com/alecthomas/kingpin) command line flags
+* [aws-sdk-go](github.com/aws/aws-sdk-go) AWS Go SDK
+* [go-ini](https://github.com/go-ini/ini) INI file parser
+
 # License
 
-This code is Copyright (c) 2015 Versent and released under the MIT license. All rights not explicitly 
+This code is Copyright (c) 2015 [Versent](http://versent.com.au) and released under the MIT license. All rights not explicitly 
 granted in the MIT license are reserved. See the included LICENSE.md file for more details.
