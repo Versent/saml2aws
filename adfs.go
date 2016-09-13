@@ -19,12 +19,11 @@ import (
 
 // ADFSClient wrapper around ADFS enabling authentication and retrieval of assertions
 type ADFSClient struct {
-	client      *http.Client
-	endpointURL string
+	client *http.Client
 }
 
 // NewADFSClient create a new ADFS client
-func NewADFSClient(endpointURL string, skipVerify bool) (*ADFSClient, error) {
+func NewADFSClient(skipVerify bool) (*ADFSClient, error) {
 
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: skipVerify},
@@ -42,18 +41,19 @@ func NewADFSClient(endpointURL string, skipVerify bool) (*ADFSClient, error) {
 	client := &http.Client{Transport: tr, Jar: jar}
 
 	return &ADFSClient{
-		client:      client,
-		endpointURL: endpointURL,
+		client: client,
 	}, nil
 }
 
 // Authenticate authenticate to ADFS and return the data from the body of the SAML assertion.
-func (ac *ADFSClient) Authenticate(creds *LoginCreds) (string, error) {
+func (ac *ADFSClient) Authenticate(loginDetails *LoginDetails) (string, error) {
 	var authSubmitURL string
 	var samlAssertion string
 	authForm := url.Values{}
 
-	res, err := ac.client.Get(ac.endpointURL)
+	adfsURL := fmt.Sprintf("https://%s/adfs/ls/IdpInitiatedSignOn.aspx?loginToRp=urn:amazon:webservices", loginDetails.Hostname)
+
+	res, err := ac.client.Get(adfsURL)
 	if err != nil {
 		return samlAssertion, errors.Wrap(err, "error retieving form")
 	}
@@ -64,7 +64,7 @@ func (ac *ADFSClient) Authenticate(creds *LoginCreds) (string, error) {
 	}
 
 	doc.Find("input").Each(func(i int, s *goquery.Selection) {
-		updateFormData(authForm, s, creds)
+		updateFormData(authForm, s, loginDetails)
 	})
 
 	//spew.Dump(authForm)
@@ -124,7 +124,7 @@ func (ac *ADFSClient) Authenticate(creds *LoginCreds) (string, error) {
 	return samlAssertion, nil
 }
 
-func updateFormData(authForm url.Values, s *goquery.Selection, user *LoginCreds) {
+func updateFormData(authForm url.Values, s *goquery.Selection, user *LoginDetails) {
 	name, ok := s.Attr("name")
 	//	log.Printf("name = %s ok = %v", name, ok)
 	if !ok {

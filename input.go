@@ -10,30 +10,27 @@ import (
 	"github.com/segmentio/go-prompt"
 )
 
-var (
-	// ErrMissingUsername returned when the user fails to enter a username
-	ErrMissingUsername = fmt.Errorf("Missing or invalid username entered")
-)
+// LoginDetails used to authenticate to ADFS
+type LoginDetails struct {
+	Username string
+	Password string
+	Hostname string
+}
 
-// PromptForLoginCreds prompt the user to present their username and password
-func PromptForLoginCreds(username string) (*LoginCreds, error) {
+// PromptForLoginDetails prompt the user to present their username, password and hostname
+func PromptForLoginDetails(username, hostname string) (*LoginDetails, error) {
 
-	var usernameEntered string
-
-	// do while
-	for ok := true; ok; ok = strings.TrimSpace(username) == "" && strings.TrimSpace(usernameEntered) == "" {
-		usernameEntered = prompt.String("Username [%s]", username)
-	}
-
-	if usernameEntered == "" {
-		usernameEntered = username
-	}
-
+	hostname = promptFor("Hostname [%s]", hostname)
+	username = promptFor("Username [%s]", username)
 	password := prompt.PasswordMasked("Password")
 
 	fmt.Println("")
 
-	return &LoginCreds{strings.TrimSpace(usernameEntered), strings.TrimSpace(password)}, nil
+	return &LoginDetails{
+		Username: strings.TrimSpace(username),
+		Password: strings.TrimSpace(password),
+		Hostname: strings.TrimSpace(hostname),
+	}, nil
 }
 
 // PromptForAWSRoleSelection present a list of roles to the user for selection
@@ -71,4 +68,19 @@ func PromptForAWSRoleSelection(roles []string) (*AWSRole, error) {
 	tok := strings.Split(selectedRole, ",")
 
 	return &AWSRole{tok[1], tok[0]}, nil
+}
+
+func promptFor(promptString, defaultValue string) string {
+	var val string
+
+	// do while
+	for ok := true; ok; ok = strings.TrimSpace(defaultValue) == "" && strings.TrimSpace(val) == "" {
+		val = prompt.String(promptString, defaultValue)
+	}
+
+	if val == "" {
+		val = defaultValue
+	}
+
+	return val
 }

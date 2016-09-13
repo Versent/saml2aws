@@ -9,7 +9,7 @@ import (
 
 func TestUpdateConfig(t *testing.T) {
 
-	config := &Config{".aws2saml.config", "adfs"}
+	config := &ConfigLoader{".aws2saml.config", "adfs"}
 
 	username, err := config.LoadUsername()
 	assert.Nil(t, err)

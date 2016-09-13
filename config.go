@@ -17,70 +17,93 @@ var (
 	ErrConfigFileNotFound = errors.New("aws credentials file not found")
 )
 
-// Config loads config options
-type Config struct {
+// ConfigLoader loads config options
+type ConfigLoader struct {
 	Filename string
 	Profile  string
 }
 
-// NewConfig helper to create the config
-func NewConfig(profile string) *Config {
-	return &Config{
+// NewConfigLoader helper to create the config
+func NewConfigLoader(profile string) *ConfigLoader {
+	return &ConfigLoader{
 		Profile: profile,
 	}
 }
 
-// Exists verify that the credentials file exists
-func (p *Config) exists() (bool, error) {
-	filename, err := p.filename()
-	if err != nil {
-		return false, err
-	}
-
-	if _, err := os.Stat(filename); err != nil {
-		if os.IsNotExist(err) {
-			return false, nil
-		}
-		return false, err
-	}
-
-	return true, nil
-}
-
-// SaveUsername persist the username
-func (p *Config) SaveUsername(username string) error {
+// ensureConfigExists verify that the config file exists
+func (p *ConfigLoader) ensureConfigExists() error {
 	filename, err := p.filename()
 	if err != nil {
 		return err
 	}
 
-	return saveConfig(filename, p.Profile, username)
+	if _, err := os.Stat(filename); err != nil {
+		if os.IsNotExist(err) {
+
+			// create an base config file
+			err = ioutil.WriteFile(filename, []byte("["+p.Profile+"]"), 0666)
+			if err != nil {
+				return err
+			}
+
+		}
+		return err
+	}
+
+	return nil
 }
 
-// LoadUsername persist the username
-func (p *Config) LoadUsername() (string, error) {
+// SaveUsername persist the username
+func (p *ConfigLoader) SaveUsername(username string) error {
+	filename, err := p.filename()
+	if err != nil {
+		return err
+	}
+
+	return saveConfig(filename, p.Profile, "username", username)
+}
+
+// LoadUsername load the username
+func (p *ConfigLoader) LoadUsername() (string, error) {
 	filename, err := p.filename()
 	if err != nil {
 		return "", err
 	}
 
-	exists, err := p.exists()
+	err = p.ensureConfigExists()
 	if err != nil {
 		return "", err
 	}
 
-	if !exists {
-		// create an base config file
-		err = ioutil.WriteFile(filename, []byte("["+p.Profile+"]"), 0666)
-	}
-	if err != nil {
-		return "", err
-	}
-
-	return loadConfig(filename, p.Profile)
+	return loadConfig(filename, p.Profile, "username")
 }
 
-func (p *Config) filename() (string, error) {
+// SaveHostname persist the hostname
+func (p *ConfigLoader) SaveHostname(hostname string) error {
+	filename, err := p.filename()
+	if err != nil {
+		return err
+	}
+
+	return saveConfig(filename, p.Profile, "hostname", hostname)
+}
+
+// LoadHostname load the hostname
+func (p *ConfigLoader) LoadHostname() (string, error) {
+	filename, err := p.filename()
+	if err != nil {
+		return "", err
+	}
+
+	err = p.ensureConfigExists()
+	if err != nil {
+		return "", err
+	}
+
+	return loadConfig(filename, p.Profile, "hostname")
+}
+
+func (p *ConfigLoader) filename() (string, error) {
 	if p.Filename == "" {
 		if p.Filename = os.Getenv("AWS2SAML_CONFIG_FILE"); p.Filename != "" {
 			return p.Filename, nil
@@ -100,7 +123,7 @@ func (p *Config) filename() (string, error) {
 	return p.Filename, nil
 }
 
-func loadConfig(filename, profile string) (string, error) {
+func loadConfig(filename, profile, field string) (string, error) {
 	config, err := ini.Load(filename)
 	if err != nil {
 		return "", err
@@ -110,11 +133,11 @@ func loadConfig(filename, profile string) (string, error) {
 		return "", err
 	}
 
-	return iniProfile.Key("username").String(), nil
+	return iniProfile.Key(field).String(), nil
 
 }
 
-func saveConfig(filename, profile, username string) error {
+func saveConfig(filename, profile, field, value string) error {
 	config, err := ini.Load(filename)
 	if err != nil {
 		return err
@@ -124,7 +147,7 @@ func saveConfig(filename, profile, username string) error {
 		return err
 	}
 
-	_, err = iniProfile.NewKey("username", username)
+	_, err = iniProfile.NewKey(field, value)
 	if err != nil {
 		return err
 	}
