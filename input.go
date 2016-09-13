@@ -6,28 +6,34 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"syscall"
 
-	"golang.org/x/crypto/ssh/terminal"
+	"github.com/segmentio/go-prompt"
+)
+
+var (
+	// ErrMissingUsername returned when the user fails to enter a username
+	ErrMissingUsername = fmt.Errorf("Missing or invalid username entered")
 )
 
 // PromptForLoginCreds prompt the user to present their username and password
-func PromptForLoginCreds() (*LoginCreds, error) {
-	reader := bufio.NewReader(os.Stdin)
+func PromptForLoginCreds(username string) (*LoginCreds, error) {
 
-	fmt.Print("Enter Username: ")
-	username, _ := reader.ReadString('\n')
+	var usernameEntered string
 
-	fmt.Print("Enter Password: ")
-	bytePassword, err := terminal.ReadPassword(int(syscall.Stdin))
-	if err != nil {
-		return nil, err
+	// do while
+	for ok := true; ok; ok = strings.TrimSpace(username) == "" && strings.TrimSpace(usernameEntered) == "" {
+		usernameEntered = prompt.String("Username [%s]", username)
 	}
-	password := string(bytePassword)
+
+	if usernameEntered == "" {
+		usernameEntered = username
+	}
+
+	password := prompt.PasswordMasked("Password")
 
 	fmt.Println("")
 
-	return &LoginCreds{strings.TrimSpace(username), strings.TrimSpace(password)}, nil
+	return &LoginCreds{strings.TrimSpace(usernameEntered), strings.TrimSpace(password)}, nil
 }
 
 // PromptForAWSRoleSelection present a list of roles to the user for selection

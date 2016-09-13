@@ -36,11 +36,18 @@ func main() {
 		log.Fatalf("error loading aws credentials file: %v", err)
 	}
 
+	config := saml2aws.NewConfig("adfs")
+
+	username, err := config.LoadUsername()
+	if err != nil {
+		log.Fatalf("error loading config file: %v", err)
+	}
+
 	adfsURL := fmt.Sprintf("https://%s/adfs/ls/IdpInitiatedSignOn.aspx?loginToRp=urn:amazon:webservices", *adfsHostname)
 
 	fmt.Printf("ADFS https://%s\n", *adfsHostname)
 
-	user, err := saml2aws.PromptForLoginCreds()
+	user, err := saml2aws.PromptForLoginCreds(username)
 	if err != nil {
 		log.Fatalf("error accepting password: %v", err)
 	}
@@ -118,4 +125,6 @@ func main() {
 	fmt.Println("Your new access key pair has been stored in the AWS configuration")
 	fmt.Printf("Note that it will expire at %v\n", resp.Credentials.Expiration.Local())
 	fmt.Println("To use this credential, call the AWS CLI with the --profile option (e.g. aws --profile", *profileName, "ec2 describe-instances).")
+
+	config.SaveUsername(user.Username)
 }

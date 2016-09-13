@@ -2,6 +2,7 @@ package saml2aws
 
 import (
 	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -16,4 +17,6 @@ func TestUpdateSamlConfig(t *testing.T) {
 
 	err = sharedCreds.Save("testid", "testsecret", "testtoken")
 	assert.Nil(t, err)
+
+	os.Remove(".credentials")
 }
