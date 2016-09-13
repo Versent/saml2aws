@@ -20,6 +20,6 @@ release: build
 	gh-release create versent/$(NAME) $(VERSION) $(shell git rev-parse --abbrev-ref HEAD)
 
 test:
-	go test -v $(shell glide novendor)
+	go test -cover -v $(shell glide novendor)
 
 .PHONY: build test release packages

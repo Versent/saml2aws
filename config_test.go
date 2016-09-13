@@ -24,3 +24,20 @@ func TestUpdateConfig(t *testing.T) {
 
 	os.Remove(".aws2saml.config")
 }
+
+func TestUpdateHostnameConfig(t *testing.T) {
+	config := &ConfigLoader{".aws2saml.config", "adfs"}
+
+	hostname, err := config.LoadHostname()
+	assert.Nil(t, err)
+	assert.Equal(t, "", hostname)
+
+	err = config.SaveHostname("id.example.com")
+	assert.Nil(t, err)
+
+	hostname, err = config.LoadHostname()
+	assert.Nil(t, err)
+	assert.Equal(t, "id.example.com", hostname)
+
+	os.Remove(".aws2saml.config")
+}
