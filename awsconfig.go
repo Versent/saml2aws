@@ -13,8 +13,8 @@ var (
 	// ErrCredentialsHomeNotFound returned when a user home directory can't be located.
 	ErrCredentialsHomeNotFound = errors.New("user home directory not found")
 
-	// ErrCredentialsFileNotFound returned when the required aws credentials file doesn't exist.
-	ErrCredentialsFileNotFound = errors.New("aws credentials file not found")
+	// ErrCredentialsNotFound returned when the required aws credentials don't exist.
+	ErrCredentialsNotFound = errors.New("aws credentials not found")
 )
 
 // CredentialsProvider loads aws credentials file
@@ -30,23 +30,6 @@ func NewSharedCredentials(profile string) *CredentialsProvider {
 	}
 }
 
-// Exists verify that the credentials file exists
-func (p *CredentialsProvider) Exists() error {
-	filename, err := p.filename()
-	if err != nil {
-		return err
-	}
-
-	if _, err := os.Stat(filename); err != nil {
-		if os.IsNotExist(err) {
-			return ErrCredentialsFileNotFound
-		}
-		return err
-	}
-
-	return nil
-}
-
 // Save persist the credentials
 func (p *CredentialsProvider) Save(id, secret, token string) error {
 	filename, err := p.filename()
@@ -60,6 +43,40 @@ func (p *CredentialsProvider) Save(id, secret, token string) error {
 	}
 
 	return saveProfile(filename, p.Profile, id, secret, token)
+}
+
+func (p *CredentialsProvider) Load() (string, string, string, error) {
+	filename, err := p.filename()
+	if err != nil {
+		return "", "", "", err
+	}
+
+	config, err := ini.Load(filename)
+	if err != nil {
+		return "", "", "", err
+	}
+
+	iniProfile, err := config.GetSection(p.Profile)
+	if err != nil {
+		return "", "", "", ErrCredentialsNotFound
+	}
+
+	idKey, err := iniProfile.GetKey("aws_access_key_id")
+	if err != nil {
+		return "", "", "", ErrCredentialsNotFound
+	}
+
+	secretKey, err := iniProfile.GetKey("aws_secret_access_key")
+	if err != nil {
+		return "", "", "", ErrCredentialsNotFound
+	}
+
+	tokenKey, err := iniProfile.GetKey("aws_session_token")
+	if err != nil {
+		return "", "", "", ErrCredentialsNotFound
+	}
+
+	return idKey.String(), secretKey.String(), tokenKey.String(), nil
 }
 
 // ensureConfigExists verify that the config file exists

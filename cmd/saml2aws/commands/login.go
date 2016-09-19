@@ -105,6 +105,7 @@ func Login(profile string, skipVerify bool) error {
 		return errors.Wrap(err, "error saving credentials")
 	}
 
+	fmt.Println("Logged in as:", resp.AssumedRoleUser.Arn)
 	fmt.Println("")
 	fmt.Println("Your new access key pair has been stored in the AWS configuration")
 	fmt.Printf("Note that it will expire at %v\n", resp.Credentials.Expiration.Local())
