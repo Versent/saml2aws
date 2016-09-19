@@ -75,18 +75,23 @@ Then your ready to use saml2aws.
 # Example
 
 ```
-$ saml2aws id.example.com --skipVerify
+$ saml2aws login
+Hostname [id.example.com]:
+Username [mark.wolfe@example.com]:
+Password: ************
+
 ADFS https://id.example.com
-Enter Username: wolfeidau@example.com
-Enter Password:
 Authenticating to ADFS...
 Please choose the role you would like to assume:
 [ 0 ]:  arn:aws:iam::123123123123:role/AWS-Admin-CloudOPSBuild
 [ 1 ]:  arn:aws:iam::123123123123:role/AWS-Admin-CloudOPSNonProd
 Selection: 1
-selected role: arn:aws:iam::123123123123:role/AWS-Admin-CloudOPSNonProd
+Selected role: arn:aws:iam::123123123123:role/AWS-Admin-CloudOPSNonProd
+Requesting AWS credentials using SAML assertion
+Saving credentials
+
 Your new access key pair has been stored in the AWS configuration
-Note that it will expire at 2016-09-10 23:01:50 +1000 AEST
+Note that it will expire at 2016-09-19 15:59:49 +1000 AEST
 To use this credential, call the AWS CLI with the --profile option (e.g. aws --profile saml ec2 describe-instances).
 ```
 
