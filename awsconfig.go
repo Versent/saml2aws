@@ -2,6 +2,7 @@ package saml2aws
 
 import (
 	"errors"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -53,7 +54,35 @@ func (p *CredentialsProvider) Save(id, secret, token string) error {
 		return err
 	}
 
+	err = p.ensureConfigExists()
+	if err != nil {
+		return err
+	}
+
 	return saveProfile(filename, p.Profile, id, secret, token)
+}
+
+// ensureConfigExists verify that the config file exists
+func (p *CredentialsProvider) ensureConfigExists() error {
+	filename, err := p.filename()
+	if err != nil {
+		return err
+	}
+
+	if _, err := os.Stat(filename); err != nil {
+		if os.IsNotExist(err) {
+
+			// create an base config file
+			err = ioutil.WriteFile(filename, []byte("["+p.Profile+"]"), 0600)
+			if err != nil {
+				return err
+			}
+
+		}
+		return err
+	}
+
+	return nil
 }
 
 func (p *CredentialsProvider) filename() (string, error) {

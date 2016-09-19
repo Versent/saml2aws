@@ -41,7 +41,7 @@ func (p *ConfigLoader) ensureConfigExists() error {
 		if os.IsNotExist(err) {
 
 			// create an base config file
-			err = ioutil.WriteFile(filename, []byte("["+p.Profile+"]"), 0666)
+			err = ioutil.WriteFile(filename, []byte("["+p.Profile+"]"), 0600)
 			if err != nil {
 				return err
 			}
