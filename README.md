@@ -21,17 +21,25 @@ The process goes something like this:
 # Usage
 
 ```
-usage: saml2aws [<flags>] <hostname>
+saml2aws --help-long
+usage: saml2aws [<flags>] <command> [<args> ...]
+
+A command line tool to help with SAML access to the AWS token service.
 
 Flags:
-      --help        Show context-sensitive help (also try --help-long and --help-man).
-  -s, --skipVerify  Skip verification of server certificate.
-  -p, --saml-profile-name="saml"
-                    The AWS profile to save the temporary credentials
-      --version     Show application version.
+  --help     Show context-sensitive help (also try --help-long and --help-man).
+  --version  Show application version.
 
-Args:
-  <hostname>  Hostname of the ADFS service
+Commands:
+  help [<command>...]
+    Show help.
+
+
+  login [<flags>]
+    Login to a SAML 2.0 IDP and convert the SAML assertion to an STS token.
+
+    -s, --skip-verify     Skip verification of server certificate.
+    -p, --profile="saml"  The AWS profile to save the temporary credentials
 
 ```
 
