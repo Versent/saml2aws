@@ -21,25 +21,29 @@ The process goes something like this:
 # Usage
 
 ```
-saml2aws --help-long
 usage: saml2aws [<flags>] <command> [<args> ...]
 
 A command line tool to help with SAML access to the AWS token service.
 
 Flags:
-  --help     Show context-sensitive help (also try --help-long and --help-man).
-  --version  Show application version.
+      --help            Show context-sensitive help (also try --help-long and --help-man).
+  -p, --profile="saml"  The AWS profile to save the temporary credentials
+  -s, --skip-verify     Skip verification of server certificate.
+      --version         Show application version.
 
 Commands:
   help [<command>...]
     Show help.
 
 
-  login [<flags>]
+  login
     Login to a SAML 2.0 IDP and convert the SAML assertion to an STS token.
 
-    -s, --skip-verify     Skip verification of server certificate.
-    -p, --profile="saml"  The AWS profile to save the temporary credentials
+
+  exec [<command>...]
+    Exec the supplied command with env vars from STS token.
+
+
 
 ```
 
@@ -74,6 +78,8 @@ Then your ready to use saml2aws.
 
 # Example
 
+Log into a service.
+
 ```
 $ saml2aws login
 Hostname [id.example.com]:
@@ -89,11 +95,54 @@ Selection: 1
 Selected role: arn:aws:iam::123123123123:role/AWS-Admin-CloudOPSNonProd
 Requesting AWS credentials using SAML assertion
 Saving credentials
+Logged in as: arn:aws:sts::123123123123:assumed-role/AWS-Admin-CloudOPSNonProd/wolfeidau@example.com
 
 Your new access key pair has been stored in the AWS configuration
 Note that it will expire at 2016-09-19 15:59:49 +1000 AEST
 To use this credential, call the AWS CLI with the --profile option (e.g. aws --profile saml ec2 describe-instances).
 ```
+
+Run ansible with an expired token present, `exec` verifies the token and requests login.
+
+```
+$ saml2aws exec --skip-verify -- ansible-playbook -e "aws_region=ap-southeast-2" playbook.yml
+Hostname [id.example.com]:
+Username [mark.wolfe@example.com]:
+Password: ************
+
+ADFS https://id.example.com
+Authenticating to ADFS...
+Please choose the role you would like to assume:
+[ 0 ]:  arn:aws:iam::123123123123:role/AWS-Admin-CloudOPSBuild
+[ 1 ]:  arn:aws:iam::123123123123:role/AWS-Admin-CloudOPSNonProd
+Selection: 1
+Selected role: arn:aws:iam::123123123123:role/AWS-Admin-CloudOPSNonProd
+Requesting AWS credentials using SAML assertion
+Saving credentials
+Logged in as: arn:aws:sts::123123123123:assumed-role/AWS-Admin-CloudOPSNonProd/wolfeidau@example.com
+
+Your new access key pair has been stored in the AWS configuration
+Note that it will expire at 2016-09-19 15:59:49 +1000 AEST
+To use this credential, call the AWS CLI with the --profile option (e.g. aws --profile saml ec2 describe-instances).
+
+PLAY [create cloudformation stack] *************************************************
+
+...
+
+PLAY RECAP *********************************************************************
+localhost                  : ok=2    changed=0    unreachable=0    failed=0
+
+```
+
+# environment vars
+
+The exec sub command will export the following environment variables.
+
+* AWS_ACCESS_KEY_ID
+* AWS_SECRET_ACCESS_KEY
+* AWS_SESSION_TOKEN
+* AWS_SECURITY_TOKEN
+* EC2_SECURITY_TOKEN
 
 # Dependencies
 
