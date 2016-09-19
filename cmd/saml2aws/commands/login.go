@@ -12,14 +12,8 @@ import (
 	"github.com/versent/saml2aws"
 )
 
+// Login login to ADFS
 func Login(profile string, skipVerify bool) error {
-
-	sharedCreds := saml2aws.NewSharedCredentials(profile)
-
-	err := sharedCreds.Exists()
-	if err != nil {
-		return errors.Wrap(err, "error loading aws credentials file")
-	}
 
 	config := saml2aws.NewConfigLoader("adfs")
 
@@ -103,6 +97,8 @@ func Login(profile string, skipVerify bool) error {
 	}
 
 	fmt.Println("Saving credentials")
+
+	sharedCreds := saml2aws.NewSharedCredentials(profile)
 
 	err = sharedCreds.Save(aws.StringValue(resp.Credentials.AccessKeyId), aws.StringValue(resp.Credentials.SecretAccessKey), aws.StringValue(resp.Credentials.SessionToken))
 	if err != nil {
