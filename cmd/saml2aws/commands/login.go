@@ -19,7 +19,7 @@ import (
 func retrieve_awsid(clientid string) string {
   config := saml2aws.NewConfigLoader("adfs")
   mappingurl := config.LoadMappingURL()
-  response, err := http.Get("mappingurl+clientid)
+  response, err := http.Get(mappingurl+clientid)
   if err != nil {call_error(err)}
 
   defer response.Body.Close()
