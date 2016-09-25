@@ -89,8 +89,12 @@ The client expects a response like the below:
 ```
 {"clientid":"example","awsid":"123456789012"}
 ```
-This could be easily done with API Gateway,Lambda and DyanmoDB though this is part part of the initial release
+This could be easily done with API Gateway,Lambda and DyanmoDB though this is not part of the initial release
 
+# TODO
+* Credential caching
+* Windows support
+* Query DynamoDB directly from client to get the mapping
 
 This tool would not be possible without some great opensource libraries.
 
@@ -105,4 +109,3 @@ This tool would not be possible without some great opensource libraries.
 This code is Copyright (c) 2015 [Versent](http://versent.com.au) and released under the MIT license. All rights not explicitly 
 granted in the MIT license are reserved. See the included LICENSE.md file for more details.
 
-He
