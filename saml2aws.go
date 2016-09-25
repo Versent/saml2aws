@@ -1,7 +1,5 @@
 package saml2aws
 
-//go:generate stringer -type=Provider
-
 import "fmt"
 
 type Provider int
