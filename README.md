@@ -1,6 +1,6 @@
 # saml2aws
 
-CLI tool which enables you to login and retrieve [AWS](https://aws.amazon.com/) temporary credentials using SAML with [ADFS 3.x](https://msdn.microsoft.com/en-us/library/bb897402.aspx).
+CLI tool which enables you to login and retrieve [AWS](https://aws.amazon.com/) temporary credentials using SAML with [ADFS 3.x](https://msdn.microsoft.com/en-us/library/bb897402.aspx) or [PingFederate](https://www.pingidentity.com/en/products/pingfederate.html) Identity Providers.
 
 This is based on python code from [
 How to Implement a General Solution for Federated API/CLI Access Using SAML 2.0](https://blogs.aws.amazon.com/security/post/TxU0AVUS9J00FP/How-to-Implement-a-General-Solution-for-Federated-API-CLI-Access-Using-SAML-2-0).
@@ -8,14 +8,16 @@ How to Implement a General Solution for Federated API/CLI Access Using SAML 2.0]
 The process goes something like this:
 
 * Prompt user for credentials
-* Log in to ADFS using form based authentication
+* Log in to Identity Provider using form based authentication
 * Build a SAML assertion containing AWS roles
 * Exchange the role and SAML assertion with [AWS STS service](https://docs.aws.amazon.com/STS/latest/APIReference/Welcome.html) to get a temporary set of credentials
 * Save these creds to an aws profile named "saml"
 
 # Requirements
 
-* ADFS 3.x 
+* Identity Provider
+  * ADFS 3.x
+  * PingFederate + PingId
 * AWS SAML Provider configured
 
 # Usage
@@ -29,6 +31,7 @@ Flags:
       --help            Show context-sensitive help (also try --help-long and --help-man).
   -p, --profile="saml"  The AWS profile to save the temporary credentials
   -s, --skip-verify     Skip verification of server certificate.
+  -i, --provider="ADFS" The type of SAML IDP provider.
       --version         Show application version.
 
 Commands:
@@ -43,11 +46,10 @@ Commands:
   exec [<command>...]
     Exec the supplied command with env vars from STS token.
 
-
-
 ```
+saml2aws will default to using ADFS as the Identity Provider. To use PingFederate change the provider flag to Ping eg `--provider=Ping`
 
-# install
+# Install
 
 If your on OSX you can install saml2aws using homebrew!
 
@@ -134,7 +136,7 @@ localhost                  : ok=2    changed=0    unreachable=0    failed=0
 
 ```
 
-# building
+# Building
 
 To build this software on osx clone to the repo to `$GOPATH/src/github.com/versent/saml2aws` and ensure you have `$GOPATH/bin` in your `$PATH`.
 
@@ -156,7 +158,7 @@ To release run.
 make release
 ```
 
-# environment vars
+# Environment vars
 
 The exec sub command will export the following environment variables.
 
