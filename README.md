@@ -134,6 +134,28 @@ localhost                  : ok=2    changed=0    unreachable=0    failed=0
 
 ```
 
+# building
+
+To build this software on osx clone to the repo to `$GOPATH/src/github.com/versent/saml2aws` and ensure you have `$GOPATH/bin` in your `$PATH`.
+
+If you don't have glide installed you can install it using [homebrew](http://brew.sh/).
+
+```
+brew install glide
+```
+
+Then to build the software just run.
+
+```
+make
+```
+
+To release run.
+
+```
+make release
+```
+
 # environment vars
 
 The exec sub command will export the following environment variables.
