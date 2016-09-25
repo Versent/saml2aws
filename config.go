@@ -103,6 +103,36 @@ func (p *ConfigLoader) LoadHostname() (string, error) {
 	return loadConfig(filename, p.Profile, "hostname")
 }
 
+// SaveProvider persist the provider
+func (p *ConfigLoader) SaveProvider(provider string) error {
+	filename, err := p.filename()
+	if err != nil {
+		return err
+	}
+
+	return saveConfig(filename, p.Profile, "provider", provider)
+}
+
+// LoadProvider load the provider
+func (p *ConfigLoader) LoadProvider(defaultValue string) (string, error) {
+
+	if defaultValue != "" {
+		return defaultValue, nil
+	}
+
+	filename, err := p.filename()
+	if err != nil {
+		return "", err
+	}
+
+	err = p.ensureConfigExists()
+	if err != nil {
+		return "", err
+	}
+
+	return loadConfig(filename, p.Profile, "provider")
+}
+
 func (p *ConfigLoader) filename() (string, error) {
 	if p.Filename == "" {
 		if p.Filename = os.Getenv("AWS2SAML_CONFIG_FILE"); p.Filename != "" {

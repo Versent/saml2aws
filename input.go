@@ -34,12 +34,12 @@ func PromptForLoginDetails(username, hostname string) (*LoginDetails, error) {
 }
 
 // PromptForAWSRoleSelection present a list of roles to the user for selection
-func PromptForAWSRoleSelection(roles []string) (*AWSRole, error) {
+func PromptForAWSRoleSelection(roles []*AWSRole) (*AWSRole, error) {
 
 	if len(roles) == 1 {
-		tok := strings.Split(roles[0], ",")
-
-		return &AWSRole{tok[0], tok[1]}, nil
+		//tok := strings.Split(roles[0], ",")
+		// &AWSRole{tok[0], tok[1]}
+		return roles[0], nil
 	}
 
 	reader := bufio.NewReader(os.Stdin)
@@ -47,7 +47,7 @@ func PromptForAWSRoleSelection(roles []string) (*AWSRole, error) {
 	fmt.Println("Please choose the role you would like to assume: ")
 
 	for i, role := range roles {
-		fmt.Println("[", i, "]: ", strings.Split(role, ",")[1])
+		fmt.Println("[", i, "]: ", role.RoleARN)
 	}
 
 	fmt.Print("Selection: ")
@@ -63,11 +63,11 @@ func PromptForAWSRoleSelection(roles []string) (*AWSRole, error) {
 		return nil, fmt.Errorf("You selected an invalid role index")
 	}
 
-	selectedRole := roles[v]
+	//selectedRole :=
 
-	tok := strings.Split(selectedRole, ",")
+	//tok := strings.Split(selectedRole, ",")
 
-	return &AWSRole{tok[1], tok[0]}, nil
+	return roles[v], nil
 }
 
 func promptFor(promptString, defaultValue string) string {

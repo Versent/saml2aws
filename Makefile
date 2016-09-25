@@ -3,10 +3,16 @@ ARCH=$(shell uname -m)
 VERSION=1.2.0
 ITERATION := 1
 
+default: build
+
 deps:
+	go install golang.org/x/tools/cmd/stringer
 	glide install
 
-build: deps
+generate:
+	go generate
+
+build: deps generate
 	rm -rf build && mkdir build
 	mkdir -p build/Linux  && GOOS=linux  go build -ldflags "-X main.Version=$(VERSION)" -o build/Linux/$(NAME) ./cmd/$(NAME)
 	mkdir -p build/Darwin && GOOS=darwin go build -ldflags "-X main.Version=$(VERSION)" -o build/Darwin/$(NAME) ./cmd/$(NAME)
@@ -22,4 +28,4 @@ release: build
 test:
 	go test -cover -v $(shell glide novendor)
 
-.PHONY: build test release packages
+.PHONY: default deps generate build test release packages
