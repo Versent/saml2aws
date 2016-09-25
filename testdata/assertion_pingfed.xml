@@ -1,0 +1,110 @@
+<Response Version="2.0" ID="XXX" IssueInstant="2016-09-23T23:29:25.308Z" xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol">
+	<Issuer xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion">
+		id:example:com:au:saml2
+	</Issuer>
+	<Status>
+		<StatusCode Value="urn:oasis:names:tc:SAML:2.0:status:Success" />
+	</Status>
+	<Assertion ID="n1yLpXwUNeNB6UuM0f5qOrRGxKX" IssueInstant="2016-09-23T23:29:25.315Z" Version="2.0" xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion">
+		<Issuer>
+			id:example:com:au:saml2
+		</Issuer>
+		<Signature xmlns:ds="http://www.w3.org/2000/09/xmldsig#">
+			<SignedInfo>
+				<CanonicalizationMethod Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#" />
+				<SignatureMethod Algorithm="http://www.w3.org/2001/04/xmldsig-more#rsa-sha256" />
+				<Reference URI="#n1yLpXwUNeNB6UuM0f5qOrRGxKX">
+					<Transforms>
+						<Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature" />
+						<Transform Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#" />
+					</Transforms>
+					<DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha256" />
+					<DigestValue>
+						xxx
+					</DigestValue>
+				</Reference>
+			</SignedInfo>
+			<SignatureValue>
+				xxx
+			</SignatureValue>
+			<KeyInfo>
+				<X509Data>
+					<X509Certificate>
+						xxx
+					</X509Certificate>
+				</X509Data>
+			</KeyInfo>
+		</Signature>
+		<Subject>
+			<NameID Format="urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified">
+				evan.mclean@example.com.au
+			</NameID>
+			<SubjectConfirmation Method="urn:oasis:names:tc:SAML:2.0:cm:bearer">
+				<SubjectConfirmationData Recipient="https://signin.aws.amazon.com/saml" NotOnOrAfter="2016-09-23T23:34:25.315Z" />
+			</SubjectConfirmation>
+		</Subject>
+		<Conditions NotBefore="2016-09-23T23:24:25.315Z" NotOnOrAfter="2016-09-23T23:34:25.315Z">
+			<AudienceRestriction>
+				<Audience>
+					urn:amazon:webservices
+				</Audience>
+			</AudienceRestriction>
+		</Conditions>
+		<AuthnStatement SessionIndex="n1yLpXwUNeNB6UuM0f5qOrRGxKX" AuthnInstant="2016-09-23T23:29:25.315Z">
+			<AuthnContext>
+				<AuthnContextClassRef>
+					urn:oasis:names:tc:SAML:2.0:ac:classes:Telephony
+				</AuthnContextClassRef>
+			</AuthnContext>
+		</AuthnStatement>
+		<AttributeStatement>
+			<Attribute Name="http://schemas.xmlsoap.org/claims/CommonName" NameFormat="urn:oasis:names:tc:SAML:2.0:attrname-format:basic">
+				<AttributeValue xsi:type="xs:string" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+					Evan McLean
+				</AttributeValue>
+			</Attribute>
+			<Attribute Name="https://aws.amazon.com/SAML/Attributes/RoleSessionName" NameFormat="urn:oasis:names:tc:SAML:2.0:attrname-format:basic">
+				<AttributeValue xsi:type="xs:string" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+					evan.mclean
+				</AttributeValue>
+			</Attribute>
+			<Attribute Name="http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname" NameFormat="urn:oasis:names:tc:SAML:2.0:attrname-format:basic">
+				<AttributeValue xsi:type="xs:string" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+					Evan
+				</AttributeValue>
+			</Attribute>
+			<Attribute Name="http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name" NameFormat="urn:oasis:names:tc:SAML:2.0:attrname-format:basic">
+				<AttributeValue xsi:type="xs:string" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+					evan.mclean
+				</AttributeValue>
+			</Attribute>
+			<Attribute Name="http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname" NameFormat="urn:oasis:names:tc:SAML:2.0:attrname-format:basic">
+				<AttributeValue xsi:type="xs:string" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+					McLean
+				</AttributeValue>
+			</Attribute>
+			<Attribute Name="http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress" NameFormat="urn:oasis:names:tc:SAML:2.0:attrname-format:basic">
+				<AttributeValue xsi:type="xs:string" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+					evan.mclean@example.com.au
+				</AttributeValue>
+			</Attribute>
+			<Attribute Name="https://aws.amazon.com/SAML/Attributes/Role" NameFormat="urn:oasis:names:tc:SAML:2.0:attrname-format:basic">
+				<AttributeValue xsi:type="xs:string" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+					arn:aws:iam::456456456456:role/admin,arn:aws:iam::456456456456:saml-provider/example-idp
+				</AttributeValue>
+				<AttributeValue xsi:type="xs:string" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+					arn:aws:iam::456456456456:role/developer,arn:aws:iam::456456456456:saml-provider/example-idp
+				</AttributeValue>
+				<AttributeValue xsi:type="xs:string" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+					arn:aws:iam::789789789789:role/admin,arn:aws:iam::789789789789:saml-provider/example-idp
+				</AttributeValue>
+				<AttributeValue xsi:type="xs:string" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+					arn:aws:iam::123123123123:role/developer,arn:aws:iam::123123123123:saml-provider/example-idp
+				</AttributeValue>
+				<AttributeValue xsi:type="xs:string" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+					arn:aws:iam::123123123123:role/admin,arn:aws:iam::123123123123:saml-provider/example-idp
+				</AttributeValue>
+			</Attribute>
+		</AttributeStatement>
+	</Assertion>
+</Response>
