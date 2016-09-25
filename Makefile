@@ -3,6 +3,8 @@ ARCH=$(shell uname -m)
 VERSION=1.2.0
 ITERATION := 1
 
+default: build
+
 deps:
 	glide install
 
@@ -22,4 +24,4 @@ release: build
 test:
 	go test -cover -v $(shell glide novendor)
 
-.PHONY: build test release packages
+.PHONY: default deps build test release packages

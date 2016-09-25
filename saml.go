@@ -2,7 +2,6 @@ package saml2aws
 
 import (
 	"fmt"
-	"log"
 
 	"github.com/beevik/etree"
 )
@@ -78,6 +77,6 @@ func childPath(space, tag string) string {
 	if space == "" {
 		return "./" + tag
 	}
-	log.Printf("query = %s", "./"+space+":"+tag)
+	//log.Printf("query = %s", "./"+space+":"+tag)
 	return "./" + space + ":" + tag
 }

@@ -13,7 +13,7 @@ import (
 )
 
 // Login login to ADFS
-func Login(profile string, skipVerify bool) error {
+func Login(profile, providerName string, skipVerify bool) error {
 
 	config := saml2aws.NewConfigLoader("adfs")
 
@@ -32,16 +32,18 @@ func Login(profile string, skipVerify bool) error {
 		return errors.Wrap(err, "error accepting password")
 	}
 
-	fmt.Printf("ADFS https://%s\n", loginDetails.Hostname)
+	fmt.Printf("%s https://%s\n", providerName, loginDetails.Hostname)
 
-	fmt.Println("Authenticating to ADFS...")
+	fmt.Printf("Authenticating to %s...\n", providerName)
 
-	adfs, err := saml2aws.NewADFSClient(skipVerify)
+	opts := &saml2aws.SAMLOptions{Provider: providerName, SkipVerify: skipVerify}
+
+	provider, err := saml2aws.NewSAMLClient(opts)
 	if err != nil {
 		return errors.Wrap(err, "error building adfs client")
 	}
 
-	samlAssertion, err := adfs.Authenticate(loginDetails)
+	samlAssertion, err := provider.Authenticate(loginDetails)
 	if err != nil {
 		return errors.Wrap(err, "error authenticating to adfs")
 
@@ -69,7 +71,12 @@ func Login(profile string, skipVerify bool) error {
 		os.Exit(1)
 	}
 
-	role, err := saml2aws.PromptForAWSRoleSelection(roles)
+	awsRoles, err := saml2aws.ParseAWSRoles(roles)
+	if err != nil {
+		return errors.Wrap(err, "error parsing aws roles")
+	}
+
+	role, err := saml2aws.PromptForAWSRoleSelection(awsRoles)
 	if err != nil {
 		return errors.Wrap(err, "error selecting role")
 	}
@@ -111,6 +118,7 @@ func Login(profile string, skipVerify bool) error {
 	fmt.Printf("Note that it will expire at %v\n", resp.Credentials.Expiration.Local())
 	fmt.Println("To use this credential, call the AWS CLI with the --profile option (e.g. aws --profile", profile, "ec2 describe-instances).")
 
+	fmt.Println("Saving config:", config.Filename)
 	config.SaveUsername(loginDetails.Username)
 	config.SaveHostname(loginDetails.Hostname)
 

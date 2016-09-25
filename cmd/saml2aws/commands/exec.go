@@ -15,7 +15,7 @@ import (
 )
 
 // Exec execute the supplied command after seeding the environment
-func Exec(profile string, skipVerify bool, cmdline []string) error {
+func Exec(profile string, providerName string, skipVerify bool, cmdline []string) error {
 
 	if len(cmdline) < 1 {
 		return fmt.Errorf("Command to execute required.")
@@ -27,7 +27,7 @@ func Exec(profile string, skipVerify bool, cmdline []string) error {
 	}
 
 	if !ok {
-		err = Login(profile, skipVerify)
+		err = Login(profile, providerName, skipVerify)
 	}
 	if err != nil {
 		return errors.Wrap(err, "error logging in")
