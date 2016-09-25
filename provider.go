@@ -1,0 +1,1 @@
+package saml2aws

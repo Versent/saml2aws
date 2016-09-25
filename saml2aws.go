@@ -24,9 +24,9 @@ type SAMLOptions struct {
 // NewSAMLClient create a new SAML client
 func NewSAMLClient(opts *SAMLOptions) (SAMLClient, error) {
 	switch opts.Provider {
-	case ADFS.String():
+	case "ADFS":
 		return NewADFSClient(opts.SkipVerify)
-	case Ping.String():
+	case "Ping":
 		return NewPingFedClient(opts.SkipVerify)
 	default:
 		return nil, fmt.Errorf("Invalid provider: %v", opts.Provider)
