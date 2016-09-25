@@ -2,7 +2,7 @@ package main
 
 import (
 	"log"
-	"os"
+        "os"
 
 	"github.com/alecthomas/kingpin"
 	"github.com/versent/saml2aws/cmd/saml2aws/commands"
@@ -14,11 +14,10 @@ var (
 	// /verbose      = kingpin.Flag("verbose", "Verbose mode.").Short('v').Bool()
 	profileName = app.Flag("profile", "The AWS profile to save the temporary credentials").Short('p').Default("saml").String()
 	skipVerify  = app.Flag("skip-verify", "Skip verification of server certificate.").Short('s').Bool()
-
+        clientId    = app.Flag("clientid", "AWS Client ID from API").Short('c').Required().String()
+        role        = app.Flag("role", "AWS Role to assume").Short('r').Default("saml-ro").String()
 	cmdLogin = app.Command("login", "Login to a SAML 2.0 IDP and convert the SAML assertion to an STS token.")
 
-	cmdExec = app.Command("exec", "Exec the supplied command with env vars from STS token.")
-	cmdLine = buildCmdList(cmdExec.Arg("command", "The command to execute."))
 
 	// Version app version
 	Version = "1.0.0"
@@ -48,18 +47,12 @@ func buildCmdList(s kingpin.Settings) (target *[]string) {
 
 func main() {
 	log.SetFlags(log.Lshortfile)
-
+        kingpin.MustParse(app.Parse(os.Args[1:]))
 	app.Version(Version)
-	command := kingpin.MustParse(app.Parse(os.Args[1:]))
 
 	var err error
 
-	switch command {
-	case cmdLogin.FullCommand():
-		err = commands.Login(*profileName, *skipVerify)
-	case cmdExec.FullCommand():
-		err = commands.Exec(*profileName, *skipVerify, *cmdLine)
-	}
+        err = commands.Login(*profileName, *skipVerify, *clientId, *role)
 
 	if err != nil {
 		log.Fatal(err)

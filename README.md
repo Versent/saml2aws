@@ -2,16 +2,16 @@
 
 CLI tool which enables you to login and retrieve [AWS](https://aws.amazon.com/) temporary credentials using SAML with [ADFS 3.x](https://msdn.microsoft.com/en-us/library/bb897402.aspx).
 
-This is based on python code from [
-How to Implement a General Solution for Federated API/CLI Access Using SAML 2.0](https://blogs.aws.amazon.com/security/post/TxU0AVUS9J00FP/How-to-Implement-a-General-Solution-for-Federated-API-CLI-Access-Using-SAML-2-0).
-
 The process goes something like this:
 
-* Prompt user for credentials
+Linux / OSX support only!!!!!!
+
+* Lookup user credentials from ~/.aws2saml.config (Should move password elsewhere)
+* Lookup AWS ID from pete
 * Log in to ADFS using form based authentication
 * Build a SAML assertion containing AWS roles
 * Exchange the role and SAML assertion with [AWS STS service](https://docs.aws.amazon.com/STS/latest/APIReference/Welcome.html) to get a temporary set of credentials
-* Save these creds to an aws profile named "saml"
+* Send out the ENV variables to be used in a eval statement
 
 # Requirements
 
@@ -21,40 +21,26 @@ The process goes something like this:
 # Usage
 
 ```
-usage: saml2aws [<flags>] <command> [<args> ...]
+usage: saml2aws [<flags>] login [<args> ...]
 
 A command line tool to help with SAML access to the AWS token service.
 
 Flags:
-      --help            Show context-sensitive help (also try --help-long and --help-man).
-  -p, --profile="saml"  The AWS profile to save the temporary credentials
-  -s, --skip-verify     Skip verification of server certificate.
-      --version         Show application version.
+      --help               Show context-sensitive help (also try --help-long and --help-man).
+  -c, --client="example"   Client ID 
+  -p, --profile="saml"     The AWS profile to save the temporary credentials
+  -s, --skip-verify        Skip verification of server certificate.
+  -r, --role="saml-ro"  AWS Role to assume
 
 Commands:
   help [<command>...]
     Show help.
 
-
-  login
-    Login to a SAML 2.0 IDP and convert the SAML assertion to an STS token.
-
-
-  exec [<command>...]
-    Exec the supplied command with env vars from STS token.
-
-
-
 ```
 
 # install
 
-If your on OSX you can install saml2aws using homebrew!
-
-```
-brew tap versent/homebrew-taps
-brew install saml2aws
-```
+Make sure you have glide and golang 1.6 installed!
 
 # Setup
 
@@ -73,78 +59,38 @@ AWS Secret Access Key [None]:
 Default region name [None]: us-west-2
 Default output format [None]:
 ```
-
+Then create a file named .aws2saml.config in your $HOME directory contents should look like the below
+```
+[adfs]
+username = user@example.local
+hostname = adfs.example.local
+password = xxxxxxxxx
+mappingurl = http://www.example.com/aws/
+```
 Then your ready to use saml2aws.
 
 # Example
 
-Log into a service.
-
+Log into a service. Upon success it will spawn a subshell of $SHELL, within that you will see the Environment Variables the clientId is also exported as CLIENTID if oyu want to play with your PS1
+``` 
+saml2aws -c example -s -r saml-ro 
 ```
-$ saml2aws login
-Hostname [id.example.com]:
-Username [mark.wolfe@example.com]:
-Password: ************
-
-ADFS https://id.example.com
-Authenticating to ADFS...
-Please choose the role you would like to assume:
-[ 0 ]:  arn:aws:iam::123123123123:role/AWS-Admin-CloudOPSBuild
-[ 1 ]:  arn:aws:iam::123123123123:role/AWS-Admin-CloudOPSNonProd
-Selection: 1
-Selected role: arn:aws:iam::123123123123:role/AWS-Admin-CloudOPSNonProd
-Requesting AWS credentials using SAML assertion
-Saving credentials
-Logged in as: arn:aws:sts::123123123123:assumed-role/AWS-Admin-CloudOPSNonProd/wolfeidau@example.com
-
-Your new access key pair has been stored in the AWS configuration
-Note that it will expire at 2016-09-19 15:59:49 +1000 AEST
-To use this credential, call the AWS CLI with the --profile option (e.g. aws --profile saml ec2 describe-instances).
+Output
+```
+$ saml2aws -c example -s -r saml-ro login
+user@host: env |grep CLIENTID
+CLIENTID=example
 ```
 
-Run ansible with an expired token present, `exec` verifies the token and requests login.
+# AWS Mapping
+In the above config file you specify a mapping url, the client will query that URL with client id appended to it eg http:///www.example.com/aws/example where example is the AWSaccount id.
 
+The client expects a response like the below:
 ```
-$ saml2aws exec --skip-verify -- ansible-playbook -e "aws_region=ap-southeast-2" playbook.yml
-Hostname [id.example.com]:
-Username [mark.wolfe@example.com]:
-Password: ************
-
-ADFS https://id.example.com
-Authenticating to ADFS...
-Please choose the role you would like to assume:
-[ 0 ]:  arn:aws:iam::123123123123:role/AWS-Admin-CloudOPSBuild
-[ 1 ]:  arn:aws:iam::123123123123:role/AWS-Admin-CloudOPSNonProd
-Selection: 1
-Selected role: arn:aws:iam::123123123123:role/AWS-Admin-CloudOPSNonProd
-Requesting AWS credentials using SAML assertion
-Saving credentials
-Logged in as: arn:aws:sts::123123123123:assumed-role/AWS-Admin-CloudOPSNonProd/wolfeidau@example.com
-
-Your new access key pair has been stored in the AWS configuration
-Note that it will expire at 2016-09-19 15:59:49 +1000 AEST
-To use this credential, call the AWS CLI with the --profile option (e.g. aws --profile saml ec2 describe-instances).
-
-PLAY [create cloudformation stack] *************************************************
-
-...
-
-PLAY RECAP *********************************************************************
-localhost                  : ok=2    changed=0    unreachable=0    failed=0
-
+{"clientid":"example","awsid":"123456789012"}
 ```
+This could be easily done with API Gateway,Lambda and DyanmoDB though this is part part of the initial release
 
-# environment vars
-
-The exec sub command will export the following environment variables.
-
-* AWS_ACCESS_KEY_ID
-* AWS_SECRET_ACCESS_KEY
-* AWS_SESSION_TOKEN
-* AWS_SECURITY_TOKEN
-* EC2_SECURITY_TOKEN
-
-# Dependencies
 
 This tool would not be possible without some great opensource libraries.
 
@@ -158,3 +104,5 @@ This tool would not be possible without some great opensource libraries.
 
 This code is Copyright (c) 2015 [Versent](http://versent.com.au) and released under the MIT license. All rights not explicitly 
 granted in the MIT license are reserved. See the included LICENSE.md file for more details.
+
+He
