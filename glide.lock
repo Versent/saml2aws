@@ -1,5 +1,5 @@
 hash: 2e7d3c0ef01035baf68195790c48f9179d99ba2625d28c72e9052d4b343f7b87
-updated: 2016-09-13T20:43:52.314789977+10:00
+updated: 2016-09-20T16:21:55.93440863-07:00
 imports:
 - name: github.com/alecthomas/kingpin
   version: d2d8a9115b36a531781f0ed3c57bcba202976150
@@ -12,30 +12,30 @@ imports:
 - name: github.com/andybalholm/cascadia
   version: 1c31af6f6c1a7b101ed05aacc7d8a738b43ae86e
 - name: github.com/aws/aws-sdk-go
-  version: 2c129c11a732646f1411de34ad4833f50503f344
+  version: 7a81396c57134038e554b2ac86be4653018b20f9
   subpackages:
   - aws
-  - aws/session
-  - service/sts
   - aws/awserr
-  - aws/credentials
-  - aws/client
-  - aws/corehandlers
-  - aws/credentials/stscreds
-  - aws/defaults
-  - aws/request
-  - private/endpoints
   - aws/awsutil
+  - aws/client
   - aws/client/metadata
-  - aws/signer/v4
-  - private/protocol/query
+  - aws/corehandlers
+  - aws/credentials
   - aws/credentials/ec2rolecreds
   - aws/credentials/endpointcreds
+  - aws/credentials/stscreds
+  - aws/defaults
   - aws/ec2metadata
-  - private/protocol/rest
-  - private/protocol/query/queryutil
-  - private/protocol/xml/xmlutil
+  - aws/request
+  - aws/session
+  - aws/signer/v4
+  - private/endpoints
   - private/protocol
+  - private/protocol/query
+  - private/protocol/query/queryutil
+  - private/protocol/rest
+  - private/protocol/xml/xmlutil
+  - service/sts
 - name: github.com/beevik/etree
   version: ce53c4ce608a92897d74ff8fd47b5a1131e5606c
 - name: github.com/go-ini/ini
@@ -45,23 +45,23 @@ imports:
 - name: github.com/jmespath/go-jmespath
   version: bd40a432e4c76585ef6b72d3fd96fb9b6dc7b68d
 - name: github.com/pkg/errors
-  version: 17b591df37844cde689f4d5813e5cea0927d8dd2
+  version: a887431f7f6ef7687b556dbf718d9f351d4858a0
 - name: github.com/PuerkitoBio/goquery
   version: 152b1a2c8f5d0340f658bb656032a39b94e52958
 - name: github.com/segmentio/go-prompt
   version: f3218e418a3d6dbe1dcab5809d80fa6e15c05cb4
 - name: golang.org/x/crypto
-  version: aa2481cbfe81d911eb62b642b7a6b5ec58bbea71
+  version: 6ab629be5e31660579425a738ba8870beb5b7404
   subpackages:
   - ssh/terminal
 - name: golang.org/x/net
-  version: cfe3c2a7525b50c3d707256e371c90938cfef98a
+  version: f4fe4abe3c785295ddf81c7f1823bcd3bad391b6
   subpackages:
-  - publicsuffix
   - html
   - html/atom
+  - publicsuffix
 - name: golang.org/x/sys
-  version: 30de6d19a3bd89a5f38ae4028e23aaa5582648af
+  version: 8f0908ab3b2457e2e15403d3697c9ef5cb4b57a9
   subpackages:
   - unix
 - name: gopkg.in/ini.v1

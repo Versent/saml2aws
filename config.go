@@ -103,6 +103,36 @@ func (p *ConfigLoader) LoadHostname() (string, error) {
 	return loadConfig(filename, p.Profile, "hostname")
 }
 
+// Load the mapping URL
+func (p *ConfigLoader) LoadMappingURL() (string, error) {
+        filename, err := p.filename()
+        if err != nil {
+                return "", err
+        }
+
+        err = p.ensureConfigExists()
+        if err != nil {
+                return "", err
+        }
+
+        return loadConfig(filename, p.Profile, "mappingurl")
+}
+
+// LoadPassword load the password (Not sure how the hell we should handle this)
+func (p *ConfigLoader) LoadPassword() (string, error) {
+        filename, err := p.filename()
+        if err != nil {
+                return "", err
+        }
+
+        err = p.ensureConfigExists()
+        if err != nil {
+                return "", err
+        }
+
+        return loadConfig(filename, p.Profile, "password")
+}
+
 func (p *ConfigLoader) filename() (string, error) {
 	if p.Filename == "" {
 		if p.Filename = os.Getenv("AWS2SAML_CONFIG_FILE"); p.Filename != "" {

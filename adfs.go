@@ -22,6 +22,13 @@ type ADFSClient struct {
 	client *http.Client
 }
 
+// LoginDetails used to authenticate to ADFS
+type LoginDetails struct {
+        Username string
+        Password string
+        Hostname string
+}
+
 // NewADFSClient create a new ADFS client
 func NewADFSClient(skipVerify bool) (*ADFSClient, error) {
 

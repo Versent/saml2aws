@@ -10,28 +10,6 @@ import (
 	"github.com/segmentio/go-prompt"
 )
 
-// LoginDetails used to authenticate to ADFS
-type LoginDetails struct {
-	Username string
-	Password string
-	Hostname string
-}
-
-// PromptForLoginDetails prompt the user to present their username, password and hostname
-func PromptForLoginDetails(username, hostname string) (*LoginDetails, error) {
-
-	hostname = promptFor("Hostname [%s]", hostname)
-	username = promptFor("Username [%s]", username)
-	password := prompt.PasswordMasked("Password")
-
-	fmt.Println("")
-
-	return &LoginDetails{
-		Username: strings.TrimSpace(username),
-		Password: strings.TrimSpace(password),
-		Hostname: strings.TrimSpace(hostname),
-	}, nil
-}
 
 // PromptForAWSRoleSelection present a list of roles to the user for selection
 func PromptForAWSRoleSelection(roles []string) (*AWSRole, error) {

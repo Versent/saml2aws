@@ -4,7 +4,10 @@ import (
 	"encoding/base64"
 	"fmt"
 	"os"
-
+        "encoding/json"
+        "net/http"
+        "io/ioutil"
+        "strings"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sts"
@@ -12,8 +15,32 @@ import (
 	"github.com/versent/saml2aws"
 )
 
+// this checks mappingurl for the aws ID..
+func retrieve_awsid(clientid string) string {
+  config := saml2aws.NewConfigLoader("adfs")
+  mappingurl := config.LoadMappingURL()
+  response, err := http.Get(mappingurl+clientid)
+  if err != nil {call_error(err)}
+
+  defer response.Body.Close()
+  if (response.StatusCode != 200) {
+    fmt.Println("Something went wrong when interacting with API")
+    os.Exit(1)
+  }
+  contents, err := ioutil.ReadAll(response.Body)
+  if err != nil {call_error(err)}
+
+  var m interface{}
+  errj := json.Unmarshal(contents, &m)
+  if errj != nil {call_error(errj)}
+
+  f := m.(map[string]interface{})
+  return string(f["awsid"].(string))
+}
+
+
 // Login login to ADFS
-func Login(profile string, skipVerify bool) error {
+func Login(profile string, skipVerify bool, clientId string, role string) error {
 
 	config := saml2aws.NewConfigLoader("adfs")
 
@@ -27,14 +54,18 @@ func Login(profile string, skipVerify bool) error {
 		return errors.Wrap(err, "error loading config file")
 	}
 
-	loginDetails, err := saml2aws.PromptForLoginDetails(username, hostname)
-	if err != nil {
-		return errors.Wrap(err, "error accepting password")
-	}
+        password, err := config.LoadPassword()
+        if err != nil {
+                return errors.Wrap(err, "error loading config file")
+        }  
 
-	fmt.Printf("ADFS https://%s\n", loginDetails.Hostname)
+        loginDetails :=  &saml2aws.LoginDetails{
+                Username: strings.TrimSpace(username),
+                Password: strings.TrimSpace(password),
+                Hostname: strings.TrimSpace(hostname),
+        }
 
-	fmt.Println("Authenticating to ADFS...")
+
 
 	adfs, err := saml2aws.NewADFSClient(skipVerify)
 	if err != nil {
@@ -69,12 +100,9 @@ func Login(profile string, skipVerify bool) error {
 		os.Exit(1)
 	}
 
-	role, err := saml2aws.PromptForAWSRoleSelection(roles)
-	if err != nil {
-		return errors.Wrap(err, "error selecting role")
-	}
-
-	fmt.Println("Selected role:", role.RoleARN)
+        awsid := retrieve_awsid(clientId)
+        PrincipalARN := "arn:aws:iam::"+awsid+":saml-provider/ADFS"
+        RoleARN := "arn:aws:iam::"+awsid+":role/"+role
 
 	sess, err := session.NewSession()
 	if err != nil {
@@ -84,35 +112,45 @@ func Login(profile string, skipVerify bool) error {
 	svc := sts.New(sess)
 
 	params := &sts.AssumeRoleWithSAMLInput{
-		PrincipalArn:  aws.String(role.PrincipalARN), // Required
-		RoleArn:       aws.String(role.RoleARN),      // Required
+		PrincipalArn:  aws.String(PrincipalARN), // Required
+		RoleArn:       aws.String(RoleARN),      // Required
 		SAMLAssertion: aws.String(samlAssertion),     // Required
 	}
 
-	fmt.Println("Requesting AWS credentials using SAML assertion")
-
 	resp, err := svc.AssumeRoleWithSAML(params)
 	if err != nil {
-		return errors.Wrap(err, "error retieving sts credentials using SAML")
+		return errors.Wrap(err, "PrincipalARN: " + PrincipalARN + " RoleARN: " + RoleARN + "error retieving sts credentials using SAML")
 	}
 
-	fmt.Println("Saving credentials")
-
-	sharedCreds := saml2aws.NewSharedCredentials(profile)
-
-	err = sharedCreds.Save(aws.StringValue(resp.Credentials.AccessKeyId), aws.StringValue(resp.Credentials.SecretAccessKey), aws.StringValue(resp.Credentials.SessionToken))
-	if err != nil {
-		return errors.Wrap(err, "error saving credentials")
-	}
-
-	fmt.Println("Logged in as:", aws.StringValue(resp.AssumedRoleUser.Arn))
-	fmt.Println("")
-	fmt.Println("Your new access key pair has been stored in the AWS configuration")
-	fmt.Printf("Note that it will expire at %v\n", resp.Credentials.Expiration.Local())
-	fmt.Println("To use this credential, call the AWS CLI with the --profile option (e.g. aws --profile", profile, "ec2 describe-instances).")
-
+        cwd, err := os.Getwd()
+        if err != nil {
+         panic(err)
+        }
+        os.Setenv("AWS_ACCESS_KEY_ID", *resp.Credentials.AccessKeyId)
+        os.Setenv("AWS_SECRET_ACCESS_KEY", *resp.Credentials.SecretAccessKey)
+        os.Setenv("AWS_SESSION_TOKEN", *resp.Credentials.SessionToken)
+        os.Setenv("AWS_SECURITY_TOKEN", *resp.Credentials.SessionToken)
+        os.Setenv("CLIENTID", clientId);
+        shell := os.Getenv("SHELL")
+        pa := os.ProcAttr {
+         Files: []*os.File{os.Stdin, os.Stdout, os.Stderr},
+         Dir: cwd,
+        }
+        proc, err := os.StartProcess(shell, []string{""}, &pa)
+        if err != nil {
+         panic(err)
+        } 
 	config.SaveUsername(loginDetails.Username)
 	config.SaveHostname(loginDetails.Hostname)
-
+        state, err := proc.Wait()
+        if err != nil {
+         panic(err)
+        }
+        fmt.Printf("<< Exited shell: %s\n", state.String())
 	return nil
+}
+
+func call_error(error_resp error) {
+  fmt.Println(error_resp)
+  os.Exit(1)
 }
