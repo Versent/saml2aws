@@ -83,7 +83,7 @@ CLIENTID=example
 ```
 
 # AWS Mapping
-In the above config file you specify a mapping url, the client will query that URL with client id appended to it eg http:///www.example.com/aws/example where example is the AWSaccount id.
+In the above config file you specify a mapping url, the client will query that URL with client id appended to it eg http://www.example.com/aws/example where example is the AWSaccount id.
 
 The client expects a response like the below:
 ```
