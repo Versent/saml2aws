@@ -33,6 +33,7 @@ func (e ErrMissingElement) Error() string {
 	return fmt.Sprintf("missing %s element", e.Tag)
 }
 
+// ExtractAwsRoles given an assertion document extract the aws roles
 func ExtractAwsRoles(data []byte) ([]string, error) {
 
 	awsroles := []string{}

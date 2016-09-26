@@ -45,6 +45,7 @@ func (p *CredentialsProvider) Save(id, secret, token string) error {
 	return saveProfile(filename, p.Profile, id, secret, token)
 }
 
+// Load load the aws credentials file
 func (p *CredentialsProvider) Load() (string, string, string, error) {
 	filename, err := p.filename()
 	if err != nil {

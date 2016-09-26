@@ -2,10 +2,13 @@ package saml2aws
 
 import "fmt"
 
+// Provider the SAML provider
 type Provider int
 
 const (
+	// ADFS 3.x provider
 	ADFS Provider = iota
+	// Ping provider
 	Ping
 )
 
@@ -14,6 +17,7 @@ type SAMLClient interface {
 	Authenticate(loginDetails *LoginDetails) (string, error)
 }
 
+// SAMLOptions options for the new SAML client
 type SAMLOptions struct {
 	SkipVerify bool
 	Provider   string
