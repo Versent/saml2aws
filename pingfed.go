@@ -107,7 +107,6 @@ func (ac *PingFedClient) Authenticate(loginDetails *LoginDetails) (string, error
 			return samlAssertion, errors.Wrap(err, "error retieving login form")
 		}
 	}
-	//debug(httputil.DumpResponse(res, true))
 
 	//process mfa
 	if mfaRequired {
@@ -120,7 +119,6 @@ func (ac *PingFedClient) Authenticate(loginDetails *LoginDetails) (string, error
 		if err != nil {
 			return samlAssertion, errors.Wrap(err, "error retieving form")
 		}
-		//debug(httputil.DumpResponse(res, true))
 
 		//extract form action and jwt token
 		form, actionURL, err := extractFormData(res)
@@ -136,7 +134,6 @@ func (ac *PingFedClient) Authenticate(loginDetails *LoginDetails) (string, error
 		if err != nil {
 			return samlAssertion, errors.Wrap(err, "error retieving mfa response")
 		}
-		//debug(httputil.DumpResponse(res, true))
 
 		//extract form action and csrf token
 		form, actionURL, err = extractFormData(res)
@@ -152,7 +149,6 @@ func (ac *PingFedClient) Authenticate(loginDetails *LoginDetails) (string, error
 		if err != nil {
 			return samlAssertion, errors.Wrap(err, "error polling mfa device")
 		}
-		//debug(httputil.DumpResponse(res, true))
 
 		//extract form action and jwt token
 		form, actionURL, err = extractFormData(res)
@@ -169,12 +165,10 @@ func (ac *PingFedClient) Authenticate(loginDetails *LoginDetails) (string, error
 		if err != nil {
 			return samlAssertion, errors.Wrap(err, "error authenticating mfa")
 		}
-		//debug(httputil.DumpResponse(res, true))
 
 	}
 	//log.Printf("res code = %v status = %s", res.StatusCode, res.Status)
 
-	//debug(httputil.DumpResponse(res, true))
 	data, err := ioutil.ReadAll(res.Body)
 	if err != nil {
 		return samlAssertion, errors.Wrap(err, "error retieving body")
@@ -241,8 +235,6 @@ func extractFormData(res *http.Response) (url.Values, string, error) {
 		actionURL = action
 	})
 
-	//spew.Dump(actionURL)
-
 	// exxtract form data to passthrough
 	doc.Find("input").Each(func(i int, s *goquery.Selection) {
 		name, ok := s.Attr("name")
@@ -257,12 +249,4 @@ func extractFormData(res *http.Response) (url.Values, string, error) {
 	})
 
 	return formData, actionURL, nil
-}
-
-func debug(data []byte, err error) {
-	if err == nil {
-		fmt.Printf("%s\n\n", data)
-	} else {
-		log.Fatalf("%s\n\n", err)
-	}
 }

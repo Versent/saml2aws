@@ -67,8 +67,6 @@ func (ac *ADFSClient) Authenticate(loginDetails *LoginDetails) (string, error) {
 		updateFormData(authForm, s, loginDetails)
 	})
 
-	//spew.Dump(authForm)
-
 	doc.Find("form").Each(func(i int, s *goquery.Selection) {
 		action, ok := s.Attr("action")
 		if !ok {

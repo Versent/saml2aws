@@ -37,8 +37,6 @@ func PromptForLoginDetails(username, hostname string) (*LoginDetails, error) {
 func PromptForAWSRoleSelection(roles []*AWSRole) (*AWSRole, error) {
 
 	if len(roles) == 1 {
-		//tok := strings.Split(roles[0], ",")
-		// &AWSRole{tok[0], tok[1]}
 		return roles[0], nil
 	}
 
@@ -62,10 +60,6 @@ func PromptForAWSRoleSelection(roles []*AWSRole) (*AWSRole, error) {
 	if v > len(roles) {
 		return nil, fmt.Errorf("You selected an invalid role index")
 	}
-
-	//selectedRole :=
-
-	//tok := strings.Split(selectedRole, ",")
 
 	return roles[v], nil
 }
