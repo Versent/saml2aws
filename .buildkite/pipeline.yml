@@ -4,6 +4,5 @@ steps:
 
   - name: ":hammer:"
     command: "make build"
-    plugins:
-      docker-compose#e8ce6c1:
-        run: saml2aws
+    env:
+      BUILDKITE_DOCKER_COMPOSE_CONTAINER: saml2aws
