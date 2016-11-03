@@ -1,0 +1,9 @@
+steps:
+
+  - wait
+
+  - name: ":hammer:"
+    command: "make build"
+    plugins:
+      docker-compose#e8ce6c1:
+        run: saml2aws
