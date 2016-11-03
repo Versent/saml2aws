@@ -75,7 +75,7 @@ func checkToken(profile string) (bool, error) {
 		return false, err
 	}
 
-	fmt.Println("Running command as:", aws.StringValue(resp.Arn))
+	fmt.Fprintln(os.Stderr, "Running command as:", aws.StringValue(resp.Arn))
 	return true, nil
 }
 
