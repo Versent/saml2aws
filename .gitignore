@@ -5,3 +5,4 @@ packages
 release
 *_string.go
 .glide
+vendor
