@@ -8,7 +8,7 @@ steps:
       BUILDKITE_DOCKER_COMPOSE_CONTAINER: saml2aws
 
   - block: ':shipit: Release'
-      branches: 'master'
+    branches: 'master'
 
   - name: ':github: Release'
     command: 'make release'
