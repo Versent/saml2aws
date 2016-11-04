@@ -3,25 +3,42 @@ ARCH=$(shell uname -m)
 VERSION=1.3.0
 ITERATION := 1
 
-default: build
+default: deps compile
 
 deps:
+	go get github.com/c4milo/github-release
+	go get github.com/mitchellh/gox
 	glide install
 
-build: deps
-	rm -rf build && mkdir build
-	mkdir -p build/Linux  && GOOS=linux  go build -ldflags "-X main.Version=$(VERSION)" -o build/Linux/$(NAME) ./cmd/$(NAME)
-	mkdir -p build/Darwin && GOOS=darwin go build -ldflags "-X main.Version=$(VERSION)" -o build/Darwin/$(NAME) ./cmd/$(NAME)
-	mkdir -p build/Windows && GOOS=windows go build -ldflags "-X main.Version=$(VERSION)" -o build/Windows/$(NAME).exe ./cmd/$(NAME)
+compile: deps
+	@rm -rf build/
+	@gox -ldflags "-X main.Version=$(VERSION)" \
+	-osarch="darwin/amd64" \
+	-osarch="linux/i386" \
+	-osarch="linux/amd64" \
+	-osarch="windows/amd64" \
+	-osarch="windows/i386" \
+	-output "build/{{.Dir}}_$(VERSION)_{{.OS}}_{{.Arch}}/$(NAME)" \
+	$(shell glide novendor)
 
-release: build
-	rm -rf release && mkdir release
-	tar -zcf release/$(NAME)_$(VERSION)_linux_$(ARCH).tgz -C build/Linux $(NAME)
-	tar -zcf release/$(NAME)_$(VERSION)_darwin_$(ARCH).tgz -C build/Darwin $(NAME)
-	tar -zcf release/$(NAME)_$(VERSION)_windows_$(ARCH).tgz -C build/Windows $(NAME).exe
-	gh-release create versent/$(NAME) $(VERSION) $(shell git rev-parse --abbrev-ref HEAD)
+dist:
+	$(eval FILES := $(shell ls build))
+	@rm -rf dist && mkdir dist
+	@for f in $(FILES); do \
+		(cd $(shell pwd)/build/$$f && tar -cvzf ../../dist/$$f.tar.gz *); \
+		(cd $(shell pwd)/dist && shasum -a 512 $$f.tar.gz > $$f.sha512); \
+		echo $$f; \
+	done
 
-test:
+release:
+	@latest_tag=$$(git describe --tags `git rev-list --tags --max-count=1`); \
+	comparison="$$latest_tag..HEAD"; \
+	if [ -z "$$latest_tag" ]; then comparison=""; fi; \
+	changelog=$$(git log $$comparison --oneline --no-merges --reverse); \
+	github-release versent/$(NAME) $(VERSION) "$$(git rev-parse --abbrev-ref HEAD)" "**Changelog**<br/>$$changelog" 'dist/*'; \
+	git pull
+
+test: deps
 	go test -cover -v $(shell glide novendor)
 
-.PHONY: default deps build test release packages
+.PHONY: default deps compile dist release test 

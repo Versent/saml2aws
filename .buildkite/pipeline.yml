@@ -2,8 +2,22 @@ steps:
 
   - wait
 
-  - name: ":hammer:"
-    command: "make build"
+  - name: ":vertical_traffic_light: Tests"
+    command: "make test"
+    env:
+      BUILDKITE_DOCKER_COMPOSE_CONTAINER: saml2aws
+
+  - wait
+
+  - name: ":hammer: Compile"
+    command: "make compile"
+    env:
+      BUILDKITE_DOCKER_COMPOSE_CONTAINER: saml2aws
+
+  - wait
+
+  - name: ":package: Package"
+    command: "make dist"
     env:
       BUILDKITE_DOCKER_COMPOSE_CONTAINER: saml2aws
 
