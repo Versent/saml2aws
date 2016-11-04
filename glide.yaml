@@ -16,6 +16,7 @@ import:
   subpackages:
   - publicsuffix
 - package: gopkg.in/ini.v1
+- package: github.com/segmentio/go-prompt
 testImport:
 - package: github.com/stretchr/testify
   subpackages:
