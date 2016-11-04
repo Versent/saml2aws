@@ -6,3 +6,13 @@ steps:
     command: "make build"
     env:
       BUILDKITE_DOCKER_COMPOSE_CONTAINER: saml2aws
+
+  - block: ':shipit: Release'
+      branches: 'master'
+
+  - name: ':github: Release'
+    command: 'make release'
+    artifact_paths: 'release/**/*'
+    branches: 'master'
+
+  - wait
