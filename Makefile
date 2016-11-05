@@ -31,12 +31,7 @@ dist:
 	done
 
 release:
-	@latest_tag=$$(git describe --tags `git rev-list --tags --max-count=1`); \
-	comparison="$$latest_tag..HEAD"; \
-	if [ -z "$$latest_tag" ]; then comparison=""; fi; \
-	changelog=$$(git log $$comparison --oneline --no-merges --reverse); \
-	github-release versent/$(NAME) $(VERSION) "$$(git rev-parse --abbrev-ref HEAD)" "**Changelog**<br/>$$changelog" 'dist/*'; \
-	git pull
+	@github-release "v$(VERSION)" dist/* --commit "$(git rev-parse HEAD)" --github-repository versent/$(NAME)
 
 test: deps
 	go test -cover -v $(shell glide novendor)
