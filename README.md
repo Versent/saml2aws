@@ -4,7 +4,7 @@ CLI tool which enables you to login and retrieve [AWS](https://aws.amazon.com/) 
 
 The process goes something like this: 
 
-Linux / OSX support only!!!!!!
+Linux / OSX support only!!!!!! 
 
 * Lookup user credentials from ~/.aws2saml.config (Should move password elsewhere)
 * Lookup AWS ID from pete
