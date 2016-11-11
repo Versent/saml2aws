@@ -6,7 +6,7 @@ The process goes something like this:
 
 Linux / OSX support only!!!!!! 
 
-* Lookup user credentials from ~/.aws2saml.config (Should move password elsewhere)
+* Lookup user credentials from ~/.aws2saml.config (Should move password elsewhere) 
 * Lookup AWS ID from pete
 * Log in to ADFS using form based authentication
 * Build a SAML assertion containing AWS roles
