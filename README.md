@@ -2,7 +2,7 @@
 
 CLI tool which enables you to login and retrieve [AWS](https://aws.amazon.com/) temporary credentials using SAML with [ADFS 3.x](https://msdn.microsoft.com/en-us/library/bb897402.aspx).
 
-The process goes something like this:
+The process goes something like this: 
 
 Linux / OSX support only!!!!!!
 
