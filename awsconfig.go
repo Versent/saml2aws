@@ -148,5 +148,10 @@ func saveProfile(filename, profile, id, secret, token string) error {
 		return err
 	}
 
+	_, err = iniProfile.NewKey("aws_security_token", token)
+	if err != nil {
+		return err
+	}
+
 	return config.SaveTo(filename)
 }
