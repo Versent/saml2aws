@@ -1,6 +1,6 @@
 NAME=saml2aws
 ARCH=$(shell uname -m)
-VERSION=1.3.1
+VERSION=1.3.2
 ITERATION := 1
 
 default: deps compile
@@ -36,4 +36,4 @@ release:
 test: deps
 	go test -cover -v $(shell glide novendor)
 
-.PHONY: default deps compile dist release test 
+.PHONY: default deps compile dist release test
