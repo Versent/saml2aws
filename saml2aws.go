@@ -28,6 +28,8 @@ func NewSAMLClient(opts *SAMLOptions) (SAMLClient, error) {
 	switch opts.Provider {
 	case "ADFS":
 		return NewADFSClient(opts.SkipVerify)
+	case "ADFS2":
+		return NewADFS2Client(opts.SkipVerify)
 	case "Ping":
 		return NewPingFedClient(opts.SkipVerify)
 	default:

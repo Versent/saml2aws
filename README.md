@@ -1,6 +1,6 @@
 # saml2aws
 
-CLI tool which enables you to login and retrieve [AWS](https://aws.amazon.com/) temporary credentials using SAML with [ADFS 3.x](https://msdn.microsoft.com/en-us/library/bb897402.aspx) or [PingFederate](https://www.pingidentity.com/en/products/pingfederate.html) Identity Providers.
+CLI tool which enables you to login and retrieve [AWS](https://aws.amazon.com/) temporary credentials using SAML with [ADFS](https://msdn.microsoft.com/en-us/library/bb897402.aspx) or [PingFederate](https://www.pingidentity.com/en/products/pingfederate.html) Identity Providers.
 
 This is based on python code from [
 How to Implement a General Solution for Federated API/CLI Access Using SAML 2.0](https://blogs.aws.amazon.com/security/post/TxU0AVUS9J00FP/How-to-Implement-a-General-Solution-for-Federated-API-CLI-Access-Using-SAML-2-0).
@@ -16,7 +16,7 @@ The process goes something like this:
 # Requirements
 
 * Identity Provider
-  * ADFS 3.x
+  * ADFS (2.x or 3.x)
   * PingFederate + PingId
 * AWS SAML Provider configured
 
@@ -47,7 +47,12 @@ Commands:
     Exec the supplied command with env vars from STS token.
 
 ```
-saml2aws will default to using ADFS as the Identity Provider. To use PingFederate change the provider flag to Ping eg `--provider=Ping`
+saml2aws will default to using ADFS 3.x as the Identity Provider. To use another provider, use the `--provider` flag:
+
+| IdP          |                    |
+| ------------ | ------------------ |
+| ADFS 2.x     | `--provider=ADFS2` |
+| PingFederate | `--provider=Ping`  |
 
 # Install
 
@@ -177,6 +182,7 @@ This tool would not be possible without some great opensource libraries.
 * [kingpin](github.com/alecthomas/kingpin) command line flags
 * [aws-sdk-go](github.com/aws/aws-sdk-go) AWS Go SDK
 * [go-ini](https://github.com/go-ini/ini) INI file parser
+* [go-ntlmssp](https://github.com/Azure/go-ntlmssp) NTLM/Negotiate authentication
 
 # License
 
