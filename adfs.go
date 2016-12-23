@@ -7,7 +7,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	"net/http/cookiejar"
+        "github.com/juju/persistent-cookiejar"
 	"net/url"
 	"strings"
 

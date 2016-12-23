@@ -1,0 +1,18 @@
+@RuleTemplate = "MapClaims"
+@RuleName = "NameId"
+c:[Type == "http://schemas.microsoft.com/ws/2008/06/identity/claims/primarysid"]
+ => issue(Type = "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier", Issuer = c.Issuer, OriginalIssuer = c.OriginalIssuer, Value = c.Value, ValueType = c.ValueType, Properties["http://schemas.xmlsoap.org/ws/2005/05/identity/claimproperties/format"] = "urn:oasis:names:tc:SAML:2.0:nameid-format:persistent");
+
+@RuleTemplate = "LdapClaims"
+@RuleName = "RoleSessionName"
+c:[Type == "http://schemas.microsoft.com/ws/2008/06/identity/claims/windowsaccountname", Issuer == "AD AUTHORITY"]
+ => issue(store = "Active Directory", types = ("https://aws.amazon.com/SAML/Attributes/RoleSessionName"), query = ";mail;{0}", param = c.Value);
+
+@RuleName = "Get User Groups"
+c:[Type == "http://schemas.microsoft.com/ws/2008/06/identity/claims/windowsaccountname", Issuer == "AD AUTHORITY"]
+ => issue(store = "Active Directory", types = ("http://schemas.xmlsoap.org/claims/Group"), query = ";tokenGroups;{0}", param = c.Value);
+
+@RuleName = "Pull aws accounts"
+c:[Type == "http://schemas.xmlsoap.org/claims/Group", Value =~ "(?i)^AWS-([^d]{12})"]
+ => issue(Type = "https://aws.amazon.com/SAML/Attributes/Role", Value = RegExReplace("arn:aws:iam::AWSACCOUNT:saml-provider/ADFS,arn:aws:iam::AWSACCOUNT:role/ADFS-Production", "AWSACCOUNT", RegexReplace(c.Value, "AWS-", "")));
+

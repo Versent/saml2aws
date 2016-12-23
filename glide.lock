@@ -1,81 +1,109 @@
-hash: 2e7d3c0ef01035baf68195790c48f9179d99ba2625d28c72e9052d4b343f7b87
-updated: 2016-09-20T16:21:55.93440863-07:00
+hash: 1f58f2eeaf797692d5d974f87f7e7730642d8c6d884996faf8627c18228f8417
+updated: 2016-12-24T06:33:06.598799428+08:00
 imports:
+- name: cloud.google.com/go
+  version: 3c4c8cc11d151d76587802cb55dd7b80beca832b
+  repo: https://cloud.google.com/go
+- name: cloud.google.com/go/bigtable/internal/cbtconfig
+  version: ""
+- name: cloud.google.com/go/civil
+  version: ""
+- name: cloud.google.com/go/translate/internal/translate/v2
+  version: ""
 - name: github.com/alecthomas/kingpin
-  version: d2d8a9115b36a531781f0ed3c57bcba202976150
+  version: a9cc9f3441144ae4dcb56d0dc15acbddbe0ed853
 - name: github.com/alecthomas/template
   version: a0175ee3bccc567396460bf5acd36800cb10c49c
-  subpackages:
-  - parse
 - name: github.com/alecthomas/units
   version: 2efee857e7cfd4f3d0138cc3cbb1b4966962b93a
 - name: github.com/andybalholm/cascadia
-  version: 1c31af6f6c1a7b101ed05aacc7d8a738b43ae86e
+  version: 196d48ce4ae8cf1c8f87088d2884eca214240887
 - name: github.com/aws/aws-sdk-go
-  version: 7a81396c57134038e554b2ac86be4653018b20f9
+  version: 9a0c8a57d9bb717d481bc91f995df80d9bb9238c
   subpackages:
-  - aws
-  - aws/awserr
-  - aws/awsutil
-  - aws/client
-  - aws/client/metadata
-  - aws/corehandlers
-  - aws/credentials
-  - aws/credentials/ec2rolecreds
-  - aws/credentials/endpointcreds
-  - aws/credentials/stscreds
-  - aws/defaults
-  - aws/ec2metadata
-  - aws/request
+  - /aws
   - aws/session
-  - aws/signer/v4
-  - private/endpoints
-  - private/protocol
-  - private/protocol/query
-  - private/protocol/query/queryutil
-  - private/protocol/rest
-  - private/protocol/xml/xmlutil
   - service/sts
 - name: github.com/beevik/etree
-  version: ce53c4ce608a92897d74ff8fd47b5a1131e5606c
+  version: 4cd0dd976db869f817248477718071a28e978df0
 - name: github.com/go-ini/ini
-  version: 6e4869b434bd001f6983749881c7ead3545887d8
+  version: 6f66b0e091edb3c7b380f7c4f0f884274d550b67
+- name: github.com/golang/geo
+  version: 8052dea609ab3333f59022c79c55b12c25f12268
+  repo: https://github.com/golang/geo
+- name: github.com/golang/glog
+  version: 23def4e6c14b4da8ac2ed8007337bc5eb5007998
+  repo: https://github.com/golang/glog
+- name: github.com/golang/protobuf
+  version: 8ee79997227bf9b34611aee7946ae64735e6fd93
+  repo: https://github.com/golang/protobuf
+- name: github.com/googleapis/gax-go
+  version: da06d194a00e19ce00d9011a13931c3f6f6887c7
+  repo: https://github.com/googleapis/gax-go
 - name: github.com/howeyc/gopass
-  version: 26c6e1184fd5255fa5f5289d0b789a4819c203a4
+  version: f5387c492211eb133053880d23dfae62aa14123d
+- name: github.com/jcmdev0/gpgagent
+  version: 93ff243d728a743d7351cc2f6d6161b9f71218d0
 - name: github.com/jmespath/go-jmespath
   version: bd40a432e4c76585ef6b72d3fd96fb9b6dc7b68d
+- name: github.com/juju/go4
+  version: 40d72ab9641a2a8c36a9c46a51e28367115c8e59
+  repo: https://github.com/juju/go4
+- name: github.com/juju/persistent-cookiejar
+  version: 5243747bf8f2d0897f6c7a52799327dc97d585e8
 - name: github.com/pkg/errors
-  version: a887431f7f6ef7687b556dbf718d9f351d4858a0
+  version: 248dadf4e9068a0b3e79f02ed0a610d935de5302
 - name: github.com/PuerkitoBio/goquery
   version: 152b1a2c8f5d0340f658bb656032a39b94e52958
 - name: github.com/segmentio/go-prompt
-  version: f3218e418a3d6dbe1dcab5809d80fa6e15c05cb4
+  version: f0d19b6901ade831d5a3204edc0d6a7d6457fbb2
+- name: github.com/elmobp/saml2aws
+  version: 53ec1f8d1122ae1c75271951e26f5a17df35ca9d
+  subpackages:
+  - cmd/saml2aws/commands
 - name: golang.org/x/crypto
-  version: 6ab629be5e31660579425a738ba8870beb5b7404
+  version: f6b343c37ca80bfa8ea539da67a0b621f84fab1d
   subpackages:
-  - ssh/terminal
+  - /openpgp
+- name: golang.org/x/debug
+  version: fb508927b491eca48a708e9d000fdb7afa53c32b
+  repo: https://golang.org/x/debug
 - name: golang.org/x/net
-  version: f4fe4abe3c785295ddf81c7f1823bcd3bad391b6
+  version: 45e771701b814666a7eb299e6c7a57d0b1799e91
   subpackages:
-  - html
-  - html/atom
-  - publicsuffix
-- name: golang.org/x/sys
-  version: 8f0908ab3b2457e2e15403d3697c9ef5cb4b57a9
-  subpackages:
-  - unix
+  - /publicsuffix
+- name: golang.org/x/oauth2
+  version: 314dd2c0bf3ebd592ec0d20847d27e79d0dbe8dd
+  repo: https://golang.org/x/oauth2
+- name: golang.org/x/text
+  version: a49bea13b776691cb1b49873e5d8df96ec74831a
+  repo: https://golang.org/x/text
+- name: golang.org/x/time
+  version: f51c12702a4d776e4c1fa9b0fabab841babae631
+  repo: https://golang.org/x/time
+- name: golang.org/x/tools
+  version: 908849c3379245f71612058fbf92cf6bf58c3c75
+  repo: https://golang.org/x/tools
+- name: google.golang.org/api
+  version: 55146ba61254fdb1c26d65ff3c04bc1611ad73fb
+  repo: https://google.golang.org/api
+- name: google.golang.org/appengine
+  version: 08a149cfaee099e6ce4be01c0113a78c85ee1dee
+  repo: https://google.golang.org/appengine
+- name: google.golang.org/cloud
+  version: 3c4c8cc11d151d76587802cb55dd7b80beca832b
+  repo: https://google.golang.org/cloud
+- name: google.golang.org/genproto
+  version: b3e7c2fb04031add52c4817f53f43757ccbf9c18
+  repo: https://google.golang.org/genproto
+- name: google.golang.org/grpc
+  version: 9d682f9293b408c42d17c587d0e2a31237ac3f10
+  repo: https://google.golang.org/grpc
+- name: gopkg.in/errgo.v1
+  version: 442357a80af5c6bf9b6d51ae791a39c3421004f3
 - name: gopkg.in/ini.v1
-  version: 6e4869b434bd001f6983749881c7ead3545887d8
-testImports:
-- name: github.com/davecgh/go-spew
-  version: 5215b55f46b2b919f50a1df0eaa5886afe4e3b3d
-  subpackages:
-  - spew
-- name: github.com/pmezard/go-difflib
-  version: d8ed2627bdf02c080bf22230dbb337003b7aba2d
-  subpackages:
-  - difflib
-- name: github.com/stretchr/testify
-  version: d77da356e56a7428ad25149ca77381849a6a5232
-  subpackages:
-  - assert
+  version: 6f66b0e091edb3c7b380f7c4f0f884274d550b67
+- name: gopkg.in/retry.v1
+  version: c09f6b86ba4d5d2cf5bdf0665364aec9fd4815db
+  repo: https://gopkg.in/retry.v1
+devImports: []

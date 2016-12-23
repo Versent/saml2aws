@@ -1,0 +1,3 @@
+@RuleTemplate = "AllowAllAuthzRule"
+=> issue(Type = "http://schemas.microsoft.com/authorization/claims/permit", Value =
+"true");

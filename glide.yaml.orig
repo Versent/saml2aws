@@ -1,24 +1,22 @@
-package: .
+package: github.com/elmobp/saml2aws
 import:
 - package: github.com/PuerkitoBio/goquery
 - package: github.com/alecthomas/kingpin
 - package: github.com/aws/aws-sdk-go
   subpackages:
-  - /aws
+  - aws
   - aws/session
   - service/sts
 - package: github.com/beevik/etree
-- package: github.com/jcmdev0/gpgagent
-- package: github.com/juju/persistent-cookiejar
 - package: github.com/pkg/errors
-- package: github.com/segmentio/go-prompt
-- package: github.com/elmobp/saml2aws
-  subpackages:
-  - cmd/saml2aws/commands
 - package: golang.org/x/crypto
   subpackages:
-  - /openpgp
+  - ssh/terminal
 - package: golang.org/x/net
   subpackages:
-  - /publicsuffix
+  - publicsuffix
 - package: gopkg.in/ini.v1
+testImport:
+- package: github.com/stretchr/testify
+  subpackages:
+  - assert

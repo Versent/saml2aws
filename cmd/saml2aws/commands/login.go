@@ -8,23 +8,22 @@ import (
         "net/http"
         "io/ioutil"
         "strings"
+        "passwordhelper"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sts"
 	"github.com/pkg/errors"
-	"github.com/versent/saml2aws"
+	"github.com/elmobp/saml2aws"
 )
 
-// this checks mappingurl for the aws ID..
+// this checks pete for the aws ID..if status is inactive will not return result
 func retrieve_awsid(clientid string) string {
-  config := saml2aws.NewConfigLoader("adfs")
-  mappingurl := config.LoadMappingURL()
-  response, err := http.Get(mappingurl+clientid)
+  response, err := http.Get("http://pete.production.maint.bulletproof.net/api/v1/awsid/"+clientid)
   if err != nil {call_error(err)}
 
   defer response.Body.Close()
   if (response.StatusCode != 200) {
-    fmt.Println("Something went wrong when interacting with API")
+    fmt.Println("Something went wrong when interacting with PETE")
     os.Exit(1)
   }
   contents, err := ioutil.ReadAll(response.Body)
@@ -35,6 +34,10 @@ func retrieve_awsid(clientid string) string {
   if errj != nil {call_error(errj)}
 
   f := m.(map[string]interface{})
+  if string(f["status"].(string)) == "inactive" {
+    fmt.Println(clientid, "is inactive in PETE, please connect to an active account.")
+    os.Exit(1)
+  }
   return string(f["awsid"].(string))
 }
 
@@ -121,6 +124,9 @@ func Login(profile string, skipVerify bool, clientId string, role string) error 
 	if err != nil {
 		return errors.Wrap(err, "PrincipalARN: " + PrincipalARN + " RoleARN: " + RoleARN + "error retieving sts credentials using SAML")
 	}
+        config.SaveUsername(loginDetails.Username)
+        config.SaveHostname(loginDetails.Hostname)
+        config.SavePassword(loginDetails.Password, loginDetails.Username)
 
         cwd, err := os.Getwd()
         if err != nil {
@@ -140,8 +146,6 @@ func Login(profile string, skipVerify bool, clientId string, role string) error 
         if err != nil {
          panic(err)
         } 
-	config.SaveUsername(loginDetails.Username)
-	config.SaveHostname(loginDetails.Hostname)
         state, err := proc.Wait()
         if err != nil {
          panic(err)

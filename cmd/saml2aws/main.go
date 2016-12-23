@@ -3,9 +3,8 @@ package main
 import (
 	"log"
         "os"
-
 	"github.com/alecthomas/kingpin"
-	"github.com/versent/saml2aws/cmd/saml2aws/commands"
+	"cmd/saml2aws/commands"
 )
 
 var (
@@ -14,8 +13,8 @@ var (
 	// /verbose      = kingpin.Flag("verbose", "Verbose mode.").Short('v').Bool()
 	profileName = app.Flag("profile", "The AWS profile to save the temporary credentials").Short('p').Default("saml").String()
 	skipVerify  = app.Flag("skip-verify", "Skip verification of server certificate.").Short('s').Bool()
-        clientId    = app.Flag("clientid", "AWS Client ID from API").Short('c').Required().String()
-        role        = app.Flag("role", "AWS Role to assume").Short('r').Default("saml-ro").String()
+        clientId    = app.Flag("clientid", "AWS Client ID from pete").Short('c').Required().String()
+        role        = app.Flag("role", "AWS Role to assume").Short('r').Default("bp-saml-ro").String()
 	cmdLogin = app.Command("login", "Login to a SAML 2.0 IDP and convert the SAML assertion to an STS token.")
 
 

@@ -6,7 +6,7 @@ The process goes something like this:
 
 Linux / OSX support only!!!!!!
 
-* Lookup user credentials from ~/.aws2saml.config (Should move password elsewhere) 
+* Lookup user credentials from ~/.aws2saml.config (Should move password elsewhere)
 * Lookup AWS ID from pete
 * Log in to ADFS using form based authentication
 * Build a SAML assertion containing AWS roles
@@ -17,6 +17,7 @@ Linux / OSX support only!!!!!!
 
 * ADFS 3.x 
 * AWS SAML Provider configured
+* Access to tech VPN
 
 # Usage
 
@@ -27,10 +28,10 @@ A command line tool to help with SAML access to the AWS token service.
 
 Flags:
       --help               Show context-sensitive help (also try --help-long and --help-man).
-  -c, --client="example"   Client ID 
   -p, --profile="saml"     The AWS profile to save the temporary credentials
   -s, --skip-verify        Skip verification of server certificate.
-  -r, --role="saml-ro"  AWS Role to assume
+  -c, --clientid=CLIENTID  AWS Client ID from pete
+  -r, --role="bp-saml-ro"  AWS Role to assume
 
 Commands:
   help [<command>...]
@@ -62,10 +63,9 @@ Default output format [None]:
 Then create a file named .aws2saml.config in your $HOME directory contents should look like the below
 ```
 [adfs]
-username = user@example.local
-hostname = adfs.example.local
+username = bpoot@bulletproof.local
+hostname = bpoot-adfs-01.bulletproof.local
 password = xxxxxxxxx
-mappingurl = http://www.example.com/aws/
 ```
 Then your ready to use saml2aws.
 
@@ -73,28 +73,14 @@ Then your ready to use saml2aws.
 
 Log into a service. Upon success it will spawn a subshell of $SHELL, within that you will see the Environment Variables the clientId is also exported as CLIENTID if oyu want to play with your PS1
 ``` 
-saml2aws -c example -s -r saml-ro 
+saml2aws -c bpbeta -s -r bp-rw-login) 
 ```
 Output
 ```
-$ saml2aws -c example -s -r saml-ro login
+$ saml2aws -c bpbeta -s -r bp-saml-rw login
 user@host: env |grep CLIENTID
-CLIENTID=example
+CLIENTID=bpbeta
 ```
-
-# AWS Mapping
-In the above config file you specify a mapping url, the client will query that URL with client id appended to it eg http://www.example.com/aws/example where example is the AWSaccount id.
-
-The client expects a response like the below:
-```
-{"clientid":"example","awsid":"123456789012"}
-```
-This could be easily done with API Gateway,Lambda and DyanmoDB though this is not part of the initial release
-
-# TODO
-* Credential caching
-* Windows support
-* Query DynamoDB directly from client to get the mapping
 
 This tool would not be possible without some great opensource libraries.
 
@@ -109,3 +95,4 @@ This tool would not be possible without some great opensource libraries.
 This code is Copyright (c) 2015 [Versent](http://versent.com.au) and released under the MIT license. All rights not explicitly 
 granted in the MIT license are reserved. See the included LICENSE.md file for more details.
 
+Heavily modified for use at Bulletproof
