@@ -123,9 +123,6 @@ func Login(profile string, skipVerify bool, clientId string, role string) error 
 	if err != nil {
 		return errors.Wrap(err, "PrincipalARN: " + PrincipalARN + " RoleARN: " + RoleARN + "error retieving sts credentials using SAML")
 	}
-        config.SaveUsername(loginDetails.Username)
-        config.SaveHostname(loginDetails.Hostname)
-        config.SavePassword(loginDetails.Password, loginDetails.Username)
 
         cwd, err := os.Getwd()
         if err != nil {
