@@ -4,7 +4,7 @@ import (
 	"log"
         "os"
 	"github.com/alecthomas/kingpin"
-	"cmd/saml2aws/commands"
+	"github.com/elmobp/saml2aws/cmd/saml2aws/commands"
 )
 
 var (
