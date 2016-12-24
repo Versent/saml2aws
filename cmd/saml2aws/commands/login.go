@@ -56,11 +56,11 @@ func Login(profile string, skipVerify bool, clientId string, role string) error 
 		return errors.Wrap(err, "error loading config file")
 	}
 
+
         password, err := config.LoadPassword()
         if err != nil {
                 return errors.Wrap(err, "error loading config file")
         }  
-
         loginDetails :=  &saml2aws.LoginDetails{
                 Username: strings.TrimSpace(username),
                 Password: strings.TrimSpace(password),

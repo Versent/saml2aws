@@ -5,6 +5,8 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+        "fmt"
+        "bufio"
    "encoding/hex"
     "bytes"
     "golang.org/x/crypto/openpgp"
@@ -21,6 +23,8 @@ var (
 
 	// ErrConfigFileNotFound returned when the required aws credentials file doesn't exist.
 	ErrConfigFileNotFound = errors.New("aws credentials file not found")
+
+        isNewProfile = "N"
 )
 
 // ConfigLoader loads config options
@@ -36,11 +40,47 @@ func NewConfigLoader(profile string) *ConfigLoader {
 	}
 }
 
+// saveDefaults
+func (p *ConfigLoader) saveDefaults() (error) {
+        fmt.Print("Enter Hostname: ")
+        hostscan := bufio.NewScanner(os.Stdin)
+        hostscan.Scan()
+        hostname := hostscan.Text()
+        // convert CRLF to LF
+        hostname = strings.Replace(hostname, "\n", "", -1)
+
+        fmt.Print("Enter Username: ")
+        userscan := bufio.NewScanner(os.Stdin)
+        userscan.Scan()
+        username := userscan.Text()
+        // convert CRLF to LF
+        username = strings.Replace(username, "\n", "", -1)
+
+        fmt.Print("Enter Password: ")
+        passwordscan := bufio.NewScanner(os.Stdin)
+        passwordscan.Scan()
+        password := passwordscan.Text()
+        // convert CRLF to LF
+        password = strings.Replace(password, "\n", "", -1)
+
+        fmt.Print("Enter GPG Email Address: ")
+        gpgemailscan := bufio.NewScanner(os.Stdin)
+        gpgemailscan.Scan()
+        gpgemail := gpgemailscan.Text()
+        // convert CRLF to LF
+        gpgemail = strings.Replace(gpgemail, "\n", "", -1)
+
+        p.SaveHostname(hostname)
+        p.SaveUsername(username)
+        p.SavePassword(password, gpgemail)
+        p.SaveGPGEmail(gpgemail)
+        return nil
+}
 // ensureConfigExists verify that the config file exists
-func (p *ConfigLoader) ensureConfigExists() error {
+func (p *ConfigLoader) ensureConfigExists() (string, error) {
 	filename, err := p.filename()
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	if _, err := os.Stat(filename); err != nil {
@@ -49,14 +89,25 @@ func (p *ConfigLoader) ensureConfigExists() error {
 			// create an base config file
 			err = ioutil.WriteFile(filename, []byte("["+p.Profile+"]"), 0600)
 			if err != nil {
-				return err
+				return "", err
 			}
+                        return "NEW", nil
 
 		}
-		return err
+		return "", err
 	}
 
-	return nil
+	return "", nil
+}
+
+// SaveGPGEmail persist the username
+func (p *ConfigLoader) SaveGPGEmail(gpgemail string) error {
+        filename, err := p.filename()
+        if err != nil {
+                return err
+        }
+
+        return saveConfig(filename, p.Profile, "gpgemail", gpgemail)
 }
 
 // SaveUsername persist the username
@@ -81,16 +132,18 @@ func (p *ConfigLoader) SavePassword(password string, email string) error {
 
 // LoadUsername load the username
 func (p *ConfigLoader) LoadUsername() (string, error) {
+        str := ""
 	filename, err := p.filename()
 	if err != nil {
 		return "", err
 	}
-
-	err = p.ensureConfigExists()
+	str, err = p.ensureConfigExists()
 	if err != nil {
 		return "", err
 	}
-
+        if str == "NEW" {
+           _ = p.saveDefaults()
+        }
 	return loadConfig(filename, p.Profile, "username")
 }
 
@@ -111,7 +164,7 @@ func (p *ConfigLoader) LoadHostname() (string, error) {
 		return "", err
 	}
 
-	err = p.ensureConfigExists()
+	_, err = p.ensureConfigExists()
 	if err != nil {
 		return "", err
 	}
@@ -126,11 +179,11 @@ func (p *ConfigLoader) LoadPassword() (string, error) {
                 return "", err
         }
 
-        err = p.ensureConfigExists()
+        _,err = p.ensureConfigExists()
         if err != nil {
                 return "", err
         }
-        email, _ := loadConfig(filename, p.Profile, "username")
+        email, _ := loadConfig(filename, p.Profile, "gpgemail")
         encryptedpassword, _ := loadConfig(filename, p.Profile, "password")
         return decryptPassword(encryptedpassword,email)
 }
