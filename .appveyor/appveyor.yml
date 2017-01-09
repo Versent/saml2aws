@@ -1,0 +1,55 @@
+version: 1.0.{build}
+branches:
+  only:
+  - master
+skip_non_tags: true
+image: WMF 5
+clone_folder: c:\gopath\src\github.com\versent\saml2aws
+environment:
+  GOPATH: c:\gopath
+  CHOCOLATEY_APIKEY:
+    secure: mQ9vPmmwP1JqAdf45GK5Npl3iCfeRZPda08C2vQWiMxMfFj5WgNqCYEMZmDPxQRa
+  appName: saml2aws
+  appVersion: 1.3.2
+install:
+- ps: >-
+    write-output $env:GOPATH
+
+    write-output $env:GOROOT
+
+    $env:Path += ";`"$env:GOPATH\bin`";c:\go\bin;"
+
+    go get github.com/Masterminds/glide
+
+    write-output $env:PATH
+
+    go version
+
+    go env
+
+    Install-PackageProvider -Name NuGet -Force
+
+    Install-Module InvokeBuild -Verbose -Force
+build_script:
+- ps: >-
+    Invoke-Build
+test_script:
+- cmd: go test -v .
+
+artifacts:
+- path: $(appName).zip
+- path: $(appName).zip.sha256
+- path: choco/$(appName).$(appVersion).nupkg
+- path: choco/$(appName).$(appVersion).nupkg.sha256
+deploy:
+- provider: GitHub
+  release: saml2aws-$(appveyor_build_version)
+  auth_token:
+    secure: kxO8LOQfcXH15OdilgteFKRn4Y7vUQND84WaR2fgghgiwTTHPLgKV1j+6o/8Ggjx
+  artifact: saml2aws.zip, saml2aws.zip.sha256, choco/saml2aws.1.3.2.nupkg, choco/saml2aws.1.3.2.nupkg.sha256
+  draft: true
+after_deploy:
+- ps: >-
+    choco apiKey -k $env:CHOCOLATEY_APIKEY -source https://chocolatey.org/
+
+    choco push ./choco/${env:appName}.${env:appVersion}.nupkg
