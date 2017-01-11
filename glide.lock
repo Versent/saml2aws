@@ -1,5 +1,5 @@
-hash: 9033c30c7b82285336bf7a0577efa8fe1fb8a928c423a64b7f63c5f0cdb9dbe0
-updated: 2016-11-04T05:08:58.499847182+11:00
+hash: 35b7ea8024a6328b1ba5d2bc4a561765f9deaa2f0fd579d1b0842c7fafed4347
+updated: 2016-12-20T15:05:29.5443453+01:00
 imports:
 - name: github.com/alecthomas/kingpin
   version: d2d8a9115b36a531781f0ed3c57bcba202976150
@@ -36,6 +36,8 @@ imports:
   - private/protocol/rest
   - private/protocol/xml/xmlutil
   - service/sts
+- name: github.com/Azure/go-ntlmssp
+  version: 2d5c7863390875bc4b5f81cdb65422602d15b003
 - name: github.com/beevik/etree
   version: ce53c4ce608a92897d74ff8fd47b5a1131e5606c
 - name: github.com/go-ini/ini
@@ -53,6 +55,7 @@ imports:
 - name: golang.org/x/crypto
   version: aa2481cbfe81d911eb62b642b7a6b5ec58bbea71
   subpackages:
+  - md4
   - ssh/terminal
 - name: golang.org/x/net
   version: cfe3c2a7525b50c3d707256e371c90938cfef98a

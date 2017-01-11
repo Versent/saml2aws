@@ -17,6 +17,7 @@ import:
   - publicsuffix
 - package: gopkg.in/ini.v1
 - package: github.com/segmentio/go-prompt
+- package: github.com/Azure/go-ntlmssp
 testImport:
 - package: github.com/stretchr/testify
   subpackages:
