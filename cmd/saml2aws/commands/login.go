@@ -91,9 +91,10 @@ func Login(profile, providerName string, skipVerify bool) error {
 	svc := sts.New(sess)
 
 	params := &sts.AssumeRoleWithSAMLInput{
-		PrincipalArn:  aws.String(role.PrincipalARN), // Required
-		RoleArn:       aws.String(role.RoleARN),      // Required
-		SAMLAssertion: aws.String(samlAssertion),     // Required
+		PrincipalArn:    aws.String(role.PrincipalARN), // Required
+		RoleArn:         aws.String(role.RoleARN),      // Required
+		SAMLAssertion:   aws.String(samlAssertion),     // Required
+		DurationSeconds: aws.Int64(3600),               // 1 hour
 	}
 
 	fmt.Println("Requesting AWS credentials using SAML assertion")
