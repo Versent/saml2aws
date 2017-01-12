@@ -56,12 +56,25 @@ saml2aws will default to using ADFS 3.x as the Identity Provider. To use another
 
 # Install
 
-If your on OSX you can install saml2aws using homebrew!
+## OSX
+If you're on OSX you can install saml2aws using homebrew!
 
 ```
 brew tap versent/homebrew-taps
 brew install saml2aws
 ```
+
+## Windows
+If you're on Windows you can install saml2aws using chocolatey (https://chocolatey.org).
+
+```
+choco install saml2aws
+```
+or
+```
+choco install saml2aws --version 1.3.2
+```
+
 
 # Setup
 
@@ -81,7 +94,7 @@ Default region name [None]: us-west-2
 Default output format [None]:
 ```
 
-Then your ready to use saml2aws.
+Then you're ready to use saml2aws.
 
 # Example
 
@@ -186,5 +199,5 @@ This tool would not be possible without some great opensource libraries.
 
 # License
 
-This code is Copyright (c) 2015 [Versent](http://versent.com.au) and released under the MIT license. All rights not explicitly 
+This code is Copyright (c) 2015 [Versent](http://versent.com.au) and released under the MIT license. All rights not explicitly
 granted in the MIT license are reserved. See the included LICENSE.md file for more details.
