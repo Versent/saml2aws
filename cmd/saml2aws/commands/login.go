@@ -76,7 +76,23 @@ func Login(profile, providerName string, skipVerify bool) error {
 		return errors.Wrap(err, "error parsing aws roles")
 	}
 
-	role, err := saml2aws.PromptForAWSRoleSelection(awsRoles)
+	awsPrincipalARNs := make(map[string]string)
+	for _, awsRole := range awsRoles {
+		awsPrincipalARNs[awsRole.RoleARN] = awsRole.PrincipalARN
+	}
+
+	awsAccounts, err := saml2aws.ParseAWSAccounts(samlAssertion)
+	if err != nil {
+		return errors.Wrap(err, "error parsing aws role accounts")
+	}
+
+	for _, awsAccount := range awsAccounts {
+		for _, awsRole := range awsAccount.Roles {
+			awsRole.PrincipalARN = awsPrincipalARNs[awsRole.RoleARN]
+		}
+	}
+
+	role, err := saml2aws.PromptForAWSRoleSelection(awsAccounts)
 	if err != nil {
 		return errors.Wrap(err, "error selecting role")
 	}
