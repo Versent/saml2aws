@@ -21,6 +21,9 @@ compile: deps
 	-output "build/{{.Dir}}_$(VERSION)_{{.OS}}_{{.Arch}}/$(NAME)" \
 	$(shell glide novendor)
 
+install:
+	go install ./cmd/saml2aws
+
 dist:
 	$(eval FILES := $(shell ls build))
 	@rm -rf dist && mkdir dist

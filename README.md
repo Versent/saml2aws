@@ -157,6 +157,12 @@ Then to build the software just run.
 make
 ```
 
+Install the binary to `$GOPATH/bin`.
+
+```
+make install
+```
+
 To release run.
 
 ```
