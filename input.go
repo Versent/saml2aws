@@ -36,13 +36,6 @@ func PromptForLoginDetails(username, hostname string) (*LoginDetails, error) {
 // PromptForAWSRoleSelection present a list of roles to the user for selection
 func PromptForAWSRoleSelection(accounts []*AWSAccount) (*AWSRole, error) {
 
-	if len(accounts) == 1 {
-		account := accounts[0]
-		if len(account.Roles) == 1 {
-			return account.Roles[0], nil
-		}
-	}
-
 	reader := bufio.NewReader(os.Stdin)
 
 	fmt.Println("Please choose the role you would like to assume: ")

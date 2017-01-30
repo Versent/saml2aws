@@ -76,25 +76,33 @@ func Login(profile, providerName string, skipVerify bool) error {
 		return errors.Wrap(err, "error parsing aws roles")
 	}
 
-	awsPrincipalARNs := make(map[string]string)
-	for _, awsRole := range awsRoles {
-		awsPrincipalARNs[awsRole.RoleARN] = awsRole.PrincipalARN
-	}
+	var role = new(saml2aws.AWSRole)
 
-	awsAccounts, err := saml2aws.ParseAWSAccounts(samlAssertion)
-	if err != nil {
-		return errors.Wrap(err, "error parsing aws role accounts")
-	}
-
-	for _, awsAccount := range awsAccounts {
-		for _, awsRole := range awsAccount.Roles {
-			awsRole.PrincipalARN = awsPrincipalARNs[awsRole.RoleARN]
+	if len(awsRoles) == 1 {
+		role = awsRoles[0]
+	} else if len(awsRoles) == 0 {
+		return errors.Wrap(err, "no roles available")
+	} else {
+		awsPrincipalARNs := make(map[string]string)
+		for _, awsRole := range awsRoles {
+			awsPrincipalARNs[awsRole.RoleARN] = awsRole.PrincipalARN
 		}
-	}
 
-	role, err := saml2aws.PromptForAWSRoleSelection(awsAccounts)
-	if err != nil {
-		return errors.Wrap(err, "error selecting role")
+		awsAccounts, err := saml2aws.ParseAWSAccounts(samlAssertion)
+		if err != nil {
+			return errors.Wrap(err, "error parsing aws role accounts")
+		}
+
+		for _, awsAccount := range awsAccounts {
+			for _, awsRole := range awsAccount.Roles {
+				awsRole.PrincipalARN = awsPrincipalARNs[awsRole.RoleARN]
+			}
+		}
+
+		role, err = saml2aws.PromptForAWSRoleSelection(awsAccounts)
+		if err != nil {
+			return errors.Wrap(err, "error selecting role")
+		}
 	}
 
 	fmt.Println("Selected role:", role.RoleARN)
