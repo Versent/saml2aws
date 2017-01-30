@@ -1,6 +1,8 @@
 package saml2aws
 
 import (
+	"bytes"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 
@@ -15,14 +17,28 @@ type AWSAccount struct {
 
 func ParseAWSAccounts(samlAssertion string) ([]*AWSAccount, error) {
 	awsURL := "https://signin.aws.amazon.com/saml"
-	accounts := []*AWSAccount{}
 
 	res, err := http.PostForm(awsURL, url.Values{"SAMLResponse": {samlAssertion}})
 	if err != nil {
 		return nil, errors.Wrap(err, "error retieving AWS login form")
 	}
 
-	doc, err := goquery.NewDocumentFromResponse(res)
+	data, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return nil, errors.Wrap(err, "error retieving AWS login body")
+	}
+
+	return ExtractAWSAccounts(data)
+}
+
+func ExtractAWSAccounts(data []byte) ([]*AWSAccount, error) {
+	accounts := []*AWSAccount{}
+
+	doc, err := goquery.NewDocumentFromReader(bytes.NewBuffer(data))
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to build document from response")
+	}
+
 	doc.Find("fieldset > div.saml-account").Each(func(i int, s *goquery.Selection) {
 		account := new(AWSAccount)
 		account.Name = s.Find("div.saml-account-name").Text()
