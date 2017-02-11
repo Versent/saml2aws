@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+<body>
+
+<div id="container">
+  
+  <h1 class="background">Amazon Web Services Login</h1>
+  
+  <div id="content">
+ 
+  <div id="main_error"></div>
+  
+  <form id="saml_form" name="saml_form" action="/saml" method="post">
+          <input type="hidden" name="RelayState" value="" />
+          <input type="hidden" name="SAMLResponse" value="REDACTED" />
+          <input type="hidden" name="name" value="" />
+          <p style="font-size: 16px; padding-left: 20px;">Select a role:</p>
+          <fieldset>
+            <div  class="saml-account"> <div onClick="expandCollapse(0); expandCollapse(1);">
+              <img id="image0" src="/static/image/down.png" valign="middle"></img>
+              <div class="saml-account-name">Account: account-alias (000000000001)</div>
+              </div>
+              <hr style="border: 1px solid #ddd;">
+              <div id="0" class="saml-account" >  
+                <div class="saml-role" onClick="checkRadio(this);">
+                    <input type="radio" name="roleIndex" value="arn:aws:iam::000000000001:role/Development" class="saml-radio" id="arn:aws:iam::000000000001:role/Development" />
+                    <label for="arn:aws:iam::000000000001:role/Development" class="saml-role-description">Development</label>
+                    <span style="clear: both;"></span>
+                </div>
+                 </div>
+              <div id="1" class="saml-account" >  
+                <div class="saml-role" onClick="checkRadio(this);">
+                    <input type="radio" name="roleIndex" value="arn:aws:iam::000000000001:role/Production" class="saml-radio" id="arn:aws:iam::000000000001:role/Production" />
+                    <label for="arn:aws:iam::000000000001:role/Production" class="saml-role-description">Production</label>
+                    <span style="clear: both;"></span>
+                </div>
+                 </div>
+							</div>
+              <div  class="saml-account"> <div onClick="expandCollapse(2);">
+              <img id="image4" src="/static/image/down.png" valign="middle"></img>
+              <div class="saml-account-name">Account: 000000000002</div>
+              </div>
+              <hr style="border: 1px solid #ddd;">
+              <div id="2" class="saml-account" >  
+                <div class="saml-role" onClick="checkRadio(this);">
+                    <input type="radio" name="roleIndex" value="arn:aws:iam::000000000002:role/Production" class="saml-radio" id="arn:aws:iam::000000000002:role/Production" />
+                    <label for="arn:aws:iam::000000000002:role/Production" class="saml-role-description">Production</label>
+                    <span style="clear: both;"></span>
+                </div>
+                 </div></div>
+          </fieldset>  
+          
+          <br>
+          <div class="buttoninput" id="input_signin_button">
+              <a id="signin_button" class="css3button" href="#" alt="Continue" value="Continue">Sign In</a>
+          </div>
+
+  </form>
+  </div>
+
+  <br/>
+  <div id="smallprint" style="text-align: center;">
+  <div class="textinput" style = "text-align: center; font-size: x-small;">
+    
+    <div style="border-top: 1px solid #ccc; margin-bottom: 12px; padding-top: 1em; text-align: center;">
+        <select id="languageSelector">
+        
+            <option value="en_US"  selected >English</option>
+        
+            <option value="de_DE" >Deutsch</option>
+        
+            <option value="es_ES" >Español</option>
+        
+            <option value="fr_FR" >Français</option>
+        
+            <option value="ja" >日本語</option>
+        
+            <option value="pt_BR" >Português</option>
+        
+            <option value="ko_KR" >한국어</option>
+        
+            <option value="zh_CN" >中文(简体)</option>
+        
+        </select>
+        
+        <script type="text/javascript">
+            var currentYear = new Date().getFullYear()
+
+            $(document).ready(function () {
+                $('#languageSelector').bind("change", function () {
+                        document.cookie= ("noflush_locale=" + $('#languageSelector').val()+ "; domain=.amazon.com");
+                        window.location.reload();
+                });
+            });
+        </script>
+    </div>
+    
+    <a href="https://aws.amazon.com/terms/">Terms of Use</a>
+    <a href="https://aws.amazon.com/privacy/">Privacy Policy</a><br/>
+    
+
+    
+        <script type="text/javascript">
+          document.write('&copy; 1996-' + currentYear + ', Amazon Web Services, Inc. or its affiliates.');
+        </script>
+    
+
+  </div>
+</div>
+
+</div>
+  
+</body>
+</html>
+
