@@ -32,6 +32,8 @@ func NewSAMLClient(opts *SAMLOptions) (SAMLClient, error) {
 		return NewADFS2Client(opts.SkipVerify)
 	case "Ping":
 		return NewPingFedClient(opts.SkipVerify)
+	case "JumpCloud":
+		return NewJumpCloudClient(opts.SkipVerify)
 	default:
 		return nil, fmt.Errorf("Invalid provider: %v", opts.Provider)
 	}
