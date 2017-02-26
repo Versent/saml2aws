@@ -13,6 +13,7 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/pkg/errors"
+	"github.com/segmentio/go-prompt"
 
 	"golang.org/x/net/publicsuffix"
 )
@@ -48,6 +49,7 @@ func NewJumpCloudClient(skipVerify bool) (*JumpCloudClient, error) {
 func (jc *JumpCloudClient) Authenticate(loginDetails *LoginDetails) (string, error) {
 	var authSubmitURL string
 	var samlAssertion string
+	mfaRequired := false
 
 	authForm := url.Values{}
 	jumpCloudURL := fmt.Sprintf("https://%s", loginDetails.Hostname)
@@ -87,9 +89,47 @@ func (jc *JumpCloudClient) Authenticate(loginDetails *LoginDetails) (string, err
 
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 
+	// Temporarily disable following redirects so we can detect MFA.
+	disableFollowRedirect(jc.client)
 	res, err = jc.client.Do(req)
 	if err != nil {
-		return samlAssertion, errors.Wrap(err, "error retieving login form")
+		return samlAssertion, errors.Wrap(err, "error retrieving login form")
+	}
+
+	if res.StatusCode == 302 {
+		location, err := res.Location()
+		if err != nil {
+			return samlAssertion, errors.Wrap(err, "error retrieving redirect location")
+		}
+
+		if location.EscapedPath() == "/login/user/mfa" {
+			mfaRequired = true
+		} else {
+			// Just follow the redirect.
+			res, err = jc.client.Get(location.String())
+			if err != nil {
+				return samlAssertion, errors.Wrap(err, "error retrieving SAML response")
+			}
+		}
+	}
+
+	enableFollowRedirect(jc.client)
+
+	if mfaRequired {
+		token := prompt.StringRequired("MFA Token")
+		authForm.Add("otp", token)
+
+		req, err := http.NewRequest("POST", authSubmitURL, strings.NewReader(authForm.Encode()))
+		if err != nil {
+			return samlAssertion, errors.Wrap(err, "error building MFA authentication request")
+		}
+
+		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+
+		res, err = jc.client.Do(req)
+		if err != nil {
+			return samlAssertion, errors.Wrap(err, "error submitting MFA login form")
+		}
 	}
 
 	data, err := ioutil.ReadAll(res.Body)
@@ -138,4 +178,14 @@ func updateJumpCloudForm(authForm url.Values, s *goquery.Selection, user *LoginD
 		}
 		authForm.Add(name, val)
 	}
+}
+
+func disableFollowRedirect(client *http.Client) {
+	client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		return http.ErrUseLastResponse
+	}
+}
+
+func enableFollowRedirect(client *http.Client) {
+	client.CheckRedirect = nil
 }
