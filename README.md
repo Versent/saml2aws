@@ -49,10 +49,11 @@ Commands:
 ```
 saml2aws will default to using ADFS 3.x as the Identity Provider. To use another provider, use the `--provider` flag:
 
-| IdP          |                    |
-| ------------ | ------------------ |
-| ADFS 2.x     | `--provider=ADFS2` |
-| PingFederate | `--provider=Ping`  |
+| IdP          |                         |
+| ------------ | ----------------------- |
+| ADFS 2.x     | `--provider=ADFS2`      |
+| PingFederate | `--provider=Ping`       |
+| JumpCloud    | `--provider=JumpCloud`  |
 
 # Install
 
