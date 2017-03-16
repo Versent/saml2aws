@@ -158,7 +158,7 @@ func loadConfig(filename, profile, field string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	iniProfile, err := config.GetSection(profile)
+	iniProfile, err := config.NewSection(profile)
 	if err != nil {
 		return "", err
 	}
