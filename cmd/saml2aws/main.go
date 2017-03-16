@@ -57,9 +57,9 @@ func main() {
 
 	switch command {
 	case cmdLogin.FullCommand():
-		err = commands.Login(*profileName, *providerName, *skipVerify)
+		err = commands.Login(*profileName, *skipVerify)
 	case cmdExec.FullCommand():
-		err = commands.Exec(*profileName, *providerName, *skipVerify, *cmdLine)
+		err = commands.Exec(*profileName, *skipVerify, *cmdLine)
 	}
 
 	if err != nil {

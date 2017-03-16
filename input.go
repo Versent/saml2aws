@@ -12,14 +12,16 @@ import (
 
 // LoginDetails used to authenticate to ADFS
 type LoginDetails struct {
-	Username string
-	Password string
-	Hostname string
+	Username     string
+	Password     string
+	Hostname     string
+	ProviderName string
 }
 
 // PromptForLoginDetails prompt the user to present their username, password and hostname
-func PromptForLoginDetails(username, hostname string) (*LoginDetails, error) {
+func PromptForLoginDetails(username, hostname, providerName string) (*LoginDetails, error) {
 
+	providerName = promptFor("Provider [%s]", providerName)
 	hostname = promptFor("Hostname [%s]", hostname)
 	username = promptFor("Username [%s]", username)
 	password := prompt.PasswordMasked("Password")
@@ -27,9 +29,10 @@ func PromptForLoginDetails(username, hostname string) (*LoginDetails, error) {
 	fmt.Println("")
 
 	return &LoginDetails{
-		Username: strings.TrimSpace(username),
-		Password: strings.TrimSpace(password),
-		Hostname: strings.TrimSpace(hostname),
+		Username:     strings.TrimSpace(username),
+		Password:     strings.TrimSpace(password),
+		Hostname:     strings.TrimSpace(hostname),
+		ProviderName: strings.TrimSpace(providerName),
 	}, nil
 }
 

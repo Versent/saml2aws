@@ -114,11 +114,7 @@ func (p *ConfigLoader) SaveProvider(provider string) error {
 }
 
 // LoadProvider load the provider
-func (p *ConfigLoader) LoadProvider(defaultValue string) (string, error) {
-
-	if defaultValue != "" {
-		return defaultValue, nil
-	}
+func (p *ConfigLoader) LoadProvider() (string, error) {
 
 	filename, err := p.filename()
 	if err != nil {
