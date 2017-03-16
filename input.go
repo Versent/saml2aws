@@ -21,9 +21,7 @@ type LoginDetails struct {
 // PromptForLoginDetails prompt the user to present their username, password and hostname
 func PromptForLoginDetails(username, hostname, providerName string) (*LoginDetails, error) {
 
-	providerName = promptFor("Provider [%s]", providerName)
-	hostname = promptFor("Hostname [%s]", hostname)
-	username = promptFor("Username [%s]", username)
+	fmt.Println("Login for ", username)
 	password := prompt.PasswordMasked("Password")
 
 	fmt.Println("")
@@ -31,6 +29,23 @@ func PromptForLoginDetails(username, hostname, providerName string) (*LoginDetai
 	return &LoginDetails{
 		Username:     strings.TrimSpace(username),
 		Password:     strings.TrimSpace(password),
+		Hostname:     strings.TrimSpace(hostname),
+		ProviderName: strings.TrimSpace(providerName),
+	}, nil
+}
+
+// PromptForProfileDetails prompt the user to config their username, hostname and provider
+func PromptForProfileDetails(username, hostname, providerName string) (*LoginDetails, error) {
+
+	providerName = promptFor("The type of SAML IDP provider (ADFS, ADFS2, Ping, JumpCloud) [%s]", providerName)
+	hostname = promptFor("Hostname [%s]", hostname)
+	username = promptFor("Username [%s]", username)
+
+	fmt.Println("")
+
+	return &LoginDetails{
+		Username:     strings.TrimSpace(username),
+		Password:     "",
 		Hostname:     strings.TrimSpace(hostname),
 		ProviderName: strings.TrimSpace(providerName),
 	}, nil

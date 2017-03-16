@@ -12,11 +12,12 @@ var (
 	app = kingpin.New("saml2aws", "A command line tool to help with SAML access to the AWS token service.")
 
 	// /verbose      = kingpin.Flag("verbose", "Verbose mode.").Short('v').Bool()
-	profileName  = app.Flag("profile", "The AWS profile to save the temporary credentials").Short('p').Default("saml").String()
-	skipVerify   = app.Flag("skip-verify", "Skip verification of server certificate.").Short('s').Bool()
-	providerName = app.Flag("provider", "The type of SAML IDP provider.").Short('i').Default("ADFS").Enum("ADFS", "ADFS2", "Ping", "JumpCloud")
+	profileName = app.Flag("profile", "The AWS profile to save the temporary credentials").Short('p').Default("saml").String()
+	skipVerify  = app.Flag("skip-verify", "Skip verification of server certificate.").Short('s').Bool()
 
 	cmdLogin = app.Command("login", "Login to a SAML 2.0 IDP and convert the SAML assertion to an STS token.")
+
+	cmdConfigure = app.Command("configure", "Configure Login profile detail (Provider, Hostname, Username)")
 
 	cmdExec = app.Command("exec", "Exec the supplied command with env vars from STS token.")
 	cmdLine = buildCmdList(cmdExec.Arg("command", "The command to execute."))
@@ -60,8 +61,9 @@ func main() {
 		err = commands.Login(*profileName, *skipVerify)
 	case cmdExec.FullCommand():
 		err = commands.Exec(*profileName, *skipVerify, *cmdLine)
+	case cmdConfigure.FullCommand():
+		err = commands.Configure(*profileName)
 	}
-
 	if err != nil {
 		log.Fatal(err)
 	}
