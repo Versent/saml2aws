@@ -41,3 +41,20 @@ func TestUpdateHostnameConfig(t *testing.T) {
 
 	os.Remove(".aws2saml.config")
 }
+
+func TestUpdateProviderConfig(t *testing.T) {
+	config := &ConfigLoader{".aws2saml.config", "adfs"}
+
+	provider, err := config.LoadProvider()
+	assert.Nil(t, err)
+	assert.Equal(t, "", provider)
+
+	err = config.SaveProvider("ADFS")
+	assert.Nil(t, err)
+
+	provider, err = config.LoadProvider()
+	assert.Nil(t, err)
+	assert.Equal(t, "ADFS", provider)
+
+	os.Remove(".aws2saml.config")
+}
