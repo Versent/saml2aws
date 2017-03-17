@@ -114,11 +114,7 @@ func (p *ConfigLoader) SaveProvider(provider string) error {
 }
 
 // LoadProvider load the provider
-func (p *ConfigLoader) LoadProvider(defaultValue string) (string, error) {
-
-	if defaultValue != "" {
-		return defaultValue, nil
-	}
+func (p *ConfigLoader) LoadProvider() (string, error) {
 
 	filename, err := p.filename()
 	if err != nil {
@@ -158,7 +154,7 @@ func loadConfig(filename, profile, field string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	iniProfile, err := config.GetSection(profile)
+	iniProfile, err := config.NewSection(profile)
 	if err != nil {
 		return "", err
 	}

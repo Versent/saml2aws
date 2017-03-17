@@ -12,24 +12,42 @@ import (
 
 // LoginDetails used to authenticate to ADFS
 type LoginDetails struct {
-	Username string
-	Password string
-	Hostname string
+	Username     string
+	Password     string
+	Hostname     string
+	ProviderName string
 }
 
 // PromptForLoginDetails prompt the user to present their username, password and hostname
-func PromptForLoginDetails(username, hostname string) (*LoginDetails, error) {
+func PromptForLoginDetails(username, hostname, providerName string) (*LoginDetails, error) {
 
-	hostname = promptFor("Hostname [%s]", hostname)
-	username = promptFor("Username [%s]", username)
+	fmt.Println("Login for ", username)
 	password := prompt.PasswordMasked("Password")
 
 	fmt.Println("")
 
 	return &LoginDetails{
-		Username: strings.TrimSpace(username),
-		Password: strings.TrimSpace(password),
-		Hostname: strings.TrimSpace(hostname),
+		Username:     strings.TrimSpace(username),
+		Password:     strings.TrimSpace(password),
+		Hostname:     strings.TrimSpace(hostname),
+		ProviderName: strings.TrimSpace(providerName),
+	}, nil
+}
+
+// PromptForProfileDetails prompt the user to config their username, hostname and provider
+func PromptForProfileDetails(username, hostname, providerName string) (*LoginDetails, error) {
+
+	providerName = promptFor("The type of SAML IDP provider (ADFS, ADFS2, Ping, JumpCloud) [%s]", providerName)
+	hostname = promptFor("Hostname [%s]", hostname)
+	username = promptFor("Username [%s]", username)
+
+	fmt.Println("")
+
+	return &LoginDetails{
+		Username:     strings.TrimSpace(username),
+		Password:     "",
+		Hostname:     strings.TrimSpace(hostname),
+		ProviderName: strings.TrimSpace(providerName),
 	}, nil
 }
 

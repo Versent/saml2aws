@@ -13,30 +13,35 @@ import (
 )
 
 // Login login to ADFS
-func Login(profile, providerName string, skipVerify bool) error {
+func Login(profile string, skipVerify bool) error {
 
-	config := saml2aws.NewConfigLoader("adfs")
+	config := saml2aws.NewConfigLoader(profile)
+
+	providerName, err := config.LoadProvider()
+	if err != nil || providerName == "" {
+		return errors.Wrap(err, "error loading config file")
+	}
 
 	username, err := config.LoadUsername()
-	if err != nil {
+	if err != nil || username == "" {
 		return errors.Wrap(err, "error loading config file")
 	}
 
 	hostname, err := config.LoadHostname()
-	if err != nil {
+	if err != nil || hostname == "" {
 		return errors.Wrap(err, "error loading config file")
 	}
 
-	loginDetails, err := saml2aws.PromptForLoginDetails(username, hostname)
+	loginDetails, err := saml2aws.PromptForLoginDetails(username, hostname, providerName)
 	if err != nil {
 		return errors.Wrap(err, "error accepting password")
 	}
 
-	fmt.Printf("%s https://%s\n", providerName, loginDetails.Hostname)
+	fmt.Printf("%s https://%s\n", loginDetails.ProviderName, loginDetails.Hostname)
 
-	fmt.Printf("Authenticating to %s...\n", providerName)
+	fmt.Printf("Authenticating to %s...\n", loginDetails.ProviderName)
 
-	opts := &saml2aws.SAMLOptions{Provider: providerName, SkipVerify: skipVerify}
+	opts := &saml2aws.SAMLOptions{Provider: loginDetails.ProviderName, SkipVerify: skipVerify}
 
 	provider, err := saml2aws.NewSAMLClient(opts)
 	if err != nil {
@@ -142,10 +147,6 @@ func Login(profile, providerName string, skipVerify bool) error {
 	fmt.Println("Your new access key pair has been stored in the AWS configuration")
 	fmt.Printf("Note that it will expire at %v\n", resp.Credentials.Expiration.Local())
 	fmt.Println("To use this credential, call the AWS CLI with the --profile option (e.g. aws --profile", profile, "ec2 describe-instances).")
-
-	fmt.Println("Saving config:", config.Filename)
-	config.SaveUsername(loginDetails.Username)
-	config.SaveHostname(loginDetails.Hostname)
 
 	return nil
 }
