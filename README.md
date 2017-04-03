@@ -18,6 +18,7 @@ The process goes something like this:
 * Identity Provider
   * ADFS (2.x or 3.x)
   * PingFederate + PingId
+  * Okta + Duo
 * AWS SAML Provider configured
 
 # Usage
@@ -54,6 +55,7 @@ saml2aws will default to using ADFS 3.x as the Identity Provider. To use another
 | ADFS 2.x     | `--provider=ADFS2`      |
 | PingFederate | `--provider=Ping`       |
 | JumpCloud    | `--provider=JumpCloud`  |
+| Okta         | `--provider=Okta`       |
 
 # Install
 
