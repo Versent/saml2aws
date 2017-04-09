@@ -1,11 +1,8 @@
 package saml2aws
 
 import (
-	"bytes"
 	"crypto/tls"
 	"fmt"
-	"io/ioutil"
-	"log"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
@@ -13,6 +10,7 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/pkg/errors"
+	prompt "github.com/segmentio/go-prompt"
 
 	"golang.org/x/net/publicsuffix"
 )
@@ -153,6 +151,33 @@ func (ac *PingFedClient) Authenticate(loginDetails *LoginDetails) (string, error
 		//extract form action and jwt token
 		form, actionURL, err = extractFormData(res)
 
+		//if actionURL is OTP then prompt for token
+		//user has disabled swipe
+		if strings.Contains(actionURL, "/pingid/ppm/auth/otp") {
+			token := prompt.StringRequired("Enter passcode")
+
+			//build request
+			otpReq := url.Values{}
+			otpReq.Add("otp", token)
+			otpReq.Add("message", "")
+
+			//submit otp
+			req, err = http.NewRequest("POST", actionURL, strings.NewReader(otpReq.Encode()))
+			if err != nil {
+				return samlAssertion, errors.Wrap(err, "error building authentication request")
+			}
+
+			req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+			res, err = ac.client.Do(req)
+			if err != nil {
+				return samlAssertion, errors.Wrap(err, "error polling mfa device")
+			}
+
+			//extract form action and jwt token
+			form, actionURL, err = extractFormData(res)
+
+		}
+
 		//pass PingId auth back to pingfed
 		req, err = http.NewRequest("POST", actionURL, strings.NewReader(form.Encode()))
 		if err != nil {
@@ -167,31 +192,17 @@ func (ac *PingFedClient) Authenticate(loginDetails *LoginDetails) (string, error
 		}
 
 	}
-	//log.Printf("res code = %v status = %s", res.StatusCode, res.Status)
 
-	data, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return samlAssertion, errors.Wrap(err, "error retieving body")
-	}
-
-	doc, err = goquery.NewDocumentFromReader(bytes.NewBuffer(data))
+	//try to extract SAMLResponse
+	doc, err = goquery.NewDocumentFromResponse(res)
 	if err != nil {
 		return samlAssertion, errors.Wrap(err, "error parsing document")
 	}
 
-	doc.Find("input").Each(func(i int, s *goquery.Selection) {
-		name, ok := s.Attr("name")
-		if !ok {
-			log.Fatalf("unable to locate IDP authentication form submit URL")
-		}
-		if name == "SAMLResponse" {
-			val, ok := s.Attr("value")
-			if !ok {
-				log.Fatalf("unable to locate saml assertion value")
-			}
-			samlAssertion = val
-		}
-	})
+	samlAssertion, ok := doc.Find("input[name=\"SAMLResponse\"]").Attr("value")
+	if !ok {
+		return samlAssertion, errors.Wrap(err, "unable to locate saml response")
+	}
 
 	return samlAssertion, nil
 }
