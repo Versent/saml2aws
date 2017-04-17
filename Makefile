@@ -1,14 +1,29 @@
 NAME=saml2aws
 ARCH=$(shell uname -m)
-VERSION=1.5.0
+VERSION=1.6.0
 ITERATION := 1
 
 default: deps compile
 
-deps:
+glide:
+ifeq ($(shell uname),Darwin)
+	curl -L https://github.com/Masterminds/glide/releases/download/v0.12.3/glide-v0.12.3-darwin-amd64.zip -o glide.zip
+	unzip glide.zip
+	mv ./darwin-amd64/glide ./glide
+	rm -fr ./darwin-amd64
+	rm ./glide.zip
+else
+	curl -L https://github.com/Masterminds/glide/releases/download/v0.12.3/glide-v0.12.3-linux-386.zip -o glide.zip
+	unzip glide.zip
+	mv ./linux-386/glide ./glide
+	rm -fr ./linux-386
+	rm ./glide.zip
+endif
+
+deps: glide
 	go get github.com/c4milo/github-release
 	go get github.com/mitchellh/gox
-	glide install
+	./glide install
 
 compile: deps
 	@rm -rf build/
@@ -39,4 +54,8 @@ release:
 test: deps
 	go test -cover -v $(shell glide novendor)
 
-.PHONY: default deps compile dist release test
+clean:
+	rm ./glide
+	rm -fr ./build
+
+.PHONY: default deps compile dist release test clean
