@@ -6,3 +6,4 @@ release
 *_string.go
 .glide
 vendor
+glide

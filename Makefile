@@ -1,6 +1,6 @@
 NAME=saml2aws
 ARCH=$(shell uname -m)
-VERSION=1.6.0
+VERSION=1.6.1
 ITERATION := 1
 
 default: deps compile
@@ -21,7 +21,7 @@ else
 endif
 
 deps: glide
-	go get github.com/c4milo/github-release
+	go get github.com/buildkite/github-release
 	go get github.com/mitchellh/gox
 	./glide install
 
