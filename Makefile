@@ -21,7 +21,7 @@ else
 endif
 
 deps: glide
-	go get github.com/buildkite/github-release
+	# go get github.com/buildkite/github-release
 	go get github.com/mitchellh/gox
 	./glide install
 
