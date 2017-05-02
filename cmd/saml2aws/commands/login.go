@@ -15,7 +15,7 @@ import (
 // Login login to ADFS
 func Login(profile, providerName string, skipVerify bool) error {
 
-	config := saml2aws.NewConfigLoader("adfs")
+	config := saml2aws.NewConfigLoader(providerName)
 
 	username, err := config.LoadUsername()
 	if err != nil {

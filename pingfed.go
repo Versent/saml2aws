@@ -17,7 +17,10 @@ import (
 
 // PingFedClient wrapper around PingFed + PingId enabling authentication and retrieval of assertions
 type PingFedClient struct {
-	client *http.Client
+	client        *http.Client
+	authSubmitURL string
+	samlAssertion string
+	mfaRequired   bool
 }
 
 // NewPingFedClient create a new PingFed client
@@ -43,15 +46,13 @@ func NewPingFedClient(skipVerify bool) (*PingFedClient, error) {
 	}
 
 	return &PingFedClient{
-		client: client,
+		client:      client,
+		mfaRequired: false,
 	}, nil
 }
 
 // Authenticate Authenticate to PingFed and return the data from the body of the SAML assertion.
 func (ac *PingFedClient) Authenticate(loginDetails *LoginDetails) (string, error) {
-	var authSubmitURL string
-	var samlAssertion string
-	mfaRequired := false
 
 	authForm := url.Values{}
 
@@ -59,12 +60,12 @@ func (ac *PingFedClient) Authenticate(loginDetails *LoginDetails) (string, error
 
 	res, err := ac.client.Get(pingFedURL)
 	if err != nil {
-		return samlAssertion, errors.Wrap(err, "error retieving form")
+		return "", errors.Wrap(err, "error retieving form")
 	}
 
 	doc, err := goquery.NewDocumentFromResponse(res)
 	if err != nil {
-		return samlAssertion, errors.Wrap(err, "failed to build document from response")
+		return "", errors.Wrap(err, "failed to build document from response")
 	}
 
 	doc.Find("input").Each(func(i int, s *goquery.Selection) {
@@ -78,20 +79,20 @@ func (ac *PingFedClient) Authenticate(loginDetails *LoginDetails) (string, error
 		if !ok {
 			return
 		}
-		authSubmitURL = action
+		ac.authSubmitURL = action
 	})
 
-	if authSubmitURL == "" {
-		return samlAssertion, fmt.Errorf("unable to locate IDP authentication form submit URL")
+	if ac.authSubmitURL == "" {
+		return "", fmt.Errorf("unable to locate IDP authentication form submit URL")
 	}
 
-	authSubmitURL = fmt.Sprintf("https://%s%s", loginDetails.Hostname, authSubmitURL)
+	ac.authSubmitURL = fmt.Sprintf("https://%s%s", loginDetails.Hostname, ac.authSubmitURL)
 
 	//log.Printf("id authentication url: %s", authSubmitURL)
 
-	req, err := http.NewRequest("POST", authSubmitURL, strings.NewReader(authForm.Encode()))
+	req, err := http.NewRequest("POST", ac.authSubmitURL, strings.NewReader(authForm.Encode()))
 	if err != nil {
-		return samlAssertion, errors.Wrap(err, "error building authentication request")
+		return "", errors.Wrap(err, "error building authentication request")
 	}
 
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
@@ -100,14 +101,14 @@ func (ac *PingFedClient) Authenticate(loginDetails *LoginDetails) (string, error
 	if err != nil {
 		//check for redirect, this indicates PingOne MFA being used
 		if res.StatusCode == 302 {
-			mfaRequired = true
+			ac.mfaRequired = true
 		} else {
-			return samlAssertion, errors.Wrap(err, "error retieving login form")
+			return "", errors.Wrap(err, "error retieving login form")
 		}
 	}
 
 	//process mfa
-	if mfaRequired {
+	if ac.mfaRequired {
 
 		mfaURL, err := res.Location()
 		//spew.Dump(mfaURL)
@@ -115,7 +116,7 @@ func (ac *PingFedClient) Authenticate(loginDetails *LoginDetails) (string, error
 		//follow redirect
 		res, err = ac.client.Get(mfaURL.String())
 		if err != nil {
-			return samlAssertion, errors.Wrap(err, "error retieving form")
+			return "", errors.Wrap(err, "error retieving form")
 		}
 
 		//extract form action and jwt token
@@ -124,13 +125,13 @@ func (ac *PingFedClient) Authenticate(loginDetails *LoginDetails) (string, error
 		//request mfa auth via PingId (device swipe)
 		req, err := http.NewRequest("POST", actionURL, strings.NewReader(form.Encode()))
 		if err != nil {
-			return samlAssertion, errors.Wrap(err, "error building mfa authentication request")
+			return "", errors.Wrap(err, "error building mfa authentication request")
 		}
 
 		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 		res, err = ac.client.Do(req)
 		if err != nil {
-			return samlAssertion, errors.Wrap(err, "error retieving mfa response")
+			return "", errors.Wrap(err, "error retieving mfa response")
 		}
 
 		//extract form action and csrf token
@@ -139,13 +140,13 @@ func (ac *PingFedClient) Authenticate(loginDetails *LoginDetails) (string, error
 		//contine mfa auth with csrf token
 		req, err = http.NewRequest("POST", actionURL, strings.NewReader(form.Encode()))
 		if err != nil {
-			return samlAssertion, errors.Wrap(err, "error building authentication request")
+			return "", errors.Wrap(err, "error building authentication request")
 		}
 
 		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 		res, err = ac.client.Do(req)
 		if err != nil {
-			return samlAssertion, errors.Wrap(err, "error polling mfa device")
+			return "", errors.Wrap(err, "error polling mfa device")
 		}
 
 		//extract form action and jwt token
@@ -164,13 +165,13 @@ func (ac *PingFedClient) Authenticate(loginDetails *LoginDetails) (string, error
 			//submit otp
 			req, err = http.NewRequest("POST", actionURL, strings.NewReader(otpReq.Encode()))
 			if err != nil {
-				return samlAssertion, errors.Wrap(err, "error building authentication request")
+				return "", errors.Wrap(err, "error building authentication request")
 			}
 
 			req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 			res, err = ac.client.Do(req)
 			if err != nil {
-				return samlAssertion, errors.Wrap(err, "error polling mfa device")
+				return "", errors.Wrap(err, "error polling mfa device")
 			}
 
 			//extract form action and jwt token
@@ -181,14 +182,14 @@ func (ac *PingFedClient) Authenticate(loginDetails *LoginDetails) (string, error
 		//pass PingId auth back to pingfed
 		req, err = http.NewRequest("POST", actionURL, strings.NewReader(form.Encode()))
 		if err != nil {
-			return samlAssertion, errors.Wrap(err, "error building authentication request")
+			return "", errors.Wrap(err, "error building authentication request")
 		}
 
 		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 
 		res, err = ac.client.Do(req)
 		if err != nil {
-			return samlAssertion, errors.Wrap(err, "error authenticating mfa")
+			return "", errors.Wrap(err, "error authenticating mfa")
 		}
 
 	}
@@ -196,15 +197,17 @@ func (ac *PingFedClient) Authenticate(loginDetails *LoginDetails) (string, error
 	//try to extract SAMLResponse
 	doc, err = goquery.NewDocumentFromResponse(res)
 	if err != nil {
-		return samlAssertion, errors.Wrap(err, "error parsing document")
+		return "", errors.Wrap(err, "error parsing document")
 	}
 
-	samlAssertion, ok := doc.Find("input[name=\"SAMLResponse\"]").Attr("value")
+	var ok bool
+
+	ac.samlAssertion, ok = doc.Find("input[name=\"SAMLResponse\"]").Attr("value")
 	if !ok {
-		return samlAssertion, errors.Wrap(err, "unable to locate saml response")
+		return "", errors.Wrap(err, "unable to locate saml response")
 	}
 
-	return samlAssertion, nil
+	return ac.samlAssertion, nil
 }
 
 func updateLoginFormData(authForm url.Values, s *goquery.Selection, user *LoginDetails) {
