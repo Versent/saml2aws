@@ -19,6 +19,7 @@ The process goes something like this:
   * ADFS (2.x or 3.x)
   * PingFederate + PingId
   * Okta + Duo
+  * KeyCloak
 * AWS SAML Provider configured
 
 # Usage
@@ -56,6 +57,7 @@ saml2aws will default to using ADFS 3.x as the Identity Provider. To use another
 | PingFederate | `--provider=Ping`       |
 | JumpCloud    | `--provider=JumpCloud`  |
 | Okta         | `--provider=Okta`       |
+| KeyCloak     | `--provider=KeyCloak`   |
 
 # Install
 
