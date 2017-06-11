@@ -4,7 +4,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
   <metadata>
     <id>saml2aws</id>
-    <version>1.4.0</version>
+    <version>1.7.0</version>
     <packageSourceUrl>https://github.com/Versent/saml2aws</packageSourceUrl>
     <!-- owners is a poor name for maintainers of the package. It sticks around by this name for compatibility reasons. It basically means you. -->
     <owners>Versent, https://github.com/Versent</owners>
