@@ -61,11 +61,22 @@ saml2aws will default to using ADFS 3.x as the Identity Provider. To use another
 
 # Install
 
-If your on OSX you can install saml2aws using homebrew!
+## OSX
+
+If you're on OSX you can install saml2aws using homebrew!
 
 ```
 brew tap versent/homebrew-taps
 brew install saml2aws
+```
+
+## Windows
+
+If you're on Windows you can install saml2aws using chocolatey!
+
+```
+choco install saml2aws
+saml2aws --version
 ```
 
 # Setup
