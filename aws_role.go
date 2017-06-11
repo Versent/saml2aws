@@ -9,6 +9,7 @@ import (
 type AWSRole struct {
 	RoleARN      string
 	PrincipalARN string
+	Name         string
 }
 
 // ParseAWSRoles parses and splits the roles while also validating the contents

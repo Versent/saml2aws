@@ -18,6 +18,7 @@ import:
 - package: gopkg.in/ini.v1
 - package: github.com/segmentio/go-prompt
 - package: github.com/Azure/go-ntlmssp
+- package: github.com/tidwall/gjson
 testImport:
 - package: github.com/stretchr/testify
   subpackages:

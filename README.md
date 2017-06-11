@@ -1,4 +1,4 @@
-# saml2aws
+# saml2aws [![Build Status](https://travis-ci.org/Versent/saml2aws.svg?branch=master)](https://travis-ci.org/Versent/saml2aws)
 
 CLI tool which enables you to login and retrieve [AWS](https://aws.amazon.com/) temporary credentials using SAML with [ADFS](https://msdn.microsoft.com/en-us/library/bb897402.aspx) or [PingFederate](https://www.pingidentity.com/en/products/pingfederate.html) Identity Providers.
 
@@ -18,6 +18,8 @@ The process goes something like this:
 * Identity Provider
   * ADFS (2.x or 3.x)
   * PingFederate + PingId
+  * Okta + Duo
+  * KeyCloak
 * AWS SAML Provider configured
 
 # Usage
@@ -49,10 +51,13 @@ Commands:
 ```
 saml2aws will default to using ADFS 3.x as the Identity Provider. To use another provider, use the `--provider` flag:
 
-| IdP          |                    |
-| ------------ | ------------------ |
-| ADFS 2.x     | `--provider=ADFS2` |
-| PingFederate | `--provider=Ping`  |
+| IdP          |                         |
+| ------------ | ----------------------- |
+| ADFS 2.x     | `--provider=ADFS2`      |
+| PingFederate | `--provider=Ping`       |
+| JumpCloud    | `--provider=JumpCloud`  |
+| Okta         | `--provider=Okta`       |
+| KeyCloak     | `--provider=KeyCloak`   |
 
 # Install
 
@@ -168,6 +173,12 @@ Then to build the software just run.
 
 ```
 make
+```
+
+Install the binary to `$GOPATH/bin`.
+
+```
+make install
 ```
 
 To release run.

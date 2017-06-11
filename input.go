@@ -34,18 +34,21 @@ func PromptForLoginDetails(username, hostname string) (*LoginDetails, error) {
 }
 
 // PromptForAWSRoleSelection present a list of roles to the user for selection
-func PromptForAWSRoleSelection(roles []*AWSRole) (*AWSRole, error) {
-
-	if len(roles) == 1 {
-		return roles[0], nil
-	}
+func PromptForAWSRoleSelection(accounts []*AWSAccount) (*AWSRole, error) {
 
 	reader := bufio.NewReader(os.Stdin)
 
 	fmt.Println("Please choose the role you would like to assume: ")
 
-	for i, role := range roles {
-		fmt.Println("[", i, "]: ", role.RoleARN)
+	roles := []*AWSRole{}
+
+	for _, account := range accounts {
+		fmt.Println(account.Name)
+		for _, role := range account.Roles {
+			fmt.Println("[", len(roles), "]: ", role.Name)
+			fmt.Println()
+			roles = append(roles, role)
+		}
 	}
 
 	fmt.Print("Selection: ")
