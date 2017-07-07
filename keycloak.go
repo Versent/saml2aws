@@ -28,6 +28,7 @@ func NewKeyCloakClient(skipVerify bool) (*KeyCloakClient, error) {
 
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: skipVerify},
+		Proxy:           http.ProxyFromEnvironment,
 	}
 
 	options := &cookiejar.Options{
