@@ -14,6 +14,7 @@ var (
 
 	// /verbose      = kingpin.Flag("verbose", "Verbose mode.").Short('v').Bool()
 	profileName  = app.Flag("profile", "The AWS profile to save the temporary credentials").Short('p').Default("saml").String()
+	desiredRole  = app.Flag("role", "The AWS role to assume (optional)").Short('r').String()
 	skipVerify   = app.Flag("skip-verify", "Skip verification of server certificate.").Short('s').Bool()
 	providerName = app.Flag("provider", "The type of SAML IDP provider.").Short('i').Default("ADFS").Enum("ADFS", "ADFS2", "Ping", "JumpCloud", "Okta", "KeyCloak")
 
@@ -58,9 +59,9 @@ func main() {
 
 	switch command {
 	case cmdLogin.FullCommand():
-		err = commands.Login(*profileName, *providerName, *skipVerify)
+		err = commands.Login(*profileName, *desiredRole, *providerName, *skipVerify)
 	case cmdExec.FullCommand():
-		err = commands.Exec(*profileName, *providerName, *skipVerify, *cmdLine)
+		err = commands.Exec(*profileName, *desiredRole, *providerName, *skipVerify, *cmdLine)
 	}
 
 	if err != nil {
