@@ -32,6 +32,7 @@ A command line tool to help with SAML access to the AWS token service.
 Flags:
       --help            Show context-sensitive help (also try --help-long and --help-man).
   -p, --profile="saml"  The AWS profile to save the temporary credentials
+  -r, --role=ROLE       The AWS role to assume (optional)
   -s, --skip-verify     Skip verification of server certificate.
   -i, --provider="ADFS" The type of SAML IDP provider.
       --version         Show application version.
