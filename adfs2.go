@@ -24,7 +24,7 @@ type ADFS2Client struct {
 func NewADFS2Client(skipVerify bool) (*ADFS2Client, error) {
 	transport := &ntlmssp.Negotiator{
 		RoundTripper: &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: skipVerify},
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: skipVerify, Renegotiation: tls.RenegotiateFreelyAsClient},
 		},
 	}
 

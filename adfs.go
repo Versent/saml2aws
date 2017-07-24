@@ -26,7 +26,7 @@ type ADFSClient struct {
 func NewADFSClient(skipVerify bool) (*ADFSClient, error) {
 
 	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: skipVerify},
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: skipVerify, Renegotiation: tls.RenegotiateFreelyAsClient},
 	}
 
 	options := &cookiejar.Options{
