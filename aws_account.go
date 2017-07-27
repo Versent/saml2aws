@@ -6,15 +6,19 @@ import (
 	"net/http"
 	"net/url"
 
+	"fmt"
+
 	"github.com/PuerkitoBio/goquery"
 	"github.com/pkg/errors"
 )
 
+// AWSAccount holds the AWS account name and roles
 type AWSAccount struct {
 	Name  string
 	Roles []*AWSRole
 }
 
+// ParseAWSAccounts extract the aws accounts from the saml assertion
 func ParseAWSAccounts(samlAssertion string) ([]*AWSAccount, error) {
 	awsURL := "https://signin.aws.amazon.com/saml"
 
@@ -31,6 +35,7 @@ func ParseAWSAccounts(samlAssertion string) ([]*AWSAccount, error) {
 	return ExtractAWSAccounts(data)
 }
 
+// ExtractAWSAccounts extract the accounts from the AWS html page
 func ExtractAWSAccounts(data []byte) ([]*AWSAccount, error) {
 	accounts := []*AWSAccount{}
 
@@ -52,4 +57,31 @@ func ExtractAWSAccounts(data []byte) ([]*AWSAccount, error) {
 	})
 
 	return accounts, nil
+}
+
+// AssignPrincipals assign principal from roles
+func AssignPrincipals(awsRoles []*AWSRole, awsAccounts []*AWSAccount) {
+
+	awsPrincipalARNs := make(map[string]string)
+	for _, awsRole := range awsRoles {
+		awsPrincipalARNs[awsRole.RoleARN] = awsRole.PrincipalARN
+	}
+
+	for _, awsAccount := range awsAccounts {
+		for _, awsRole := range awsAccount.Roles {
+			awsRole.PrincipalARN = awsPrincipalARNs[awsRole.RoleARN]
+		}
+	}
+
+}
+
+// LocateRole locate role by name
+func LocateRole(awsRoles []*AWSRole, roleName string) (*AWSRole, error) {
+	for _, awsRole := range awsRoles {
+		if awsRole.RoleARN == roleName {
+			return awsRole, nil
+		}
+	}
+
+	return nil, fmt.Errorf("Supplied RoleArn not found in saml assertion: %s", roleName)
 }

@@ -30,29 +30,6 @@ func NewConfigLoader(profile string) *ConfigLoader {
 	}
 }
 
-// ensureConfigExists verify that the config file exists
-func (p *ConfigLoader) ensureConfigExists() error {
-	filename, err := p.filename()
-	if err != nil {
-		return err
-	}
-
-	if _, err := os.Stat(filename); err != nil {
-		if os.IsNotExist(err) {
-
-			// create an base config file
-			err = ioutil.WriteFile(filename, []byte("["+p.Profile+"]"), 0600)
-			if err != nil {
-				return err
-			}
-
-		}
-		return err
-	}
-
-	return nil
-}
-
 // SaveUsername persist the username
 func (p *ConfigLoader) SaveUsername(username string) error {
 	filename, err := p.filename()
@@ -131,6 +108,29 @@ func (p *ConfigLoader) LoadProvider(defaultValue string) (string, error) {
 	}
 
 	return loadConfig(filename, p.Profile, "provider")
+}
+
+// ensureConfigExists verify that the config file exists
+func (p *ConfigLoader) ensureConfigExists() error {
+	filename, err := p.filename()
+	if err != nil {
+		return err
+	}
+
+	if _, err := os.Stat(filename); err != nil {
+		if os.IsNotExist(err) {
+
+			// create an base config file
+			err = ioutil.WriteFile(filename, []byte("["+p.Profile+"]"), 0600)
+			if err != nil {
+				return err
+			}
+
+		}
+		return err
+	}
+
+	return nil
 }
 
 func (p *ConfigLoader) filename() (string, error) {

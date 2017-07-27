@@ -18,11 +18,17 @@ type LoginDetails struct {
 }
 
 // PromptForLoginDetails prompt the user to present their username, password and hostname
-func PromptForLoginDetails(username, hostname string) (*LoginDetails, error) {
+func PromptForLoginDetails(username, hostname, password string) (*LoginDetails, error) {
 
 	hostname = promptFor("Hostname [%s]", hostname)
+
+	fmt.Println("To use saved username and password just hit enter.")
+
 	username = promptFor("Username [%s]", username)
-	password := prompt.PasswordMasked("Password")
+
+	if enteredPassword := prompt.PasswordMasked("Password"); enteredPassword != "" {
+		password = enteredPassword
+	}
 
 	fmt.Println("")
 
@@ -52,9 +58,9 @@ func PromptForAWSRoleSelection(accounts []*AWSAccount) (*AWSRole, error) {
 	}
 
 	fmt.Print("Selection: ")
-	selectedroleindex, _ := reader.ReadString('\n')
+	selectedRoleIndex, _ := reader.ReadString('\n')
 
-	v, err := strconv.Atoi(strings.TrimSpace(selectedroleindex))
+	v, err := strconv.Atoi(strings.TrimSpace(selectedRoleIndex))
 
 	if err != nil {
 		return nil, fmt.Errorf("Unrecognised role index")
