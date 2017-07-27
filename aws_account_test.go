@@ -34,3 +34,45 @@ func TestExtractAWSAccounts(t *testing.T) {
 	assert.Equal(t, role.RoleARN, "arn:aws:iam::000000000002:role/Production")
 	assert.Equal(t, role.Name, "Production")
 }
+
+func TestAssignPrincipals(t *testing.T) {
+	awsRoles := []*AWSRole{
+		&AWSRole{
+			PrincipalARN: "arn:aws:iam::000000000001:saml-provider/test-idp",
+			RoleARN:      "arn:aws:iam::000000000001:role/Development",
+		},
+	}
+
+	awsAccounts := []*AWSAccount{
+		&AWSAccount{
+			Roles: []*AWSRole{
+				&AWSRole{
+					RoleARN: "arn:aws:iam::000000000001:role/Development",
+				},
+			},
+		},
+	}
+
+	AssignPrincipals(awsRoles, awsAccounts)
+
+	assert.Equal(t, "arn:aws:iam::000000000001:saml-provider/test-idp", awsAccounts[0].Roles[0].PrincipalARN)
+}
+
+func TestLocateRole(t *testing.T) {
+	awsRoles := []*AWSRole{
+		&AWSRole{
+			PrincipalARN: "arn:aws:iam::000000000001:saml-provider/test-idp",
+			RoleARN:      "arn:aws:iam::000000000001:role/Development",
+		},
+		&AWSRole{
+			PrincipalARN: "arn:aws:iam::000000000002:saml-provider/test-idp",
+			RoleARN:      "arn:aws:iam::000000000002:role/Development",
+		},
+	}
+
+	role, err := LocateRole(awsRoles, "arn:aws:iam::000000000001:role/Development")
+
+	assert.Empty(t, err)
+
+	assert.Equal(t, "arn:aws:iam::000000000001:role/Development", role.RoleARN)
+}

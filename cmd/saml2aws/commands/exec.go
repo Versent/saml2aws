@@ -15,25 +15,25 @@ import (
 )
 
 // Exec execute the supplied command after seeding the environment
-func Exec(profile string, providerName string, skipVerify bool, cmdline []string) error {
+func Exec(loginFlags *LoginFlags, cmdline []string) error {
 
 	if len(cmdline) < 1 {
 		return fmt.Errorf("Command to execute required.")
 	}
 
-	ok, err := checkToken(profile)
+	ok, err := checkToken(loginFlags.Profile)
 	if err != nil {
 		return errors.Wrap(err, "error validating token")
 	}
 
 	if !ok {
-		err = Login(profile, providerName, skipVerify)
+		err = Login(loginFlags)
 	}
 	if err != nil {
 		return errors.Wrap(err, "error logging in")
 	}
 
-	sharedCreds := saml2aws.NewSharedCredentials(profile)
+	sharedCreds := saml2aws.NewSharedCredentials(loginFlags.Profile)
 
 	id, secret, token, err := sharedCreds.Load()
 	if err != nil {
