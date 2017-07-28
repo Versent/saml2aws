@@ -40,25 +40,31 @@ func Login(loginFlags *LoginFlags) error {
 		return errors.Wrap(err, "error loading config file")
 	}
 
-	fmt.Println("LookupCredentials", hostname)
+	// fmt.Println("LookupCredentials", hostname)
 
 	loginDetails, err := resolveLoginDetails(hostname, loginFlags)
 	if err != nil {
-		return errors.Wrap(err, "error accepting password")
+		fmt.Printf("%+v\n", err)
+		os.Exit(1)
 	}
 
-	fmt.Printf("Authenticating to %s with URL https://%s\n", loginFlags.Provider, loginDetails.Hostname)
+	fmt.Printf("Authenticating as %s to %s https://%s\n", loginDetails.Username, loginFlags.Provider, loginDetails.Hostname)
 
 	opts := &saml2aws.SAMLOptions{Provider: loginFlags.Provider, SkipVerify: loginFlags.SkipVerify}
 
 	provider, err := saml2aws.NewSAMLClient(opts)
 	if err != nil {
-		return errors.Wrap(err, "error building adfs client")
+		return errors.Wrap(err, "error building IdP client")
+	}
+
+	err = loginDetails.Validate()
+	if err != nil {
+		return errors.Wrap(err, "error validating login details")
 	}
 
 	samlAssertion, err := provider.Authenticate(loginDetails)
 	if err != nil {
-		return errors.Wrap(err, "error authenticating to adfs")
+		return errors.Wrap(err, "error authenticating to IdP")
 
 	}
 
@@ -95,8 +101,11 @@ func Login(loginFlags *LoginFlags) error {
 	}
 
 	role, err := resolveRole(awsRoles, samlAssertion, loginFlags)
+	if err != nil {
+		return errors.Wrap(err, "Failed to assume role, please check you are permitted to assume the given role for the AWS service")
+	}
 
-	fmt.Println("Selected role:", role.RoleARN)
+	// fmt.Println("Selected role:", role.RoleARN)
 
 	sess, err := session.NewSession()
 	if err != nil {
@@ -119,7 +128,7 @@ func Login(loginFlags *LoginFlags) error {
 		return errors.Wrap(err, "error retrieving STS credentials using SAML")
 	}
 
-	fmt.Println("Saving credentials")
+	// fmt.Println("Saving credentials")
 
 	sharedCreds := saml2aws.NewSharedCredentials(loginFlags.Profile)
 
@@ -145,7 +154,7 @@ func resolveLoginDetails(hostname string, loginFlags *LoginFlags) (*saml2aws.Log
 
 	loginDetails := new(saml2aws.LoginDetails)
 
-	fmt.Println("hostname", hostname)
+	// fmt.Printf("loginFlags %+v\n", loginFlags)
 
 	savedUsername, savedPassword, err := credentials.LookupCredentials(hostname)
 	if err != nil {
@@ -154,23 +163,23 @@ func resolveLoginDetails(hostname string, loginFlags *LoginFlags) (*saml2aws.Log
 		}
 	}
 
+	// fmt.Printf("%s %s\n", savedUsername, savedPassword)
+
 	// if you supply a username in a flag it takes precedence
 	if loginFlags.Username != "" {
 		loginDetails.Username = loginFlags.Username
-	} else {
-		fmt.Println("Using saved username")
+	} else if savedUsername != "" {
 		loginDetails.Username = savedUsername
 	}
 
 	// if you supply a password in a flag it takes precedence
 	if loginFlags.Password != "" {
 		loginDetails.Password = loginFlags.Password
-	} else {
-		fmt.Println("Using saved password")
+	} else if savedPassword != "" {
 		loginDetails.Password = savedPassword
 	}
 
-	fmt.Println("savedUsername", savedUsername)
+	// fmt.Printf("loginDetails %+v\n", loginDetails)
 
 	// if skip prompt was passed just pass back the flag values
 	if loginFlags.SkipPrompt {
@@ -212,7 +221,7 @@ func resolveRole(awsRoles []*saml2aws.AWSRole, samlAssertion string, loginFlags 
 		if err == nil {
 			break
 		}
-		fmt.Println("error selecting role")
+		fmt.Println("error selecting role, try again")
 	}
 
 	return role, nil

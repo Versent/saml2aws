@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/pkg/errors"
 	"github.com/segmentio/go-prompt"
 )
 
@@ -15,6 +16,20 @@ type LoginDetails struct {
 	Username string
 	Password string
 	Hostname string
+}
+
+// Validate validate the login details
+func (ld *LoginDetails) Validate() error {
+	if ld.Hostname == "" {
+		return errors.New("Missing hostname")
+	}
+	if ld.Username == "" {
+		return errors.New("Missing username")
+	}
+	if ld.Password == "" {
+		return errors.New("Missing password")
+	}
+	return nil
 }
 
 // PromptForLoginDetails prompt the user to present their username, password and hostname
