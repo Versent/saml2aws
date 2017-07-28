@@ -8,6 +8,6 @@ import (
 )
 
 func init() {
-	fmt.Println("adding osx helper")
+	fmt.Println("Adding osx helper")
 	credentials.CurrentHelper = &osxkeychain.Osxkeychain{}
 }
