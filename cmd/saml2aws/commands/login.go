@@ -105,7 +105,7 @@ func Login(loginFlags *LoginFlags) error {
 		return errors.Wrap(err, "Failed to assume role, please check you are permitted to assume the given role for the AWS service")
 	}
 
-	// fmt.Println("Selected role:", role.RoleARN)
+	fmt.Println("Selected role:", role.RoleARN)
 
 	sess, err := session.NewSession()
 	if err != nil {
@@ -200,7 +200,7 @@ func resolveRole(awsRoles []*saml2aws.AWSRole, samlAssertion string, loginFlags 
 		if loginFlags.RoleSupplied() {
 			return saml2aws.LocateRole(awsRoles, loginFlags.RoleArn)
 		}
-		role = awsRoles[0]
+		return awsRoles[0], nil
 	} else if len(awsRoles) == 0 {
 		return nil, errors.New("no roles available")
 	}
