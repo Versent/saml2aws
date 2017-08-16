@@ -18,7 +18,7 @@ The process goes something like this:
 * Identity Provider
   * ADFS (2.x or 3.x)
   * PingFederate + PingId
-  * Okta + Duo
+  * Okta + (Duo, SMS, TOTP)
   * KeyCloak
 * AWS SAML Provider configured
 
