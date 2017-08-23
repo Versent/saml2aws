@@ -28,7 +28,6 @@ deps: glide
 compile: deps
 	@rm -rf build/
 	@gox -ldflags "-X main.Version=$(VERSION)" \
-	-osarch="darwin/amd64" \
 	-osarch="linux/i386" \
 	-osarch="linux/amd64" \
 	-osarch="windows/amd64" \
