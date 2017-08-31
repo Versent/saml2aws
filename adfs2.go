@@ -5,7 +5,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"io/ioutil"
-	"log"
+
 	"net/http"
 	"net/http/cookiejar"
 
@@ -13,6 +13,7 @@ import (
 
 	"github.com/Azure/go-ntlmssp"
 	"github.com/PuerkitoBio/goquery"
+	"github.com/apex/log"
 	"github.com/pkg/errors"
 )
 
@@ -43,11 +44,15 @@ func NewADFS2Client(skipVerify bool) (*ADFS2Client, error) {
 
 func (ac *ADFS2Client) Authenticate(loginDetails *LoginDetails) (string, error) {
 	var samlAssertion string
+
+	ctx := log.WithField("provider", "okta")
+
 	client := http.Client{
 		Transport: ac.transport,
 		Jar:       ac.jar,
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			req.SetBasicAuth(loginDetails.Username, loginDetails.Password)
+			ctx.Debugf("CheckRedirect Request: %s", requestString(req))
 			return nil
 		},
 	}
@@ -59,15 +64,19 @@ func (ac *ADFS2Client) Authenticate(loginDetails *LoginDetails) (string, error) 
 	}
 	req.SetBasicAuth(loginDetails.Username, loginDetails.Password)
 
+	ctx.Debugf("Login Request: %s", requestString(req))
+
 	res, err := client.Do(req)
 	if err != nil {
-		return samlAssertion, errors.Wrap(err, "error retieving login form")
+		return samlAssertion, errors.Wrap(err, "error retrieving login form")
 	}
 
 	data, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		return samlAssertion, errors.Wrap(err, "error retieving body")
+		return samlAssertion, errors.Wrap(err, "error retrieving body")
 	}
+
+	ctx.Debugf("Login Response Body: %s", data)
 
 	doc, err := goquery.NewDocumentFromReader(bytes.NewBuffer(data))
 	if err != nil {

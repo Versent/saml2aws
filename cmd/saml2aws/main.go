@@ -2,15 +2,19 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"os"
 
+	"github.com/apex/log"
+
 	"github.com/alecthomas/kingpin"
+	"github.com/apex/log/handlers/text"
 	"github.com/versent/saml2aws/cmd/saml2aws/commands"
 )
 
 var (
 	app = kingpin.New("saml2aws", "A command line tool to help with SAML access to the AWS token service.")
+
+	verbose = app.Flag("verbose", "Verbose mode.").Short('v').Bool()
 
 	cmdLogin = app.Command("login", "Login to a SAML 2.0 IDP and convert the SAML assertion to an STS token.")
 	cmdExec  = app.Command("exec", "Exec the supplied command with env vars from STS token.")
@@ -58,13 +62,17 @@ func configureLoginFlags(app *kingpin.Application) *commands.LoginFlags {
 }
 
 func main() {
-	log.SetFlags(log.Lshortfile)
+	log.SetHandler(text.New(os.Stderr))
 
 	app.Version(Version)
 
 	lc := configureLoginFlags(app)
 
 	command := kingpin.MustParse(app.Parse(os.Args[1:]))
+
+	if *verbose {
+		log.SetLevel(log.DebugLevel)
+	}
 
 	var err error
 

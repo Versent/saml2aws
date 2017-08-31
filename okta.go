@@ -12,6 +12,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/apex/log"
+
 	"github.com/PuerkitoBio/goquery"
 	"github.com/pkg/errors"
 	prompt "github.com/segmentio/go-prompt"
@@ -64,6 +66,8 @@ func NewOktaClient(skipVerify bool) (*OktaClient, error) {
 func (oc *OktaClient) Authenticate(loginDetails *LoginDetails) (string, error) {
 	var samlAssertion string
 
+	ctx := log.WithField("provider", "okta")
+
 	oktaEntryURL := fmt.Sprintf("https://%s", loginDetails.Hostname)
 	oktaURL, err := url.Parse(oktaEntryURL)
 	oktaOrgHost := oktaURL.Host
@@ -83,13 +87,21 @@ func (oc *OktaClient) Authenticate(loginDetails *LoginDetails) (string, error) {
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("Accept", "application/json")
 
+	ctx.Debugf("Login Request: %s", requestString(req))
+
 	res, err := oc.client.Do(req)
 	if err != nil {
 		return samlAssertion, errors.Wrap(err, "error retrieving auth response")
 	}
 
 	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return samlAssertion, errors.Wrap(err, "error retrieving auth response body")
+	}
+
 	resp := string(body)
+
+	ctx.Debugf("Login Resp Body: %s", resp)
 
 	stateToken := gjson.Get(resp, "stateToken").String()
 	authStatus := gjson.Get(resp, "status").String()
