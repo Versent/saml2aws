@@ -3,8 +3,6 @@ package commands
 import (
 	"fmt"
 	"os"
-	"os/exec"
-	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
@@ -12,13 +10,14 @@ import (
 	"github.com/aws/aws-sdk-go/service/sts"
 	"github.com/pkg/errors"
 	"github.com/versent/saml2aws"
+	"github.com/versent/saml2aws/shell"
 )
 
 // Exec execute the supplied command after seeding the environment
 func Exec(loginFlags *LoginFlags, cmdline []string) error {
 
 	if len(cmdline) < 1 {
-		return fmt.Errorf("Command to execute required.")
+		return fmt.Errorf("Command to execute required")
 	}
 
 	ok, err := checkToken(loginFlags.Profile)
@@ -40,16 +39,7 @@ func Exec(loginFlags *LoginFlags, cmdline []string) error {
 		return errors.Wrap(err, "error loading credentials")
 	}
 
-	c := strings.Join(cmdline, " ")
-
-	cs := []string{"/bin/sh", "-c", c}
-	cmd := exec.Command(cs[0], cs[1:]...)
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	cmd.Env = append(os.Environ(), buildEnvVars(id, secret, token)...)
-
-	return cmd.Run()
+	return shell.ExecShellCmd(cmdline, shell.BuildEnvVars(id, secret, token))
 }
 
 func checkToken(profile string) (bool, error) {
@@ -77,14 +67,4 @@ func checkToken(profile string) (bool, error) {
 
 	fmt.Fprintln(os.Stderr, "Running command as:", aws.StringValue(resp.Arn))
 	return true, nil
-}
-
-func buildEnvVars(id, secret, token string) []string {
-	return []string{
-		fmt.Sprintf("AWS_ACCESS_KEY_ID=%s", id),
-		fmt.Sprintf("AWS_SECRET_ACCESS_KEY=%s", secret),
-		fmt.Sprintf("AWS_SESSION_TOKEN=%s", token),
-		fmt.Sprintf("AWS_SECURITY_TOKEN=%s", token),
-		fmt.Sprintf("EC2_SECURITY_TOKEN=%s", token),
-	}
 }
