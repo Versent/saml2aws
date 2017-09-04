@@ -139,7 +139,15 @@ func (p *CredentialsProvider) filename() (string, error) {
 			return "", ErrCredentialsHomeNotFound
 		}
 
-		p.Filename = filepath.Join(homeDir, ".aws", "credentials")
+		name := filepath.Join(homeDir, ".aws", "credentials")
+
+		// is the filename a symlink?
+		name, err := filepath.EvalSymlinks(name)
+		if err != nil {
+			return "", errors.Wrap(err, "unable to resolve symlink")
+		}
+
+		p.Filename = name
 	}
 
 	return p.Filename, nil
