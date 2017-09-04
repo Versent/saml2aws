@@ -20,6 +20,20 @@ func Exec(loginFlags *LoginFlags, cmdline []string) error {
 		return fmt.Errorf("Command to execute required")
 	}
 
+	sharedCreds := saml2aws.NewSharedCredentials(loginFlags.Profile)
+
+	// this checks if the credentials file has been created yet
+	// can only really be triggered if saml2aws exec is run on a new
+	// system prior to creating $HOME/.aws
+	exist, err := sharedCreds.CredsExists()
+	if err != nil {
+		return errors.Wrap(err, "error loading credentials")
+	}
+	if !exist {
+		fmt.Println("unable to load credentials, login required to create them")
+		return nil
+	}
+
 	ok, err := checkToken(loginFlags.Profile)
 	if err != nil {
 		return errors.Wrap(err, "error validating token")
@@ -31,8 +45,6 @@ func Exec(loginFlags *LoginFlags, cmdline []string) error {
 	if err != nil {
 		return errors.Wrap(err, "error logging in")
 	}
-
-	sharedCreds := saml2aws.NewSharedCredentials(loginFlags.Profile)
 
 	id, secret, token, err := sharedCreds.Load()
 	if err != nil {

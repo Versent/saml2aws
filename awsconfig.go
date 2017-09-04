@@ -31,6 +31,24 @@ func NewSharedCredentials(profile string) *CredentialsProvider {
 	}
 }
 
+// CredsExists verify that the credentials exist
+func (p *CredentialsProvider) CredsExists() (bool, error) {
+	filename, err := p.filename()
+	if err != nil {
+		return false, err
+	}
+
+	err = p.ensureConfigExists()
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+		return false, errors.Wrapf(err, "unable to load file %s", filename)
+	}
+
+	return true, nil
+}
+
 // Save persist the credentials
 func (p *CredentialsProvider) Save(id, secret, token string) error {
 	filename, err := p.filename()
