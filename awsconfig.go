@@ -1,10 +1,11 @@
 package saml2aws
 
 import (
-	"errors"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+
+	"github.com/pkg/errors"
 
 	ini "gopkg.in/ini.v1"
 )
@@ -39,7 +40,10 @@ func (p *CredentialsProvider) Save(id, secret, token string) error {
 
 	err = p.ensureConfigExists()
 	if err != nil {
-		return err
+		if os.IsNotExist(err) {
+			return createAndSaveProfile(filename, p.Profile, id, secret, token)
+		}
+		return errors.Wrap(err, "unable to load file")
 	}
 
 	return saveProfile(filename, p.Profile, id, secret, token)
@@ -121,6 +125,23 @@ func (p *CredentialsProvider) filename() (string, error) {
 	}
 
 	return p.Filename, nil
+}
+
+func createAndSaveProfile(filename, profile, id, secret, token string) error {
+
+	dirPath := filepath.Dir(filename)
+
+	err := os.Mkdir(dirPath, 0700)
+	if err != nil {
+		return errors.Wrapf(err, "unable to create %s directory", dirPath)
+	}
+
+	_, err = os.Create(filename)
+	if err != nil {
+		return errors.Wrapf(err, "unable to create configuration")
+	}
+
+	return saveProfile(filename, profile, id, secret, token)
 }
 
 func saveProfile(filename, profile, id, secret, token string) error {
