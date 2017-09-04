@@ -22,6 +22,13 @@ The process goes something like this:
   * KeyCloak
 * AWS SAML Provider configured
 
+# Caveats
+
+Aside from Okta, most of the providers in this project are using screen scraping to log users into SAML, this isn't ideal and hopefully vendors make this easier in the future. In addition to this there are some things you need to know:
+
+1. AWS only permits session tokens being issued with a duration of up to 3600 seconds (1 hour), this is constrained by the [STS AssumeRoleWithSAML API](http://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRoleWithSAML.html) call and `DurationSeconds` field.
+2. Every SAML provider is different, the login process, MFA support is pluggable and therefore some work may be needed to integrate with your identity server
+
 # Usage
 
 ```
