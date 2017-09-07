@@ -69,7 +69,7 @@ func checkToken(profile string) (bool, error) {
 	resp, err := svc.GetCallerIdentity(params)
 	if err != nil {
 		if awsErr, ok := err.(awserr.Error); ok {
-			if awsErr.Code() == "ExpiredToken" {
+			if awsErr.Code() == "ExpiredToken" || awsErr.Code() == "NoCredentialProviders" {
 				return false, nil
 			}
 		}
