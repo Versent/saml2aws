@@ -1,0 +1,14 @@
+VERIFICATION
+Verification is intended to assist the Chocolatey moderators and community
+in verifying that this package's contents are trustworthy.
+
+The installer has been automatically built from source whch can be found on <http://github.com/Versent/saml2aws>
+and can be verified like this:
+
+1. Download the release version from <https://github.com/Versent/saml2aws/releases>
+2. You can use one of the following methods to obtain the checksum
+  - Use powershell function 'Get-Filehash'
+  - Use chocolatey utility 'checksum.exe'
+  Compare the checksums there with the checksum of the local binary in C:\ProgramData\Chocolatey\lib\saml2aws\src\saml2aws.exe
+
+File 'LICENSE.txt' is obtained from <http://github.com/Versent/saml2aws/LICENSE.md>.
