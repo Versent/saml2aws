@@ -10,7 +10,7 @@ environment:
   CHOCOLATEY_APIKEY:
     secure: 3kWTz99Qj+ipyaR73CxcJeGRRbmk84MF2ERDu6MyY10cjHAi6s3AVZ2Ccoa+Ioyt
   appName: saml2aws
-  appVersion: 1.7.0
+  appVersion: 1.8.3
 install:
 - ps: >-
     write-output $env:GOPATH
