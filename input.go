@@ -33,25 +33,21 @@ func (ld *LoginDetails) Validate() error {
 }
 
 // PromptForLoginDetails prompt the user to present their username, password and hostname
-func PromptForLoginDetails(username, hostname, password string) (*LoginDetails, error) {
+func PromptForLoginDetails(loginDetails *LoginDetails) error {
 
-	hostname = promptFor("Hostname [%s]", hostname)
+	loginDetails.Hostname = promptFor("Hostname [%s]", loginDetails.Hostname)
 
 	fmt.Println("To use saved username and password just hit enter.")
 
-	username = promptFor("Username [%s]", username)
+	loginDetails.Username = promptFor("Username [%s]", loginDetails.Username)
 
 	if enteredPassword := prompt.PasswordMasked("Password"); enteredPassword != "" {
-		password = enteredPassword
+		loginDetails.Password = enteredPassword
 	}
 
 	fmt.Println("")
 
-	return &LoginDetails{
-		Username: strings.TrimSpace(username),
-		Password: strings.TrimSpace(password),
-		Hostname: strings.TrimSpace(hostname),
-	}, nil
+	return nil
 }
 
 // PromptForAWSRoleSelection present a list of roles to the user for selection
