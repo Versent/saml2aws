@@ -50,7 +50,7 @@ func (defaultHelper) Delete(serverURL string) error {
 }
 
 func (defaultHelper) Get(serverURL string) (string, string, error) {
-	return "", "", nil
+	return "", "", ErrCredentialsNotFound
 }
 
 func (defaultHelper) List() (map[string]string, error) {

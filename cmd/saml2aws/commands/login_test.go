@@ -7,11 +7,13 @@ import (
 	"github.com/versent/saml2aws"
 )
 
-func TestResolveLoginDetails(t *testing.T) {
+func TestResolveLoginDetailsWithFlags(t *testing.T) {
 
 	loginFlags := &LoginFlags{Hostname: "id.example.com", Username: "wolfeidau", Password: "testtestlol", SkipPrompt: true}
 
-	loginDetails, err := resolveLoginDetails("id.example.com", loginFlags)
+	loginDetails := &saml2aws.LoginDetails{Hostname: "id.example.com", Username: ""}
+
+	err := resolveLoginDetails(loginDetails, loginFlags)
 
 	assert.Empty(t, err)
 	assert.Equal(t, loginDetails, &saml2aws.LoginDetails{Username: "wolfeidau", Password: "testtestlol", Hostname: "id.example.com"})
