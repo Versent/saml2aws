@@ -1,6 +1,6 @@
 NAME=saml2aws
 ARCH=$(shell uname -m)
-VERSION=1.8.3
+VERSION=1.8.4
 ITERATION := 1
 
 default: deps compile

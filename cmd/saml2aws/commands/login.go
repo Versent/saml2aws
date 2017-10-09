@@ -40,9 +40,19 @@ func Login(loginFlags *LoginFlags) error {
 		return errors.Wrap(err, "error loading config file")
 	}
 
+	username, err := config.LoadUsername()
+	if err != nil {
+		return errors.Wrap(err, "error loading config file")
+	}
+
 	// fmt.Println("LookupCredentials", hostname)
 
-	loginDetails, err := resolveLoginDetails(hostname, loginFlags)
+	loginDetails := &saml2aws.LoginDetails{
+		Hostname: hostname,
+		Username: username,
+	}
+
+	err = resolveLoginDetails(loginDetails, loginFlags)
 	if err != nil {
 		fmt.Printf("%+v\n", err)
 		os.Exit(1)
@@ -150,16 +160,14 @@ func Login(loginFlags *LoginFlags) error {
 	return nil
 }
 
-func resolveLoginDetails(hostname string, loginFlags *LoginFlags) (*saml2aws.LoginDetails, error) {
-
-	loginDetails := new(saml2aws.LoginDetails)
+func resolveLoginDetails(loginDetails *saml2aws.LoginDetails, loginFlags *LoginFlags) error {
 
 	// fmt.Printf("loginFlags %+v\n", loginFlags)
 
-	savedUsername, savedPassword, err := credentials.LookupCredentials(hostname)
+	err := credentials.LookupCredentials(loginDetails)
 	if err != nil {
 		if !credentials.IsErrCredentialsNotFound(err) {
-			return nil, errors.Wrap(err, "error loading saved password")
+			return errors.Wrap(err, "error loading saved password")
 		}
 	}
 
@@ -168,29 +176,25 @@ func resolveLoginDetails(hostname string, loginFlags *LoginFlags) (*saml2aws.Log
 	// if you supply a username in a flag it takes precedence
 	if loginFlags.Username != "" {
 		loginDetails.Username = loginFlags.Username
-	} else if savedUsername != "" {
-		loginDetails.Username = savedUsername
 	}
 
 	// if you supply a password in a flag it takes precedence
 	if loginFlags.Password != "" {
 		loginDetails.Password = loginFlags.Password
-	} else if savedPassword != "" {
-		loginDetails.Password = savedPassword
 	}
 
 	// fmt.Printf("loginDetails %+v\n", loginDetails)
 
 	// if skip prompt was passed just pass back the flag values
 	if loginFlags.SkipPrompt {
-		return &saml2aws.LoginDetails{
-			Username: loginDetails.Username,
-			Password: loginDetails.Password,
-			Hostname: loginFlags.Hostname,
-		}, nil
+		return nil
 	}
 
-	return saml2aws.PromptForLoginDetails(savedUsername, hostname, savedPassword)
+	err = saml2aws.PromptForLoginDetails(loginDetails)
+	if err != nil {
+		return errors.Wrap(err, "Error occured accepting input")
+	}
+	return nil
 }
 
 func resolveRole(awsRoles []*saml2aws.AWSRole, samlAssertion string, loginFlags *LoginFlags) (*saml2aws.AWSRole, error) {
