@@ -13,6 +13,8 @@ task 'Compile Go libraries...' {
 task 'Prepare for choco stuff...' {
   mkdir ./choco/src
   copy-item "./bin/${env:appName}.exe" "./choco/src/${env:appName}.exe"
+  Copy-Item "./LICENSE.md" "./choco/src/LICENSE.md"
+  Copy-Item "./choco/VERIFICATION.txt" "./choco/src/VERIFICATION.txt"
 }
 
 task 'Pack Choco...' {
