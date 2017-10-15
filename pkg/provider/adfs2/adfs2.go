@@ -1,4 +1,4 @@
-package saml2aws
+package adfs2
 
 import (
 	"bytes"
@@ -14,14 +14,17 @@ import (
 	"github.com/Azure/go-ntlmssp"
 	"github.com/PuerkitoBio/goquery"
 	"github.com/pkg/errors"
+	"github.com/versent/saml2aws/pkg/creds"
 )
 
-type ADFS2Client struct {
+// Client client for adfs2
+type Client struct {
 	transport http.RoundTripper
 	jar       http.CookieJar
 }
 
-func NewADFS2Client(skipVerify bool) (*ADFS2Client, error) {
+// NewADFS2Client new adfs2 client with ntlmssp configured
+func NewADFS2Client(skipVerify bool) (*Client, error) {
 	transport := &ntlmssp.Negotiator{
 		RoundTripper: &http.Transport{
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: skipVerify, Renegotiation: tls.RenegotiateFreelyAsClient},
@@ -35,13 +38,14 @@ func NewADFS2Client(skipVerify bool) (*ADFS2Client, error) {
 		return nil, err
 	}
 
-	return &ADFS2Client{
+	return &Client{
 		transport: transport,
 		jar:       jar,
 	}, nil
 }
 
-func (ac *ADFS2Client) Authenticate(loginDetails *LoginDetails) (string, error) {
+// Authenticate authenticate the user using the supplied login details
+func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error) {
 	var samlAssertion string
 	client := http.Client{
 		Transport: ac.transport,

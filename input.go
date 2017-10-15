@@ -7,33 +7,12 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/segmentio/go-prompt"
+	"github.com/versent/saml2aws/pkg/creds"
 )
 
-// LoginDetails used to authenticate to ADFS
-type LoginDetails struct {
-	Username string
-	Password string
-	Hostname string
-}
-
-// Validate validate the login details
-func (ld *LoginDetails) Validate() error {
-	if ld.Hostname == "" {
-		return errors.New("Missing hostname")
-	}
-	if ld.Username == "" {
-		return errors.New("Missing username")
-	}
-	if ld.Password == "" {
-		return errors.New("Missing password")
-	}
-	return nil
-}
-
 // PromptForLoginDetails prompt the user to present their username, password and hostname
-func PromptForLoginDetails(loginDetails *LoginDetails) error {
+func PromptForLoginDetails(loginDetails *creds.LoginDetails) error {
 
 	loginDetails.Hostname = promptFor("Hostname [%s]", loginDetails.Hostname)
 

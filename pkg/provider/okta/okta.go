@@ -1,4 +1,4 @@
-package saml2aws
+package okta
 
 import (
 	"bytes"
@@ -16,14 +16,15 @@ import (
 	"github.com/pkg/errors"
 	prompt "github.com/segmentio/go-prompt"
 	"github.com/tidwall/gjson"
+	"github.com/versent/saml2aws/pkg/creds"
 
 	"encoding/json"
 
 	"golang.org/x/net/publicsuffix"
 )
 
-// OktaClient is a wrapper representing a Okta SAML client
-type OktaClient struct {
+// Client is a wrapper representing a Okta SAML client
+type Client struct {
 	client *http.Client
 }
 
@@ -39,7 +40,7 @@ type VerifyRequest struct {
 }
 
 // NewOktaClient creates a new Okta client
-func NewOktaClient(skipVerify bool) (*OktaClient, error) {
+func NewOktaClient(skipVerify bool) (*Client, error) {
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: skipVerify},
 	}
@@ -55,13 +56,13 @@ func NewOktaClient(skipVerify bool) (*OktaClient, error) {
 
 	client := &http.Client{Transport: tr, Jar: jar}
 
-	return &OktaClient{
+	return &Client{
 		client: client,
 	}, nil
 }
 
 // Authenticate logs into Okta and returns a SAML response
-func (oc *OktaClient) Authenticate(loginDetails *LoginDetails) (string, error) {
+func (oc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error) {
 	var samlAssertion string
 
 	oktaEntryURL := fmt.Sprintf("https://%s", loginDetails.Hostname)

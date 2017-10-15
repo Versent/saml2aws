@@ -34,7 +34,7 @@ compile: deps
 	-osarch="windows/amd64" \
 	-osarch="windows/i386" \
 	-output "build/{{.Dir}}_$(VERSION)_{{.OS}}_{{.Arch}}/$(NAME)" \
-	$(shell glide novendor)
+	$(shell ./glide novendor)
 
 install:
 	go install ./cmd/saml2aws
@@ -52,7 +52,7 @@ release:
 	@github-release "v$(VERSION)" dist/* --commit "$(git rev-parse HEAD)" --github-repository versent/$(NAME)
 
 test: deps
-	go test -cover -v $(shell glide novendor)
+	go test -cover -v $(shell ./glide novendor)
 
 clean:
 	rm ./glide

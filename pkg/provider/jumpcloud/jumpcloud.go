@@ -1,4 +1,4 @@
-package saml2aws
+package jumpcloud
 
 import (
 	"bytes"
@@ -14,17 +14,18 @@ import (
 	"github.com/PuerkitoBio/goquery"
 	"github.com/pkg/errors"
 	"github.com/segmentio/go-prompt"
+	"github.com/versent/saml2aws/pkg/creds"
 
 	"golang.org/x/net/publicsuffix"
 )
 
-// JumpCloudClient is a wrapper representing a JumpCloud SAML client
-type JumpCloudClient struct {
+// Client is a wrapper representing a JumpCloud SAML client
+type Client struct {
 	client *http.Client
 }
 
 // NewJumpCloudClient creates a new JumpCloud client
-func NewJumpCloudClient(skipVerify bool) (*JumpCloudClient, error) {
+func NewJumpCloudClient(skipVerify bool) (*Client, error) {
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: skipVerify},
 	}
@@ -40,13 +41,13 @@ func NewJumpCloudClient(skipVerify bool) (*JumpCloudClient, error) {
 
 	client := &http.Client{Transport: tr, Jar: jar}
 
-	return &JumpCloudClient{
+	return &Client{
 		client: client,
 	}, nil
 }
 
 // Authenticate logs into JumpCloud and returns a SAML response
-func (jc *JumpCloudClient) Authenticate(loginDetails *LoginDetails) (string, error) {
+func (jc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error) {
 	var authSubmitURL string
 	var samlAssertion string
 	mfaRequired := false
@@ -159,7 +160,7 @@ func (jc *JumpCloudClient) Authenticate(loginDetails *LoginDetails) (string, err
 	return samlAssertion, nil
 }
 
-func updateJumpCloudForm(authForm url.Values, s *goquery.Selection, user *LoginDetails) {
+func updateJumpCloudForm(authForm url.Values, s *goquery.Selection, user *creds.LoginDetails) {
 	name, ok := s.Attr("name")
 	if !ok {
 		return
