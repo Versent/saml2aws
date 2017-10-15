@@ -1,9 +1,8 @@
-package saml2aws
+package keycloak
 
 import (
 	"bytes"
 	"crypto/tls"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -13,20 +12,24 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/pkg/errors"
+	"github.com/versent/saml2aws/pkg/creds"
+
+	"fmt"
 
 	"golang.org/x/net/publicsuffix"
 )
 
-// ADFSClient wrapper around ADFS enabling authentication and retrieval of assertions
-type ADFSClient struct {
+// Client wrapper around KeyCloak.
+type Client struct {
 	client *http.Client
 }
 
-// NewADFSClient create a new ADFS client
-func NewADFSClient(skipVerify bool) (*ADFSClient, error) {
+// NewKeyCloakClient create a new KeyCloakClient
+func NewKeyCloakClient(skipVerify bool) (*Client, error) {
 
 	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: skipVerify, Renegotiation: tls.RenegotiateFreelyAsClient},
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: skipVerify},
+		Proxy:           http.ProxyFromEnvironment,
 	}
 
 	options := &cookiejar.Options{
@@ -40,31 +43,37 @@ func NewADFSClient(skipVerify bool) (*ADFSClient, error) {
 
 	client := &http.Client{Transport: tr, Jar: jar}
 
-	return &ADFSClient{
+	return &Client{
 		client: client,
 	}, nil
 }
 
-// Authenticate authenticate to ADFS and return the data from the body of the SAML assertion.
-func (ac *ADFSClient) Authenticate(loginDetails *LoginDetails) (string, error) {
+// Authenticate logs into KeyCloak and returns a SAML response
+func (kc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error) {
 	var authSubmitURL string
 	var samlAssertion string
 	authForm := url.Values{}
 
-	adfsURL := fmt.Sprintf("https://%s/adfs/ls/IdpInitiatedSignOn.aspx?loginToRp=urn:amazon:webservices", loginDetails.Hostname)
+	samlAssertion = ""
 
-	res, err := ac.client.Get(adfsURL)
+	keyCloakURL := fmt.Sprintf("https://%s", loginDetails.Hostname)
+
+	// fmt.Printf("KeyCloak URL: %s\n\n", keyCloakURL)
+
+	res, err := kc.client.Get(keyCloakURL)
 	if err != nil {
-		return samlAssertion, errors.Wrap(err, "error retieving form")
+		return "", errors.Wrap(err, "error retieving form")
 	}
+
+	// fmt.Printf("Response: %d\n\n", res.StatusCode)
 
 	doc, err := goquery.NewDocumentFromResponse(res)
 	if err != nil {
-		return samlAssertion, errors.Wrap(err, "failed to build document from response")
+		return "", errors.Wrap(err, "failed to build document from response")
 	}
 
 	doc.Find("input").Each(func(i int, s *goquery.Selection) {
-		updateFormData(authForm, s, loginDetails)
+		updateKeyCloakFormData(authForm, s, loginDetails)
 	})
 
 	doc.Find("form").Each(func(i int, s *goquery.Selection) {
@@ -79,7 +88,7 @@ func (ac *ADFSClient) Authenticate(loginDetails *LoginDetails) (string, error) {
 		return samlAssertion, fmt.Errorf("unable to locate IDP authentication form submit URL")
 	}
 
-	//log.Printf("id authentication url: %s", authSubmitURL)
+	// log.Printf("id authentication url: %s", authSubmitURL)
 
 	req, err := http.NewRequest("POST", authSubmitURL, strings.NewReader(authForm.Encode()))
 	if err != nil {
@@ -88,12 +97,12 @@ func (ac *ADFSClient) Authenticate(loginDetails *LoginDetails) (string, error) {
 
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 
-	res, err = ac.client.Do(req)
+	res, err = kc.client.Do(req)
 	if err != nil {
 		return samlAssertion, errors.Wrap(err, "error retieving login form")
 	}
 
-	//log.Printf("res code = %v status = %s", res.StatusCode, res.Status)
+	// log.Printf("res code = %v status = %s", res.StatusCode, res.Status)
 
 	data, err := ioutil.ReadAll(res.Body)
 	if err != nil {
@@ -122,18 +131,16 @@ func (ac *ADFSClient) Authenticate(loginDetails *LoginDetails) (string, error) {
 	return samlAssertion, nil
 }
 
-func updateFormData(authForm url.Values, s *goquery.Selection, user *LoginDetails) {
+func updateKeyCloakFormData(authForm url.Values, s *goquery.Selection, user *creds.LoginDetails) {
 	name, ok := s.Attr("name")
-	//	log.Printf("name = %s ok = %v", name, ok)
+	// log.Printf("name = %s ok = %v", name, ok)
 	if !ok {
 		return
 	}
 	lname := strings.ToLower(name)
-	if strings.Contains(lname, "user") {
+	if strings.Contains(lname, "username") {
 		authForm.Add(name, user.Username)
-	} else if strings.Contains(lname, "email") {
-		authForm.Add(name, user.Username)
-	} else if strings.Contains(lname, "pass") {
+	} else if strings.Contains(lname, "password") {
 		authForm.Add(name, user.Password)
 	} else {
 		// pass through any hidden fields

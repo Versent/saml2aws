@@ -11,6 +11,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/versent/saml2aws"
 	"github.com/versent/saml2aws/helper/credentials"
+	"github.com/versent/saml2aws/pkg/creds"
 )
 
 // LoginFlags login specific command flags
@@ -47,7 +48,7 @@ func Login(loginFlags *LoginFlags) error {
 
 	// fmt.Println("LookupCredentials", hostname)
 
-	loginDetails := &saml2aws.LoginDetails{
+	loginDetails := &creds.LoginDetails{
 		Hostname: hostname,
 		Username: username,
 	}
@@ -160,7 +161,7 @@ func Login(loginFlags *LoginFlags) error {
 	return nil
 }
 
-func resolveLoginDetails(loginDetails *saml2aws.LoginDetails, loginFlags *LoginFlags) error {
+func resolveLoginDetails(loginDetails *creds.LoginDetails, loginFlags *LoginFlags) error {
 
 	// fmt.Printf("loginFlags %+v\n", loginFlags)
 

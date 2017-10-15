@@ -1,6 +1,16 @@
 package saml2aws
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/versent/saml2aws/pkg/creds"
+	"github.com/versent/saml2aws/pkg/provider/adfs"
+	"github.com/versent/saml2aws/pkg/provider/adfs2"
+	"github.com/versent/saml2aws/pkg/provider/jumpcloud"
+	"github.com/versent/saml2aws/pkg/provider/keycloak"
+	"github.com/versent/saml2aws/pkg/provider/okta"
+	"github.com/versent/saml2aws/pkg/provider/pingfed"
+)
 
 // Provider the SAML provider
 type Provider int
@@ -14,7 +24,7 @@ const (
 
 // SAMLClient client interface
 type SAMLClient interface {
-	Authenticate(loginDetails *LoginDetails) (string, error)
+	Authenticate(loginDetails *creds.LoginDetails) (string, error)
 }
 
 // SAMLOptions options for the new SAML client
@@ -27,17 +37,17 @@ type SAMLOptions struct {
 func NewSAMLClient(opts *SAMLOptions) (SAMLClient, error) {
 	switch opts.Provider {
 	case "ADFS":
-		return NewADFSClient(opts.SkipVerify)
+		return adfs.NewADFSClient(opts.SkipVerify)
 	case "ADFS2":
-		return NewADFS2Client(opts.SkipVerify)
+		return adfs2.NewADFS2Client(opts.SkipVerify)
 	case "Ping":
-		return NewPingFedClient(opts.SkipVerify)
+		return pingfed.NewPingFedClient(opts.SkipVerify)
 	case "JumpCloud":
-		return NewJumpCloudClient(opts.SkipVerify)
+		return jumpcloud.NewJumpCloudClient(opts.SkipVerify)
 	case "Okta":
-		return NewOktaClient(opts.SkipVerify)
+		return okta.NewOktaClient(opts.SkipVerify)
 	case "KeyCloak":
-		return NewKeyCloakClient(opts.SkipVerify)
+		return keycloak.NewKeyCloakClient(opts.SkipVerify)
 	default:
 		return nil, fmt.Errorf("Invalid provider: %v", opts.Provider)
 	}

@@ -2,6 +2,8 @@ package saml2aws
 
 import (
 	"testing"
+
+	"github.com/versent/saml2aws/pkg/creds"
 )
 
 func TestLoginDetails_Validate(t *testing.T) {
@@ -23,7 +25,7 @@ func TestLoginDetails_Validate(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ld := &LoginDetails{
+			ld := &creds.LoginDetails{
 				Username: tt.fields.Username,
 				Password: tt.fields.Password,
 				Hostname: tt.fields.Hostname,

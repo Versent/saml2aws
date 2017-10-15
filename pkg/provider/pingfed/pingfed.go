@@ -1,4 +1,4 @@
-package saml2aws
+package pingfed
 
 import (
 	"crypto/tls"
@@ -11,12 +11,13 @@ import (
 	"github.com/PuerkitoBio/goquery"
 	"github.com/pkg/errors"
 	prompt "github.com/segmentio/go-prompt"
+	"github.com/versent/saml2aws/pkg/creds"
 
 	"golang.org/x/net/publicsuffix"
 )
 
-// PingFedClient wrapper around PingFed + PingId enabling authentication and retrieval of assertions
-type PingFedClient struct {
+// Client wrapper around PingFed + PingId enabling authentication and retrieval of assertions
+type Client struct {
 	client        *http.Client
 	authSubmitURL string
 	samlAssertion string
@@ -24,7 +25,7 @@ type PingFedClient struct {
 }
 
 // NewPingFedClient create a new PingFed client
-func NewPingFedClient(skipVerify bool) (*PingFedClient, error) {
+func NewPingFedClient(skipVerify bool) (*Client, error) {
 
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: skipVerify},
@@ -45,14 +46,14 @@ func NewPingFedClient(skipVerify bool) (*PingFedClient, error) {
 		return errors.New("Redirect")
 	}
 
-	return &PingFedClient{
+	return &Client{
 		client:      client,
 		mfaRequired: false,
 	}, nil
 }
 
 // Authenticate Authenticate to PingFed and return the data from the body of the SAML assertion.
-func (ac *PingFedClient) Authenticate(loginDetails *LoginDetails) (string, error) {
+func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error) {
 
 	authForm := url.Values{}
 
@@ -210,7 +211,7 @@ func (ac *PingFedClient) Authenticate(loginDetails *LoginDetails) (string, error
 	return ac.samlAssertion, nil
 }
 
-func updateLoginFormData(authForm url.Values, s *goquery.Selection, user *LoginDetails) {
+func updateLoginFormData(authForm url.Values, s *goquery.Selection, user *creds.LoginDetails) {
 	name, ok := s.Attr("name")
 	//	log.Printf("name = %s ok = %v", name, ok)
 	if !ok {
