@@ -14,6 +14,7 @@ import (
 	"github.com/Azure/go-ntlmssp"
 	"github.com/PuerkitoBio/goquery"
 	"github.com/pkg/errors"
+	"github.com/versent/saml2aws/pkg/cfg"
 	"github.com/versent/saml2aws/pkg/creds"
 )
 
@@ -23,11 +24,11 @@ type Client struct {
 	jar       http.CookieJar
 }
 
-// NewADFS2Client new adfs2 client with ntlmssp configured
-func NewADFS2Client(skipVerify bool) (*Client, error) {
+// New new adfs2 client with ntlmssp configured
+func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 	transport := &ntlmssp.Negotiator{
 		RoundTripper: &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: skipVerify, Renegotiation: tls.RenegotiateFreelyAsClient},
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: idpAccount.SkipVerify, Renegotiation: tls.RenegotiateFreelyAsClient},
 		},
 	}
 

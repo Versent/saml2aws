@@ -11,6 +11,7 @@ import (
 	"github.com/PuerkitoBio/goquery"
 	"github.com/pkg/errors"
 	prompt "github.com/segmentio/go-prompt"
+	"github.com/versent/saml2aws/pkg/cfg"
 	"github.com/versent/saml2aws/pkg/creds"
 
 	"golang.org/x/net/publicsuffix"
@@ -24,11 +25,11 @@ type Client struct {
 	mfaRequired   bool
 }
 
-// NewPingFedClient create a new PingFed client
-func NewPingFedClient(skipVerify bool) (*Client, error) {
+// New create a new PingFed client
+func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 
 	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: skipVerify},
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: idpAccount.SkipVerify},
 	}
 
 	options := &cookiejar.Options{

@@ -16,6 +16,7 @@ import (
 	"github.com/pkg/errors"
 	prompt "github.com/segmentio/go-prompt"
 	"github.com/tidwall/gjson"
+	"github.com/versent/saml2aws/pkg/cfg"
 	"github.com/versent/saml2aws/pkg/creds"
 
 	"encoding/json"
@@ -39,10 +40,10 @@ type VerifyRequest struct {
 	StateToken string `json:"stateToken"`
 }
 
-// NewOktaClient creates a new Okta client
-func NewOktaClient(skipVerify bool) (*Client, error) {
+// New creates a new Okta client
+func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: skipVerify},
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: idpAccount.SkipVerify},
 	}
 
 	options := &cookiejar.Options{
