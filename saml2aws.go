@@ -2,7 +2,9 @@ package saml2aws
 
 import (
 	"fmt"
+	"sort"
 
+	"github.com/versent/saml2aws/pkg/cfg"
 	"github.com/versent/saml2aws/pkg/creds"
 	"github.com/versent/saml2aws/pkg/provider/adfs"
 	"github.com/versent/saml2aws/pkg/provider/adfs2"
@@ -12,43 +14,61 @@ import (
 	"github.com/versent/saml2aws/pkg/provider/pingfed"
 )
 
-// Provider the SAML provider
-type Provider int
+// ProviderList list of providers with their MFAs
+type ProviderList map[string][]string
 
-const (
-	// ADFS 3.x provider
-	ADFS Provider = iota
-	// Ping provider
-	Ping
-)
+// MFAsByProvider a list of providers with their respective supported MFAs
+var MFAsByProvider = ProviderList{
+	"ADFS":      []string{"None"},
+	"ADFS2":     []string{"None"},
+	"Ping":      []string{"PingID"},
+	"JumpCloud": []string{"None"},
+	"Okta":      []string{"Duo"},
+	"KeyCloak":  []string{"None"},
+}
+
+// Names get a list of provider names
+func (mfbp ProviderList) Names() []string {
+	keys := []string{}
+	for k := range mfbp {
+		keys = append(keys, k)
+	}
+
+	sort.Strings(keys)
+
+	return keys
+}
+
+// Mfas retrieve a sorted list of mfas from the provider list
+func (mfbp ProviderList) Mfas(provider string) []string {
+	mfas := mfbp[provider]
+
+	sort.Strings(mfas)
+
+	return mfas
+}
 
 // SAMLClient client interface
 type SAMLClient interface {
 	Authenticate(loginDetails *creds.LoginDetails) (string, error)
 }
 
-// SAMLOptions options for the new SAML client
-type SAMLOptions struct {
-	SkipVerify bool
-	Provider   string
-}
-
 // NewSAMLClient create a new SAML client
-func NewSAMLClient(opts *SAMLOptions) (SAMLClient, error) {
-	switch opts.Provider {
+func NewSAMLClient(idpAccount *cfg.IDPAccount) (SAMLClient, error) {
+	switch idpAccount.Provider {
 	case "ADFS":
-		return adfs.NewADFSClient(opts.SkipVerify)
+		return adfs.New(idpAccount)
 	case "ADFS2":
-		return adfs2.NewADFS2Client(opts.SkipVerify)
+		return adfs2.New(idpAccount)
 	case "Ping":
-		return pingfed.NewPingFedClient(opts.SkipVerify)
+		return pingfed.New(idpAccount)
 	case "JumpCloud":
-		return jumpcloud.NewJumpCloudClient(opts.SkipVerify)
+		return jumpcloud.New(idpAccount)
 	case "Okta":
-		return okta.NewOktaClient(opts.SkipVerify)
+		return okta.New(idpAccount)
 	case "KeyCloak":
-		return keycloak.NewKeyCloakClient(opts.SkipVerify)
+		return keycloak.New(idpAccount)
 	default:
-		return nil, fmt.Errorf("Invalid provider: %v", opts.Provider)
+		return nil, fmt.Errorf("Invalid provider: %v", idpAccount.Provider)
 	}
 }

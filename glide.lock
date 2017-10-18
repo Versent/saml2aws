@@ -1,5 +1,5 @@
 hash: 848f784f129d44ef88c8f0aea25e59205d6a16c172f6da53e8877439ee3c18ea
-updated: 2017-04-17T12:13:56.929136006+10:00
+updated: 2017-10-16T20:28:20.907066542+11:00
 imports:
 - name: github.com/alecthomas/kingpin
   version: d2d8a9115b36a531781f0ed3c57bcba202976150
@@ -46,6 +46,8 @@ imports:
   version: 26c6e1184fd5255fa5f5289d0b789a4819c203a4
 - name: github.com/jmespath/go-jmespath
   version: bd40a432e4c76585ef6b72d3fd96fb9b6dc7b68d
+- name: github.com/mitchellh/go-homedir
+  version: b8bc1bf767474819792c23f32d8286a45736f1c6
 - name: github.com/pkg/errors
   version: 17b591df37844cde689f4d5813e5cea0927d8dd2
 - name: github.com/PuerkitoBio/goquery
@@ -86,3 +88,4 @@ testImports:
   version: d77da356e56a7428ad25149ca77381849a6a5232
   subpackages:
   - assert
+  - require

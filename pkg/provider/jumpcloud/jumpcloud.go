@@ -14,6 +14,7 @@ import (
 	"github.com/PuerkitoBio/goquery"
 	"github.com/pkg/errors"
 	"github.com/segmentio/go-prompt"
+	"github.com/versent/saml2aws/pkg/cfg"
 	"github.com/versent/saml2aws/pkg/creds"
 
 	"golang.org/x/net/publicsuffix"
@@ -24,10 +25,10 @@ type Client struct {
 	client *http.Client
 }
 
-// NewJumpCloudClient creates a new JumpCloud client
-func NewJumpCloudClient(skipVerify bool) (*Client, error) {
+// New creates a new JumpCloud client
+func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: skipVerify},
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: idpAccount.SkipVerify},
 	}
 
 	options := &cookiejar.Options{

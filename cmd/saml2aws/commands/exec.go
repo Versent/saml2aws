@@ -9,7 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sts"
 	"github.com/pkg/errors"
-	"github.com/versent/saml2aws"
+	"github.com/versent/saml2aws/pkg/awsconfig"
 	"github.com/versent/saml2aws/pkg/shell"
 )
 
@@ -20,7 +20,7 @@ func Exec(loginFlags *LoginFlags, cmdline []string) error {
 		return fmt.Errorf("Command to execute required")
 	}
 
-	sharedCreds := saml2aws.NewSharedCredentials(loginFlags.Profile)
+	sharedCreds := awsconfig.NewSharedCredentials(loginFlags.Profile)
 
 	// this checks if the credentials file has been created yet
 	// can only really be triggered if saml2aws exec is run on a new

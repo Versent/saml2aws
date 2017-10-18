@@ -13,6 +13,7 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/pkg/errors"
+	"github.com/versent/saml2aws/pkg/cfg"
 	"github.com/versent/saml2aws/pkg/creds"
 
 	"golang.org/x/net/publicsuffix"
@@ -23,11 +24,11 @@ type Client struct {
 	client *http.Client
 }
 
-// NewADFSClient create a new ADFS client
-func NewADFSClient(skipVerify bool) (*Client, error) {
+// New create a new ADFS client
+func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 
 	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: skipVerify, Renegotiation: tls.RenegotiateFreelyAsClient},
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: idpAccount.SkipVerify, Renegotiation: tls.RenegotiateFreelyAsClient},
 	}
 
 	options := &cookiejar.Options{

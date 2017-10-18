@@ -12,6 +12,7 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/pkg/errors"
+	"github.com/versent/saml2aws/pkg/cfg"
 	"github.com/versent/saml2aws/pkg/creds"
 
 	"fmt"
@@ -24,11 +25,11 @@ type Client struct {
 	client *http.Client
 }
 
-// NewKeyCloakClient create a new KeyCloakClient
-func NewKeyCloakClient(skipVerify bool) (*Client, error) {
+// New create a new KeyCloakClient
+func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 
 	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: skipVerify},
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: idpAccount.SkipVerify},
 		Proxy:           http.ProxyFromEnvironment,
 	}
 

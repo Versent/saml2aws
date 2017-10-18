@@ -11,18 +11,22 @@ import (
 	"github.com/pkg/errors"
 	"github.com/versent/saml2aws"
 	"github.com/versent/saml2aws/helper/credentials"
+	"github.com/versent/saml2aws/pkg/awsconfig"
+	"github.com/versent/saml2aws/pkg/cfg"
 	"github.com/versent/saml2aws/pkg/creds"
 )
 
 // LoginFlags login specific command flags
 type LoginFlags struct {
-	Provider   string
+	IdpAccount string
+	//Provider   string
 	Profile    string
 	Hostname   string
 	Username   string
 	Password   string
 	RoleArn    string
 	SkipVerify bool
+	Timeout    int
 	SkipPrompt bool
 }
 
@@ -34,24 +38,22 @@ func (lf *LoginFlags) RoleSupplied() bool {
 // Login login to ADFS
 func Login(loginFlags *LoginFlags) error {
 
-	config := saml2aws.NewConfigLoader(loginFlags.Provider)
-
-	hostname, err := config.LoadHostname()
+	cfgm, err := cfg.NewConfigManager(cfg.DefaultConfigPath)
 	if err != nil {
-		return errors.Wrap(err, "error loading config file")
+		return errors.Wrap(err, "failed to load configuration")
 	}
 
-	username, err := config.LoadUsername()
+	account, err := cfgm.LoadIDPAccount(loginFlags.IdpAccount)
 	if err != nil {
-		return errors.Wrap(err, "error loading config file")
+		return errors.Wrap(err, "failed to load idp account")
 	}
 
-	// fmt.Println("LookupCredentials", hostname)
+	// update username and hostname if supplied
+	applyFlagOverrides(loginFlags, account)
 
-	loginDetails := &creds.LoginDetails{
-		Hostname: hostname,
-		Username: username,
-	}
+	loginDetails := &creds.LoginDetails{Hostname: account.Hostname, Username: account.Username}
+
+	fmt.Printf("Using IDP Account %s to access %s https://%s\n", loginFlags.IdpAccount, account.Provider, account.Hostname)
 
 	err = resolveLoginDetails(loginDetails, loginFlags)
 	if err != nil {
@@ -59,11 +61,9 @@ func Login(loginFlags *LoginFlags) error {
 		os.Exit(1)
 	}
 
-	fmt.Printf("Authenticating as %s to %s https://%s\n", loginDetails.Username, loginFlags.Provider, loginDetails.Hostname)
+	fmt.Printf("Authenticating as %s ...", account.Username)
 
-	opts := &saml2aws.SAMLOptions{Provider: loginFlags.Provider, SkipVerify: loginFlags.SkipVerify}
-
-	provider, err := saml2aws.NewSAMLClient(opts)
+	provider, err := saml2aws.NewSAMLClient(account)
 	if err != nil {
 		return errors.Wrap(err, "error building IdP client")
 	}
@@ -141,7 +141,7 @@ func Login(loginFlags *LoginFlags) error {
 
 	// fmt.Println("Saving credentials")
 
-	sharedCreds := saml2aws.NewSharedCredentials(loginFlags.Profile)
+	sharedCreds := awsconfig.NewSharedCredentials(loginFlags.Profile)
 
 	err = sharedCreds.Save(aws.StringValue(resp.Credentials.AccessKeyId), aws.StringValue(resp.Credentials.SecretAccessKey), aws.StringValue(resp.Credentials.SessionToken))
 	if err != nil {
@@ -153,10 +153,6 @@ func Login(loginFlags *LoginFlags) error {
 	fmt.Println("Your new access key pair has been stored in the AWS configuration")
 	fmt.Printf("Note that it will expire at %v\n", resp.Credentials.Expiration.Local())
 	fmt.Println("To use this credential, call the AWS CLI with the --profile option (e.g. aws --profile", loginFlags.Profile, "ec2 describe-instances).")
-
-	fmt.Println("Saving config:", config.Filename)
-	config.SaveUsername(loginDetails.Username)
-	config.SaveHostname(loginDetails.Hostname)
 
 	return nil
 }
@@ -230,4 +226,22 @@ func resolveRole(awsRoles []*saml2aws.AWSRole, samlAssertion string, loginFlags 
 	}
 
 	return role, nil
+}
+
+func applyFlagOverrides(loginFlags *LoginFlags, account *cfg.IDPAccount) {
+	if loginFlags.Hostname != "" {
+		account.Hostname = loginFlags.Hostname
+	}
+
+	if loginFlags.Username != "" {
+		account.Username = loginFlags.Username
+	}
+
+	if loginFlags.SkipVerify {
+		account.SkipVerify = loginFlags.SkipVerify
+	}
+
+	if loginFlags.Timeout > 0 {
+		account.Timeout = loginFlags.Timeout
+	}
 }
