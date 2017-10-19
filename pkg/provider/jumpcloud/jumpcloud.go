@@ -7,7 +7,6 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	"net/http/cookiejar"
 	"net/url"
 	"strings"
 
@@ -16,13 +15,12 @@ import (
 	"github.com/segmentio/go-prompt"
 	"github.com/versent/saml2aws/pkg/cfg"
 	"github.com/versent/saml2aws/pkg/creds"
-
-	"golang.org/x/net/publicsuffix"
+	"github.com/versent/saml2aws/pkg/provider"
 )
 
 // Client is a wrapper representing a JumpCloud SAML client
 type Client struct {
-	client *http.Client
+	client *provider.HTTPClient
 }
 
 // New creates a new JumpCloud client
@@ -31,16 +29,10 @@ func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: idpAccount.SkipVerify},
 	}
 
-	options := &cookiejar.Options{
-		PublicSuffixList: publicsuffix.List,
-	}
-
-	jar, err := cookiejar.New(options)
+	client, err := provider.NewHTTPClient(tr)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "error building http client")
 	}
-
-	client := &http.Client{Transport: tr, Jar: jar}
 
 	return &Client{
 		client: client,
@@ -92,7 +84,7 @@ func (jc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 
 	// Temporarily disable following redirects so we can detect MFA.
-	disableFollowRedirect(jc.client)
+	jc.client.DisableFollowRedirect()
 	res, err = jc.client.Do(req)
 	if err != nil {
 		return samlAssertion, errors.Wrap(err, "error retrieving login form")
@@ -115,7 +107,7 @@ func (jc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		}
 	}
 
-	enableFollowRedirect(jc.client)
+	jc.client.EnableFollowRedirect()
 
 	if mfaRequired {
 		token := prompt.StringRequired("MFA Token")
@@ -180,14 +172,4 @@ func updateJumpCloudForm(authForm url.Values, s *goquery.Selection, user *creds.
 		}
 		authForm.Add(name, val)
 	}
-}
-
-func disableFollowRedirect(client *http.Client) {
-	client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
-		return http.ErrUseLastResponse
-	}
-}
-
-func enableFollowRedirect(client *http.Client) {
-	client.CheckRedirect = nil
 }

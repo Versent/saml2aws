@@ -7,7 +7,6 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	"net/http/cookiejar"
 	"net/url"
 	"strings"
 
@@ -15,13 +14,12 @@ import (
 	"github.com/pkg/errors"
 	"github.com/versent/saml2aws/pkg/cfg"
 	"github.com/versent/saml2aws/pkg/creds"
-
-	"golang.org/x/net/publicsuffix"
+	"github.com/versent/saml2aws/pkg/provider"
 )
 
 // Client wrapper around ADFS enabling authentication and retrieval of assertions
 type Client struct {
-	client *http.Client
+	client *provider.HTTPClient
 }
 
 // New create a new ADFS client
@@ -31,16 +29,10 @@ func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: idpAccount.SkipVerify, Renegotiation: tls.RenegotiateFreelyAsClient},
 	}
 
-	options := &cookiejar.Options{
-		PublicSuffixList: publicsuffix.List,
-	}
-
-	jar, err := cookiejar.New(options)
+	client, err := provider.NewHTTPClient(tr)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "error building http client")
 	}
-
-	client := &http.Client{Transport: tr, Jar: jar}
 
 	return &Client{
 		client: client,
