@@ -7,7 +7,6 @@ import (
 	"html"
 	"io/ioutil"
 	"net/http"
-	"net/http/cookiejar"
 	"net/url"
 	"strings"
 	"time"
@@ -18,15 +17,14 @@ import (
 	"github.com/tidwall/gjson"
 	"github.com/versent/saml2aws/pkg/cfg"
 	"github.com/versent/saml2aws/pkg/creds"
+	"github.com/versent/saml2aws/pkg/provider"
 
 	"encoding/json"
-
-	"golang.org/x/net/publicsuffix"
 )
 
 // Client is a wrapper representing a Okta SAML client
 type Client struct {
-	client *http.Client
+	client *provider.HTTPClient
 }
 
 // AuthRequest represents an mfa okta request
@@ -46,16 +44,10 @@ func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: idpAccount.SkipVerify},
 	}
 
-	options := &cookiejar.Options{
-		PublicSuffixList: publicsuffix.List,
-	}
-
-	jar, err := cookiejar.New(options)
+	client, err := provider.NewHTTPClient(tr)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "error building http client")
 	}
-
-	client := &http.Client{Transport: tr, Jar: jar}
 
 	return &Client{
 		client: client,
@@ -324,6 +316,10 @@ func (oc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		}
 
 		body, err = ioutil.ReadAll(res.Body)
+		if err != nil {
+			return samlAssertion, errors.Wrap(err, "error reading verify response")
+		}
+
 		resp = string(body)
 
 	}

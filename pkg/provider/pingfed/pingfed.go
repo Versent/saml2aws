@@ -4,7 +4,6 @@ import (
 	"crypto/tls"
 	"fmt"
 	"net/http"
-	"net/http/cookiejar"
 	"net/url"
 	"strings"
 
@@ -13,13 +12,12 @@ import (
 	prompt "github.com/segmentio/go-prompt"
 	"github.com/versent/saml2aws/pkg/cfg"
 	"github.com/versent/saml2aws/pkg/creds"
-
-	"golang.org/x/net/publicsuffix"
+	"github.com/versent/saml2aws/pkg/provider"
 )
 
 // Client wrapper around PingFed + PingId enabling authentication and retrieval of assertions
 type Client struct {
-	client        *http.Client
+	client        *provider.HTTPClient
 	authSubmitURL string
 	samlAssertion string
 	mfaRequired   bool
@@ -32,20 +30,13 @@ func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: idpAccount.SkipVerify},
 	}
 
-	options := &cookiejar.Options{
-		PublicSuffixList: publicsuffix.List,
-	}
-
-	jar, err := cookiejar.New(options)
+	client, err := provider.NewHTTPClient(tr)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "error building http client")
 	}
 
-	client := &http.Client{Transport: tr, Jar: jar}
 	//disable default behaviour to follow redirects as we use this to detect mfa
-	client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
-		return errors.New("Redirect")
-	}
+	client.DisableFollowRedirect()
 
 	return &Client{
 		client:      client,

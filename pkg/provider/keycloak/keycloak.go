@@ -6,7 +6,6 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	"net/http/cookiejar"
 	"net/url"
 	"strings"
 
@@ -14,15 +13,14 @@ import (
 	"github.com/pkg/errors"
 	"github.com/versent/saml2aws/pkg/cfg"
 	"github.com/versent/saml2aws/pkg/creds"
+	"github.com/versent/saml2aws/pkg/provider"
 
 	"fmt"
-
-	"golang.org/x/net/publicsuffix"
 )
 
 // Client wrapper around KeyCloak.
 type Client struct {
-	client *http.Client
+	client *provider.HTTPClient
 }
 
 // New create a new KeyCloakClient
@@ -33,16 +31,10 @@ func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 		Proxy:           http.ProxyFromEnvironment,
 	}
 
-	options := &cookiejar.Options{
-		PublicSuffixList: publicsuffix.List,
-	}
-
-	jar, err := cookiejar.New(options)
+	client, err := provider.NewHTTPClient(tr)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "error building http client")
 	}
-
-	client := &http.Client{Transport: tr, Jar: jar}
 
 	return &Client{
 		client: client,
