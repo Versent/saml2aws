@@ -22,8 +22,10 @@ endif
 
 deps: glide
 	# go get github.com/buildkite/github-release
+	go get -u github.com/alecthomas/gometalinter	
 	go get github.com/mitchellh/gox
 	./glide install
+	gometalinter --install
 
 compile: deps
 	@rm -rf build/
@@ -35,6 +37,10 @@ compile: deps
 	-osarch="windows/i386" \
 	-output "build/{{.Dir}}_$(VERSION)_{{.OS}}_{{.Arch}}/$(NAME)" \
 	$(shell ./glide novendor)
+
+# Run all the linters
+lint:
+	gometalinter --vendor ./...
 
 install:
 	go install ./cmd/saml2aws
@@ -58,4 +64,4 @@ clean:
 	rm ./glide
 	rm -fr ./build
 
-.PHONY: default deps compile dist release test clean
+.PHONY: default deps compile lint dist release test clean

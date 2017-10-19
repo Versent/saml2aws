@@ -46,7 +46,7 @@ func buildCmdList(s kingpin.Settings) (target *[]string) {
 func configureLoginFlags(app *kingpin.Application) *commands.LoginFlags {
 	c := &commands.LoginFlags{}
 
-	app.Flag("idp-account", "The name of the configured IDP account").Short('i').Default("default").StringVar(&c.IdpAccount)
+	app.Flag("idp-account", "The name of the configured IDP account").Short('a').Default("default").StringVar(&c.IdpAccount)
 	app.Flag("profile", "The AWS profile to save the temporary credentials").Short('p').Default("saml").StringVar(&c.Profile)
 	app.Flag("skip-verify", "Skip verification of server certificate.").Short('s').BoolVar(&c.SkipVerify)
 	// app.Flag("timeout", "Override the default HTTP client timeout in seconds.").Short('t').IntVar(&c.Timeout)
