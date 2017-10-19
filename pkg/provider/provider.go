@@ -13,7 +13,7 @@ type HTTPClient struct {
 }
 
 // NewHTTPClient configure the default http client used by the providers
-func NewHTTPClient(tr *http.Transport) (*HTTPClient, error) {
+func NewHTTPClient(tr http.RoundTripper) (*HTTPClient, error) {
 
 	options := &cookiejar.Options{
 		PublicSuffixList: publicsuffix.List,

@@ -11,9 +11,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/versent/saml2aws/pkg/prompter"
+
 	"github.com/PuerkitoBio/goquery"
 	"github.com/pkg/errors"
-	prompt "github.com/segmentio/go-prompt"
 	"github.com/tidwall/gjson"
 	"github.com/versent/saml2aws/pkg/cfg"
 	"github.com/versent/saml2aws/pkg/creds"
@@ -22,9 +23,15 @@ import (
 	"encoding/json"
 )
 
+var duoMFAOptions = []string{
+	"Passcode",
+	"Duo Push",
+}
+
 // Client is a wrapper representing a Okta SAML client
 type Client struct {
-	client *provider.HTTPClient
+	client   *provider.HTTPClient
+	prompter prompter.Prompter
 }
 
 // AuthRequest represents an mfa okta request
@@ -50,7 +57,8 @@ func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 	}
 
 	return &Client{
-		client: client,
+		client:   client,
+		prompter: prompter.NewCli(),
 	}, nil
 }
 
@@ -60,12 +68,19 @@ func (oc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 
 	oktaEntryURL := fmt.Sprintf("https://%s", loginDetails.Hostname)
 	oktaURL, err := url.Parse(oktaEntryURL)
+	if err != nil {
+		return samlAssertion, errors.Wrap(err, "error building oktaURL")
+	}
+
 	oktaOrgHost := oktaURL.Host
 
 	//authenticate via okta api
 	authReq := AuthRequest{Username: loginDetails.Username, Password: loginDetails.Password}
 	authBody := new(bytes.Buffer)
-	json.NewEncoder(authBody).Encode(authReq)
+	err = json.NewEncoder(authBody).Encode(authReq)
+	if err != nil {
+		return samlAssertion, errors.Wrap(err, "error encoding authreq")
+	}
 
 	authSubmitURL := fmt.Sprintf("https://%s/api/v1/authn", oktaOrgHost)
 
@@ -102,7 +117,10 @@ func (oc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		// get duo host, signature & callback
 		verifyReq := VerifyRequest{StateToken: stateToken}
 		verifyBody := new(bytes.Buffer)
-		json.NewEncoder(verifyBody).Encode(verifyReq)
+		err := json.NewEncoder(verifyBody).Encode(verifyReq)
+		if err != nil {
+			return samlAssertion, errors.Wrap(err, "error encoding verifyReq")
+		}
 
 		req, err := http.NewRequest("POST", oktaVerify, verifyBody)
 		if err != nil {
@@ -170,16 +188,11 @@ func (oc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		//only supporting push or passcode for now
 		var token string
 
-		var mfaOptions = []string{
-			"Passcode",
-			"Duo Push",
-		}
+		optionSelected := oc.prompter.Choice("Select a DUO MFA Option", duoMFAOptions)
 
-		mfaOption := prompt.Choose("Select a DUO MFA Option", mfaOptions)
-
-		if mfaOptions[mfaOption] == "Passcode" {
+		if optionSelected == "Passcode" {
 			//get users DUO MFA Token
-			token = prompt.StringRequired("Enter passcode")
+			token = oc.prompter.StringRequired("Enter passcode")
 		}
 
 		// send mfa auth request
@@ -188,9 +201,9 @@ func (oc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		duoForm = url.Values{}
 		duoForm.Add("sid", duoSID)
 		duoForm.Add("device", "phone1")
-		duoForm.Add("factor", mfaOptions[mfaOption])
+		duoForm.Add("factor", optionSelected)
 		duoForm.Add("out_of_date", "false")
-		if mfaOptions[mfaOption] == "Passcode" {
+		if optionSelected == "Passcode" {
 			duoForm.Add("passcode", token)
 		}
 
@@ -299,7 +312,10 @@ func (oc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 
 		verifyReq = VerifyRequest{StateToken: stateToken}
 		verifyBody = new(bytes.Buffer)
-		json.NewEncoder(verifyBody).Encode(verifyReq)
+		err = json.NewEncoder(verifyBody).Encode(verifyReq)
+		if err != nil {
+			return samlAssertion, errors.Wrap(err, "error encoding verifyReq")
+		}
 
 		req, err = http.NewRequest("POST", oktaVerify, verifyBody)
 		if err != nil {
