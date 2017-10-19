@@ -15,8 +15,11 @@ import (
 	"strings"
 	"unsafe"
 
+	"github.com/sirupsen/logrus"
 	"github.com/versent/saml2aws/helper/credentials"
 )
+
+var logger = logrus.WithField("helper", "osxkeychain")
 
 // errCredentialsNotFound is the specific error message returned by OS X
 // when the credentials are not in the keychain.
@@ -70,6 +73,9 @@ func (h Osxkeychain) Delete(serverURL string) error {
 
 // Get returns the username and secret to use for a given registry server URL.
 func (h Osxkeychain) Get(serverURL string) (string, string, error) {
+
+	logger.WithField("serverURL", serverURL).Debug("Get credentials")
+
 	s, err := splitServer(serverURL)
 	if err != nil {
 		return "", "", err
@@ -88,6 +94,7 @@ func (h Osxkeychain) Get(serverURL string) (string, string, error) {
 		defer C.free(unsafe.Pointer(errMsg))
 		goMsg := C.GoString(errMsg)
 		if goMsg == errCredentialsNotFound {
+			logger.WithField("goMsg", goMsg).Debug("Get credentials")
 			return "", "", credentials.ErrCredentialsNotFound
 		}
 
@@ -96,6 +103,9 @@ func (h Osxkeychain) Get(serverURL string) (string, string, error) {
 
 	user := C.GoStringN(username, C.int(usernameLen))
 	pass := C.GoStringN(secret, C.int(secretLen))
+
+	logger.WithField("user", user).Debug("Get credentials")
+
 	return user, pass, nil
 }
 

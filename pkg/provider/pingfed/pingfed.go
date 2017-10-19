@@ -10,10 +10,14 @@ import (
 	"github.com/PuerkitoBio/goquery"
 	"github.com/pkg/errors"
 	prompt "github.com/segmentio/go-prompt"
+	"github.com/sirupsen/logrus"
 	"github.com/versent/saml2aws/pkg/cfg"
 	"github.com/versent/saml2aws/pkg/creds"
+	"github.com/versent/saml2aws/pkg/dump"
 	"github.com/versent/saml2aws/pkg/provider"
 )
+
+var logger = logrus.WithField("provider", "pingfed")
 
 // Client wrapper around PingFed + PingId enabling authentication and retrieval of assertions
 type Client struct {
@@ -50,6 +54,8 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 	authForm := url.Values{}
 
 	pingFedURL := fmt.Sprintf("https://%s/idp/startSSO.ping?PartnerSpId=urn:amazon:webservices", loginDetails.Hostname)
+
+	logger.WithField("url", pingFedURL).Debug("GET")
 
 	res, err := ac.client.Get(pingFedURL)
 	if err != nil {
@@ -90,30 +96,47 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 
+	logger.WithField("authSubmitURL", ac.authSubmitURL).WithField("req", dump.RequestString(req)).Debug("POST")
+
 	res, err = ac.client.Do(req)
 	if err != nil {
-		//check for redirect, this indicates PingOne MFA being used
-		if res.StatusCode == 302 {
-			ac.mfaRequired = true
-		} else {
-			return "", errors.Wrap(err, "error retieving login form")
-		}
+		return "", errors.Wrap(err, "error retrieving login form")
 	}
+
+	logger.WithField("authSubmitURL", ac.authSubmitURL).WithField("res", dump.ResponseString(res)).Debug("POST")
+
+	//check for redirect, this indicates PingOne MFA being used
+	if res.StatusCode == 302 {
+		ac.mfaRequired = true
+	}
+
+	logger.WithField("mfaRequired", ac.mfaRequired).Debug("POST")
 
 	//process mfa
 	if ac.mfaRequired {
 
 		mfaURL, err := res.Location()
+		if err != nil {
+			return "", errors.Wrap(err, "error building mfa url")
+		}
 		//spew.Dump(mfaURL)
+		logger.WithField("mfaURL", mfaURL).Debug("GET")
 
 		//follow redirect
 		res, err = ac.client.Get(mfaURL.String())
 		if err != nil {
-			return "", errors.Wrap(err, "error retieving form")
+			return "", errors.Wrap(err, "error retrieving form")
 		}
+
+		logger.WithField("mfaURL", mfaURL).WithField("res", dump.ResponseString(res)).Debug("GET")
 
 		//extract form action and jwt token
 		form, actionURL, err := extractFormData(res)
+		if err != nil {
+			return "", errors.Wrap(err, "error extracting mfa form data")
+		}
+
+		logger.WithField("actionURL", actionURL).Debug("POST")
 
 		//request mfa auth via PingId (device swipe)
 		req, err := http.NewRequest("POST", actionURL, strings.NewReader(form.Encode()))
@@ -126,6 +149,8 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		if err != nil {
 			return "", errors.Wrap(err, "error retieving mfa response")
 		}
+
+		logger.WithField("actionURL", actionURL).WithField("res", dump.ResponseString(res)).Debug("POST")
 
 		//extract form action and csrf token
 		form, actionURL, err = extractFormData(res)
@@ -144,6 +169,11 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 
 		//extract form action and jwt token
 		form, actionURL, err = extractFormData(res)
+		if err != nil {
+			return "", errors.Wrap(err, "error extracting jwt form data")
+		}
+
+		logger.WithField("actionURL", actionURL).Debug("POST")
 
 		//if actionURL is OTP then prompt for token
 		//user has disabled swipe
@@ -162,13 +192,21 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 			}
 
 			req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+
+			logger.WithField("actionURL", actionURL).WithField("req", dump.RequestString(req)).Debug("POST")
+
 			res, err = ac.client.Do(req)
 			if err != nil {
 				return "", errors.Wrap(err, "error polling mfa device")
 			}
 
+			logger.WithField("actionURL", actionURL).WithField("res", dump.ResponseString(res)).Debug("POST")
+
 			//extract form action and jwt token
 			form, actionURL, err = extractFormData(res)
+			if err != nil {
+				return "", errors.Wrap(err, "error extracting mfa form data")
+			}
 
 		}
 
@@ -180,11 +218,14 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 
 		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 
+		logger.WithField("actionURL", actionURL).WithField("req", dump.RequestString(req)).Debug("POST")
+
 		res, err = ac.client.Do(req)
 		if err != nil {
 			return "", errors.Wrap(err, "error authenticating mfa")
 		}
 
+		logger.WithField("actionURL", actionURL).WithField("res", dump.ResponseString(res)).Debug("POST")
 	}
 
 	//try to extract SAMLResponse
@@ -199,6 +240,8 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 	if !ok {
 		return "", errors.Wrap(err, "unable to locate saml response")
 	}
+
+	logger.WithField("samlAssertion", ac.samlAssertion).Debug("SAMLResponse")
 
 	return ac.samlAssertion, nil
 }
