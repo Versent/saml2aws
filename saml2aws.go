@@ -19,7 +19,7 @@ type ProviderList map[string][]string
 
 // MFAsByProvider a list of providers with their respective supported MFAs
 var MFAsByProvider = ProviderList{
-	"ADFS":      []string{"None"},
+	"ADFS":      []string{"None", "VIP"},
 	"ADFS2":     []string{"None"},
 	"Ping":      []string{"PingID"},
 	"JumpCloud": []string{"None"},
