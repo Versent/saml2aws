@@ -43,8 +43,12 @@ func Login(loginFlags *LoginFlags) error {
 		return errors.Wrap(err, "failed to load configuration")
 	}
 
-	account, err := cfgm.LoadIDPAccount(loginFlags.IdpAccount)
+	account, err := cfgm.LoadVerifyIDPAccount(loginFlags.IdpAccount)
 	if err != nil {
+		if cfg.IsErrIdpAccountNotFound(err) {
+			fmt.Printf("%v\n", err)
+			os.Exit(1)
+		}
 		return errors.Wrap(err, "failed to load idp account")
 	}
 
@@ -61,7 +65,7 @@ func Login(loginFlags *LoginFlags) error {
 		os.Exit(1)
 	}
 
-	fmt.Printf("Authenticating as %s ...", account.Username)
+	fmt.Printf("Authenticating as %s ...\n", account.Username)
 
 	provider, err := saml2aws.NewSAMLClient(account)
 	if err != nil {

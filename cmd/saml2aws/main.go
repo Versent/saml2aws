@@ -2,15 +2,17 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"os"
 
 	"github.com/alecthomas/kingpin"
+	"github.com/sirupsen/logrus"
 	"github.com/versent/saml2aws/cmd/saml2aws/commands"
 )
 
 var (
 	app = kingpin.New("saml2aws", "A command line tool to help with SAML access to the AWS token service.")
+
+	verbose = app.Flag("verbose", "Enable verbose logging").Bool()
 
 	cmdLogin     = app.Command("login", "Login to a SAML 2.0 IDP and convert the SAML assertion to an STS token.")
 	cmdExec      = app.Command("exec", "Exec the supplied command with env vars from STS token.")
@@ -61,7 +63,6 @@ func configureLoginFlags(app *kingpin.Application) *commands.LoginFlags {
 }
 
 func main() {
-	log.SetFlags(log.Lshortfile)
 
 	app.Version(Version)
 
@@ -69,7 +70,13 @@ func main() {
 
 	command := kingpin.MustParse(app.Parse(os.Args[1:]))
 
+	if *verbose {
+		logrus.SetLevel(logrus.DebugLevel)
+	}
+
 	var err error
+
+	logrus.WithField("command", command).Debug("Running")
 
 	switch command {
 	case cmdLogin.FullCommand():
