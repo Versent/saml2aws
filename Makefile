@@ -42,6 +42,10 @@ compile: deps
 lint:
 	gometalinter --vendor ./...
 
+# gofmt and goimports all go files
+fmt:
+	find . -name '*.go' -not -wholename './vendor/*' | while read -r file; do gofmt -w -s "$$file"; goimports -w "$$file"; done
+
 install:
 	go install ./cmd/saml2aws
 
@@ -64,4 +68,4 @@ clean:
 	rm ./glide
 	rm -fr ./build
 
-.PHONY: default deps compile lint dist release test clean
+.PHONY: default deps compile lint fmt dist release test clean

@@ -113,7 +113,7 @@ func (jc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		token := prompt.StringRequired("MFA Token")
 		authForm.Add("otp", token)
 
-		req, err := http.NewRequest("POST", authSubmitURL, strings.NewReader(authForm.Encode()))
+		req, err = http.NewRequest("POST", authSubmitURL, strings.NewReader(authForm.Encode()))
 		if err != nil {
 			return samlAssertion, errors.Wrap(err, "error building MFA authentication request")
 		}

@@ -145,7 +145,7 @@ func (ac *Client) vipMFA(authSubmitURL string, res *http.Response) (*http.Respon
 	vipIndex := doc.Find("input#authMethod[value=VIPAuthenticationProviderWindowsAccountName]").Index()
 
 	if vipIndex == -1 {
-		return nil, errors.New("unable to find VIP challenge, no MFA found")
+		return res, nil // if we didn't find the MFA flag then just continue
 	}
 
 	var token = ac.prompter.RequestSecurityCode("000000")
