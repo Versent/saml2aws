@@ -154,6 +154,9 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 
 		//extract form action and csrf token
 		form, actionURL, err = extractFormData(res)
+		if err != nil {
+			return "", errors.Wrap(err, "error extracting authentication form")
+		}
 
 		//contine mfa auth with csrf token
 		req, err = http.NewRequest("POST", actionURL, strings.NewReader(form.Encode()))

@@ -23,6 +23,23 @@ type IDPAccount struct {
 	Timeout    int    `ini:"timeout"`
 }
 
+// Validate validate the required / exptected fields are set
+func (ia *IDPAccount) Validate() error {
+	if ia.Hostname == "" {
+		return errors.New("Hostname empty in idp account")
+	}
+
+	if ia.Provider == "" {
+		return errors.New("Provider empty in idp account")
+	}
+
+	if ia.MFA == "" {
+		return errors.New("MFA empty in idp account")
+	}
+
+	return nil
+}
+
 // ConfigManager manage the various IDP account settings
 type ConfigManager struct {
 	configPath string

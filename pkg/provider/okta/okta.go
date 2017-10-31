@@ -117,12 +117,12 @@ func (oc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		// get duo host, signature & callback
 		verifyReq := VerifyRequest{StateToken: stateToken}
 		verifyBody := new(bytes.Buffer)
-		err := json.NewEncoder(verifyBody).Encode(verifyReq)
+		err = json.NewEncoder(verifyBody).Encode(verifyReq)
 		if err != nil {
 			return samlAssertion, errors.Wrap(err, "error encoding verifyReq")
 		}
 
-		req, err := http.NewRequest("POST", oktaVerify, verifyBody)
+		req, err = http.NewRequest("POST", oktaVerify, verifyBody)
 		if err != nil {
 			return samlAssertion, errors.Wrap(err, "error building verify request")
 		}
@@ -130,12 +130,15 @@ func (oc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		req.Header.Add("Content-Type", "application/json")
 		req.Header.Add("Accept", "application/json")
 
-		res, err := oc.client.Do(req)
+		res, err = oc.client.Do(req)
 		if err != nil {
 			return samlAssertion, errors.Wrap(err, "error retrieving verify response")
 		}
 
 		body, err = ioutil.ReadAll(res.Body)
+		if err != nil {
+			return samlAssertion, errors.Wrap(err, "error retrieving body from response")
+		}
 		resp = string(body)
 
 		duoHost := gjson.Get(resp, "_embedded.factor._embedded.verification.host").String()
@@ -220,6 +223,10 @@ func (oc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		}
 
 		body, err = ioutil.ReadAll(res.Body)
+		if err != nil {
+			return samlAssertion, errors.Wrap(err, "error retrieving body from response")
+		}
+
 		resp = string(body)
 
 		duoTxStat := gjson.Get(resp, "stat").String()
@@ -248,6 +255,10 @@ func (oc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		}
 
 		body, err = ioutil.ReadAll(res.Body)
+		if err != nil {
+			return samlAssertion, errors.Wrap(err, "error retrieving body from response")
+		}
+
 		resp = string(body)
 
 		duoTxResult := gjson.Get(resp, "response.result").String()
@@ -273,7 +284,11 @@ func (oc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 				}
 
 				body, err = ioutil.ReadAll(res.Body)
-				resp := string(body)
+				if err != nil {
+					return samlAssertion, errors.Wrap(err, "error retrieving body from response")
+				}
+
+				resp = string(body)
 
 				duoTxResult = gjson.Get(resp, "response.result").String()
 				duoTxCookie = gjson.Get(resp, "response.cookie").String()
@@ -303,7 +318,7 @@ func (oc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 
 		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 
-		res, err = oc.client.Do(req)
+		_, err = oc.client.Do(req)
 		if err != nil {
 			return samlAssertion, errors.Wrap(err, "error retrieving verify response")
 		}
