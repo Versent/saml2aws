@@ -77,8 +77,7 @@ func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 func (oc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error) {
 	var samlAssertion string
 
-	oktaEntryURL := fmt.Sprintf("https://%s", loginDetails.Hostname)
-	oktaURL, err := url.Parse(oktaEntryURL)
+	oktaURL, err := url.Parse(loginDetails.URL)
 	if err != nil {
 		return samlAssertion, errors.Wrap(err, "error building oktaURL")
 	}
@@ -426,7 +425,7 @@ func (oc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 	q := req.URL.Query()
 	q.Add("checkAccountSetupComplete", "true")
 	q.Add("token", oktaSessionToken)
-	q.Add("redirectUrl", oktaEntryURL)
+	q.Add("redirectUrl", loginDetails.URL)
 	req.URL.RawQuery = q.Encode()
 
 	res, err = oc.client.Do(req)

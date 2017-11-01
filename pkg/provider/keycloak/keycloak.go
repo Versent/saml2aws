@@ -47,9 +47,7 @@ func (kc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 	var samlAssertion string
 	authForm := url.Values{}
 
-	samlAssertion = ""
-
-	keyCloakURL := fmt.Sprintf("https://%s", loginDetails.Hostname)
+	keyCloakURL := loginDetails.URL
 
 	// fmt.Printf("KeyCloak URL: %s\n\n", keyCloakURL)
 

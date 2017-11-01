@@ -3,6 +3,7 @@ package saml2aws
 import (
 	"bufio"
 	"fmt"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -34,7 +35,7 @@ func PromptForConfigurationDetails(idpAccount *cfg.IDPAccount) error {
 
 	fmt.Println("")
 
-	idpAccount.Hostname = promptFor("Hostname [%s]", idpAccount.Hostname)
+	idpAccount.URL = promptForURL("URL [%s]", idpAccount.URL)
 	idpAccount.Username = promptFor("Username [%s]", idpAccount.Username)
 
 	fmt.Println("")
@@ -140,4 +141,26 @@ func promptFor(promptString, defaultValue string) string {
 	}
 
 	return val
+}
+
+func promptForURL(promptString, defaultValue string) string {
+	var rawURL string
+
+	// do while
+	for {
+		rawURL = prompt.String(promptString, defaultValue)
+
+		if rawURL == "" {
+			rawURL = defaultValue
+		}
+
+		_, err := url.ParseRequestURI(rawURL)
+		if err != nil {
+			fmt.Println("please enter a valid url eg https://id.example.com")
+		} else {
+			break
+		}
+	}
+
+	return rawURL
 }

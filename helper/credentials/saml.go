@@ -9,7 +9,7 @@ import (
 // LookupCredentials lookup an existing set of credentials and validate it.
 func LookupCredentials(loginDetails *creds.LoginDetails) error {
 
-	username, password, err := CurrentHelper.Get(fmt.Sprintf("https://%s", loginDetails.Hostname))
+	username, password, err := CurrentHelper.Get(fmt.Sprintf("%s", loginDetails.URL))
 	if err != nil {
 		return err
 	}
@@ -21,10 +21,10 @@ func LookupCredentials(loginDetails *creds.LoginDetails) error {
 }
 
 // SaveCredentials save the user credentials.
-func SaveCredentials(hostname, username, password string) error {
+func SaveCredentials(url, username, password string) error {
 
 	creds := &Credentials{
-		ServerURL: fmt.Sprintf("https://%s", hostname),
+		ServerURL: fmt.Sprintf("%s", url),
 		Username:  username,
 		Secret:    password,
 	}

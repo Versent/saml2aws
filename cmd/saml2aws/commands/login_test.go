@@ -11,10 +11,10 @@ import (
 
 func TestResolveLoginDetailsWithFlags(t *testing.T) {
 
-	loginFlags := &LoginFlags{Hostname: "id.example.com", Username: "wolfeidau", Password: "testtestlol", SkipPrompt: true}
+	loginFlags := &LoginFlags{URL: "https://id.example.com", Username: "wolfeidau", Password: "testtestlol", SkipPrompt: true}
 
 	idpa := &cfg.IDPAccount{
-		Hostname: "id.example.com",
+		URL:      "https://id.example.com",
 		MFA:      "none",
 		Provider: "Ping",
 		Username: "wolfeidau",
@@ -22,7 +22,7 @@ func TestResolveLoginDetailsWithFlags(t *testing.T) {
 	loginDetails, err := resolveLoginDetails(idpa, loginFlags)
 
 	assert.Empty(t, err)
-	assert.Equal(t, &creds.LoginDetails{Username: "wolfeidau", Password: "testtestlol", Hostname: "id.example.com"}, loginDetails)
+	assert.Equal(t, &creds.LoginDetails{Username: "wolfeidau", Password: "testtestlol", URL: "https://id.example.com"}, loginDetails)
 }
 
 func TestResolveRoleSingleEntry(t *testing.T) {

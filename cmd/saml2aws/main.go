@@ -53,7 +53,7 @@ func configureLoginFlags(app *kingpin.Application) *commands.LoginFlags {
 	app.Flag("skip-verify", "Skip verification of server certificate.").Short('s').BoolVar(&c.SkipVerify)
 	// app.Flag("timeout", "Override the default HTTP client timeout in seconds.").Short('t').IntVar(&c.Timeout)
 	// app.Flag("provider", "The type of SAML IDP provider.").Short('i').Default("ADFS").EnumVar(&c.Provider, "ADFS", "ADFS2", "Ping", "JumpCloud", "Okta", "KeyCloak")
-	app.Flag("hostname", "The hostname of the SAML IDP server used to login.").StringVar(&c.Hostname)
+	app.Flag("URL", "The URL of the SAML IDP server used to login.").StringVar(&c.URL)
 	app.Flag("username", "The username used to login.").StringVar(&c.Username)
 	app.Flag("password", "The password used to login.").Envar("SAML2AWS_PASSWORD").StringVar(&c.Password)
 	app.Flag("role", "The ARN of the role to assume.").StringVar(&c.RoleArn)

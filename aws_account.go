@@ -12,6 +12,8 @@ import (
 	"github.com/pkg/errors"
 )
 
+const awsURL = "https://signin.aws.amazon.com/saml"
+
 // AWSAccount holds the AWS account name and roles
 type AWSAccount struct {
 	Name  string
@@ -20,16 +22,15 @@ type AWSAccount struct {
 
 // ParseAWSAccounts extract the aws accounts from the saml assertion
 func ParseAWSAccounts(samlAssertion string) ([]*AWSAccount, error) {
-	awsURL := "https://signin.aws.amazon.com/saml"
 
 	res, err := http.PostForm(awsURL, url.Values{"SAMLResponse": {samlAssertion}})
 	if err != nil {
-		return nil, errors.Wrap(err, "error retieving AWS login form")
+		return nil, errors.Wrap(err, "error retrieving AWS login form")
 	}
 
 	data, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		return nil, errors.Wrap(err, "error retieving AWS login body")
+		return nil, errors.Wrap(err, "error retrieving AWS login body")
 	}
 
 	return ExtractAWSAccounts(data)

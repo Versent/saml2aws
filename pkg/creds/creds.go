@@ -6,13 +6,13 @@ import "errors"
 type LoginDetails struct {
 	Username string
 	Password string
-	Hostname string
+	URL      string
 }
 
 // Validate validate the login details
 func (ld *LoginDetails) Validate() error {
-	if ld.Hostname == "" {
-		return errors.New("Empty hostname")
+	if ld.URL == "" {
+		return errors.New("Empty URL")
 	}
 	if ld.Username == "" {
 		return errors.New("Empty username")
