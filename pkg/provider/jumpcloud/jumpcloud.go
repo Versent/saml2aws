@@ -46,7 +46,7 @@ func (jc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 	mfaRequired := false
 
 	authForm := url.Values{}
-	jumpCloudURL := fmt.Sprintf("https://%s", loginDetails.Hostname)
+	jumpCloudURL := loginDetails.URL
 
 	res, err := jc.client.Get(jumpCloudURL)
 	if err != nil {

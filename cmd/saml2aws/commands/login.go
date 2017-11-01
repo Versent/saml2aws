@@ -23,8 +23,9 @@ const MaxDurationSeconds = 3600
 type LoginFlags struct {
 	IdpAccount string
 	//Provider   string
-	Profile    string
-	Hostname   string
+	Profile string
+	//Hostname   string
+	URL        string
 	Username   string
 	Password   string
 	RoleArn    string
@@ -76,7 +77,7 @@ func Login(loginFlags *LoginFlags) error {
 		os.Exit(1)
 	}
 
-	err = credentials.SaveCredentials(loginDetails.Hostname, loginDetails.Username, loginDetails.Password)
+	err = credentials.SaveCredentials(loginDetails.URL, loginDetails.Username, loginDetails.Password)
 	if err != nil {
 		return errors.Wrap(err, "error storing password in keychain")
 	}
@@ -147,9 +148,9 @@ func resolveLoginDetails(account *cfg.IDPAccount, loginFlags *LoginFlags) (*cred
 
 	// fmt.Printf("loginFlags %+v\n", loginFlags)
 
-	loginDetails := &creds.LoginDetails{Hostname: account.Hostname, Username: account.Username}
+	loginDetails := &creds.LoginDetails{URL: account.URL, Username: account.Username}
 
-	fmt.Printf("Using IDP Account %s to access %s https://%s\n", loginFlags.IdpAccount, account.Provider, account.Hostname)
+	fmt.Printf("Using IDP Account %s to access %s %s\n", loginFlags.IdpAccount, account.Provider, account.URL)
 
 	err := credentials.LookupCredentials(loginDetails)
 	if err != nil {
@@ -261,8 +262,8 @@ func loginToStsUsingRole(role *saml2aws.AWSRole, samlAssertion string, profile s
 }
 
 func applyFlagOverrides(loginFlags *LoginFlags, account *cfg.IDPAccount) {
-	if loginFlags.Hostname != "" {
-		account.Hostname = loginFlags.Hostname
+	if loginFlags.URL != "" {
+		account.URL = loginFlags.URL
 	}
 
 	if loginFlags.Username != "" {

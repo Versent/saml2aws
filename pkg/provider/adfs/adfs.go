@@ -48,10 +48,11 @@ func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 
 // Authenticate authenticate to ADFS and return the data from the body of the SAML assertion.
 func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error) {
+
 	var authSubmitURL string
 	var samlAssertion string
 
-	adfsURL := fmt.Sprintf("https://%s/adfs/ls/IdpInitiatedSignOn.aspx?loginToRp=urn:amazon:webservices", loginDetails.Hostname)
+	adfsURL := fmt.Sprintf("%s/adfs/ls/IdpInitiatedSignOn.aspx?loginToRp=urn:amazon:webservices", loginDetails.URL)
 
 	res, err := ac.client.Get(adfsURL)
 	if err != nil {

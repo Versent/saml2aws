@@ -53,7 +53,7 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 
 	authForm := url.Values{}
 
-	pingFedURL := fmt.Sprintf("https://%s/idp/startSSO.ping?PartnerSpId=urn:amazon:webservices", loginDetails.Hostname)
+	pingFedURL := fmt.Sprintf("%s/idp/startSSO.ping?PartnerSpId=urn:amazon:webservices", loginDetails.URL)
 
 	logger.WithField("url", pingFedURL).Debug("GET")
 
@@ -71,8 +71,6 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		updateLoginFormData(authForm, s, loginDetails)
 	})
 
-	//spew.Dump(authForm)
-
 	doc.Find("form").Each(func(i int, s *goquery.Selection) {
 		action, ok := s.Attr("action")
 		if !ok {
@@ -85,7 +83,7 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		return "", fmt.Errorf("unable to locate IDP authentication form submit URL")
 	}
 
-	ac.authSubmitURL = fmt.Sprintf("https://%s%s", loginDetails.Hostname, ac.authSubmitURL)
+	ac.authSubmitURL = fmt.Sprintf("%s%s", loginDetails.URL, ac.authSubmitURL)
 
 	//log.Printf("id authentication url: %s", authSubmitURL)
 

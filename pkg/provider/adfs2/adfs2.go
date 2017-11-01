@@ -57,7 +57,7 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		},
 	}
 
-	url := fmt.Sprintf("https://%s/adfs/ls/IdpInitiatedSignOn.aspx?loginToRp=urn:amazon:webservices", loginDetails.Hostname)
+	url := fmt.Sprintf("%s/adfs/ls/IdpInitiatedSignOn.aspx?loginToRp=urn:amazon:webservices", loginDetails.URL)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return samlAssertion, err

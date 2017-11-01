@@ -14,7 +14,7 @@ func TestValidateEmptyLoginDetails(t *testing.T) {
 
 	require.Error(t, err)
 }
-func TestValidateEmptyHostnameLoginDetails(t *testing.T) {
+func TestValidateEmptyURLLoginDetails(t *testing.T) {
 
 	ld := &LoginDetails{Username: "test", Password: "test"}
 
@@ -26,7 +26,7 @@ func TestValidateEmptyHostnameLoginDetails(t *testing.T) {
 
 func TestValidateEmptyUsernameLoginDetails(t *testing.T) {
 
-	ld := &LoginDetails{Hostname: "test", Password: "test"}
+	ld := &LoginDetails{URL: "https://test.com", Password: "test"}
 
 	err := ld.Validate()
 
@@ -35,7 +35,7 @@ func TestValidateEmptyUsernameLoginDetails(t *testing.T) {
 }
 func TestValidateEmptyPasswordLoginDetails(t *testing.T) {
 
-	ld := &LoginDetails{Hostname: "test", Username: "test"}
+	ld := &LoginDetails{URL: "https://test.com", Username: "test"}
 
 	err := ld.Validate()
 
@@ -44,7 +44,7 @@ func TestValidateEmptyPasswordLoginDetails(t *testing.T) {
 
 func TestValidateLoginDetails(t *testing.T) {
 
-	ld := &LoginDetails{Hostname: "test", Username: "test", Password: "test"}
+	ld := &LoginDetails{URL: "https://test.com", Username: "test", Password: "test"}
 
 	err := ld.Validate()
 

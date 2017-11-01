@@ -1,6 +1,8 @@
 package cfg
 
 import (
+	"net/url"
+
 	"github.com/fatih/structs"
 	"github.com/mitchellh/go-homedir"
 	"github.com/pkg/errors"
@@ -15,7 +17,7 @@ var DefaultConfigPath = "~/.saml2aws"
 
 // IDPAccount saml IDP account
 type IDPAccount struct {
-	Hostname   string `ini:"hostname"`
+	URL        string `ini:"url"`
 	Username   string `ini:"username"`
 	Provider   string `ini:"provider"`
 	MFA        string `ini:"mfa"`
@@ -23,10 +25,15 @@ type IDPAccount struct {
 	Timeout    int    `ini:"timeout"`
 }
 
-// Validate validate the required / exptected fields are set
+// Validate validate the required / expected fields are set
 func (ia *IDPAccount) Validate() error {
-	if ia.Hostname == "" {
-		return errors.New("Hostname empty in idp account")
+	if ia.URL == "" {
+		return errors.New("URL empty in idp account")
+	}
+
+	_, err := url.Parse(ia.URL)
+	if err != nil {
+		return errors.New("URL parse failed")
 	}
 
 	if ia.Provider == "" {

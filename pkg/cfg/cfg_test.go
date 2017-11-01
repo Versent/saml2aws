@@ -26,7 +26,7 @@ func TestNewConfigManagerLoad(t *testing.T) {
 
 	idpAccount, err := cfgm.LoadIDPAccount("test123")
 	require.Nil(t, err)
-	require.Equal(t, &IDPAccount{Hostname: "id.whatever.com", Username: "abc@whatever.com", Provider: "keycloak", MFA: "sms"}, idpAccount)
+	require.Equal(t, &IDPAccount{URL: "https://id.whatever.com", Username: "abc@whatever.com", Provider: "keycloak", MFA: "sms"}, idpAccount)
 
 	idpAccount, err = cfgm.LoadIDPAccount("test1234")
 	require.Nil(t, err)
@@ -40,9 +40,9 @@ func TestNewConfigManagerLoadVerify(t *testing.T) {
 
 	require.NotNil(t, cfgm)
 
-	idpAccount, err := cfgm.LoadIDPAccount("test123")
+	idpAccount, err := cfgm.LoadVerifyIDPAccount("test123")
 	require.Nil(t, err)
-	require.Equal(t, &IDPAccount{Hostname: "id.whatever.com", Username: "abc@whatever.com", Provider: "keycloak", MFA: "sms"}, idpAccount)
+	require.Equal(t, &IDPAccount{URL: "https://id.whatever.com", Username: "abc@whatever.com", Provider: "keycloak", MFA: "sms"}, idpAccount)
 
 	idpAccount, err = cfgm.LoadVerifyIDPAccount("test1234")
 	require.Equal(t, err, ErrIdpAccountNotFound)
@@ -55,12 +55,15 @@ func TestNewConfigManagerSave(t *testing.T) {
 	require.Nil(t, err)
 
 	err = cfgm.SaveIDPAccount("testing2", &IDPAccount{
-		Hostname: "test123",
+		URL:      "https://id.whatever.com",
 		MFA:      "none",
-		Provider: "Ping",
-		Username: "testetst",
+		Provider: "keycloak",
+		Username: "abc@whatever.com",
 	})
 	require.Nil(t, err)
+	idpAccount, err := cfgm.LoadVerifyIDPAccount("testing2")
+	require.Nil(t, err)
+	require.Equal(t, &IDPAccount{URL: "https://id.whatever.com", Username: "abc@whatever.com", Provider: "keycloak", MFA: "none"}, idpAccount)
 
 	os.Remove(throwAwayConfig)
 
