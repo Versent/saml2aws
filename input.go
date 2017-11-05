@@ -28,9 +28,15 @@ func PromptForConfigurationDetails(idpAccount *cfg.IDPAccount) error {
 
 	mfas := MFAsByProvider.Mfas(idpAccount.Provider)
 
-	idpAccount.MFA, err = promptForSelection("\nPlease choose an MFA you would like to use:\n", mfas)
-	if err != nil {
-		return errors.Wrap(err, "error selecting provider file")
+	// only prompt for MFA if there is more than one option
+	if len(mfas) > 1 {
+		idpAccount.MFA, err = promptForSelection("\nPlease choose an MFA you would like to use:\n", mfas)
+		if err != nil {
+			return errors.Wrap(err, "error selecting provider file")
+		}
+
+	} else {
+		idpAccount.MFA = mfas[0]
 	}
 
 	fmt.Println("")
