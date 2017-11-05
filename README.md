@@ -20,7 +20,7 @@ The process goes something like this:
   * ADFS (2.x or 3.x)
   * PingFederate + PingId
   * Okta + (Duo, SMS, TOTP)
-  * KeyCloak
+  * KeyCloak + (TOTP)
 * AWS SAML Provider configured
 
 # Caveats
