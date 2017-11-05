@@ -23,8 +23,8 @@ var MFAsByProvider = ProviderList{
 	"ADFS2":     []string{"None"},
 	"Ping":      []string{"PingID"},
 	"JumpCloud": []string{"None"},
-	"Okta":      []string{"Duo"},
-	"KeyCloak":  []string{"None"},
+	"Okta":      []string{"Auto"}, // automatically detects DUO, SMS and ToTP
+	"KeyCloak":  []string{"Auto"}, // automatically detects ToTP
 }
 
 // Names get a list of provider names

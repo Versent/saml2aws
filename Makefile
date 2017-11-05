@@ -68,4 +68,7 @@ clean:
 	rm ./glide
 	rm -fr ./build
 
-.PHONY: default deps compile lint fmt dist release test clean
+generate-mocks:
+	mockery -dir pkg/prompter --all
+
+.PHONY: default deps compile lint fmt dist release test clean generate-mocks
