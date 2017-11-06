@@ -4,7 +4,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
   <metadata>
     <id>saml2aws</id>
-    <version>1.7.0</version>
+    <version>1.8.4</version>
     <packageSourceUrl>https://github.com/Versent/saml2aws</packageSourceUrl>
     <!-- owners is a poor name for maintainers of the package. It sticks around by this name for compatibility reasons. It basically means you. -->
     <owners>Versent, https://github.com/Versent</owners>
@@ -16,7 +16,7 @@
     <projectSourceUrl>https://github.com/Versent/saml2aws</projectSourceUrl>
     <tags>saml2aws admin aws saml CLI</tags>
     <summary>CLI tool which enables you to login and retrieve AWS temporary credentials using a SAML IDP</summary>
-    <description>CLI tool which enables you to login and retrieve AWS temporary credentials using a SAML IDP</description>
+    <description>CLI tool which enables you to login and retrieve Amazon Web Services / AWS temporary credentials using a SAML IDP</description>
   </metadata>
   <files>
     <!-- this section controls what actually gets packaged into the Chocolatey package -->

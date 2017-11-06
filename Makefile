@@ -1,6 +1,6 @@
 NAME=saml2aws
 ARCH=$(shell uname -m)
-VERSION=1.8.2
+VERSION=1.8.4
 ITERATION := 1
 
 default: deps compile
@@ -22,8 +22,10 @@ endif
 
 deps: glide
 	# go get github.com/buildkite/github-release
+	go get -u github.com/alecthomas/gometalinter	
 	go get github.com/mitchellh/gox
 	./glide install
+	gometalinter --install
 
 compile: deps
 	@rm -rf build/
@@ -33,7 +35,15 @@ compile: deps
 	-osarch="windows/amd64" \
 	-osarch="windows/i386" \
 	-output "build/{{.Dir}}_$(VERSION)_{{.OS}}_{{.Arch}}/$(NAME)" \
-	$(shell glide novendor)
+	$(shell ./glide novendor)
+
+# Run all the linters
+lint:
+	gometalinter --vendor ./...
+
+# gofmt and goimports all go files
+fmt:
+	find . -name '*.go' -not -wholename './vendor/*' | while read -r file; do gofmt -w -s "$$file"; goimports -w "$$file"; done
 
 install:
 	go install ./cmd/saml2aws
@@ -51,10 +61,13 @@ release:
 	@github-release "v$(VERSION)" dist/* --commit "$(git rev-parse HEAD)" --github-repository versent/$(NAME)
 
 test: deps
-	go test -cover -v $(shell glide novendor)
+	go test -cover -v $(shell ./glide novendor)
 
 clean:
 	rm ./glide
 	rm -fr ./build
 
-.PHONY: default deps compile dist release test clean
+generate-mocks:
+	mockery -dir pkg/prompter --all
+
+.PHONY: default deps compile lint fmt dist release test clean generate-mocks

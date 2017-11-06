@@ -1,20 +1,30 @@
 package credentials
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/versent/saml2aws/pkg/creds"
+)
 
 // LookupCredentials lookup an existing set of credentials and validate it.
-func LookupCredentials(hostname string) (string, string, error) {
+func LookupCredentials(loginDetails *creds.LoginDetails) error {
 
-	username, password, err := CurrentHelper.Get(fmt.Sprintf("https://%s", hostname))
+	username, password, err := CurrentHelper.Get(fmt.Sprintf("%s", loginDetails.URL))
+	if err != nil {
+		return err
+	}
 
-	return username, password, err
+	loginDetails.Username = username
+	loginDetails.Password = password
+
+	return nil
 }
 
 // SaveCredentials save the user credentials.
-func SaveCredentials(hostname, username, password string) error {
+func SaveCredentials(url, username, password string) error {
 
 	creds := &Credentials{
-		ServerURL: fmt.Sprintf("https://%s", hostname),
+		ServerURL: fmt.Sprintf("%s", url),
 		Username:  username,
 		Secret:    password,
 	}

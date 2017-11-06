@@ -1,5 +1,5 @@
 hash: 848f784f129d44ef88c8f0aea25e59205d6a16c172f6da53e8877439ee3c18ea
-updated: 2017-04-17T12:13:56.929136006+10:00
+updated: 2017-10-20T10:15:42.543485072+11:00
 imports:
 - name: github.com/alecthomas/kingpin
   version: d2d8a9115b36a531781f0ed3c57bcba202976150
@@ -40,18 +40,24 @@ imports:
   version: 2d5c7863390875bc4b5f81cdb65422602d15b003
 - name: github.com/beevik/etree
   version: ce53c4ce608a92897d74ff8fd47b5a1131e5606c
+- name: github.com/fatih/structs
+  version: 7e5a8eef611ee84dd359503f3969f80df4c50723
 - name: github.com/go-ini/ini
   version: 6e4869b434bd001f6983749881c7ead3545887d8
 - name: github.com/howeyc/gopass
   version: 26c6e1184fd5255fa5f5289d0b789a4819c203a4
 - name: github.com/jmespath/go-jmespath
   version: bd40a432e4c76585ef6b72d3fd96fb9b6dc7b68d
+- name: github.com/mitchellh/go-homedir
+  version: b8bc1bf767474819792c23f32d8286a45736f1c6
 - name: github.com/pkg/errors
   version: 17b591df37844cde689f4d5813e5cea0927d8dd2
 - name: github.com/PuerkitoBio/goquery
   version: 152b1a2c8f5d0340f658bb656032a39b94e52958
 - name: github.com/segmentio/go-prompt
   version: f3218e418a3d6dbe1dcab5809d80fa6e15c05cb4
+- name: github.com/sirupsen/logrus
+  version: 89742aefa4b206dcf400792f3bd35b542998eb3b
 - name: github.com/tidwall/gjson
   version: 039b641eabfaaccef32ebcfeee4257e22627a255
 - name: github.com/tidwall/match
@@ -86,3 +92,4 @@ testImports:
   version: d77da356e56a7428ad25149ca77381849a6a5232
   subpackages:
   - assert
+  - require
