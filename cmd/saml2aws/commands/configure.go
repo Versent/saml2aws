@@ -26,9 +26,12 @@ func Configure(loginFlags *LoginFlags, cmdline []string) error {
 	// update username and hostname if supplied
 	applyFlagOverrides(loginFlags, account)
 
-	err = saml2aws.PromptForConfigurationDetails(account)
-	if err != nil {
-		return errors.Wrap(err, "failed to input configuration")
+	// do we need to prompt for values now?
+	if !loginFlags.SkipPrompt {
+		err = saml2aws.PromptForConfigurationDetails(account)
+		if err != nil {
+			return errors.Wrap(err, "failed to input configuration")
+		}
 	}
 
 	err = cfgm.SaveIDPAccount(idpAccountName, account)

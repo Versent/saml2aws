@@ -19,10 +19,10 @@ type ProviderList map[string][]string
 
 // MFAsByProvider a list of providers with their respective supported MFAs
 var MFAsByProvider = ProviderList{
-	"ADFS":      []string{"None", "VIP"},
-	"ADFS2":     []string{"None"},
+	"ADFS":      []string{"Auto", "VIP"},
+	"ADFS2":     []string{"Auto"},
 	"Ping":      []string{"Auto"}, // automatically detects PingID
-	"JumpCloud": []string{"None"},
+	"JumpCloud": []string{"Auto"},
 	"Okta":      []string{"Auto"}, // automatically detects DUO, SMS and ToTP
 	"KeyCloak":  []string{"Auto"}, // automatically detects ToTP
 }
