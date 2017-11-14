@@ -68,6 +68,47 @@ Commands:
 
 ```
 
+# Adding IDP Accounts
+
+To add a default IdP account to saml2aws just run the following command and follow the prompts.
+
+```
+$ saml2aws configure
+
+Please choose the provider you would like to use:
+
+[ 0 ]:  ADFS
+
+[ 1 ]:  ADFS2
+
+[ 2 ]:  JumpCloud
+
+[ 3 ]:  KeyCloak
+
+[ 4 ]:  Okta
+
+[ 5 ]:  Ping
+
+Selection: 3
+
+URL []: https://id.example.com/auth/realms/master/protocol/saml/clients/amazon-aws
+Username []: mark@wolfe.id.au
+
+Configuration saved for IDP account: default
+```
+
+Then to login using this account.
+
+```
+saml2aws login
+```
+
+You can also add named accounts, below is an example where I am setting up an account under the `wolfeidau` alias, again just follow the prompts.
+
+```
+saml2aws configure -a wolfeidau
+```
+
 # Install
 
 ## OSX
