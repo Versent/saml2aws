@@ -49,11 +49,13 @@ func configureLoginFlags(app *kingpin.Application) *commands.LoginFlags {
 	c := &commands.LoginFlags{}
 
 	app.Flag("idp-account", "The name of the configured IDP account").Short('a').Default("default").StringVar(&c.IdpAccount)
+	app.Flag("idp-provider", "The configured IDP provider").EnumVar(&c.IdpProvider, "ADFS", "ADFS2", "Ping", "JumpCloud", "Okta", "KeyCloak")
+	app.Flag("mfa", "The name of the mfa").Default("Auto").StringVar(&c.MFA)
 	app.Flag("profile", "The AWS profile to save the temporary credentials").Short('p').Default("saml").StringVar(&c.Profile)
 	app.Flag("skip-verify", "Skip verification of server certificate.").Short('s').BoolVar(&c.SkipVerify)
 	// app.Flag("timeout", "Override the default HTTP client timeout in seconds.").Short('t').IntVar(&c.Timeout)
 	// app.Flag("provider", "The type of SAML IDP provider.").Short('i').Default("ADFS").EnumVar(&c.Provider, "ADFS", "ADFS2", "Ping", "JumpCloud", "Okta", "KeyCloak")
-	app.Flag("URL", "The URL of the SAML IDP server used to login.").StringVar(&c.URL)
+	app.Flag("url", "The URL of the SAML IDP server used to login.").StringVar(&c.URL)
 	app.Flag("username", "The username used to login.").StringVar(&c.Username)
 	app.Flag("password", "The password used to login.").Envar("SAML2AWS_PASSWORD").StringVar(&c.Password)
 	app.Flag("role", "The ARN of the role to assume.").StringVar(&c.RoleArn)

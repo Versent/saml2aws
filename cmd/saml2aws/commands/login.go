@@ -21,17 +21,17 @@ const MaxDurationSeconds = 3600
 
 // LoginFlags login specific command flags
 type LoginFlags struct {
-	IdpAccount string
-	//Provider   string
-	Profile string
-	//Hostname   string
-	URL        string
-	Username   string
-	Password   string
-	RoleArn    string
-	SkipVerify bool
-	Timeout    int
-	SkipPrompt bool
+	IdpAccount  string
+	IdpProvider string
+	MFA         string
+	Profile     string
+	URL         string
+	Username    string
+	Password    string
+	RoleArn     string
+	SkipVerify  bool
+	Timeout     int
+	SkipPrompt  bool
 }
 
 // RoleSupplied role arn has been passed as a flag
@@ -272,6 +272,14 @@ func applyFlagOverrides(loginFlags *LoginFlags, account *cfg.IDPAccount) {
 
 	if loginFlags.SkipVerify {
 		account.SkipVerify = loginFlags.SkipVerify
+	}
+
+	if loginFlags.IdpProvider != "" {
+		account.Provider = loginFlags.IdpProvider
+	}
+
+	if loginFlags.MFA != "" {
+		account.MFA = loginFlags.MFA
 	}
 
 	if loginFlags.Timeout > 0 {

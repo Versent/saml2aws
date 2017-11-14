@@ -21,7 +21,7 @@ func PromptForConfigurationDetails(idpAccount *cfg.IDPAccount) error {
 
 	var err error
 
-	idpAccount.Provider, err = promptForSelection("\nPlease choose the provider you would like to use:\n", providers)
+	idpAccount.Provider, err = promptForSelection("\nPlease choose the provider you would like to use:\n", idpAccount.Provider, providers)
 	if err != nil {
 		return errors.Wrap(err, "error selecting provider file")
 	}
@@ -30,7 +30,7 @@ func PromptForConfigurationDetails(idpAccount *cfg.IDPAccount) error {
 
 	// only prompt for MFA if there is more than one option
 	if len(mfas) > 1 {
-		idpAccount.MFA, err = promptForSelection("\nPlease choose an MFA you would like to use:\n", mfas)
+		idpAccount.MFA, err = promptForSelection("\nPlease choose an MFA you would like to use:\n", idpAccount.MFA, mfas)
 		if err != nil {
 			return errors.Wrap(err, "error selecting provider file")
 		}
@@ -101,7 +101,7 @@ func PromptForAWSRoleSelection(accounts []*AWSAccount) (*AWSRole, error) {
 	return roles[v], nil
 }
 
-func promptForSelection(prompt string, options []string) (string, error) {
+func promptForSelection(prompt string, defaultValue string, options []string) (string, error) {
 
 	reader := bufio.NewReader(os.Stdin)
 
@@ -116,8 +116,16 @@ func promptForSelection(prompt string, options []string) (string, error) {
 	var err error
 
 	for {
-		fmt.Print("Selection: ")
+		if defaultValue != "" {
+			fmt.Print("Selection [" + defaultValue + "]: ")
+		} else {
+			fmt.Print("Selection: ")
+		}
 		selectedRoleIndex, _ := reader.ReadString('\n')
+
+		if strings.TrimSpace(selectedRoleIndex) == "" && defaultValue != "" {
+			return defaultValue, nil
+		}
 
 		v, err = strconv.Atoi(strings.TrimSpace(selectedRoleIndex))
 		if err != nil {

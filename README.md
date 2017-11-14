@@ -109,6 +109,12 @@ You can also add named accounts, below is an example where I am setting up an ac
 saml2aws configure -a wolfeidau
 ```
 
+You can also configure the account alias without prompts.
+
+```
+saml2aws configure -a wolfeidau --idp-provider KeyCloak --username mark@wolfe.id.au --url https://keycloak.wolfe.id.au/auth/realms/master/protocol/saml/clients/amazon-aws --skip-prompt
+```
+
 # Install
 
 ## OSX

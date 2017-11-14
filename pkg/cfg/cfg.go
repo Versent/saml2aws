@@ -70,6 +70,10 @@ func NewConfigManager(configFile string) (*ConfigManager, error) {
 // SaveIDPAccount save idp account
 func (cm *ConfigManager) SaveIDPAccount(idpAccountName string, account *IDPAccount) error {
 
+	if err := account.Validate(); err != nil {
+		return errors.Wrap(err, "Account validation failed")
+	}
+
 	cfg, err := ini.LoadSources(ini.LoadOptions{Loose: true}, cm.configPath)
 	if err != nil {
 		return errors.Wrap(err, "Unable to load configuration file")
