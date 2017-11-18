@@ -22,6 +22,7 @@ var logger = logrus.WithField("provider", "pingfed")
 // Client wrapper around PingFed + PingId enabling authentication and retrieval of assertions
 type Client struct {
 	client        *provider.HTTPClient
+	idpAccount    *cfg.IDPAccount
 	authSubmitURL string
 	samlAssertion string
 	mfaRequired   bool
@@ -44,6 +45,7 @@ func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 
 	return &Client{
 		client:      client,
+		idpAccount:  idpAccount,
 		mfaRequired: false,
 	}, nil
 }
@@ -53,7 +55,7 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 
 	authForm := url.Values{}
 
-	pingFedURL := fmt.Sprintf("%s/idp/startSSO.ping?PartnerSpId=urn:amazon:webservices", loginDetails.URL)
+	pingFedURL := fmt.Sprintf("%s/idp/startSSO.ping?PartnerSpId=%s", loginDetails.URL, ac.idpAccount.AmazonWebservicesURN)
 
 	logger.WithField("url", pingFedURL).Debug("GET")
 

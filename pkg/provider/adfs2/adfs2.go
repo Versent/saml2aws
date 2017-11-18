@@ -20,8 +20,9 @@ import (
 
 // Client client for adfs2
 type Client struct {
-	transport http.RoundTripper
-	jar       http.CookieJar
+	idpAccount *cfg.IDPAccount
+	transport  http.RoundTripper
+	jar        http.CookieJar
 }
 
 // New new adfs2 client with ntlmssp configured
@@ -40,8 +41,9 @@ func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 	}
 
 	return &Client{
-		transport: transport,
-		jar:       jar,
+		transport:  transport,
+		idpAccount: idpAccount,
+		jar:        jar,
 	}, nil
 }
 
@@ -57,7 +59,7 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		},
 	}
 
-	url := fmt.Sprintf("%s/adfs/ls/IdpInitiatedSignOn.aspx?loginToRp=urn:amazon:webservices", loginDetails.URL)
+	url := fmt.Sprintf("%s/adfs/ls/IdpInitiatedSignOn.aspx?loginToRp=%s", loginDetails.URL, ac.idpAccount.AmazonWebservicesURN)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return samlAssertion, err
