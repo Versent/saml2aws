@@ -54,7 +54,10 @@ func configureLoginFlags(app *kingpin.Application) *commands.LoginFlags {
 	app.Flag("profile", "The AWS profile to save the temporary credentials").Short('p').Default("saml").StringVar(&c.Profile)
 	app.Flag("skip-verify", "Skip verification of server certificate.").Short('s').BoolVar(&c.SkipVerify)
 	// app.Flag("timeout", "Override the default HTTP client timeout in seconds.").Short('t').IntVar(&c.Timeout)
-	// app.Flag("provider", "The type of SAML IDP provider.").Short('i').Default("ADFS").EnumVar(&c.Provider, "ADFS", "ADFS2", "Ping", "JumpCloud", "Okta", "KeyCloak")
+
+	// using this flag to highlight the
+	app.Flag("provider", "This flag it is obsolete see https://github.com/Versent/saml2aws#adding-idp-accounts.").Short('i').EnumVar(&c.Provider, "ADFS", "ADFS2", "Ping", "JumpCloud", "Okta", "KeyCloak")
+
 	app.Flag("url", "The URL of the SAML IDP server used to login.").StringVar(&c.URL)
 	app.Flag("username", "The username used to login.").StringVar(&c.Username)
 	app.Flag("password", "The password used to login.").Envar("SAML2AWS_PASSWORD").StringVar(&c.Password)
@@ -75,6 +78,12 @@ func main() {
 
 	if *verbose {
 		logrus.SetLevel(logrus.DebugLevel)
+	}
+
+	// will leave this here for a while during upgrade process
+	if lc.Provider != "" {
+		fmt.Println("The --provider flag has been replace with a new configure command see https://github.com/Versent/saml2aws#adding-idp-accounts")
+		os.Exit(1)
 	}
 
 	var err error

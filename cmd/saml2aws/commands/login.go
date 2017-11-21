@@ -34,6 +34,7 @@ type LoginFlags struct {
 	SkipVerify           bool
 	Timeout              int
 	SkipPrompt           bool
+	Provider             string
 }
 
 // RoleSupplied role arn has been passed as a flag
