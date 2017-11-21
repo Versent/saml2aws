@@ -42,9 +42,13 @@ Flags:
       --verbose                Enable verbose logging
       --version                Show application version.
   -a, --idp-account="default"  The name of the configured IDP account
+      --idp-provider=IDP-PROVIDER
+                               The configured IDP provider
+      --mfa="Auto"             The name of the mfa
   -p, --profile="saml"         The AWS profile to save the temporary credentials
   -s, --skip-verify            Skip verification of server certificate.
-      --hostname=HOSTNAME      The hostname of the SAML IDP server used to login.
+  -i, --provider=PROVIDER      This flag it is obsolete see https://github.com/Versent/saml2aws#adding-idp-accounts.
+      --url=URL                The URL of the SAML IDP server used to login.
       --username=USERNAME      The username used to login.
       --password=PASSWORD      The password used to login.
       --role=ROLE              The ARN of the role to assume.
@@ -68,7 +72,9 @@ Commands:
 
 ```
 
-# Adding IDP Accounts
+# Configuring IDP Accounts
+
+This is the *new* way of adding IDP provider accounts, it enables you to have named accounts with whatever settings you like and supports having one *default* account which is used if you omit the account flag. This replaces the --provider flag and old configuration file in 1.x.
 
 To add a default IdP account to saml2aws just run the following command and follow the prompts.
 
@@ -112,7 +118,8 @@ saml2aws configure -a wolfeidau
 You can also configure the account alias without prompts.
 
 ```
-saml2aws configure -a wolfeidau --idp-provider KeyCloak --username mark@wolfe.id.au --url https://keycloak.wolfe.id.au/auth/realms/master/protocol/saml/clients/amazon-aws --skip-prompt
+saml2aws configure -a wolfeidau --idp-provider KeyCloak --username mark@wolfe.id.au \
+  --url https://keycloak.wolfe.id.au/auth/realms/master/protocol/saml/clients/amazon-aws --skip-prompt
 ```
 
 # Install
