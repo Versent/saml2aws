@@ -1,12 +1,16 @@
 package credentials
 
-import "errors"
+import (
+	"errors"
+)
 
-// CurrentHelper the currently configured credentials helper
-var CurrentHelper Helper = &defaultHelper{}
+var (
+	// CurrentHelper the currently configured credentials helper
+	CurrentHelper Helper = &defaultHelper{}
 
-// ErrCredentialsNotFound returned when the credential can't be located in the native store.
-var ErrCredentialsNotFound = errors.New("credentials not found in native keychain")
+	// ErrCredentialsNotFound returned when the credential can't be located in the native store.
+	ErrCredentialsNotFound = errors.New("credentials not found in native keychain")
+)
 
 // Credentials holds the information shared between saml2aws and the credentials store.
 type Credentials struct {

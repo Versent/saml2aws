@@ -93,11 +93,13 @@ func (h Osxkeychain) Get(serverURL string) (string, string, error) {
 	if errMsg != nil {
 		defer C.free(unsafe.Pointer(errMsg))
 		goMsg := C.GoString(errMsg)
+
 		if goMsg == errCredentialsNotFound {
 			logger.WithField("goMsg", goMsg).Debug("Get credentials")
 			return "", "", credentials.ErrCredentialsNotFound
 		}
 
+		logger.WithField("goMsg", goMsg).Error("keychain Get returned error")
 		return "", "", errors.New(goMsg)
 	}
 
