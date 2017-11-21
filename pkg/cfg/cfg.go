@@ -2,8 +2,8 @@ package cfg
 
 import (
 	"net/url"
+	"reflect"
 
-	"github.com/fatih/structs"
 	"github.com/mitchellh/go-homedir"
 	"github.com/pkg/errors"
 	ini "gopkg.in/ini.v1"
@@ -12,17 +12,24 @@ import (
 // ErrIdpAccountNotFound returned if the idp account is not found in the configuration file
 var ErrIdpAccountNotFound = errors.New("IDP account not found, run configure to set it up")
 
-// DefaultConfigPath the default saml2aws configuration path
-var DefaultConfigPath = "~/.saml2aws"
+const (
+	// DefaultConfigPath the default saml2aws configuration path
+	DefaultConfigPath = "~/.saml2aws"
+
+	// DefaultAmazonWebservicesURN URN used when authenticating to aws using SAML
+	// NOTE: This only needs to be changed to log into GovCloud
+	DefaultAmazonWebservicesURN = "urn:amazon:webservices"
+)
 
 // IDPAccount saml IDP account
 type IDPAccount struct {
-	URL        string `ini:"url"`
-	Username   string `ini:"username"`
-	Provider   string `ini:"provider"`
-	MFA        string `ini:"mfa"`
-	SkipVerify bool   `ini:"skip_verify"`
-	Timeout    int    `ini:"timeout"`
+	URL                  string `ini:"url"`
+	Username             string `ini:"username"`
+	Provider             string `ini:"provider"`
+	MFA                  string `ini:"mfa"`
+	SkipVerify           bool   `ini:"skip_verify"`
+	Timeout              int    `ini:"timeout"`
+	AmazonWebservicesURN string `ini:"aws_urn"`
 }
 
 // Validate validate the required / expected fields are set
@@ -45,6 +52,13 @@ func (ia *IDPAccount) Validate() error {
 	}
 
 	return nil
+}
+
+// NewIDPAccount Create an idp account and fill in any default fields with sane values
+func NewIDPAccount() *IDPAccount {
+	return &IDPAccount{
+		AmazonWebservicesURN: DefaultAmazonWebservicesURN,
+	}
 }
 
 // ConfigManager manage the various IDP account settings
@@ -120,7 +134,7 @@ func (cm *ConfigManager) LoadVerifyIDPAccount(idpAccountName string) (*IDPAccoun
 		return nil, errors.Wrap(err, "Unable to read idp account")
 	}
 
-	if structs.IsZero(account) {
+	if reflect.DeepEqual(account, NewIDPAccount()) {
 		return nil, ErrIdpAccountNotFound
 	}
 
@@ -134,7 +148,7 @@ func IsErrIdpAccountNotFound(err error) bool {
 
 func readAccount(idpAccountName string, cfg *ini.File) (*IDPAccount, error) {
 
-	account := new(IDPAccount)
+	account := NewIDPAccount()
 
 	sec := cfg.Section(idpAccountName)
 

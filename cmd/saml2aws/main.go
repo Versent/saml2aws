@@ -59,6 +59,7 @@ func configureLoginFlags(app *kingpin.Application) *commands.LoginFlags {
 	app.Flag("username", "The username used to login.").StringVar(&c.Username)
 	app.Flag("password", "The password used to login.").Envar("SAML2AWS_PASSWORD").StringVar(&c.Password)
 	app.Flag("role", "The ARN of the role to assume.").StringVar(&c.RoleArn)
+	app.Flag("aws-urn", "The URN used by SAML when you login.").StringVar(&c.AmazonWebservicesURN)
 	app.Flag("skip-prompt", "Skip prompting for parameters during login.").BoolVar(&c.SkipPrompt)
 
 	return c

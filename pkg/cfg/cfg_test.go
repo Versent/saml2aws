@@ -26,11 +26,19 @@ func TestNewConfigManagerLoad(t *testing.T) {
 
 	idpAccount, err := cfgm.LoadIDPAccount("test123")
 	require.Nil(t, err)
-	require.Equal(t, &IDPAccount{URL: "https://id.whatever.com", Username: "abc@whatever.com", Provider: "keycloak", MFA: "sms"}, idpAccount)
+	require.Equal(t, &IDPAccount{
+		URL:                  "https://id.whatever.com",
+		Username:             "abc@whatever.com",
+		Provider:             "keycloak",
+		MFA:                  "sms",
+		AmazonWebservicesURN: DefaultAmazonWebservicesURN,
+	}, idpAccount)
 
 	idpAccount, err = cfgm.LoadIDPAccount("test1234")
 	require.Nil(t, err)
-	require.Equal(t, &IDPAccount{}, idpAccount)
+	require.Equal(t, &IDPAccount{
+		AmazonWebservicesURN: DefaultAmazonWebservicesURN,
+	}, idpAccount)
 }
 
 func TestNewConfigManagerLoadVerify(t *testing.T) {
@@ -42,10 +50,16 @@ func TestNewConfigManagerLoadVerify(t *testing.T) {
 
 	idpAccount, err := cfgm.LoadVerifyIDPAccount("test123")
 	require.Nil(t, err)
-	require.Equal(t, &IDPAccount{URL: "https://id.whatever.com", Username: "abc@whatever.com", Provider: "keycloak", MFA: "sms"}, idpAccount)
+	require.Equal(t, &IDPAccount{
+		URL:                  "https://id.whatever.com",
+		Username:             "abc@whatever.com",
+		Provider:             "keycloak",
+		MFA:                  "sms",
+		AmazonWebservicesURN: DefaultAmazonWebservicesURN,
+	}, idpAccount)
 
 	idpAccount, err = cfgm.LoadVerifyIDPAccount("test1234")
-	require.Equal(t, err, ErrIdpAccountNotFound)
+	require.Equal(t, ErrIdpAccountNotFound, err)
 	require.Nil(t, idpAccount)
 }
 
@@ -63,7 +77,13 @@ func TestNewConfigManagerSave(t *testing.T) {
 	require.Nil(t, err)
 	idpAccount, err := cfgm.LoadVerifyIDPAccount("testing2")
 	require.Nil(t, err)
-	require.Equal(t, &IDPAccount{URL: "https://id.whatever.com", Username: "abc@whatever.com", Provider: "keycloak", MFA: "none"}, idpAccount)
+	require.Equal(t, &IDPAccount{
+		URL:                  "https://id.whatever.com",
+		Username:             "abc@whatever.com",
+		Provider:             "keycloak",
+		MFA:                  "none",
+		AmazonWebservicesURN: DefaultAmazonWebservicesURN,
+	}, idpAccount)
 
 	os.Remove(throwAwayConfig)
 

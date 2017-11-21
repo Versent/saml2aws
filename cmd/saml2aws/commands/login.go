@@ -9,6 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sts"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 	"github.com/versent/saml2aws"
 	"github.com/versent/saml2aws/helper/credentials"
 	"github.com/versent/saml2aws/pkg/awsconfig"
@@ -21,17 +22,18 @@ const MaxDurationSeconds = 3600
 
 // LoginFlags login specific command flags
 type LoginFlags struct {
-	IdpAccount  string
-	IdpProvider string
-	MFA         string
-	Profile     string
-	URL         string
-	Username    string
-	Password    string
-	RoleArn     string
-	SkipVerify  bool
-	Timeout     int
-	SkipPrompt  bool
+	IdpAccount           string
+	IdpProvider          string
+	MFA                  string
+	Profile              string
+	URL                  string
+	Username             string
+	Password             string
+	RoleArn              string
+	AmazonWebservicesURN string
+	SkipVerify           bool
+	Timeout              int
+	SkipPrompt           bool
 }
 
 // RoleSupplied role arn has been passed as a flag
@@ -41,6 +43,8 @@ func (lf *LoginFlags) RoleSupplied() bool {
 
 // Login login to ADFS
 func Login(loginFlags *LoginFlags) error {
+
+	logger := logrus.WithField("command", "login")
 
 	account, err := buildIdpAccount(loginFlags)
 	if err != nil {
@@ -59,6 +63,8 @@ func Login(loginFlags *LoginFlags) error {
 	if err != nil {
 		return errors.Wrap(err, "error validating login details")
 	}
+
+	logger.WithField("idpAccount", account).Debug("building provider")
 
 	provider, err := saml2aws.NewSAMLClient(account)
 	if err != nil {
@@ -280,6 +286,10 @@ func applyFlagOverrides(loginFlags *LoginFlags, account *cfg.IDPAccount) {
 
 	if loginFlags.MFA != "" {
 		account.MFA = loginFlags.MFA
+	}
+
+	if loginFlags.AmazonWebservicesURN != "" {
+		account.AmazonWebservicesURN = loginFlags.AmazonWebservicesURN
 	}
 
 	if loginFlags.Timeout > 0 {
