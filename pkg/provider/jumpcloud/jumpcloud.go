@@ -1,4 +1,4 @@
-package saml2aws
+package jumpcloud
 
 import (
 	"bytes"
@@ -7,52 +7,46 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	"net/http/cookiejar"
 	"net/url"
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/pkg/errors"
 	"github.com/segmentio/go-prompt"
-
-	"golang.org/x/net/publicsuffix"
+	"github.com/versent/saml2aws/pkg/cfg"
+	"github.com/versent/saml2aws/pkg/creds"
+	"github.com/versent/saml2aws/pkg/provider"
 )
 
-// JumpCloudClient is a wrapper representing a JumpCloud SAML client
-type JumpCloudClient struct {
-	client *http.Client
+// Client is a wrapper representing a JumpCloud SAML client
+type Client struct {
+	client *provider.HTTPClient
 }
 
-// NewJumpCloudClient creates a new JumpCloud client
-func NewJumpCloudClient(skipVerify bool) (*JumpCloudClient, error) {
+// New creates a new JumpCloud client
+func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: skipVerify},
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: idpAccount.SkipVerify},
 	}
 
-	options := &cookiejar.Options{
-		PublicSuffixList: publicsuffix.List,
-	}
-
-	jar, err := cookiejar.New(options)
+	client, err := provider.NewHTTPClient(tr)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "error building http client")
 	}
 
-	client := &http.Client{Transport: tr, Jar: jar}
-
-	return &JumpCloudClient{
+	return &Client{
 		client: client,
 	}, nil
 }
 
 // Authenticate logs into JumpCloud and returns a SAML response
-func (jc *JumpCloudClient) Authenticate(loginDetails *LoginDetails) (string, error) {
+func (jc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error) {
 	var authSubmitURL string
 	var samlAssertion string
 	mfaRequired := false
 
 	authForm := url.Values{}
-	jumpCloudURL := fmt.Sprintf("https://%s", loginDetails.Hostname)
+	jumpCloudURL := loginDetails.URL
 
 	res, err := jc.client.Get(jumpCloudURL)
 	if err != nil {
@@ -90,7 +84,7 @@ func (jc *JumpCloudClient) Authenticate(loginDetails *LoginDetails) (string, err
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 
 	// Temporarily disable following redirects so we can detect MFA.
-	disableFollowRedirect(jc.client)
+	jc.client.DisableFollowRedirect()
 	res, err = jc.client.Do(req)
 	if err != nil {
 		return samlAssertion, errors.Wrap(err, "error retrieving login form")
@@ -113,13 +107,13 @@ func (jc *JumpCloudClient) Authenticate(loginDetails *LoginDetails) (string, err
 		}
 	}
 
-	enableFollowRedirect(jc.client)
+	jc.client.EnableFollowRedirect()
 
 	if mfaRequired {
 		token := prompt.StringRequired("MFA Token")
 		authForm.Add("otp", token)
 
-		req, err := http.NewRequest("POST", authSubmitURL, strings.NewReader(authForm.Encode()))
+		req, err = http.NewRequest("POST", authSubmitURL, strings.NewReader(authForm.Encode()))
 		if err != nil {
 			return samlAssertion, errors.Wrap(err, "error building MFA authentication request")
 		}
@@ -159,7 +153,7 @@ func (jc *JumpCloudClient) Authenticate(loginDetails *LoginDetails) (string, err
 	return samlAssertion, nil
 }
 
-func updateJumpCloudForm(authForm url.Values, s *goquery.Selection, user *LoginDetails) {
+func updateJumpCloudForm(authForm url.Values, s *goquery.Selection, user *creds.LoginDetails) {
 	name, ok := s.Attr("name")
 	if !ok {
 		return
@@ -178,14 +172,4 @@ func updateJumpCloudForm(authForm url.Values, s *goquery.Selection, user *LoginD
 		}
 		authForm.Add(name, val)
 	}
-}
-
-func disableFollowRedirect(client *http.Client) {
-	client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
-		return http.ErrUseLastResponse
-	}
-}
-
-func enableFollowRedirect(client *http.Client) {
-	client.CheckRedirect = nil
 }

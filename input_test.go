@@ -2,13 +2,15 @@ package saml2aws
 
 import (
 	"testing"
+
+	"github.com/versent/saml2aws/pkg/creds"
 )
 
 func TestLoginDetails_Validate(t *testing.T) {
 	type fields struct {
 		Username string
 		Password string
-		Hostname string
+		URL      string
 	}
 	tests := []struct {
 		name    string
@@ -17,16 +19,16 @@ func TestLoginDetails_Validate(t *testing.T) {
 	}{
 		// TODO: Add test cases.
 		{name: "hostname missing error", fields: fields{}, wantErr: true},
-		{name: "username missing error", fields: fields{Hostname: "id.example.com"}, wantErr: true},
-		{name: "password missing error", fields: fields{Hostname: "id.example.com", Username: "test"}, wantErr: true},
-		{name: "ok", fields: fields{Hostname: "id.example.com", Username: "test", Password: "test"}, wantErr: false},
+		{name: "username missing error", fields: fields{URL: "id.example.com"}, wantErr: true},
+		{name: "password missing error", fields: fields{URL: "id.example.com", Username: "test"}, wantErr: true},
+		{name: "ok", fields: fields{URL: "id.example.com", Username: "test", Password: "test"}, wantErr: false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ld := &LoginDetails{
+			ld := &creds.LoginDetails{
 				Username: tt.fields.Username,
 				Password: tt.fields.Password,
-				Hostname: tt.fields.Hostname,
+				URL:      tt.fields.URL,
 			}
 			if err := ld.Validate(); (err != nil) != tt.wantErr {
 				t.Errorf("LoginDetails.Validate() error = %v, wantErr %v", err, tt.wantErr)

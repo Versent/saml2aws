@@ -1,4 +1,4 @@
-package saml2aws
+package adfs2
 
 import (
 	"bytes"
@@ -14,17 +14,22 @@ import (
 	"github.com/Azure/go-ntlmssp"
 	"github.com/PuerkitoBio/goquery"
 	"github.com/pkg/errors"
+	"github.com/versent/saml2aws/pkg/cfg"
+	"github.com/versent/saml2aws/pkg/creds"
 )
 
-type ADFS2Client struct {
-	transport http.RoundTripper
-	jar       http.CookieJar
+// Client client for adfs2
+type Client struct {
+	idpAccount *cfg.IDPAccount
+	transport  http.RoundTripper
+	jar        http.CookieJar
 }
 
-func NewADFS2Client(skipVerify bool) (*ADFS2Client, error) {
+// New new adfs2 client with ntlmssp configured
+func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 	transport := &ntlmssp.Negotiator{
 		RoundTripper: &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: skipVerify, Renegotiation: tls.RenegotiateFreelyAsClient},
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: idpAccount.SkipVerify, Renegotiation: tls.RenegotiateFreelyAsClient},
 		},
 	}
 
@@ -35,13 +40,15 @@ func NewADFS2Client(skipVerify bool) (*ADFS2Client, error) {
 		return nil, err
 	}
 
-	return &ADFS2Client{
-		transport: transport,
-		jar:       jar,
+	return &Client{
+		transport:  transport,
+		idpAccount: idpAccount,
+		jar:        jar,
 	}, nil
 }
 
-func (ac *ADFS2Client) Authenticate(loginDetails *LoginDetails) (string, error) {
+// Authenticate authenticate the user using the supplied login details
+func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error) {
 	var samlAssertion string
 	client := http.Client{
 		Transport: ac.transport,
@@ -52,7 +59,7 @@ func (ac *ADFS2Client) Authenticate(loginDetails *LoginDetails) (string, error) 
 		},
 	}
 
-	url := fmt.Sprintf("https://%s/adfs/ls/IdpInitiatedSignOn.aspx?loginToRp=urn:amazon:webservices", loginDetails.Hostname)
+	url := fmt.Sprintf("%s/adfs/ls/IdpInitiatedSignOn.aspx?loginToRp=%s", loginDetails.URL, ac.idpAccount.AmazonWebservicesURN)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return samlAssertion, err

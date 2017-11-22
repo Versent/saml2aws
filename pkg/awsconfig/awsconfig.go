@@ -1,9 +1,11 @@
-package saml2aws
+package awsconfig
 
 import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+
+	"github.com/mitchellh/go-homedir"
 
 	"github.com/pkg/errors"
 
@@ -17,6 +19,14 @@ var (
 	// ErrCredentialsNotFound returned when the required aws credentials don't exist.
 	ErrCredentialsNotFound = errors.New("aws credentials not found")
 )
+
+// AWSCredentials represents the set of attributes used to authenticate to AWS with a short lived session
+type AWSCredentials struct {
+	AWSAccessKey     string `ini:"aws_access_key_id"`
+	AWSSecretKey     string `ini:"aws_secret_access_key"`
+	AWSSessionToken  string `ini:"aws_session_token"`
+	AWSSecurityToken string `ini:"aws_security_token"`
+}
 
 // CredentialsProvider loads aws credentials file
 type CredentialsProvider struct {
@@ -84,22 +94,14 @@ func (p *CredentialsProvider) Load() (string, string, string, error) {
 		return "", "", "", ErrCredentialsNotFound
 	}
 
-	idKey, err := iniProfile.GetKey("aws_access_key_id")
+	awsCreds := new(AWSCredentials)
+
+	err = iniProfile.MapTo(awsCreds)
 	if err != nil {
 		return "", "", "", ErrCredentialsNotFound
 	}
 
-	secretKey, err := iniProfile.GetKey("aws_secret_access_key")
-	if err != nil {
-		return "", "", "", ErrCredentialsNotFound
-	}
-
-	tokenKey, err := iniProfile.GetKey("aws_session_token")
-	if err != nil {
-		return "", "", "", ErrCredentialsNotFound
-	}
-
-	return idKey.String(), secretKey.String(), tokenKey.String(), nil
+	return awsCreds.AWSAccessKey, awsCreds.AWSSecretKey, awsCreds.AWSSecurityToken, nil
 }
 
 // ensureConfigExists verify that the config file exists
@@ -131,18 +133,13 @@ func (p *CredentialsProvider) filename() (string, error) {
 			return p.Filename, nil
 		}
 
-		homeDir := os.Getenv("HOME") // *nix
-		if homeDir == "" {           // Windows
-			homeDir = os.Getenv("USERPROFILE")
-		}
-		if homeDir == "" {
+		name, err := homedir.Expand("~/.aws/credentials")
+		if err != nil {
 			return "", ErrCredentialsHomeNotFound
 		}
 
-		name := filepath.Join(homeDir, ".aws", "credentials")
-
 		// is the filename a symlink?
-		name, err := filepath.EvalSymlinks(name)
+		name, err = filepath.EvalSymlinks(name)
 		if err != nil {
 			return "", errors.Wrap(err, "unable to resolve symlink")
 		}
@@ -180,22 +177,12 @@ func saveProfile(filename, profile, id, secret, token string) error {
 		return err
 	}
 
-	_, err = iniProfile.NewKey("aws_access_key_id", id)
-	if err != nil {
-		return err
-	}
-
-	_, err = iniProfile.NewKey("aws_secret_access_key", secret)
-	if err != nil {
-		return err
-	}
-
-	_, err = iniProfile.NewKey("aws_session_token", token)
-	if err != nil {
-		return err
-	}
-
-	_, err = iniProfile.NewKey("aws_security_token", token)
+	err = iniProfile.ReflectFrom(&AWSCredentials{
+		AWSAccessKey:     id,
+		AWSSecretKey:     secret,
+		AWSSessionToken:  token,
+		AWSSecurityToken: token,
+	})
 	if err != nil {
 		return err
 	}

@@ -9,20 +9,32 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sts"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 	"github.com/versent/saml2aws"
 	"github.com/versent/saml2aws/helper/credentials"
+	"github.com/versent/saml2aws/pkg/awsconfig"
+	"github.com/versent/saml2aws/pkg/cfg"
+	"github.com/versent/saml2aws/pkg/creds"
 )
+
+// MaxDurationSeconds the maximum duration in seconds for an STS session
+const MaxDurationSeconds = 3600
 
 // LoginFlags login specific command flags
 type LoginFlags struct {
-	Provider   string
-	Profile    string
-	Hostname   string
-	Username   string
-	Password   string
-	RoleArn    string
-	SkipVerify bool
-	SkipPrompt bool
+	IdpAccount           string
+	IdpProvider          string
+	MFA                  string
+	Profile              string
+	URL                  string
+	Username             string
+	Password             string
+	RoleArn              string
+	AmazonWebservicesURN string
+	SkipVerify           bool
+	Timeout              int
+	SkipPrompt           bool
+	Provider             string
 }
 
 // RoleSupplied role arn has been passed as a flag
@@ -33,43 +45,31 @@ func (lf *LoginFlags) RoleSupplied() bool {
 // Login login to ADFS
 func Login(loginFlags *LoginFlags) error {
 
-	config := saml2aws.NewConfigLoader(loginFlags.Provider)
+	logger := logrus.WithField("command", "login")
 
-	hostname, err := config.LoadHostname()
+	account, err := buildIdpAccount(loginFlags)
 	if err != nil {
-		return errors.Wrap(err, "error loading config file")
+		return errors.Wrap(err, "error building login details")
 	}
 
-	username, err := config.LoadUsername()
-	if err != nil {
-		return errors.Wrap(err, "error loading config file")
-	}
-
-	// fmt.Println("LookupCredentials", hostname)
-
-	loginDetails := &saml2aws.LoginDetails{
-		Hostname: hostname,
-		Username: username,
-	}
-
-	err = resolveLoginDetails(loginDetails, loginFlags)
+	loginDetails, err := resolveLoginDetails(account, loginFlags)
 	if err != nil {
 		fmt.Printf("%+v\n", err)
 		os.Exit(1)
 	}
 
-	fmt.Printf("Authenticating as %s to %s https://%s\n", loginDetails.Username, loginFlags.Provider, loginDetails.Hostname)
-
-	opts := &saml2aws.SAMLOptions{Provider: loginFlags.Provider, SkipVerify: loginFlags.SkipVerify}
-
-	provider, err := saml2aws.NewSAMLClient(opts)
-	if err != nil {
-		return errors.Wrap(err, "error building IdP client")
-	}
+	fmt.Printf("Authenticating as %s ...\n", account.Username)
 
 	err = loginDetails.Validate()
 	if err != nil {
 		return errors.Wrap(err, "error validating login details")
+	}
+
+	logger.WithField("idpAccount", account).Debug("building provider")
+
+	provider, err := saml2aws.NewSAMLClient(account)
+	if err != nil {
+		return errors.Wrap(err, "error building IdP client")
 	}
 
 	samlAssertion, err := provider.Authenticate(loginDetails)
@@ -84,7 +84,7 @@ func Login(loginFlags *LoginFlags) error {
 		os.Exit(1)
 	}
 
-	err = credentials.SaveCredentials(loginDetails.Hostname, loginDetails.Username, loginDetails.Password)
+	err = credentials.SaveCredentials(loginDetails.URL, loginDetails.Username, loginDetails.Password)
 	if err != nil {
 		return errors.Wrap(err, "error storing password in keychain")
 	}
@@ -117,57 +117,52 @@ func Login(loginFlags *LoginFlags) error {
 
 	fmt.Println("Selected role:", role.RoleARN)
 
-	sess, err := session.NewSession()
+	err = loginToStsUsingRole(role, samlAssertion, loginFlags.Profile)
 	if err != nil {
-		return errors.Wrap(err, "failed to create session")
+		return errors.Wrap(err, "error logging into aws role using saml assertion")
 	}
-
-	svc := sts.New(sess)
-
-	params := &sts.AssumeRoleWithSAMLInput{
-		PrincipalArn:    aws.String(role.PrincipalARN), // Required
-		RoleArn:         aws.String(role.RoleARN),      // Required
-		SAMLAssertion:   aws.String(samlAssertion),     // Required
-		DurationSeconds: aws.Int64(3600),               // 1 hour
-	}
-
-	fmt.Println("Requesting AWS credentials using SAML assertion")
-
-	resp, err := svc.AssumeRoleWithSAML(params)
-	if err != nil {
-		return errors.Wrap(err, "error retrieving STS credentials using SAML")
-	}
-
-	// fmt.Println("Saving credentials")
-
-	sharedCreds := saml2aws.NewSharedCredentials(loginFlags.Profile)
-
-	err = sharedCreds.Save(aws.StringValue(resp.Credentials.AccessKeyId), aws.StringValue(resp.Credentials.SecretAccessKey), aws.StringValue(resp.Credentials.SessionToken))
-	if err != nil {
-		return errors.Wrap(err, "error saving credentials")
-	}
-
-	fmt.Println("Logged in as:", aws.StringValue(resp.AssumedRoleUser.Arn))
-	fmt.Println("")
-	fmt.Println("Your new access key pair has been stored in the AWS configuration")
-	fmt.Printf("Note that it will expire at %v\n", resp.Credentials.Expiration.Local())
-	fmt.Println("To use this credential, call the AWS CLI with the --profile option (e.g. aws --profile", loginFlags.Profile, "ec2 describe-instances).")
-
-	fmt.Println("Saving config:", config.Filename)
-	config.SaveUsername(loginDetails.Username)
-	config.SaveHostname(loginDetails.Hostname)
 
 	return nil
 }
 
-func resolveLoginDetails(loginDetails *saml2aws.LoginDetails, loginFlags *LoginFlags) error {
+func buildIdpAccount(loginFlags *LoginFlags) (*cfg.IDPAccount, error) {
+	cfgm, err := cfg.NewConfigManager(cfg.DefaultConfigPath)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to load configuration")
+	}
+
+	account, err := cfgm.LoadVerifyIDPAccount(loginFlags.IdpAccount)
+	if err != nil {
+		if cfg.IsErrIdpAccountNotFound(err) {
+			fmt.Printf("%v\n", err)
+			os.Exit(1)
+		}
+		return nil, errors.Wrap(err, "failed to load idp account")
+	}
+
+	// update username and hostname if supplied
+	applyFlagOverrides(loginFlags, account)
+
+	err = account.Validate()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to validate account")
+	}
+
+	return account, nil
+}
+
+func resolveLoginDetails(account *cfg.IDPAccount, loginFlags *LoginFlags) (*creds.LoginDetails, error) {
 
 	// fmt.Printf("loginFlags %+v\n", loginFlags)
+
+	loginDetails := &creds.LoginDetails{URL: account.URL, Username: account.Username}
+
+	fmt.Printf("Using IDP Account %s to access %s %s\n", loginFlags.IdpAccount, account.Provider, account.URL)
 
 	err := credentials.LookupCredentials(loginDetails)
 	if err != nil {
 		if !credentials.IsErrCredentialsNotFound(err) {
-			return errors.Wrap(err, "error loading saved password")
+			return nil, errors.Wrap(err, "error loading saved password")
 		}
 	}
 
@@ -187,14 +182,15 @@ func resolveLoginDetails(loginDetails *saml2aws.LoginDetails, loginFlags *LoginF
 
 	// if skip prompt was passed just pass back the flag values
 	if loginFlags.SkipPrompt {
-		return nil
+		return loginDetails, nil
 	}
 
 	err = saml2aws.PromptForLoginDetails(loginDetails)
 	if err != nil {
-		return errors.Wrap(err, "Error occured accepting input")
+		return nil, errors.Wrap(err, "Error occurred accepting input")
 	}
-	return nil
+
+	return loginDetails, nil
 }
 
 func resolveRole(awsRoles []*saml2aws.AWSRole, samlAssertion string, loginFlags *LoginFlags) (*saml2aws.AWSRole, error) {
@@ -229,4 +225,75 @@ func resolveRole(awsRoles []*saml2aws.AWSRole, samlAssertion string, loginFlags 
 	}
 
 	return role, nil
+}
+
+func loginToStsUsingRole(role *saml2aws.AWSRole, samlAssertion string, profile string) error {
+
+	sess, err := session.NewSession()
+	if err != nil {
+		return errors.Wrap(err, "failed to create session")
+	}
+
+	svc := sts.New(sess)
+
+	params := &sts.AssumeRoleWithSAMLInput{
+		PrincipalArn:    aws.String(role.PrincipalARN), // Required
+		RoleArn:         aws.String(role.RoleARN),      // Required
+		SAMLAssertion:   aws.String(samlAssertion),     // Required
+		DurationSeconds: aws.Int64(MaxDurationSeconds), // 1 hour
+	}
+
+	fmt.Println("Requesting AWS credentials using SAML assertion")
+
+	resp, err := svc.AssumeRoleWithSAML(params)
+	if err != nil {
+		return errors.Wrap(err, "error retrieving STS credentials using SAML")
+	}
+
+	// fmt.Println("Saving credentials")
+
+	sharedCreds := awsconfig.NewSharedCredentials(profile)
+
+	err = sharedCreds.Save(aws.StringValue(resp.Credentials.AccessKeyId), aws.StringValue(resp.Credentials.SecretAccessKey), aws.StringValue(resp.Credentials.SessionToken))
+	if err != nil {
+		return errors.Wrap(err, "error saving credentials")
+	}
+
+	fmt.Println("Logged in as:", aws.StringValue(resp.AssumedRoleUser.Arn))
+	fmt.Println("")
+	fmt.Println("Your new access key pair has been stored in the AWS configuration")
+	fmt.Printf("Note that it will expire at %v\n", resp.Credentials.Expiration.Local())
+	fmt.Println("To use this credential, call the AWS CLI with the --profile option (e.g. aws --profile", profile, "ec2 describe-instances).")
+
+	return nil
+}
+
+func applyFlagOverrides(loginFlags *LoginFlags, account *cfg.IDPAccount) {
+	if loginFlags.URL != "" {
+		account.URL = loginFlags.URL
+	}
+
+	if loginFlags.Username != "" {
+		account.Username = loginFlags.Username
+	}
+
+	if loginFlags.SkipVerify {
+		account.SkipVerify = loginFlags.SkipVerify
+	}
+
+	if loginFlags.IdpProvider != "" {
+		account.Provider = loginFlags.IdpProvider
+	}
+
+	if loginFlags.MFA != "" {
+		account.MFA = loginFlags.MFA
+	}
+
+	if loginFlags.AmazonWebservicesURN != "" {
+		account.AmazonWebservicesURN = loginFlags.AmazonWebservicesURN
+	}
+
+	if loginFlags.Timeout > 0 {
+		account.Timeout = loginFlags.Timeout
+	}
 }

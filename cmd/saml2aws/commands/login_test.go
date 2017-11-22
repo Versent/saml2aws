@@ -5,18 +5,24 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/versent/saml2aws"
+	"github.com/versent/saml2aws/pkg/cfg"
+	"github.com/versent/saml2aws/pkg/creds"
 )
 
 func TestResolveLoginDetailsWithFlags(t *testing.T) {
 
-	loginFlags := &LoginFlags{Hostname: "id.example.com", Username: "wolfeidau", Password: "testtestlol", SkipPrompt: true}
+	loginFlags := &LoginFlags{URL: "https://id.example.com", Username: "wolfeidau", Password: "testtestlol", SkipPrompt: true}
 
-	loginDetails := &saml2aws.LoginDetails{Hostname: "id.example.com", Username: ""}
-
-	err := resolveLoginDetails(loginDetails, loginFlags)
+	idpa := &cfg.IDPAccount{
+		URL:      "https://id.example.com",
+		MFA:      "none",
+		Provider: "Ping",
+		Username: "wolfeidau",
+	}
+	loginDetails, err := resolveLoginDetails(idpa, loginFlags)
 
 	assert.Empty(t, err)
-	assert.Equal(t, loginDetails, &saml2aws.LoginDetails{Username: "wolfeidau", Password: "testtestlol", Hostname: "id.example.com"})
+	assert.Equal(t, &creds.LoginDetails{Username: "wolfeidau", Password: "testtestlol", URL: "https://id.example.com"}, loginDetails)
 }
 
 func TestResolveRoleSingleEntry(t *testing.T) {

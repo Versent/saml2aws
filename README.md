@@ -7,6 +7,7 @@ How to Implement a General Solution for Federated API/CLI Access Using SAML 2.0]
 
 The process goes something like this:
 
+* Setup an account alias, either using the default or given a name
 * Prompt user for credentials
 * Log in to Identity Provider using form based authentication
 * Build a SAML assertion containing AWS roles
@@ -18,8 +19,8 @@ The process goes something like this:
 * Identity Provider
   * ADFS (2.x or 3.x)
   * PingFederate + PingId
-  * Okta + Duo
-  * KeyCloak
+  * Okta + (Duo, SMS, TOTP)
+  * KeyCloak + (TOTP)
 * AWS SAML Provider configured
 
 # Caveats
@@ -37,11 +38,21 @@ usage: saml2aws [<flags>] <command> [<args> ...]
 A command line tool to help with SAML access to the AWS token service.
 
 Flags:
-      --help            Show context-sensitive help (also try --help-long and --help-man).
-  -p, --profile="saml"  The AWS profile to save the temporary credentials
-  -s, --skip-verify     Skip verification of server certificate.
-  -i, --provider="ADFS" The type of SAML IDP provider.
-      --version         Show application version.
+      --help                   Show context-sensitive help (also try --help-long and --help-man).
+      --verbose                Enable verbose logging
+      --version                Show application version.
+  -a, --idp-account="default"  The name of the configured IDP account
+      --idp-provider=IDP-PROVIDER
+                               The configured IDP provider
+      --mfa="Auto"             The name of the mfa
+  -p, --profile="saml"         The AWS profile to save the temporary credentials
+  -s, --skip-verify            Skip verification of server certificate.
+  -i, --provider=PROVIDER      This flag it is obsolete see https://github.com/Versent/saml2aws#adding-idp-accounts.
+      --url=URL                The URL of the SAML IDP server used to login.
+      --username=USERNAME      The username used to login.
+      --password=PASSWORD      The password used to login.
+      --role=ROLE              The ARN of the role to assume.
+      --skip-prompt            Skip prompting for parameters during login.
 
 Commands:
   help [<command>...]
@@ -55,16 +66,61 @@ Commands:
   exec [<command>...]
     Exec the supplied command with env vars from STS token.
 
-```
-saml2aws will default to using ADFS 3.x as the Identity Provider. To use another provider, use the `--provider` flag:
 
-| IdP          |                         |
-| ------------ | ----------------------- |
-| ADFS 2.x     | `--provider=ADFS2`      |
-| PingFederate | `--provider=Ping`       |
-| JumpCloud    | `--provider=JumpCloud`  |
-| Okta         | `--provider=Okta`       |
-| KeyCloak     | `--provider=KeyCloak`   |
+  configure
+    Configure a new IDP account.
+
+```
+
+# Configuring IDP Accounts
+
+This is the *new* way of adding IDP provider accounts, it enables you to have named accounts with whatever settings you like and supports having one *default* account which is used if you omit the account flag. This replaces the --provider flag and old configuration file in 1.x.
+
+To add a default IdP account to saml2aws just run the following command and follow the prompts.
+
+```
+$ saml2aws configure
+
+Please choose the provider you would like to use:
+
+[ 0 ]:  ADFS
+
+[ 1 ]:  ADFS2
+
+[ 2 ]:  JumpCloud
+
+[ 3 ]:  KeyCloak
+
+[ 4 ]:  Okta
+
+[ 5 ]:  Ping
+
+Selection: 3
+
+URL []: https://id.example.com/auth/realms/master/protocol/saml/clients/amazon-aws
+Username []: mark@wolfe.id.au
+
+Configuration saved for IDP account: default
+```
+
+Then to login using this account.
+
+```
+saml2aws login
+```
+
+You can also add named accounts, below is an example where I am setting up an account under the `wolfeidau` alias, again just follow the prompts.
+
+```
+saml2aws configure -a wolfeidau
+```
+
+You can also configure the account alias without prompts.
+
+```
+saml2aws configure -a wolfeidau --idp-provider KeyCloak --username mark@wolfe.id.au \
+  --url https://keycloak.wolfe.id.au/auth/realms/master/protocol/saml/clients/amazon-aws --skip-prompt
+```
 
 # Install
 
@@ -94,12 +150,12 @@ Install the AWS CLI see https://docs.aws.amazon.com/cli/latest/userguide/install
 brew install awscli
 ```
 
-Configure an empty default profile with your region of choice.
+Configure an empty default profile with your region of choice, note the credentials will be overwritten when you first login and are supplied to unsure `~/.aws/credentials` file is created.
 
 ```
 $ aws configure
-AWS Access Key ID [None]:
-AWS Secret Access Key [None]:
+AWS Access Key ID [None]: test
+AWS Secret Access Key [None]: test
 Default region name [None]: us-west-2
 Default output format [None]:
 ```
@@ -112,16 +168,12 @@ Log into a service.
 
 ```
 $ saml2aws login
-Hostname [id.example.com]:
+Using IDP Account default to access Ping https://id.example.com
+To use saved password just hit enter.
 Username [mark.wolfe@example.com]:
 Password: ************
 
-ADFS https://id.example.com
-Authenticating to ADFS...
-Please choose the role you would like to assume:
-[ 0 ]:  arn:aws:iam::123123123123:role/AWS-Admin-CloudOPSBuild
-[ 1 ]:  arn:aws:iam::123123123123:role/AWS-Admin-CloudOPSNonProd
-Selection: 1
+Authenticating as mark.wolfe@example.com ...
 Selected role: arn:aws:iam::123123123123:role/AWS-Admin-CloudOPSNonProd
 Requesting AWS credentials using SAML assertion
 Saving credentials
@@ -130,38 +182,6 @@ Logged in as: arn:aws:sts::123123123123:assumed-role/AWS-Admin-CloudOPSNonProd/w
 Your new access key pair has been stored in the AWS configuration
 Note that it will expire at 2016-09-19 15:59:49 +1000 AEST
 To use this credential, call the AWS CLI with the --profile option (e.g. aws --profile saml ec2 describe-instances).
-```
-
-Run ansible with an expired token present, `exec` verifies the token and requests login.
-
-```
-$ saml2aws exec --skip-verify -- ansible-playbook -e "aws_region=ap-southeast-2" playbook.yml
-Hostname [id.example.com]:
-Username [mark.wolfe@example.com]:
-Password: ************
-
-ADFS https://id.example.com
-Authenticating to ADFS...
-Please choose the role you would like to assume:
-[ 0 ]:  arn:aws:iam::123123123123:role/AWS-Admin-CloudOPSBuild
-[ 1 ]:  arn:aws:iam::123123123123:role/AWS-Admin-CloudOPSNonProd
-Selection: 1
-Selected role: arn:aws:iam::123123123123:role/AWS-Admin-CloudOPSNonProd
-Requesting AWS credentials using SAML assertion
-Saving credentials
-Logged in as: arn:aws:sts::123123123123:assumed-role/AWS-Admin-CloudOPSNonProd/wolfeidau@example.com
-
-Your new access key pair has been stored in the AWS configuration
-Note that it will expire at 2016-09-19 15:59:49 +1000 AEST
-To use this credential, call the AWS CLI with the --profile option (e.g. aws --profile saml ec2 describe-instances).
-
-PLAY [create cloudformation stack] *************************************************
-
-...
-
-PLAY RECAP *********************************************************************
-localhost                  : ok=2    changed=0    unreachable=0    failed=0
-
 ```
 
 # Building
