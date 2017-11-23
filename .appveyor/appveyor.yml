@@ -50,6 +50,6 @@ artifacts:
 #  draft: true
 deploy_script:
 - ps: >-
-    choco apiKey -k $env:CHOCOLATEY_APIKEY -source https://chocolatey.org/
+    #choco apiKey -k $env:CHOCOLATEY_APIKEY -source https://chocolatey.org/
 
-    choco push ./choco/${env:appName}.${env:appVersion}.nupkg
+    #choco push ./choco/${env:appName}.${env:appVersion}.nupkg
