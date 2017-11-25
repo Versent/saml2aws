@@ -7,7 +7,7 @@ task 'Compile Go libraries...' {
   $ErrorActionPreference = 'Continue'
   c:\gopath\bin\glide install 2> $null
   $ErrorActionPreference = 'Stop'
-  go build -o "bin/${env:appName}.exe" -ldflags "-X main.Version=${env:appVersion}" "./cmd/$env:appName"
+  go build -o "bin/${env:appName}.exe" -ldflags "-X main.Version=${env:APPVEYOR_REPO_TAG_NAME}" "./cmd/$env:appName"
 }
 
 task 'Prepare for choco stuff...' {
@@ -19,9 +19,9 @@ task 'Prepare for choco stuff...' {
 
 task 'Pack Choco...' {
   Set-Location choco
-  choco pack "${env:appName}.nuspec"
-  $hash = Get-FileHash "${env:appName}.${env:appVersion}.nupkg"
-  "$($hash.Hash) $(Split-Path $hash.Path -Leaf)" > "${env:appName}.${env:appVersion}.nupkg.sha256"
+  choco pack --version "$env:APPVEYOR_REPO_TAG_NAME" "${env:appName}.nuspec"
+  $hash = Get-FileHash "${env:appName}.${env:APPVEYOR_REPO_TAG_NAME}.nupkg"
+  "$($hash.Hash) $(Split-Path $hash.Path -Leaf)" > "${env:appName}.${env:APPVEYOR_REPO_TAG_NAME}.nupkg.sha256"
 }
 
 task 'Zip for GH release...' {
