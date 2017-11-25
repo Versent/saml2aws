@@ -1,4 +1,5 @@
 image: WMF 5
+skip_non_tags: true
 clone_folder: c:\gopath\src\github.com\versent\saml2aws
 environment:
   GOPATH: c:\gopath
