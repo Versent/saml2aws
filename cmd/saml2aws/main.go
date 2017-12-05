@@ -82,7 +82,7 @@ func main() {
 
 	// will leave this here for a while during upgrade process
 	if lc.Provider != "" {
-		fmt.Println("The --provider flag has been replace with a new configure command see https://github.com/Versent/saml2aws#adding-idp-accounts")
+		fmt.Println("The --provider flag has been replaced with a new configure command. See https://github.com/Versent/saml2aws#adding-idp-accounts")
 		os.Exit(1)
 	}
 
