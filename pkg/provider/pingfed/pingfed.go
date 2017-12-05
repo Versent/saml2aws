@@ -1,7 +1,6 @@
 package pingfed
 
 import (
-	"crypto/tls"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -31,9 +30,7 @@ type Client struct {
 // New create a new PingFed client
 func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: idpAccount.SkipVerify},
-	}
+	tr := provider.NewDefaultTransport(idpAccount.SkipVerify)
 
 	client, err := provider.NewHTTPClient(tr)
 	if err != nil {

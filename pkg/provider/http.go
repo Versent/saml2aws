@@ -1,6 +1,7 @@
 package provider
 
 import (
+	"crypto/tls"
 	"net/http"
 	"net/http/cookiejar"
 
@@ -10,6 +11,14 @@ import (
 // HTTPClient saml2aws http client which extends the existing client
 type HTTPClient struct {
 	http.Client
+}
+
+// NewDefaultTransport configure a transport with the TLS skip verify option
+func NewDefaultTransport(skipVerify bool) http.RoundTripper {
+	return &http.Transport{
+		Proxy:           http.ProxyFromEnvironment,
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: skipVerify},
+	}
 }
 
 // NewHTTPClient configure the default http client used by the providers
