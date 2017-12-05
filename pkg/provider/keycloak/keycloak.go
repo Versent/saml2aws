@@ -2,7 +2,6 @@ package keycloak
 
 import (
 	"bytes"
-	"crypto/tls"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -32,10 +31,7 @@ type Client struct {
 // New create a new KeyCloakClient
 func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: idpAccount.SkipVerify},
-		Proxy:           http.ProxyFromEnvironment,
-	}
+	tr := provider.NewDefaultTransport(idpAccount.SkipVerify)
 
 	client, err := provider.NewHTTPClient(tr)
 	if err != nil {

@@ -29,6 +29,7 @@ type Client struct {
 func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 	transport := &ntlmssp.Negotiator{
 		RoundTripper: &http.Transport{
+			Proxy:           http.ProxyFromEnvironment,
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: idpAccount.SkipVerify, Renegotiation: tls.RenegotiateFreelyAsClient},
 		},
 	}

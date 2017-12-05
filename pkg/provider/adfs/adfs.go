@@ -31,6 +31,7 @@ type Client struct {
 func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 
 	tr := &http.Transport{
+		Proxy:           http.ProxyFromEnvironment,
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: idpAccount.SkipVerify, Renegotiation: tls.RenegotiateFreelyAsClient},
 	}
 

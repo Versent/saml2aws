@@ -2,7 +2,6 @@ package okta
 
 import (
 	"bytes"
-	"crypto/tls"
 	"fmt"
 	"html"
 	"io/ioutil"
@@ -64,9 +63,8 @@ type VerifyRequest struct {
 
 // New creates a new Okta client
 func New(idpAccount *cfg.IDPAccount) (*Client, error) {
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: idpAccount.SkipVerify},
-	}
+
+	tr := provider.NewDefaultTransport(idpAccount.SkipVerify)
 
 	client, err := provider.NewHTTPClient(tr)
 	if err != nil {

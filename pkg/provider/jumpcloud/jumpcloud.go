@@ -2,7 +2,6 @@ package jumpcloud
 
 import (
 	"bytes"
-	"crypto/tls"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -25,9 +24,8 @@ type Client struct {
 
 // New creates a new JumpCloud client
 func New(idpAccount *cfg.IDPAccount) (*Client, error) {
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: idpAccount.SkipVerify},
-	}
+
+	tr := provider.NewDefaultTransport(idpAccount.SkipVerify)
 
 	client, err := provider.NewHTTPClient(tr)
 	if err != nil {
