@@ -20,7 +20,7 @@ func NewCli() Prompter {
 
 // RequestSecurityCode request a security code to be entered by the user
 func (cli *CliPrompter) RequestSecurityCode(pattern string) string {
-	return prompt.StringRequired("\nSecurity Token [%s]\n", pattern)
+	return prompt.StringRequired("\nSecurity Token [%s]", pattern)
 }
 
 // Choice given the choice return the option selected
