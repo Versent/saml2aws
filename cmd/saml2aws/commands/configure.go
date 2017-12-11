@@ -5,13 +5,14 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/versent/saml2aws"
+	"github.com/versent/saml2aws/cmd/saml2aws/commands/flags"
 	"github.com/versent/saml2aws/pkg/cfg"
 )
 
 // Configure configure account profiles
-func Configure(loginFlags *LoginFlags, cmdline []string) error {
+func Configure(configFlags *flags.CommonFlags) error {
 
-	idpAccountName := loginFlags.IdpAccount
+	idpAccountName := configFlags.IdpAccount
 
 	cfgm, err := cfg.NewConfigManager(cfg.DefaultConfigPath)
 	if err != nil {
@@ -24,10 +25,10 @@ func Configure(loginFlags *LoginFlags, cmdline []string) error {
 	}
 
 	// update username and hostname if supplied
-	applyFlagOverrides(loginFlags, account)
+	flags.ApplyFlagOverrides(configFlags, account)
 
 	// do we need to prompt for values now?
-	if !loginFlags.SkipPrompt {
+	if !configFlags.SkipPrompt {
 		err = saml2aws.PromptForConfigurationDetails(account)
 		if err != nil {
 			return errors.Wrap(err, "failed to input configuration")

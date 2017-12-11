@@ -7,22 +7,16 @@ import (
 	"github.com/alecthomas/kingpin"
 	"github.com/sirupsen/logrus"
 	"github.com/versent/saml2aws/cmd/saml2aws/commands"
+	"github.com/versent/saml2aws/cmd/saml2aws/commands/flags"
 )
 
 var (
-	app = kingpin.New("saml2aws", "A command line tool to help with SAML access to the AWS token service.")
-
-	verbose = app.Flag("verbose", "Enable verbose logging").Bool()
-
-	cmdLogin     = app.Command("login", "Login to a SAML 2.0 IDP and convert the SAML assertion to an STS token.")
-	cmdExec      = app.Command("exec", "Exec the supplied command with env vars from STS token.")
-	cmdConfigure = app.Command("configure", "Configure a new IDP account.")
-	cmdLine      = buildCmdList(cmdExec.Arg("command", "The command to execute."))
-
 	// Version app version
 	Version = "1.0.0"
 )
 
+// The `cmdLineList` type is used to make a `[]string` meet the requiements
+// of the kingpin.Value interface
 type cmdLineList []string
 
 func (i *cmdLineList) Set(value string) error {
@@ -45,58 +39,69 @@ func buildCmdList(s kingpin.Settings) (target *[]string) {
 	return
 }
 
-func configureLoginFlags(app *kingpin.Application) *commands.LoginFlags {
-	c := &commands.LoginFlags{}
-
-	app.Flag("idp-account", "The name of the configured IDP account").Short('a').Default("default").StringVar(&c.IdpAccount)
-	app.Flag("idp-provider", "The configured IDP provider").EnumVar(&c.IdpProvider, "ADFS", "ADFS2", "Ping", "JumpCloud", "Okta", "KeyCloak")
-	app.Flag("mfa", "The name of the mfa").Default("Auto").StringVar(&c.MFA)
-	app.Flag("profile", "The AWS profile to save the temporary credentials").Short('p').Default("saml").StringVar(&c.Profile)
-	app.Flag("skip-verify", "Skip verification of server certificate.").Short('s').BoolVar(&c.SkipVerify)
-	// app.Flag("timeout", "Override the default HTTP client timeout in seconds.").Short('t').IntVar(&c.Timeout)
-
-	// using this flag to highlight the
-	app.Flag("provider", "This flag it is obsolete see https://github.com/Versent/saml2aws#adding-idp-accounts.").Short('i').EnumVar(&c.Provider, "ADFS", "ADFS2", "Ping", "JumpCloud", "Okta", "KeyCloak")
-
-	app.Flag("url", "The URL of the SAML IDP server used to login.").StringVar(&c.URL)
-	app.Flag("username", "The username used to login.").StringVar(&c.Username)
-	app.Flag("password", "The password used to login.").Envar("SAML2AWS_PASSWORD").StringVar(&c.Password)
-	app.Flag("role", "The ARN of the role to assume.").StringVar(&c.RoleArn)
-	app.Flag("aws-urn", "The URN used by SAML when you login.").StringVar(&c.AmazonWebservicesURN)
-	app.Flag("skip-prompt", "Skip prompting for parameters during login.").BoolVar(&c.SkipPrompt)
-
-	return c
-}
-
 func main() {
 
+	app := kingpin.New("saml2aws", "A command line tool to help with SAML access to the AWS token service.")
 	app.Version(Version)
 
-	lc := configureLoginFlags(app)
+	// Settings not related to commands
+	verbose := app.Flag("verbose", "Enable verbose logging").Bool()
+	provider := app.Flag("provider", "This flag it is obsolete see https://github.com/Versent/saml2aws#adding-idp-accounts.").Short('i').Enum("ADFS", "ADFS2", "Ping", "JumpCloud", "Okta", "KeyCloak")
 
+	// Common (to all commands) settings
+	commonFlags := new(flags.CommonFlags)
+	app.Flag("idp-account", "The name of the configured IDP account").Short('a').Default("default").StringVar(&commonFlags.IdpAccount)
+	app.Flag("idp-provider", "The configured IDP provider").EnumVar(&commonFlags.IdpProvider, "ADFS", "ADFS2", "Ping", "JumpCloud", "Okta", "KeyCloak")
+	app.Flag("mfa", "The name of the mfa").Default("Auto").StringVar(&commonFlags.MFA)
+	app.Flag("skip-verify", "Skip verification of server certificate.").Short('s').BoolVar(&commonFlags.SkipVerify)
+	app.Flag("url", "The URL of the SAML IDP server used to login.").StringVar(&commonFlags.URL)
+	app.Flag("username", "The username used to login.").Envar("SAML2AWS_USERNAME").StringVar(&commonFlags.Username)
+	app.Flag("role", "The ARN of the role to assume.").StringVar(&commonFlags.RoleArn)
+	app.Flag("aws-urn", "The URN used by SAML when you login.").StringVar(&commonFlags.AmazonWebservicesURN)
+	app.Flag("skip-prompt", "Skip prompting for parameters during login.").BoolVar(&commonFlags.SkipPrompt)
+
+	// `configure` command and settings
+	cmdConfigure := app.Command("configure", "Configure a new IDP account.")
+	configFlags := commonFlags
+
+	// `login` command and settings
+	cmdLogin := app.Command("login", "Login to a SAML 2.0 IDP and convert the SAML assertion to an STS token.")
+	loginFlags := new(flags.LoginExecFlags)
+	loginFlags.CommonFlags = commonFlags
+	cmdLogin.Flag("password", "The password used to login.").Envar("SAML2AWS_PASSWORD").StringVar(&loginFlags.Password)
+	cmdLogin.Flag("profile", "The AWS profile to save the temporary credentials").Short('p').Default("saml").StringVar(&loginFlags.Profile)
+
+	// `exec` command and settings
+	cmdExec := app.Command("exec", "Exec the supplied command with env vars from STS token.")
+	execFlags := new(flags.LoginExecFlags)
+	execFlags.CommonFlags = commonFlags
+	cmdExec.Flag("password", "The password used to login.").Envar("SAML2AWS_PASSWORD").StringVar(&loginFlags.Password)
+	cmdExec.Flag("profile", "The AWS profile to save the temporary credentials").Short('p').Default("saml").StringVar(&loginFlags.Profile)
+	cmdLine := buildCmdList(cmdExec.Arg("command", "The command to execute."))
+
+	// Trigger the parsing of the command line inputs via kingpin
 	command := kingpin.MustParse(app.Parse(os.Args[1:]))
+
+	// will leave this here for a while during upgrade process
+	if *provider != "" {
+		fmt.Println("The --provider flag has been replaced with a new configure command. See https://github.com/Versent/saml2aws#adding-idp-accounts")
+		os.Exit(1)
+	}
 
 	if *verbose {
 		logrus.SetLevel(logrus.DebugLevel)
 	}
 
-	// will leave this here for a while during upgrade process
-	if lc.Provider != "" {
-		fmt.Println("The --provider flag has been replaced with a new configure command. See https://github.com/Versent/saml2aws#adding-idp-accounts")
-		os.Exit(1)
-	}
-
-	var err error
-
 	logrus.WithField("command", command).Debug("Running")
 
+	var err error
 	switch command {
 	case cmdLogin.FullCommand():
-		err = commands.Login(lc)
+		err = commands.Login(loginFlags)
 	case cmdExec.FullCommand():
-		err = commands.Exec(lc, *cmdLine)
+		err = commands.Exec(execFlags, *cmdLine)
 	case cmdConfigure.FullCommand():
-		err = commands.Configure(lc, *cmdLine)
+		err = commands.Configure(configFlags)
 	}
 
 	if err != nil {

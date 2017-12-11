@@ -9,18 +9,19 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sts"
 	"github.com/pkg/errors"
+	"github.com/versent/saml2aws/cmd/saml2aws/commands/flags"
 	"github.com/versent/saml2aws/pkg/awsconfig"
 	"github.com/versent/saml2aws/pkg/shell"
 )
 
 // Exec execute the supplied command after seeding the environment
-func Exec(loginFlags *LoginFlags, cmdline []string) error {
+func Exec(execFlags *flags.LoginExecFlags, cmdline []string) error {
 
 	if len(cmdline) < 1 {
 		return fmt.Errorf("Command to execute required")
 	}
 
-	sharedCreds := awsconfig.NewSharedCredentials(loginFlags.Profile)
+	sharedCreds := awsconfig.NewSharedCredentials(execFlags.Profile)
 
 	// this checks if the credentials file has been created yet
 	// can only really be triggered if saml2aws exec is run on a new
@@ -34,13 +35,13 @@ func Exec(loginFlags *LoginFlags, cmdline []string) error {
 		return nil
 	}
 
-	ok, err := checkToken(loginFlags.Profile)
+	ok, err := checkToken(execFlags.Profile)
 	if err != nil {
 		return errors.Wrap(err, "error validating token")
 	}
 
 	if !ok {
-		err = Login(loginFlags)
+		err = Login(execFlags)
 	}
 	if err != nil {
 		return errors.Wrap(err, "error logging in")
