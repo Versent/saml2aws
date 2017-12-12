@@ -7,7 +7,7 @@ import (
 	"github.com/alecthomas/kingpin"
 	"github.com/sirupsen/logrus"
 	"github.com/versent/saml2aws/cmd/saml2aws/commands"
-	"github.com/versent/saml2aws/cmd/saml2aws/commands/flags"
+	"github.com/versent/saml2aws/pkg/flags"
 )
 
 var (

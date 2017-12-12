@@ -11,11 +11,11 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/versent/saml2aws"
-	"github.com/versent/saml2aws/cmd/saml2aws/commands/flags"
 	"github.com/versent/saml2aws/helper/credentials"
 	"github.com/versent/saml2aws/pkg/awsconfig"
 	"github.com/versent/saml2aws/pkg/cfg"
 	"github.com/versent/saml2aws/pkg/creds"
+	"github.com/versent/saml2aws/pkg/flags"
 )
 
 // MaxDurationSeconds the maximum duration in seconds for an STS session
