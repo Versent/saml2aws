@@ -10,12 +10,12 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
-	"github.com/versent/saml2aws/pkg/cfg"
-	"github.com/versent/saml2aws/pkg/creds"
-	"github.com/versent/saml2aws/pkg/dump"
-	"github.com/versent/saml2aws/pkg/prompter"
-	"github.com/versent/saml2aws/pkg/provider"
+	"github.com/Sirupsen/logrus"
+	"github.com/Versent/saml2aws/pkg/cfg"
+	"github.com/Versent/saml2aws/pkg/creds"
+	"github.com/Versent/saml2aws/pkg/dump"
+	"github.com/Versent/saml2aws/pkg/prompter"
+	"github.com/Versent/saml2aws/pkg/provider"
 )
 
 var logger = logrus.WithField("provider", "adfs")

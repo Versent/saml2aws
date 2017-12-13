@@ -5,8 +5,8 @@ import (
 	"os"
 
 	"github.com/alecthomas/kingpin"
-	"github.com/sirupsen/logrus"
-	"github.com/versent/saml2aws/cmd/saml2aws/commands"
+	"github.com/Sirupsen/logrus"
+	"github.com/Versent/saml2aws/cmd/saml2aws/commands"
 )
 
 var (

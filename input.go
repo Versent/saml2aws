@@ -10,8 +10,8 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/segmentio/go-prompt"
-	"github.com/versent/saml2aws/pkg/cfg"
-	"github.com/versent/saml2aws/pkg/creds"
+	"github.com/Versent/saml2aws/pkg/cfg"
+	"github.com/Versent/saml2aws/pkg/creds"
 )
 
 // PromptForConfigurationDetails prompt the user to present their hostname, username and mfa

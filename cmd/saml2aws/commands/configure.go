@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"github.com/pkg/errors"
-	"github.com/versent/saml2aws"
-	"github.com/versent/saml2aws/pkg/cfg"
+	"github.com/Versent/saml2aws"
+	"github.com/Versent/saml2aws/pkg/cfg"
 )
 
 // Configure configure account profiles
