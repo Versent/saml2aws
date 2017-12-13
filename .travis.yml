@@ -3,7 +3,7 @@ go:
     - 1.9
 #    - tip
 
-go_import_path: github.com/versent/saml2aws
+go_import_path: github.com/Versent/saml2aws
 
 install:
     - echo noop

@@ -12,9 +12,9 @@ import (
 	"github.com/PuerkitoBio/goquery"
 	"github.com/pkg/errors"
 	"github.com/segmentio/go-prompt"
-	"github.com/versent/saml2aws/pkg/cfg"
-	"github.com/versent/saml2aws/pkg/creds"
-	"github.com/versent/saml2aws/pkg/provider"
+	"github.com/Versent/saml2aws/pkg/cfg"
+	"github.com/Versent/saml2aws/pkg/creds"
+	"github.com/Versent/saml2aws/pkg/provider"
 )
 
 // Client is a wrapper representing a JumpCloud SAML client

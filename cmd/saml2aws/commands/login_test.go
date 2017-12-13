@@ -4,9 +4,9 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/versent/saml2aws"
-	"github.com/versent/saml2aws/pkg/cfg"
-	"github.com/versent/saml2aws/pkg/creds"
+	"github.com/Versent/saml2aws"
+	"github.com/Versent/saml2aws/pkg/cfg"
+	"github.com/Versent/saml2aws/pkg/creds"
 )
 
 func TestResolveLoginDetailsWithFlags(t *testing.T) {

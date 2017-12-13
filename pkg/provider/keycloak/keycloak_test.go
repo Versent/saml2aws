@@ -11,9 +11,9 @@ import (
 	"github.com/PuerkitoBio/goquery"
 
 	"github.com/stretchr/testify/require"
-	"github.com/versent/saml2aws/mocks"
-	"github.com/versent/saml2aws/pkg/creds"
-	"github.com/versent/saml2aws/pkg/provider"
+	"github.com/Versent/saml2aws/mocks"
+	"github.com/Versent/saml2aws/pkg/creds"
+	"github.com/Versent/saml2aws/pkg/provider"
 )
 
 const (

@@ -9,8 +9,8 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sts"
 	"github.com/pkg/errors"
-	"github.com/versent/saml2aws/pkg/awsconfig"
-	"github.com/versent/saml2aws/pkg/shell"
+	"github.com/Versent/saml2aws/pkg/awsconfig"
+	"github.com/Versent/saml2aws/pkg/shell"
 )
 
 // Exec execute the supplied command after seeding the environment

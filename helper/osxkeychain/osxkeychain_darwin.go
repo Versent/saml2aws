@@ -37,8 +37,8 @@ import (
 	"strings"
 	"unsafe"
 
-	"github.com/sirupsen/logrus"
-	"github.com/versent/saml2aws/helper/credentials"
+	"github.com/Sirupsen/logrus"
+	"github.com/Versent/saml2aws/helper/credentials"
 )
 
 var logger = logrus.WithField("helper", "osxkeychain")

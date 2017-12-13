@@ -64,7 +64,7 @@ imports:
   version: 152b1a2c8f5d0340f658bb656032a39b94e52958
 - name: github.com/segmentio/go-prompt
   version: f3218e418a3d6dbe1dcab5809d80fa6e15c05cb4
-- name: github.com/sirupsen/logrus
+- name: github.com/Sirupsen/logrus
   version: 89742aefa4b206dcf400792f3bd35b542998eb3b
 - name: github.com/stretchr/objx
   version: cbeaeb16a013161a98496fad62933b1d21786672

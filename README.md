@@ -186,7 +186,7 @@ To use this credential, call the AWS CLI with the --profile option (e.g. aws --p
 
 # Building
 
-To build this software on osx clone to the repo to `$GOPATH/src/github.com/versent/saml2aws` and ensure you have `$GOPATH/bin` in your `$PATH`.
+To build this software on osx clone to the repo to `$GOPATH/src/github.com/Versent/saml2aws` and ensure you have `$GOPATH/bin` in your `$PATH`.
 
 If you don't have glide installed you can install it using [homebrew](http://brew.sh/).
 

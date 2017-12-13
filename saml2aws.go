@@ -4,14 +4,14 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/versent/saml2aws/pkg/cfg"
-	"github.com/versent/saml2aws/pkg/creds"
-	"github.com/versent/saml2aws/pkg/provider/adfs"
-	"github.com/versent/saml2aws/pkg/provider/adfs2"
-	"github.com/versent/saml2aws/pkg/provider/jumpcloud"
-	"github.com/versent/saml2aws/pkg/provider/keycloak"
-	"github.com/versent/saml2aws/pkg/provider/okta"
-	"github.com/versent/saml2aws/pkg/provider/pingfed"
+	"github.com/Versent/saml2aws/pkg/cfg"
+	"github.com/Versent/saml2aws/pkg/creds"
+	"github.com/Versent/saml2aws/pkg/provider/adfs"
+	"github.com/Versent/saml2aws/pkg/provider/adfs2"
+	"github.com/Versent/saml2aws/pkg/provider/jumpcloud"
+	"github.com/Versent/saml2aws/pkg/provider/keycloak"
+	"github.com/Versent/saml2aws/pkg/provider/okta"
+	"github.com/Versent/saml2aws/pkg/provider/pingfed"
 )
 
 // ProviderList list of providers with their MFAs
