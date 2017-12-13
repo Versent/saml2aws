@@ -11,7 +11,7 @@
     <title>saml2aws (Install)</title>
     <authors>Mark Wolfe, https://github.com/wolfeidau</authors>
     <projectUrl>https://github.com/Versent/saml2aws</projectUrl>
-    <licenseUrl>https://github.com/versent/saml2aws/blob/master/LICENSE.md</licenseUrl>
+    <licenseUrl>https://github.com/Versent/saml2aws/blob/master/LICENSE.md</licenseUrl>
     <requireLicenseAcceptance>true</requireLicenseAcceptance>
     <projectSourceUrl>https://github.com/Versent/saml2aws</projectSourceUrl>
     <tags>saml2aws admin aws saml CLI</tags>

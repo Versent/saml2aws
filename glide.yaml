@@ -1,4 +1,4 @@
-package: github.com/versent/saml2aws
+package: github.com/Versent/saml2aws
 import:
 - package: github.com/PuerkitoBio/goquery
 - package: github.com/alecthomas/kingpin
