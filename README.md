@@ -39,19 +39,18 @@ A command line tool to help with SAML access to the AWS token service.
 
 Flags:
       --help                   Show context-sensitive help (also try --help-long and --help-man).
-      --verbose                Enable verbose logging
       --version                Show application version.
+      --verbose                Enable verbose logging
+  -i, --provider=PROVIDER      This flag it is obsolete see https://github.com/Versent/saml2aws#adding-idp-accounts.
   -a, --idp-account="default"  The name of the configured IDP account
       --idp-provider=IDP-PROVIDER
                                The configured IDP provider
       --mfa="Auto"             The name of the mfa
-  -p, --profile="saml"         The AWS profile to save the temporary credentials
   -s, --skip-verify            Skip verification of server certificate.
-  -i, --provider=PROVIDER      This flag it is obsolete see https://github.com/Versent/saml2aws#adding-idp-accounts.
       --url=URL                The URL of the SAML IDP server used to login.
       --username=USERNAME      The username used to login.
-      --password=PASSWORD      The password used to login.
       --role=ROLE              The ARN of the role to assume.
+      --aws-urn=AWS-URN        The URN used by SAML when you login.
       --skip-prompt            Skip prompting for parameters during login.
 
 Commands:
@@ -59,16 +58,21 @@ Commands:
     Show help.
 
 
-  login
-    Login to a SAML 2.0 IDP and convert the SAML assertion to an STS token.
-
-
-  exec [<command>...]
-    Exec the supplied command with env vars from STS token.
-
-
   configure
     Configure a new IDP account.
+
+
+  login [<flags>]
+    Login to a SAML 2.0 IDP and convert the SAML assertion to an STS token.
+
+        --password=PASSWORD  The password used to login.
+    -p, --profile="saml"     The AWS profile to save the temporary credentials
+
+  exec [<flags>] [<command>...]
+    Exec the supplied command with env vars from STS token.
+
+        --password=PASSWORD  The password used to login.
+    -p, --profile="saml"     The AWS profile to save the temporary credentials
 
 ```
 

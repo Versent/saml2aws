@@ -15,35 +15,14 @@ import (
 	"github.com/versent/saml2aws/pkg/awsconfig"
 	"github.com/versent/saml2aws/pkg/cfg"
 	"github.com/versent/saml2aws/pkg/creds"
+	"github.com/versent/saml2aws/pkg/flags"
 )
 
 // MaxDurationSeconds the maximum duration in seconds for an STS session
 const MaxDurationSeconds = 3600
 
-// LoginFlags login specific command flags
-type LoginFlags struct {
-	IdpAccount           string
-	IdpProvider          string
-	MFA                  string
-	Profile              string
-	URL                  string
-	Username             string
-	Password             string
-	RoleArn              string
-	AmazonWebservicesURN string
-	SkipVerify           bool
-	Timeout              int
-	SkipPrompt           bool
-	Provider             string
-}
-
-// RoleSupplied role arn has been passed as a flag
-func (lf *LoginFlags) RoleSupplied() bool {
-	return lf.RoleArn != ""
-}
-
 // Login login to ADFS
-func Login(loginFlags *LoginFlags) error {
+func Login(loginFlags *flags.LoginExecFlags) error {
 
 	logger := logrus.WithField("command", "login")
 
@@ -125,13 +104,13 @@ func Login(loginFlags *LoginFlags) error {
 	return nil
 }
 
-func buildIdpAccount(loginFlags *LoginFlags) (*cfg.IDPAccount, error) {
+func buildIdpAccount(loginFlags *flags.LoginExecFlags) (*cfg.IDPAccount, error) {
 	cfgm, err := cfg.NewConfigManager(cfg.DefaultConfigPath)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to load configuration")
 	}
 
-	account, err := cfgm.LoadVerifyIDPAccount(loginFlags.IdpAccount)
+	account, err := cfgm.LoadVerifyIDPAccount(loginFlags.CommonFlags.IdpAccount)
 	if err != nil {
 		if cfg.IsErrIdpAccountNotFound(err) {
 			fmt.Printf("%v\n", err)
@@ -141,7 +120,7 @@ func buildIdpAccount(loginFlags *LoginFlags) (*cfg.IDPAccount, error) {
 	}
 
 	// update username and hostname if supplied
-	applyFlagOverrides(loginFlags, account)
+	flags.ApplyFlagOverrides(loginFlags.CommonFlags, account)
 
 	err = account.Validate()
 	if err != nil {
@@ -151,13 +130,13 @@ func buildIdpAccount(loginFlags *LoginFlags) (*cfg.IDPAccount, error) {
 	return account, nil
 }
 
-func resolveLoginDetails(account *cfg.IDPAccount, loginFlags *LoginFlags) (*creds.LoginDetails, error) {
+func resolveLoginDetails(account *cfg.IDPAccount, loginFlags *flags.LoginExecFlags) (*creds.LoginDetails, error) {
 
 	// fmt.Printf("loginFlags %+v\n", loginFlags)
 
 	loginDetails := &creds.LoginDetails{URL: account.URL, Username: account.Username}
 
-	fmt.Printf("Using IDP Account %s to access %s %s\n", loginFlags.IdpAccount, account.Provider, account.URL)
+	fmt.Printf("Using IDP Account %s to access %s %s\n", loginFlags.CommonFlags.IdpAccount, account.Provider, account.URL)
 
 	err := credentials.LookupCredentials(loginDetails)
 	if err != nil {
@@ -169,8 +148,8 @@ func resolveLoginDetails(account *cfg.IDPAccount, loginFlags *LoginFlags) (*cred
 	// fmt.Printf("%s %s\n", savedUsername, savedPassword)
 
 	// if you supply a username in a flag it takes precedence
-	if loginFlags.Username != "" {
-		loginDetails.Username = loginFlags.Username
+	if loginFlags.CommonFlags.Username != "" {
+		loginDetails.Username = loginFlags.CommonFlags.Username
 	}
 
 	// if you supply a password in a flag it takes precedence
@@ -181,7 +160,7 @@ func resolveLoginDetails(account *cfg.IDPAccount, loginFlags *LoginFlags) (*cred
 	// fmt.Printf("loginDetails %+v\n", loginDetails)
 
 	// if skip prompt was passed just pass back the flag values
-	if loginFlags.SkipPrompt {
+	if loginFlags.CommonFlags.SkipPrompt {
 		return loginDetails, nil
 	}
 
@@ -193,12 +172,12 @@ func resolveLoginDetails(account *cfg.IDPAccount, loginFlags *LoginFlags) (*cred
 	return loginDetails, nil
 }
 
-func resolveRole(awsRoles []*saml2aws.AWSRole, samlAssertion string, loginFlags *LoginFlags) (*saml2aws.AWSRole, error) {
+func resolveRole(awsRoles []*saml2aws.AWSRole, samlAssertion string, loginFlags *flags.LoginExecFlags) (*saml2aws.AWSRole, error) {
 	var role = new(saml2aws.AWSRole)
 
 	if len(awsRoles) == 1 {
-		if loginFlags.RoleSupplied() {
-			return saml2aws.LocateRole(awsRoles, loginFlags.RoleArn)
+		if loginFlags.CommonFlags.RoleSupplied() {
+			return saml2aws.LocateRole(awsRoles, loginFlags.CommonFlags.RoleArn)
 		}
 		return awsRoles[0], nil
 	} else if len(awsRoles) == 0 {
@@ -212,8 +191,8 @@ func resolveRole(awsRoles []*saml2aws.AWSRole, samlAssertion string, loginFlags 
 
 	saml2aws.AssignPrincipals(awsRoles, awsAccounts)
 
-	if loginFlags.RoleSupplied() {
-		return saml2aws.LocateRole(awsRoles, loginFlags.RoleArn)
+	if loginFlags.CommonFlags.RoleSupplied() {
+		return saml2aws.LocateRole(awsRoles, loginFlags.CommonFlags.RoleArn)
 	}
 
 	for {
@@ -266,34 +245,4 @@ func loginToStsUsingRole(role *saml2aws.AWSRole, samlAssertion string, profile s
 	fmt.Println("To use this credential, call the AWS CLI with the --profile option (e.g. aws --profile", profile, "ec2 describe-instances).")
 
 	return nil
-}
-
-func applyFlagOverrides(loginFlags *LoginFlags, account *cfg.IDPAccount) {
-	if loginFlags.URL != "" {
-		account.URL = loginFlags.URL
-	}
-
-	if loginFlags.Username != "" {
-		account.Username = loginFlags.Username
-	}
-
-	if loginFlags.SkipVerify {
-		account.SkipVerify = loginFlags.SkipVerify
-	}
-
-	if loginFlags.IdpProvider != "" {
-		account.Provider = loginFlags.IdpProvider
-	}
-
-	if loginFlags.MFA != "" {
-		account.MFA = loginFlags.MFA
-	}
-
-	if loginFlags.AmazonWebservicesURN != "" {
-		account.AmazonWebservicesURN = loginFlags.AmazonWebservicesURN
-	}
-
-	if loginFlags.Timeout > 0 {
-		account.Timeout = loginFlags.Timeout
-	}
 }

@@ -7,11 +7,13 @@ import (
 	"github.com/versent/saml2aws"
 	"github.com/versent/saml2aws/pkg/cfg"
 	"github.com/versent/saml2aws/pkg/creds"
+	"github.com/versent/saml2aws/pkg/flags"
 )
 
 func TestResolveLoginDetailsWithFlags(t *testing.T) {
 
-	loginFlags := &LoginFlags{URL: "https://id.example.com", Username: "wolfeidau", Password: "testtestlol", SkipPrompt: true}
+	commonFlags := &flags.CommonFlags{URL: "https://id.example.com", Username: "wolfeidau", SkipPrompt: true}
+	loginFlags := &flags.LoginExecFlags{CommonFlags: commonFlags, Password: "testtestlol"}
 
 	idpa := &cfg.IDPAccount{
 		URL:      "https://id.example.com",
@@ -37,7 +39,7 @@ func TestResolveRoleSingleEntry(t *testing.T) {
 		adminRole,
 	}
 
-	got, err := resolveRole(awsRoles, "", &LoginFlags{})
+	got, err := resolveRole(awsRoles, "", &flags.LoginExecFlags{CommonFlags: &flags.CommonFlags{}})
 	assert.Empty(t, err)
 	assert.Equal(t, got, adminRole)
 }
