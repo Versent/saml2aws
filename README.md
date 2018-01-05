@@ -30,6 +30,44 @@ Aside from Okta, most of the providers in this project are using screen scraping
 1. AWS only permits session tokens being issued with a duration of up to 3600 seconds (1 hour), this is constrained by the [STS AssumeRoleWithSAML API](http://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRoleWithSAML.html) call and `DurationSeconds` field.
 2. Every SAML provider is different, the login process, MFA support is pluggable and therefore some work may be needed to integrate with your identity server
 
+# Install
+
+## OSX
+
+If you're on OSX you can install saml2aws using homebrew!
+
+```
+brew tap versent/homebrew-taps
+brew install saml2aws
+```
+
+## Windows
+
+If you're on Windows you can install saml2aws using chocolatey!
+
+```
+choco install saml2aws
+saml2aws --version
+```
+
+# Dependency Setup
+
+Install the AWS CLI see https://docs.aws.amazon.com/cli/latest/userguide/installing.html, in our case we are using [homebrew](http://brew.sh/) on OSX.
+
+```
+brew install awscli
+```
+
+Configure an empty default profile with your region of choice, note the credentials will be overwritten when you first login and are supplied to unsure `~/.aws/credentials` file is created.
+
+```
+$ aws configure
+AWS Access Key ID [None]: test
+AWS Secret Access Key [None]: test
+Default region name [None]: us-west-2
+Default output format [None]:
+```
+
 # Usage
 
 ```
@@ -126,49 +164,12 @@ saml2aws configure -a wolfeidau --idp-provider KeyCloak --username mark@wolfe.id
   --url https://keycloak.wolfe.id.au/auth/realms/master/protocol/saml/clients/amazon-aws --skip-prompt
 ```
 
-# Install
-
-## OSX
-
-If you're on OSX you can install saml2aws using homebrew!
-
-```
-brew tap versent/homebrew-taps
-brew install saml2aws
-```
-
-## Windows
-
-If you're on Windows you can install saml2aws using chocolatey!
-
-```
-choco install saml2aws
-saml2aws --version
-```
-
-# Setup
-
-Install the AWS CLI see https://docs.aws.amazon.com/cli/latest/userguide/installing.html, in our case we are using [homebrew](http://brew.sh/) on OSX.
-
-```
-brew install awscli
-```
-
-Configure an empty default profile with your region of choice, note the credentials will be overwritten when you first login and are supplied to unsure `~/.aws/credentials` file is created.
-
-```
-$ aws configure
-AWS Access Key ID [None]: test
-AWS Secret Access Key [None]: test
-Default region name [None]: us-west-2
-Default output format [None]:
-```
 
 Then your ready to use saml2aws.
 
 # Example
 
-Log into a service.
+Log into a service (without MFA).
 
 ```
 $ saml2aws login
@@ -186,6 +187,28 @@ Logged in as: arn:aws:sts::123123123123:assumed-role/AWS-Admin-CloudOPSNonProd/w
 Your new access key pair has been stored in the AWS configuration
 Note that it will expire at 2016-09-19 15:59:49 +1000 AEST
 To use this credential, call the AWS CLI with the --profile option (e.g. aws --profile saml ec2 describe-instances).
+```
+
+Log into a service (with MFA).
+
+```
+$ saml2aws login
+Using IDP Account default to access Ping https://id.example.com
+To use saved password just hit enter.
+Username [mark.wolfe@example.com]:
+Password: ************
+
+Authenticating as mark.wolfe@example.com ...
+Enter passcode: 123456
+
+Selected role: arn:aws:iam::123123123123:role/AWS-Admin-CloudOPSNonProd
+Requesting AWS credentials using SAML assertion
+Saving credentials
+Logged in as: arn:aws:sts::123123123123:assumed-role/AWS-Admin-CloudOPSNonProd/wolfeidau@example.com
+
+Your new access key pair has been stored in the AWS configuration
+Note that it will expire at 2016-09-19 15:59:49 +1000 AEST
+To use this credential, call the AWS CLI with the --profile option (e.g. aws --profile saml ec2 describe-instances --region us-east-1).
 ```
 
 # Building
@@ -239,5 +262,4 @@ This tool would not be possible without some great opensource libraries.
 
 # License
 
-This code is Copyright (c) 2015 [Versent](http://versent.com.au) and released under the MIT license. All rights not explicitly 
-granted in the MIT license are reserved. See the included LICENSE.md file for more details.
+This code is Copyright (c) 2018 [Versent](http://versent.com.au) and released under the MIT license. All rights not explicitly granted in the MIT license are reserved. See the included LICENSE.md file for more details.
