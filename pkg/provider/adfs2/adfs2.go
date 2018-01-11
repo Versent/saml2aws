@@ -95,6 +95,59 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 			samlAssertion = val
 		}
 	})
+	//if Authmethod is SecurID authentication then need to enter securid passcode
+	if strings.Contains(Authmethod, "SecurIDAuthentication") {
+		token := prompt.StringRequired("Enter passcode")
 
+		//build request
+		otpReq := url.Values{}
+		otpReq.Add("otp", token)
+		otpReq.Add("message", "")
+
+		//submit otp
+		req, err = http.NewRequest("POST", actionURL, strings.NewReader(otpReq.Encode()))
+		if err != nil {
+			return "", errors.Wrap(err, "error building authentication request")
+		}
+
+		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+
+		logger.WithField("actionURL", actionURL).WithField("req", dump.RequestString(req)).Debug("POST")
+
+		res, err = ac.client.Do(req)
+		if err != nil {
+			return "", errors.Wrap(err, "error polling mfa device")
+		}
+
+		logger.WithField("actionURL", actionURL).WithField("res", dump.ResponseString(res)).Debug("POST")
+
+		//extract form action and jwt token
+		form, actionURL, err = extractFormData(res)
+		if err != nil {
+			return "", errors.Wrap(err, "error extracting mfa form data")
+		}
+
+	}
+
+
+	//check for second redirect where RSA expects the TOTP text message
+
+	if res.StatusCode ==302 {
+		ac.mfaRequired = true
+	}
+
+
+
+	//For entering POST the direct
+	req, err := http.NewRequest("POST", url, nil)
+	if err != nil {
+		return samlAssertion, err
+	}
+
+	//if request data
+
+
+
+)
 	return samlAssertion, nil
 }
