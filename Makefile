@@ -8,15 +8,11 @@ default: deps compile
 glide:
 ifeq ($(shell uname),Darwin)
 	curl -L https://github.com/Masterminds/glide/releases/download/v0.12.3/glide-v0.12.3-darwin-amd64.zip -o glide.zip
-	unzip glide.zip
-	mv ./darwin-amd64/glide ./glide
-	rm -fr ./darwin-amd64
+	unzip -j glide.zip darwin-amd64/glide
 	rm ./glide.zip
 else
 	curl -L https://github.com/Masterminds/glide/releases/download/v0.12.3/glide-v0.12.3-linux-386.zip -o glide.zip
-	unzip glide.zip
-	mv ./linux-386/glide ./glide
-	rm -fr ./linux-386
+	unzip -j glide.zip linux-386/glide
 	rm ./glide.zip
 endif
 
