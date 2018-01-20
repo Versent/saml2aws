@@ -75,8 +75,8 @@ func main() {
 	cmdExec := app.Command("exec", "Exec the supplied command with env vars from STS token.")
 	execFlags := new(flags.LoginExecFlags)
 	execFlags.CommonFlags = commonFlags
-	cmdExec.Flag("password", "The password used to login.").Envar("SAML2AWS_PASSWORD").StringVar(&loginFlags.Password)
-	cmdExec.Flag("profile", "The AWS profile to save the temporary credentials").Short('p').Default("saml").StringVar(&loginFlags.Profile)
+	cmdExec.Flag("password", "The password used to login.").Envar("SAML2AWS_PASSWORD").StringVar(&execFlags.Password)
+	cmdExec.Flag("profile", "The AWS profile to save the temporary credentials").Short('p').Default("saml").StringVar(&execFlags.Profile)
 	cmdLine := buildCmdList(cmdExec.Arg("command", "The command to execute."))
 
 	// Trigger the parsing of the command line inputs via kingpin
