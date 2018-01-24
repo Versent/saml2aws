@@ -80,10 +80,10 @@ func main() {
 	cmdLine := buildCmdList(cmdExec.Arg("command", "The command to execute."))
 
 	// `list` command and settings
-	cmdList := app.Command("list", "List available role ARNs.")
-	listFlags := new(flags.LoginExecFlags)
-	listFlags.CommonFlags = commonFlags
-	cmdList.Flag("password", "The password used to login.").Envar("SAML2AWS_PASSWORD").StringVar(&execFlags.Password)
+	cmdListRoles := app.Command("list-roles", "List available role ARNs.")
+	listRolesFlags := new(flags.LoginExecFlags)
+	listRolesFlags.CommonFlags = commonFlags
+	cmdListRoles.Flag("password", "The password used to login.").Envar("SAML2AWS_PASSWORD").StringVar(&execFlags.Password)
 
 	// Trigger the parsing of the command line inputs via kingpin
 	command := kingpin.MustParse(app.Parse(os.Args[1:]))
@@ -106,8 +106,8 @@ func main() {
 		err = commands.Login(loginFlags)
 	case cmdExec.FullCommand():
 		err = commands.Exec(execFlags, *cmdLine)
-	case cmdList.FullCommand():
-		err = commands.List(listFlags)
+	case cmdListRoles.FullCommand():
+		err = commands.ListRoles(listRolesFlags)
 	case cmdConfigure.FullCommand():
 		err = commands.Configure(configFlags)
 	}

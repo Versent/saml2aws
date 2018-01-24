@@ -13,7 +13,7 @@ import (
 )
 
 // List will list available role ARNs
-func List(loginFlags *flags.LoginExecFlags) error {
+func ListRoles(loginFlags *flags.LoginExecFlags) error {
 
 	logger := logrus.WithField("command", "list")
 
