@@ -64,6 +64,15 @@ clean:
 	rm ./glide
 	rm -fr ./build
 
+packages:
+	rm -rf package && mkdir package
+	rm -rf stage && mkdir -p stage/usr/bin
+	cp build/saml2aws_*_linux_amd64/saml2aws stage/usr/bin
+	fpm --name $(NAME) -a x86_64 -t rpm -s dir --version $(VERSION) --iteration $(ITERATION) -C stage -p package/$(NAME)-$(VERSION)_$(ITERATION).rpm usr
+	fpm --name $(NAME) -a x86_64 -t deb -s dir --version $(VERSION) --iteration $(ITERATION) -C stage -p package/$(NAME)-$(VERSION)_$(ITERATION).deb usr
+	shasum -a 512 package/$(NAME)-$(VERSION)_$(ITERATION).rpm > package/$(NAME)-$(VERSION)_$(ITERATION).rpm.sha512
+	shasum -a 512 package/$(NAME)-$(VERSION)_$(ITERATION).deb > package/$(NAME)-$(VERSION)_$(ITERATION).deb.sha512
+
 generate-mocks:
 	mockery -dir pkg/prompter --all
 

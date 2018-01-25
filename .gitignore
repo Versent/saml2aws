@@ -1,10 +1,12 @@
 .DS_Store
 .credentials
-dist
-build
-packages
-release
+/dist
+/build
+/packages
+/release
 *_string.go
 .glide
 vendor
-glide
+/glide
+/package
+/stage
