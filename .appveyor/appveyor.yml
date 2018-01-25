@@ -8,9 +8,13 @@ environment:
   appName: saml2aws
 install:
 - ps: >-
+    $VerbosePreference = 'Continue'
+
     write-output $env:GOPATH
 
     write-output $env:APPVEYOR_REPO_TAG_NAME
+
+    write-output $env:APPVEYOR_REPO_TAG_NAME.Split('v')[1]
 
     write-output $env:GOROOT
 
@@ -26,7 +30,7 @@ install:
 
     Install-PackageProvider -Name NuGet -Force
 
-    Install-Module InvokeBuild -Verbose -Force
+    Install-Module InvokeBuild -Force
 build_script:
 - ps: >-
     Invoke-Build
@@ -36,8 +40,8 @@ test_script:
 artifacts:
 - path: $(appName).zip
 - path: $(appName).zip.sha256
-- path: choco/$(appName).$(APPVEYOR_REPO_TAG_NAME).nupkg
-- path: choco/$(appName).$(APPVEYOR_REPO_TAG_NAME).nupkg.sha256
+- path: 'choco/$(appName).*.nupkg'
+- path: 'choco/$(appName).*.nupkg.sha256'
 #deploy:
 #- provider: GitHub
 #  release: saml2aws-$(appveyor_build_version)
@@ -49,4 +53,4 @@ deploy_script:
 - ps: >-
     choco apiKey -k $env:CHOCOLATEY_APIKEY -source https://chocolatey.org/
 
-    choco push ./choco/${env:appName}.${env:APPVEYOR_REPO_TAG_NAME}.nupkg
+    choco push ./choco/${env:appName}.$(($env:APPVEYOR_REPO_TAG_NAME).Split('v')[1]).nupkg
