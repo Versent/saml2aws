@@ -83,7 +83,7 @@ func main() {
 	cmdListRoles := app.Command("list-roles", "List available role ARNs.")
 	listRolesFlags := new(flags.LoginExecFlags)
 	listRolesFlags.CommonFlags = commonFlags
-	cmdListRoles.Flag("password", "The password used to login.").Envar("SAML2AWS_PASSWORD").StringVar(&execFlags.Password)
+	cmdListRoles.Flag("password", "The password used to login.").Envar("SAML2AWS_PASSWORD").StringVar(&listRolesFlags.Password)
 
 	// Trigger the parsing of the command line inputs via kingpin
 	command := kingpin.MustParse(app.Parse(os.Args[1:]))
