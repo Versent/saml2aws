@@ -1,13 +1,13 @@
 Set-StrictMode -Version 'Latest'
 
 #$nameOfApp = 'saml2aws'
-#$version = '1.3.2'
+$version = ${env:APPVEYOR_REPO_TAG_NAME}.Split('v')[1]
 
 task 'Compile Go libraries...' {
   $ErrorActionPreference = 'Continue'
   c:\gopath\bin\glide install 2> $null
   $ErrorActionPreference = 'Stop'
-  go build -o "bin/${env:appName}.exe" -ldflags "-X main.Version=${env:APPVEYOR_REPO_TAG_NAME}" "./cmd/$env:appName"
+  go build -o "bin/${env:appName}.exe" -ldflags "-X main.Version=${version}" "./cmd/$env:appName"
 }
 
 task 'Prepare for choco stuff...' {
@@ -19,9 +19,9 @@ task 'Prepare for choco stuff...' {
 
 task 'Pack Choco...' {
   Set-Location choco
-  choco pack --version "$env:APPVEYOR_REPO_TAG_NAME" "${env:appName}.nuspec"
-  $hash = Get-FileHash "${env:appName}.${env:APPVEYOR_REPO_TAG_NAME}.nupkg"
-  "$($hash.Hash) $(Split-Path $hash.Path -Leaf)" > "${env:appName}.${env:APPVEYOR_REPO_TAG_NAME}.nupkg.sha256"
+  choco pack --version "$version" "${env:appName}.nuspec"
+  $hash = Get-FileHash "${env:appName}.${version}.nupkg"
+  "$($hash.Hash) $(Split-Path $hash.Path -Leaf)" > "${env:appName}.${version}.nupkg.sha256"
 }
 
 task 'Zip for GH release...' {
