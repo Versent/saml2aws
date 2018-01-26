@@ -16,6 +16,7 @@ import (
 	"github.com/versent/saml2aws/pkg/cfg"
 	"github.com/versent/saml2aws/pkg/creds"
 	"github.com/versent/saml2aws/pkg/flags"
+	"github.com/versent/saml2aws/pkg/shell"
 )
 
 // MaxDurationSeconds the maximum duration in seconds for an STS session
@@ -99,6 +100,20 @@ func Login(loginFlags *flags.LoginExecFlags) error {
 	err = loginToStsUsingRole(role, samlAssertion, loginFlags.Profile)
 	if err != nil {
 		return errors.Wrap(err, "error logging into aws role using saml assertion")
+	}
+
+	sharedCreds := awsconfig.NewSharedCredentials(loginFlags.Profile)
+
+	// if export vars is enabled.
+	id, secret, token, err := sharedCreds.Load()
+	if err != nil {
+		return errors.Wrap(err, "error loading credentials")
+	}
+
+	envVars := shell.BuildEnvVarsMap(id, secret, token)
+
+	for k, v := range envVars {
+		os.Setenv(k, v)
 	}
 
 	return nil
