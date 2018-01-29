@@ -9,6 +9,7 @@ type CommonFlags struct {
 	MFA                  string
 	URL                  string
 	Username             string
+	Password             string
 	RoleArn              string
 	AmazonWebservicesURN string
 	SkipPrompt           bool
@@ -24,7 +25,6 @@ func (cf *CommonFlags) RoleSupplied() bool {
 type LoginExecFlags struct {
 	CommonFlags *CommonFlags
 	Profile     string
-	Password    string
 }
 
 // ApplyFlagOverrides overrides IDPAccount with command line settings

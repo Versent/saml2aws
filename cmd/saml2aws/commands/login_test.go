@@ -12,8 +12,8 @@ import (
 
 func TestResolveLoginDetailsWithFlags(t *testing.T) {
 
-	commonFlags := &flags.CommonFlags{URL: "https://id.example.com", Username: "wolfeidau", SkipPrompt: true}
-	loginFlags := &flags.LoginExecFlags{CommonFlags: commonFlags, Password: "testtestlol"}
+	commonFlags := &flags.CommonFlags{URL: "https://id.example.com", Username: "wolfeidau", Password: "testtestlol", SkipPrompt: true}
+	loginFlags := &flags.LoginExecFlags{CommonFlags: commonFlags}
 
 	idpa := &cfg.IDPAccount{
 		URL:      "https://id.example.com",

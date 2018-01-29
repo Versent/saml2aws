@@ -2,9 +2,12 @@ package commands
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/pkg/errors"
+	prompt "github.com/segmentio/go-prompt"
 	"github.com/versent/saml2aws"
+	"github.com/versent/saml2aws/helper/credentials"
 	"github.com/versent/saml2aws/pkg/cfg"
 	"github.com/versent/saml2aws/pkg/flags"
 )
@@ -35,11 +38,34 @@ func Configure(configFlags *flags.CommonFlags) error {
 		}
 	}
 
+	if configFlags.Password != "" {
+		err = credentials.SaveCredentials(account.URL, account.Username, configFlags.Password)
+		if err != nil {
+			return errors.Wrap(err, "error storing password in keychain")
+		}
+	} else {
+		password := prompt.PasswordMasked("Password")
+		if password != "" {
+			if confirmPassword := prompt.PasswordMasked("Confirm"); confirmPassword == password {
+				err = credentials.SaveCredentials(account.URL, account.Username, password)
+				if err != nil {
+					return errors.Wrap(err, "error storing password in keychain")
+				}
+			} else {
+				fmt.Println("Passwords did not match")
+				os.Exit(1)
+			}
+		} else {
+			fmt.Println("No password supplied")
+		}
+	}
+
 	err = cfgm.SaveIDPAccount(idpAccountName, account)
 	if err != nil {
 		return errors.Wrap(err, "failed to save configuration")
 	}
 
+	fmt.Println("")
 	fmt.Printf("Configuration saved for IDP account: %s\n", idpAccountName)
 
 	return nil
