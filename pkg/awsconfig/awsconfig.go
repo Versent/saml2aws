@@ -4,6 +4,8 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"path"
+	"runtime"
 
 	"github.com/mitchellh/go-homedir"
 
@@ -133,9 +135,15 @@ func (p *CredentialsProvider) filename() (string, error) {
 			return p.Filename, nil
 		}
 
-		name, err := homedir.Expand("~/.aws/credentials")
-		if err != nil {
-			return "", ErrCredentialsHomeNotFound
+		var name string
+		var err error
+		if runtime.GOOS == "windows" {
+			name = path.Join(os.Getenv("USERPROFILE"), ".aws", "credentials")
+		} else {
+			name, err = homedir.Expand("~/.aws/credentials")
+			if err != nil {
+				return "", ErrCredentialsHomeNotFound
+			}
 		}
 
 		// is the filename a symlink?
