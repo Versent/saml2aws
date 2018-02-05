@@ -168,6 +168,11 @@ func (h Osxkeychain) List() (map[string]string, error) {
 	return resp, nil
 }
 
+// SupportsCredentialsStorage returns true since storage is supported
+func (Osxkeychain) SupportsCredentialStorage() bool {
+	return true
+}
+
 func splitServer(serverURL string) (*C.struct_Server, error) {
 	u, err := url.Parse(serverURL)
 	if err != nil {

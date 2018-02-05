@@ -36,27 +36,11 @@ func Configure(configFlags *flags.CommonFlags) error {
 		if err != nil {
 			return errors.Wrap(err, "failed to input configuration")
 		}
-	}
 
-	if configFlags.Password != "" {
-		err = credentials.SaveCredentials(account.URL, account.Username, configFlags.Password)
-		if err != nil {
-			return errors.Wrap(err, "error storing password in keychain")
-		}
-	} else {
-		password := prompt.PasswordMasked("Password")
-		if password != "" {
-			if confirmPassword := prompt.PasswordMasked("Confirm"); confirmPassword == password {
-				err = credentials.SaveCredentials(account.URL, account.Username, password)
-				if err != nil {
-					return errors.Wrap(err, "error storing password in keychain")
-				}
-			} else {
-				fmt.Println("Passwords did not match")
-				os.Exit(1)
+		if credentials.SupportsStorage() {
+			if err := storeCredentials(configFlags, account); err != nil {
+				return err
 			}
-		} else {
-			fmt.Println("No password supplied")
 		}
 	}
 
@@ -68,5 +52,28 @@ func Configure(configFlags *flags.CommonFlags) error {
 	fmt.Println("")
 	fmt.Printf("Configuration saved for IDP account: %s\n", idpAccountName)
 
+	return nil
+}
+
+func storeCredentials(configFlags *flags.CommonFlags, account *cfg.IDPAccount) error {
+	if configFlags.Password != "" {
+		if err := credentials.SaveCredentials(account.URL, account.Username, configFlags.Password); err != nil {
+			return errors.Wrap(err, "error storing password in keychain")
+		}
+	} else {
+		password := prompt.PasswordMasked("Password")
+		if password != "" {
+			if confirmPassword := prompt.PasswordMasked("Confirm"); confirmPassword == password {
+				if err := credentials.SaveCredentials(account.URL, account.Username, password); err != nil {
+					return errors.Wrap(err, "error storing password in keychain")
+				}
+			} else {
+				fmt.Println("Passwords did not match")
+				os.Exit(1)
+			}
+		} else {
+			fmt.Println("No password supplied")
+		}
+	}
 	return nil
 }

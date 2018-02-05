@@ -31,3 +31,8 @@ func SaveCredentials(url, username, password string) error {
 
 	return CurrentHelper.Add(creds)
 }
+
+// SupportsStorage will return true or false if storage is supported.
+func SupportsStorage() bool {
+	return CurrentHelper.SupportsCredentialStorage()
+}
