@@ -94,3 +94,8 @@ func (h Wincred) List() (map[string]string, error) {
 
 	return resp, nil
 }
+
+// SupportsCredentialsStorage returns true since storage is supported
+func (Wincred) SupportsCredentialStorage() bool {
+	return true
+}

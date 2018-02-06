@@ -56,6 +56,7 @@ func main() {
 	app.Flag("skip-verify", "Skip verification of server certificate.").Short('s').BoolVar(&commonFlags.SkipVerify)
 	app.Flag("url", "The URL of the SAML IDP server used to login.").StringVar(&commonFlags.URL)
 	app.Flag("username", "The username used to login.").Envar("SAML2AWS_USERNAME").StringVar(&commonFlags.Username)
+	app.Flag("password", "The password used to login.").Envar("SAML2AWS_PASSWORD").StringVar(&commonFlags.Password)
 	app.Flag("role", "The ARN of the role to assume.").StringVar(&commonFlags.RoleArn)
 	app.Flag("aws-urn", "The URN used by SAML when you login.").StringVar(&commonFlags.AmazonWebservicesURN)
 	app.Flag("skip-prompt", "Skip prompting for parameters during login.").BoolVar(&commonFlags.SkipPrompt)
@@ -68,14 +69,12 @@ func main() {
 	cmdLogin := app.Command("login", "Login to a SAML 2.0 IDP and convert the SAML assertion to an STS token.")
 	loginFlags := new(flags.LoginExecFlags)
 	loginFlags.CommonFlags = commonFlags
-	cmdLogin.Flag("password", "The password used to login.").Envar("SAML2AWS_PASSWORD").StringVar(&loginFlags.Password)
 	cmdLogin.Flag("profile", "The AWS profile to save the temporary credentials").Short('p').Default("saml").StringVar(&loginFlags.Profile)
 
 	// `exec` command and settings
 	cmdExec := app.Command("exec", "Exec the supplied command with env vars from STS token.")
 	execFlags := new(flags.LoginExecFlags)
 	execFlags.CommonFlags = commonFlags
-	cmdExec.Flag("password", "The password used to login.").Envar("SAML2AWS_PASSWORD").StringVar(&execFlags.Password)
 	cmdExec.Flag("profile", "The AWS profile to save the temporary credentials").Short('p').Default("saml").StringVar(&execFlags.Profile)
 	cmdLine := buildCmdList(cmdExec.Arg("command", "The command to execute."))
 
@@ -83,7 +82,6 @@ func main() {
 	cmdListRoles := app.Command("list-roles", "List available role ARNs.")
 	listRolesFlags := new(flags.LoginExecFlags)
 	listRolesFlags.CommonFlags = commonFlags
-	cmdListRoles.Flag("password", "The password used to login.").Envar("SAML2AWS_PASSWORD").StringVar(&listRolesFlags.Password)
 
 	// Trigger the parsing of the command line inputs via kingpin
 	command := kingpin.MustParse(app.Parse(os.Args[1:]))

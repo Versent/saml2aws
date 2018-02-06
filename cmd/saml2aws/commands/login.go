@@ -153,8 +153,8 @@ func resolveLoginDetails(account *cfg.IDPAccount, loginFlags *flags.LoginExecFla
 	}
 
 	// if you supply a password in a flag it takes precedence
-	if loginFlags.Password != "" {
-		loginDetails.Password = loginFlags.Password
+	if loginFlags.CommonFlags.Password != "" {
+		loginDetails.Password = loginFlags.CommonFlags.Password
 	}
 
 	// fmt.Printf("loginDetails %+v\n", loginDetails)
