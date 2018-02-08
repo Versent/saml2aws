@@ -53,6 +53,9 @@ func (kc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 	}
 
 	data, err := kc.postLoginForm(authSubmitURL, authForm)
+	if err != nil {
+		return "", fmt.Errorf("error submitting login form")
+	}
 	if authSubmitURL == "" {
 		return "", fmt.Errorf("error submitting login form")
 	}
