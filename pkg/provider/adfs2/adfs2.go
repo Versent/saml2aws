@@ -1,10 +1,7 @@
 package adfs2
 
 import (
-	"bytes"
 	"crypto/tls"
-	"fmt"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"net/http/cookiejar"
@@ -13,16 +10,17 @@ import (
 
 	"github.com/Azure/go-ntlmssp"
 	"github.com/PuerkitoBio/goquery"
-	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 	"github.com/versent/saml2aws/pkg/cfg"
 	"github.com/versent/saml2aws/pkg/creds"
 )
 
+var logger = logrus.WithField("provider", "adfs2")
+
 // Client client for adfs2
 type Client struct {
 	idpAccount *cfg.IDPAccount
-	transport  http.RoundTripper
-	jar        http.CookieJar
+	client     *http.Client
 }
 
 // New new adfs2 client with ntlmssp configured
@@ -41,46 +39,29 @@ func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 		return nil, err
 	}
 
+	client := &http.Client{
+		Transport: transport,
+		Jar:       jar,
+	}
+
 	return &Client{
-		transport:  transport,
+		client:     client,
 		idpAccount: idpAccount,
-		jar:        jar,
 	}, nil
 }
 
 // Authenticate authenticate the user using the supplied login details
 func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error) {
+	switch ac.idpAccount.MFA {
+	case "RSA":
+		return ac.authenticateRsa(loginDetails)
+	default:
+		return ac.authenticateNTLM(loginDetails) // this is chosen as the default to maintain compatibility with existing users
+	}
+}
+
+func extractSamlAssertion(doc *goquery.Document) (string, error) {
 	var samlAssertion string
-	client := http.Client{
-		Transport: ac.transport,
-		Jar:       ac.jar,
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			req.SetBasicAuth(loginDetails.Username, loginDetails.Password)
-			return nil
-		},
-	}
-
-	url := fmt.Sprintf("%s/adfs/ls/IdpInitiatedSignOn.aspx?loginToRp=%s", loginDetails.URL, ac.idpAccount.AmazonWebservicesURN)
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return samlAssertion, err
-	}
-	req.SetBasicAuth(loginDetails.Username, loginDetails.Password)
-
-	res, err := client.Do(req)
-	if err != nil {
-		return samlAssertion, errors.Wrap(err, "error retieving login form")
-	}
-
-	data, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return samlAssertion, errors.Wrap(err, "error retieving body")
-	}
-
-	doc, err := goquery.NewDocumentFromReader(bytes.NewBuffer(data))
-	if err != nil {
-		return samlAssertion, errors.Wrap(err, "error parsing document")
-	}
 
 	doc.Find("input").Each(func(i int, s *goquery.Selection) {
 		name, ok := s.Attr("name")
