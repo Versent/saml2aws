@@ -26,6 +26,20 @@ func Login(loginFlags *flags.LoginExecFlags) error {
 
 	logger := logrus.WithField("command", "login")
 
+	sharedCreds := awsconfig.NewSharedCredentials(loginFlags.Profile)
+
+	logger.Debug("check if Creds Exist")
+
+	// this checks if the credentials file has been created yet
+	exist, err := sharedCreds.CredsExists()
+	if err != nil {
+		return errors.Wrap(err, "error loading credentials")
+	}
+	if !exist {
+		fmt.Println("unable to load credentials, login required to create them")
+		return nil
+	}
+
 	account, err := buildIdpAccount(loginFlags)
 	if err != nil {
 		return errors.Wrap(err, "error building login details")
@@ -96,7 +110,7 @@ func Login(loginFlags *flags.LoginExecFlags) error {
 
 	fmt.Println("Selected role:", role.RoleARN)
 
-	err = loginToStsUsingRole(role, samlAssertion, loginFlags.Profile)
+	err = loginToStsUsingRole(role, sharedCreds, samlAssertion)
 	if err != nil {
 		return errors.Wrap(err, "error logging into aws role using saml assertion")
 	}
@@ -206,7 +220,7 @@ func resolveRole(awsRoles []*saml2aws.AWSRole, samlAssertion string, loginFlags 
 	return role, nil
 }
 
-func loginToStsUsingRole(role *saml2aws.AWSRole, samlAssertion string, profile string) error {
+func loginToStsUsingRole(role *saml2aws.AWSRole, sharedCreds *awsconfig.CredentialsProvider, samlAssertion string) error {
 
 	sess, err := session.NewSession()
 	if err != nil {
@@ -229,10 +243,6 @@ func loginToStsUsingRole(role *saml2aws.AWSRole, samlAssertion string, profile s
 		return errors.Wrap(err, "error retrieving STS credentials using SAML")
 	}
 
-	// fmt.Println("Saving credentials")
-
-	sharedCreds := awsconfig.NewSharedCredentials(profile)
-
 	err = sharedCreds.Save(aws.StringValue(resp.Credentials.AccessKeyId), aws.StringValue(resp.Credentials.SecretAccessKey), aws.StringValue(resp.Credentials.SessionToken))
 	if err != nil {
 		return errors.Wrap(err, "error saving credentials")
@@ -242,7 +252,7 @@ func loginToStsUsingRole(role *saml2aws.AWSRole, samlAssertion string, profile s
 	fmt.Println("")
 	fmt.Println("Your new access key pair has been stored in the AWS configuration")
 	fmt.Printf("Note that it will expire at %v\n", resp.Credentials.Expiration.Local())
-	fmt.Println("To use this credential, call the AWS CLI with the --profile option (e.g. aws --profile", profile, "ec2 describe-instances).")
+	fmt.Println("To use this credential, call the AWS CLI with the --profile option (e.g. aws --profile", sharedCreds.Profile, "ec2 describe-instances).")
 
 	return nil
 }
