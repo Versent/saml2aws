@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/mitchellh/go-homedir"
+	"github.com/sirupsen/logrus"
 
 	"github.com/pkg/errors"
 
@@ -18,6 +19,8 @@ var (
 
 	// ErrCredentialsNotFound returned when the required aws credentials don't exist.
 	ErrCredentialsNotFound = errors.New("aws credentials not found")
+
+	logger = logrus.WithField("pkg", "awsconfig")
 )
 
 // AWSCredentials represents the set of attributes used to authenticate to AWS with a short lived session
@@ -110,15 +113,27 @@ func (p *CredentialsProvider) ensureConfigExists() error {
 	if err != nil {
 		return err
 	}
+	logger.WithField("filename", filename).Debug("ensureConfigExists")
 
 	if _, err := os.Stat(filename); err != nil {
 		if os.IsNotExist(err) {
+
+			dir := filepath.Dir(filename)
+
+			err = os.MkdirAll(dir, os.ModePerm)
+			if err != nil {
+				return err
+			}
+
+			logger.WithField("dir", dir).Debug("Dir created")
 
 			// create an base config file
 			err = ioutil.WriteFile(filename, []byte("["+p.Profile+"]"), 0600)
 			if err != nil {
 				return err
 			}
+
+			logger.WithField("filename", filename).Debug("File created")
 
 		}
 		return err
@@ -138,16 +153,34 @@ func (p *CredentialsProvider) filename() (string, error) {
 			return "", ErrCredentialsHomeNotFound
 		}
 
+		logger.WithField("name", name).Debug("Expand")
+
 		// is the filename a symlink?
-		name, err = filepath.EvalSymlinks(name)
+		name, err = resolveSymlink(name)
 		if err != nil {
 			return "", errors.Wrap(err, "unable to resolve symlink")
 		}
+
+		logger.WithField("name", name).Debug("resolveSymlink")
 
 		p.Filename = name
 	}
 
 	return p.Filename, nil
+}
+
+func resolveSymlink(filename string) (string, error) {
+	sympath, err := filepath.EvalSymlinks(filename)
+
+	// return the un modified filename
+	if os.IsNotExist(err) {
+		return filename, nil
+	}
+	if err != nil {
+		return "", err
+	}
+
+	return sympath, nil
 }
 
 func createAndSaveProfile(filename, profile, id, secret, token string) error {
