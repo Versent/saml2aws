@@ -2,8 +2,10 @@ package provider
 
 import (
 	"crypto/tls"
+	"net"
 	"net/http"
 	"net/http/cookiejar"
+	"time"
 
 	"golang.org/x/net/publicsuffix"
 )
@@ -16,8 +18,17 @@ type HTTPClient struct {
 // NewDefaultTransport configure a transport with the TLS skip verify option
 func NewDefaultTransport(skipVerify bool) http.RoundTripper {
 	return &http.Transport{
-		Proxy:           http.ProxyFromEnvironment,
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: skipVerify},
+		Proxy: http.ProxyFromEnvironment,
+		DialContext: (&net.Dialer{
+			Timeout:   30 * time.Second,
+			KeepAlive: 30 * time.Second,
+			DualStack: true,
+		}).DialContext,
+		MaxIdleConns:          100,
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+		TLSClientConfig:       &tls.Config{InsecureSkipVerify: skipVerify},
 	}
 }
 
