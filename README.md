@@ -254,9 +254,9 @@ The exec sub command will export the following environment variables.
 This tool would not be possible without some great opensource libraries.
 
 * [goquery](https://github.com/PuerkitoBio/goquery) html querying
-* [etree](github.com/beevik/etree) xpath selector
-* [kingpin](github.com/alecthomas/kingpin) command line flags
-* [aws-sdk-go](github.com/aws/aws-sdk-go) AWS Go SDK
+* [etree](https://github.com/beevik/etree) xpath selector
+* [kingpin](https://github.com/alecthomas/kingpin) command line flags
+* [aws-sdk-go](https://github.com/aws/aws-sdk-go) AWS Go SDK
 * [go-ini](https://github.com/go-ini/ini) INI file parser
 * [go-ntlmssp](https://github.com/Azure/go-ntlmssp) NTLM/Negotiate authentication
 
