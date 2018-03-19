@@ -33,7 +33,7 @@ func (ac *Client) authenticateRsa(loginDetails *creds.LoginDetails) (string, err
 		return "", errors.Wrap(err, "error extracting mfa form data")
 	}
 
-	token := prompt.StringRequired("Enter passcode")
+	token := prompt.PasswordMasked("Enter passcode")
 
 	passcodeForm.Set("Passcode", token)
 	passcodeForm.Del("submit")
@@ -48,7 +48,7 @@ func (ac *Client) authenticateRsa(loginDetails *creds.LoginDetails) (string, err
 		return "", errors.Wrap(err, "error extracting rsa form data")
 	}
 
-	nextCode := prompt.StringRequired("Enter nextCode")
+	nextCode := prompt.PasswordMasked("Enter nextCode")
 
 	rsaForm.Set("NextCode", nextCode)
 	rsaForm.Del("submit")
