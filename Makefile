@@ -3,25 +3,21 @@ ARCH=$(shell uname -m)
 VERSION=2.3.0
 ITERATION := 1
 
-default: deps compile
+SOURCE_FILES?=$$(go list ./... | grep -v /vendor/)
+TEST_PATTERN?=.
+TEST_OPTIONS?=
 
-glide:
-ifeq ($(shell uname),Darwin)
-	curl -L https://github.com/Masterminds/glide/releases/download/v0.12.3/glide-v0.12.3-darwin-amd64.zip -o glide.zip
-	unzip -j glide.zip darwin-amd64/glide
-	rm ./glide.zip
-else
-	curl -L https://github.com/Masterminds/glide/releases/download/v0.12.3/glide-v0.12.3-linux-386.zip -o glide.zip
-	unzip -j glide.zip linux-386/glide
-	rm ./glide.zip
-endif
+ci: deps test
 
-deps: glide
-	# go get github.com/buildkite/github-release
-	go get -u github.com/alecthomas/gometalinter	
-	go get github.com/mitchellh/gox
-	./glide install
+deps:
+	go get github.com/buildkite/github-release
+	go get -u github.com/golang/dep/cmd/dep
+	go get -u github.com/mitchellh/gox
+	go get -u github.com/alecthomas/gometalinter
+	go get -u github.com/pierrre/gotestcover
+	go get -u golang.org/x/tools/cmd/cover
 	gometalinter --install
+	dep ensure
 
 compile: deps
 	@rm -rf build/
@@ -57,12 +53,11 @@ dist:
 release:
 	@github-release "v$(VERSION)" dist/* --commit "$(git rev-parse HEAD)" --github-repository versent/$(NAME)
 
-test: deps
-	go test -cover -v $(shell ./glide novendor)
+test:
+	@gotestcover $(TEST_OPTIONS) -covermode=atomic -coverprofile=coverage.txt $(SOURCE_FILES) -run $(TEST_PATTERN) -timeout=2m
 
 clean:
-	rm ./glide
-	rm -fr ./build
+	@rm -fr ./build
 
 packages:
 	rm -rf package && mkdir package

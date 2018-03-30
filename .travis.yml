@@ -1,7 +1,6 @@
 language: go
 go:
-    - 1.9
-#    - tip
+    - "1.10"
 
 go_import_path: github.com/versent/saml2aws
 
@@ -12,9 +11,5 @@ env:
     - "PATH=/home/travis/gopath/bin:$PATH"
 
 script:
-    - make test
+    - make ci
 
-matix:
-    fast_finish: true
-    allow_failures:
-        - go: tip

@@ -233,12 +233,6 @@ Install the binary to `$GOPATH/bin`.
 make install
 ```
 
-To release run.
-
-```
-make release
-```
-
 # Environment vars
 
 The exec sub command will export the following environment variables.
@@ -259,6 +253,20 @@ This tool would not be possible without some great opensource libraries.
 * [aws-sdk-go](https://github.com/aws/aws-sdk-go) AWS Go SDK
 * [go-ini](https://github.com/go-ini/ini) INI file parser
 * [go-ntlmssp](https://github.com/Azure/go-ntlmssp) NTLM/Negotiate authentication
+
+# Releasing
+
+Install `github-release`.
+
+```
+go get github.com/buildkite/github-release
+```
+
+To release run.
+
+```
+make release
+```
 
 # License
 
