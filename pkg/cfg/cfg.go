@@ -19,6 +19,10 @@ const (
 	// DefaultAmazonWebservicesURN URN used when authenticating to aws using SAML
 	// NOTE: This only needs to be changed to log into GovCloud
 	DefaultAmazonWebservicesURN = "urn:amazon:webservices"
+
+	// DefaultSessionDuration this is the default session duration which can be overridden in the AWS console
+	// see https://aws.amazon.com/blogs/security/enable-federated-api-access-to-your-aws-resources-for-up-to-12-hours-using-iam-roles/
+	DefaultSessionDuration = 3600
 )
 
 // IDPAccount saml IDP account
@@ -30,6 +34,7 @@ type IDPAccount struct {
 	SkipVerify           bool   `ini:"skip_verify"`
 	Timeout              int    `ini:"timeout"`
 	AmazonWebservicesURN string `ini:"aws_urn"`
+	SessionDuration      int    `ini:"aws_session_duration"`
 }
 
 // Validate validate the required / expected fields are set
@@ -58,6 +63,7 @@ func (ia *IDPAccount) Validate() error {
 func NewIDPAccount() *IDPAccount {
 	return &IDPAccount{
 		AmazonWebservicesURN: DefaultAmazonWebservicesURN,
+		SessionDuration:      DefaultSessionDuration,
 	}
 }
 

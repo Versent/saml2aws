@@ -32,12 +32,14 @@ func TestNewConfigManagerLoad(t *testing.T) {
 		Provider:             "keycloak",
 		MFA:                  "sms",
 		AmazonWebservicesURN: DefaultAmazonWebservicesURN,
+		SessionDuration:      3600,
 	}, idpAccount)
 
 	idpAccount, err = cfgm.LoadIDPAccount("test1234")
 	require.Nil(t, err)
 	require.Equal(t, &IDPAccount{
 		AmazonWebservicesURN: DefaultAmazonWebservicesURN,
+		SessionDuration:      3600,
 	}, idpAccount)
 }
 
@@ -56,6 +58,7 @@ func TestNewConfigManagerLoadVerify(t *testing.T) {
 		Provider:             "keycloak",
 		MFA:                  "sms",
 		AmazonWebservicesURN: DefaultAmazonWebservicesURN,
+		SessionDuration:      3600,
 	}, idpAccount)
 
 	idpAccount, err = cfgm.LoadVerifyIDPAccount("test1234")

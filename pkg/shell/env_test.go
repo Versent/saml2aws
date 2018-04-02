@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/versent/saml2aws/pkg/awsconfig"
 )
 
 func TestBuildEnvVars(t *testing.T) {
@@ -16,5 +17,12 @@ func TestBuildEnvVars(t *testing.T) {
 		"EC2_SECURITY_TOKEN=567",
 	}
 
-	assert.Equal(t, expectedArray, BuildEnvVars("123", "345", "567"))
+	awsCreds := &awsconfig.AWSCredentials{
+		AWSAccessKey:     "123",
+		AWSSecretKey:     "345",
+		AWSSecurityToken: "567",
+		AWSSessionToken:  "567",
+	}
+
+	assert.Equal(t, expectedArray, BuildEnvVars(awsCreds))
 }

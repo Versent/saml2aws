@@ -4,11 +4,15 @@ import (
 	"os"
 	"testing"
 
+	"github.com/sirupsen/logrus"
+
 	"github.com/stretchr/testify/assert"
 )
 
 func TestUpdateSamlConfig(t *testing.T) {
 	os.Remove(".credentials")
+
+	logrus.SetLevel(logrus.DebugLevel)
 
 	sharedCreds := &CredentialsProvider{".credentials", "saml"}
 
@@ -16,14 +20,21 @@ func TestUpdateSamlConfig(t *testing.T) {
 	assert.Nil(t, err)
 	assert.True(t, exist)
 
-	err = sharedCreds.Save("testid", "testsecret", "testtoken")
+	awsCreds := &AWSCredentials{
+		AWSAccessKey:     "testid",
+		AWSSecretKey:     "testsecret",
+		AWSSessionToken:  "testtoken",
+		AWSSecurityToken: "testtoken",
+	}
+
+	err = sharedCreds.Save(awsCreds)
 	assert.Nil(t, err)
 
-	id, secret, token, err := sharedCreds.Load()
+	awsCreds, err = sharedCreds.Load()
 	assert.Nil(t, err)
-	assert.Equal(t, "testid", id)
-	assert.Equal(t, "testsecret", secret)
-	assert.Equal(t, "testtoken", token)
+	assert.Equal(t, "testid", awsCreds.AWSAccessKey)
+	assert.Equal(t, "testsecret", awsCreds.AWSSecretKey)
+	assert.Equal(t, "testtoken", awsCreds.AWSSessionToken)
 
 	os.Remove(".credentials")
 }

@@ -60,6 +60,7 @@ func main() {
 	app.Flag("role", "The ARN of the role to assume.").StringVar(&commonFlags.RoleArn)
 	app.Flag("aws-urn", "The URN used by SAML when you login.").StringVar(&commonFlags.AmazonWebservicesURN)
 	app.Flag("skip-prompt", "Skip prompting for parameters during login.").BoolVar(&commonFlags.SkipPrompt)
+	app.Flag("session-duration", "The duration of your AWS Session.").IntVar(&commonFlags.SessionDuration)
 
 	// `configure` command and settings
 	cmdConfigure := app.Command("configure", "Configure a new IDP account.")

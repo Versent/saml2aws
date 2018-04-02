@@ -18,9 +18,6 @@ import (
 	"github.com/versent/saml2aws/pkg/flags"
 )
 
-// MaxDurationSeconds the maximum duration in seconds for an STS session
-const MaxDurationSeconds = 3600
-
 // Login login to ADFS
 func Login(loginFlags *flags.LoginExecFlags) error {
 
@@ -51,8 +48,6 @@ func Login(loginFlags *flags.LoginExecFlags) error {
 		os.Exit(1)
 	}
 
-	fmt.Printf("Authenticating as %s ...\n", loginDetails.Username)
-
 	err = loginDetails.Validate()
 	if err != nil {
 		return errors.Wrap(err, "error validating login details")
@@ -64,6 +59,8 @@ func Login(loginFlags *flags.LoginExecFlags) error {
 	if err != nil {
 		return errors.Wrap(err, "error building IdP client")
 	}
+
+	fmt.Printf("Authenticating as %s ...\n", loginDetails.Username)
 
 	samlAssertion, err := provider.Authenticate(loginDetails)
 	if err != nil {
@@ -82,40 +79,19 @@ func Login(loginFlags *flags.LoginExecFlags) error {
 		return errors.Wrap(err, "error storing password in keychain")
 	}
 
-	data, err := base64.StdEncoding.DecodeString(samlAssertion)
-	if err != nil {
-		return errors.Wrap(err, "error decoding saml assertion")
-	}
-
-	roles, err := saml2aws.ExtractAwsRoles(data)
-	if err != nil {
-		return errors.Wrap(err, "error parsing aws roles")
-	}
-
-	if len(roles) == 0 {
-		fmt.Println("No roles to assume")
-		fmt.Println("Please check you are permitted to assume roles for the AWS service")
-		os.Exit(1)
-	}
-
-	awsRoles, err := saml2aws.ParseAWSRoles(roles)
-	if err != nil {
-		return errors.Wrap(err, "error parsing aws roles")
-	}
-
-	role, err := resolveRole(awsRoles, samlAssertion, loginFlags)
+	role, err := selectAwsRole(samlAssertion, loginFlags)
 	if err != nil {
 		return errors.Wrap(err, "Failed to assume role, please check you are permitted to assume the given role for the AWS service")
 	}
 
 	fmt.Println("Selected role:", role.RoleARN)
 
-	err = loginToStsUsingRole(role, sharedCreds, samlAssertion)
+	awsCreds, err := loginToStsUsingRole(account, role, samlAssertion)
 	if err != nil {
 		return errors.Wrap(err, "error logging into aws role using saml assertion")
 	}
 
-	return nil
+	return saveCredentials(awsCreds, sharedCreds)
 }
 
 func buildIdpAccount(loginFlags *flags.LoginExecFlags) (*cfg.IDPAccount, error) {
@@ -186,6 +162,31 @@ func resolveLoginDetails(account *cfg.IDPAccount, loginFlags *flags.LoginExecFla
 	return loginDetails, nil
 }
 
+func selectAwsRole(samlAssertion string, loginFlags *flags.LoginExecFlags) (*saml2aws.AWSRole, error) {
+	data, err := base64.StdEncoding.DecodeString(samlAssertion)
+	if err != nil {
+		return nil, errors.Wrap(err, "error decoding saml assertion")
+	}
+
+	roles, err := saml2aws.ExtractAwsRoles(data)
+	if err != nil {
+		return nil, errors.Wrap(err, "error parsing aws roles")
+	}
+
+	if len(roles) == 0 {
+		fmt.Println("No roles to assume")
+		fmt.Println("Please check you are permitted to assume roles for the AWS service")
+		os.Exit(1)
+	}
+
+	awsRoles, err := saml2aws.ParseAWSRoles(roles)
+	if err != nil {
+		return nil, errors.Wrap(err, "error parsing aws roles")
+	}
+
+	return resolveRole(awsRoles, samlAssertion, loginFlags)
+}
+
 func resolveRole(awsRoles []*saml2aws.AWSRole, samlAssertion string, loginFlags *flags.LoginExecFlags) (*saml2aws.AWSRole, error) {
 	var role = new(saml2aws.AWSRole)
 
@@ -220,11 +221,11 @@ func resolveRole(awsRoles []*saml2aws.AWSRole, samlAssertion string, loginFlags 
 	return role, nil
 }
 
-func loginToStsUsingRole(role *saml2aws.AWSRole, sharedCreds *awsconfig.CredentialsProvider, samlAssertion string) error {
+func loginToStsUsingRole(account *cfg.IDPAccount, role *saml2aws.AWSRole, samlAssertion string) (*awsconfig.AWSCredentials, error) {
 
 	sess, err := session.NewSession()
 	if err != nil {
-		return errors.Wrap(err, "failed to create session")
+		return nil, errors.Wrap(err, "failed to create session")
 	}
 
 	svc := sts.New(sess)
@@ -233,25 +234,36 @@ func loginToStsUsingRole(role *saml2aws.AWSRole, sharedCreds *awsconfig.Credenti
 		PrincipalArn:    aws.String(role.PrincipalARN), // Required
 		RoleArn:         aws.String(role.RoleARN),      // Required
 		SAMLAssertion:   aws.String(samlAssertion),     // Required
-		DurationSeconds: aws.Int64(MaxDurationSeconds), // 1 hour
+		DurationSeconds: aws.Int64(int64(account.SessionDuration)),
 	}
 
 	fmt.Println("Requesting AWS credentials using SAML assertion")
 
 	resp, err := svc.AssumeRoleWithSAML(params)
 	if err != nil {
-		return errors.Wrap(err, "error retrieving STS credentials using SAML")
+		return nil, errors.Wrap(err, "error retrieving STS credentials using SAML")
 	}
 
-	err = sharedCreds.Save(aws.StringValue(resp.Credentials.AccessKeyId), aws.StringValue(resp.Credentials.SecretAccessKey), aws.StringValue(resp.Credentials.SessionToken))
+	return &awsconfig.AWSCredentials{
+		AWSAccessKey:     aws.StringValue(resp.Credentials.AccessKeyId),
+		AWSSecretKey:     aws.StringValue(resp.Credentials.SecretAccessKey),
+		AWSSessionToken:  aws.StringValue(resp.Credentials.SessionToken),
+		AWSSecurityToken: aws.StringValue(resp.Credentials.SessionToken),
+		PrincipalARN:     aws.StringValue(resp.AssumedRoleUser.Arn),
+		Expires:          resp.Credentials.Expiration.Local(),
+	}, nil
+}
+
+func saveCredentials(awsCreds *awsconfig.AWSCredentials, sharedCreds *awsconfig.CredentialsProvider) error {
+	err := sharedCreds.Save(awsCreds)
 	if err != nil {
 		return errors.Wrap(err, "error saving credentials")
 	}
 
-	fmt.Println("Logged in as:", aws.StringValue(resp.AssumedRoleUser.Arn))
+	fmt.Println("Logged in as:", awsCreds.PrincipalARN)
 	fmt.Println("")
 	fmt.Println("Your new access key pair has been stored in the AWS configuration")
-	fmt.Printf("Note that it will expire at %v\n", resp.Credentials.Expiration.Local())
+	fmt.Printf("Note that it will expire at %v\n", awsCreds.Expires)
 	fmt.Println("To use this credential, call the AWS CLI with the --profile option (e.g. aws --profile", sharedCreds.Profile, "ec2 describe-instances).")
 
 	return nil
