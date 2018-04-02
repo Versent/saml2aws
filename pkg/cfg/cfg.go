@@ -1,6 +1,7 @@
 package cfg
 
 import (
+	"fmt"
 	"net/url"
 	"reflect"
 
@@ -35,6 +36,18 @@ type IDPAccount struct {
 	Timeout              int    `ini:"timeout"`
 	AmazonWebservicesURN string `ini:"aws_urn"`
 	SessionDuration      int    `ini:"aws_session_duration"`
+}
+
+func (ia IDPAccount) String() string {
+	return fmt.Sprintf(`account {
+  URL: %s
+  Username: %s
+  Provider: %s
+  MFA: %s
+  SkipVerify: %v
+  AmazonWebservicesURN: %s
+  SessionDuration: %d
+}`, ia.URL, ia.Username, ia.Provider, ia.MFA, ia.SkipVerify, ia.AmazonWebservicesURN, ia.SessionDuration)
 }
 
 // Validate validate the required / expected fields are set
