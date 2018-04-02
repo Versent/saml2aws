@@ -5,8 +5,10 @@ import (
 	"net"
 	"net/http"
 	"net/http/cookiejar"
+	"runtime"
 	"time"
 
+	"github.com/briandowns/spinner"
 	"golang.org/x/net/publicsuffix"
 )
 
@@ -16,7 +18,7 @@ type HTTPClient struct {
 }
 
 // NewDefaultTransport configure a transport with the TLS skip verify option
-func NewDefaultTransport(skipVerify bool) http.RoundTripper {
+func NewDefaultTransport(skipVerify bool) *http.Transport {
 	return &http.Transport{
 		Proxy: http.ProxyFromEnvironment,
 		DialContext: (&net.Dialer{
@@ -49,14 +51,32 @@ func NewHTTPClient(tr http.RoundTripper) (*HTTPClient, error) {
 	return &HTTPClient{client}, nil
 }
 
+// Do do the request
+func (hc *HTTPClient) Do(req *http.Request) (*http.Response, error) {
+
+	cs := spinner.CharSets[14]
+
+	// use a NON unicode spinner for windows
+	if runtime.GOOS == "windows" {
+		cs = spinner.CharSets[26]
+	}
+
+	s := spinner.New(cs, 100*time.Millisecond)
+	defer func() {
+		s.Stop()
+	}()
+	s.Start()
+	return hc.Client.Do(req)
+}
+
 // DisableFollowRedirect disable redirects
-func (client *HTTPClient) DisableFollowRedirect() {
-	client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+func (hc *HTTPClient) DisableFollowRedirect() {
+	hc.CheckRedirect = func(req *http.Request, via []*http.Request) error {
 		return http.ErrUseLastResponse
 	}
 }
 
 // EnableFollowRedirect enable redirects
-func (client *HTTPClient) EnableFollowRedirect() {
-	client.CheckRedirect = nil
+func (hc *HTTPClient) EnableFollowRedirect() {
+	hc.CheckRedirect = nil
 }

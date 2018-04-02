@@ -28,8 +28,6 @@ func ListRoles(loginFlags *flags.LoginExecFlags) error {
 		os.Exit(1)
 	}
 
-	fmt.Printf("Authenticating as %s ...\n", loginDetails.Username)
-
 	err = loginDetails.Validate()
 	if err != nil {
 		return errors.Wrap(err, "error validating login details")

@@ -59,11 +59,7 @@ func (mfbp ProviderList) stringInSlice(a string, list []string) bool {
 
 func invalidMFA(provider string, mfa string) bool {
 	supportedMfas := MFAsByProvider.Mfas(provider)
-	supported := MFAsByProvider.stringInSlice(mfa, supportedMfas)
-	if supported {
-		return false
-	}
-	return true
+	return !MFAsByProvider.stringInSlice(mfa, supportedMfas)
 }
 
 // SAMLClient client interface

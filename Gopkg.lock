@@ -2,6 +2,12 @@
 
 
 [[projects]]
+  name = "github.com/AlecAivazis/survey"
+  packages = ["."]
+  revision = "9d3458c219bae9653d267883634bdb5375281fd8"
+  version = "v1.5.1"
+
+[[projects]]
   branch = "master"
   name = "github.com/Azure/go-ntlmssp"
   packages = ["."]
@@ -79,6 +85,12 @@
   version = "v1.0.0"
 
 [[projects]]
+  name = "github.com/briandowns/spinner"
+  packages = ["."]
+  revision = "48dbb65d7bd5c74ab50d53d04c949f20e3d14944"
+  version = "1.0"
+
+[[projects]]
   name = "github.com/danieljoos/wincred"
   packages = ["."]
   revision = "412b574fb496839b312a75fba146bd32a89001cf"
@@ -91,21 +103,39 @@
   version = "v1.1.0"
 
 [[projects]]
+  name = "github.com/fatih/color"
+  packages = ["."]
+  revision = "507f6050b8568533fb3f5504de8e5205fa62a114"
+  version = "v1.6.0"
+
+[[projects]]
   name = "github.com/go-ini/ini"
   packages = ["."]
   revision = "6333e38ac20b8949a8dd68baa3650f4dee8f39f0"
   version = "v1.33.0"
 
 [[projects]]
-  branch = "master"
-  name = "github.com/howeyc/gopass"
-  packages = ["."]
-  revision = "bf9dde6d0d2c004a008c27aaee91170c786f6db8"
-
-[[projects]]
   name = "github.com/jmespath/go-jmespath"
   packages = ["."]
   revision = "0b12d6b5"
+
+[[projects]]
+  name = "github.com/mattn/go-colorable"
+  packages = ["."]
+  revision = "167de6bfdfba052fa6b2d3664c8f5272e23c9072"
+  version = "v0.0.9"
+
+[[projects]]
+  name = "github.com/mattn/go-isatty"
+  packages = ["."]
+  revision = "0360b2af4f38e8d38c7fce2a9f4e702702d73a39"
+  version = "v0.0.3"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/mgutz/ansi"
+  packages = ["."]
+  revision = "9520e82c474b0a04dd04f8a40959027271bab992"
 
 [[projects]]
   branch = "master"
@@ -124,11 +154,6 @@
   packages = ["difflib"]
   revision = "792786c7400a136282c1664665ae0a8db921c6c2"
   version = "v1.0.0"
-
-[[projects]]
-  name = "github.com/segmentio/go-prompt"
-  packages = ["."]
-  revision = "f3218e418a3d6dbe1dcab5809d80fa6e15c05cb4"
 
 [[projects]]
   name = "github.com/sirupsen/logrus"
@@ -171,7 +196,7 @@
     "md4",
     "ssh/terminal"
   ]
-  revision = "c7dcf104e3a7a1417abc0230cb0d5240d764159d"
+  revision = "12892e8c234f4fe6f6803f052061de9057903bb2"
 
 [[projects]]
   branch = "master"
@@ -182,7 +207,7 @@
     "idna",
     "publicsuffix"
   ]
-  revision = "ae89d30ce0c63142b652837da33d782e2b0a9b25"
+  revision = "b68f30494add4df6bd8ef5e82803f308e7f7c59c"
 
 [[projects]]
   branch = "master"
@@ -191,7 +216,7 @@
     "unix",
     "windows"
   ]
-  revision = "c28acc882ebcbfbe8ce9f0f14b9ac26ee138dd51"
+  revision = "378d26f46672a356c46195c28f61bdb4c0a781dd"
 
 [[projects]]
   name = "golang.org/x/text"
@@ -215,6 +240,15 @@
   version = "v0.3.0"
 
 [[projects]]
+  name = "gopkg.in/AlecAivazis/survey.v1"
+  packages = [
+    "core",
+    "terminal"
+  ]
+  revision = "9d3458c219bae9653d267883634bdb5375281fd8"
+  version = "v1.5.1"
+
+[[projects]]
   name = "gopkg.in/ini.v1"
   packages = ["."]
   revision = "6333e38ac20b8949a8dd68baa3650f4dee8f39f0"
@@ -223,6 +257,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "5afb5282cc1ca7766bbcc444da86352197566db3115a712277cde0db5102180b"
+  inputs-digest = "954f630ab43510e0ec9bef6970a2b2148de971fa0712ef75da97eb5b8a6301c9"
   solver-name = "gps-cdcl"
   solver-version = 1
