@@ -160,6 +160,8 @@ func (oc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		return samlAssertion, errors.Wrap(err, "unable to locate saml response")
 	}
 
+	logger.WithField("samlAssertion", samlAssertion).Debug("complete")
+
 	return samlAssertion, nil
 }
 

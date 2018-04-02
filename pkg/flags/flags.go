@@ -1,6 +1,8 @@
 package flags
 
-import "github.com/versent/saml2aws/pkg/cfg"
+import (
+	"github.com/versent/saml2aws/pkg/cfg"
+)
 
 // CommonFlags flags common to all of the `saml2aws` commands (except `help`)
 type CommonFlags struct {
@@ -12,6 +14,7 @@ type CommonFlags struct {
 	Password             string
 	RoleArn              string
 	AmazonWebservicesURN string
+	SessionDuration      int
 	SkipPrompt           bool
 	SkipVerify           bool
 }
@@ -51,5 +54,9 @@ func ApplyFlagOverrides(commonFlags *CommonFlags, account *cfg.IDPAccount) {
 
 	if commonFlags.AmazonWebservicesURN != "" {
 		account.AmazonWebservicesURN = commonFlags.AmazonWebservicesURN
+	}
+
+	if commonFlags.SessionDuration != 0 {
+		account.SessionDuration = commonFlags.SessionDuration
 	}
 }

@@ -3,6 +3,7 @@ package commands
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
@@ -35,6 +36,15 @@ func Exec(execFlags *flags.LoginExecFlags, cmdline []string) error {
 		return nil
 	}
 
+	awsCreds, err := sharedCreds.Load()
+	if err != nil {
+		return errors.Wrap(err, "error loading credentials")
+	}
+
+	if awsCreds.Expires.Sub(time.Now()) < 0 {
+		return errors.New("error aws credentials have expired")
+	}
+
 	ok, err := checkToken(execFlags.Profile)
 	if err != nil {
 		return errors.Wrap(err, "error validating token")
@@ -47,12 +57,7 @@ func Exec(execFlags *flags.LoginExecFlags, cmdline []string) error {
 		return errors.Wrap(err, "error logging in")
 	}
 
-	id, secret, token, err := sharedCreds.Load()
-	if err != nil {
-		return errors.Wrap(err, "error loading credentials")
-	}
-
-	return shell.ExecShellCmd(cmdline, shell.BuildEnvVars(id, secret, token))
+	return shell.ExecShellCmd(cmdline, shell.BuildEnvVars(awsCreds))
 }
 
 func checkToken(profile string) (bool, error) {

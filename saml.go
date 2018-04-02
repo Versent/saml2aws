@@ -2,6 +2,7 @@ package saml2aws
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/beevik/etree"
 )
@@ -31,6 +32,43 @@ func (e ErrMissingElement) Error() string {
 		return fmt.Sprintf("missing %s attribute on %s element", e.Attribute, e.Tag)
 	}
 	return fmt.Sprintf("missing %s element", e.Tag)
+}
+
+// ExtractSessionDuration this will attempt to extract a session duration from the assertion
+// see https://aws.amazon.com/SAML/Attributes/SessionDuration
+func ExtractSessionDuration(data []byte) (int64, error) {
+
+	doc := etree.NewDocument()
+	if err := doc.ReadFromBytes(data); err != nil {
+		return 0, err
+	}
+
+	assertionElement := doc.FindElement(".//Assertion")
+	if assertionElement == nil {
+		return 0, ErrMissingAssertion
+	}
+
+	// log.Printf("tag: %s", assertionElement.Tag)
+
+	//Get the actual assertion attributes
+	attributeStatement := assertionElement.FindElement(childPath(assertionElement.Space, attributeStatementTag))
+	if attributeStatement == nil {
+		return 0, ErrMissingElement{Tag: attributeStatementTag}
+	}
+
+	attributes := attributeStatement.FindElements(childPath(assertionElement.Space, attributeTag))
+
+	for _, attribute := range attributes {
+		if attribute.SelectAttrValue("Name", "") != "https://aws.amazon.com/SAML/Attributes/SessionDuration" {
+			continue
+		}
+		atributeValues := attribute.FindElements(childPath(assertionElement.Space, attributeValueTag))
+		for _, attrValue := range atributeValues {
+			return strconv.ParseInt(attrValue.Text(), 10, 64)
+		}
+	}
+
+	return 0, nil
 }
 
 // ExtractAwsRoles given an assertion document extract the aws roles

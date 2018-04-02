@@ -44,6 +44,9 @@
         <AttributeValue>arn:aws:iam::123123123123:saml-provider/ExampleADFS,arn:aws:iam::123123123123:role/AWS-Admin-CloudOPSBuild</AttributeValue>
         <AttributeValue>arn:aws:iam::123123123123:saml-provider/ExampleADFS,arn:aws:iam::123123123123:role/AWS-Admin-CloudOPSNonProd</AttributeValue>
       </Attribute>
+      <saml2:Attribute Name="https://aws.amazon.com/SAML/Attributes/SessionDuration" NameFormat="urn:oasis:names:tc:SAML:2.0:attrname-format:basic">
+        <saml2:AttributeValue xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="xs:string">28800</saml2:AttributeValue>
+      </saml2:Attribute>
     </AttributeStatement>
     <AuthnStatement AuthnInstant="2016-09-10T02:54:39.227Z" SessionIndex="_f85be5f5-584c-4711-8c9d-5b13c4c49f89">
       <AuthnContext>

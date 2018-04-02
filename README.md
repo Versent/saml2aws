@@ -12,7 +12,7 @@ The process goes something like this:
 * Log in to Identity Provider using form based authentication
 * Build a SAML assertion containing AWS roles
 * Exchange the role and SAML assertion with [AWS STS service](https://docs.aws.amazon.com/STS/latest/APIReference/Welcome.html) to get a temporary set of credentials
-* Save these creds to an aws profile named "saml"
+* Save these credentials to an aws profile named "saml"
 
 # Requirements
 
@@ -27,7 +27,7 @@ The process goes something like this:
 
 Aside from Okta, most of the providers in this project are using screen scraping to log users into SAML, this isn't ideal and hopefully vendors make this easier in the future. In addition to this there are some things you need to know:
 
-1. AWS only permits session tokens being issued with a duration of up to 3600 seconds (1 hour), this is constrained by the [STS AssumeRoleWithSAML API](http://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRoleWithSAML.html) call and `DurationSeconds` field.
+1. AWS defaults to session tokens being issued with a duration of up to 3600 seconds (1 hour), this can now be configured as per [Enable Federated API Access to your AWS Resources for up to 12 hours Using IAM Roles](https://aws.amazon.com/blogs/security/enable-federated-api-access-to-your-aws-resources-for-up-to-12-hours-using-iam-roles/) and `--session-duration` flag.
 2. Every SAML provider is different, the login process, MFA support is pluggable and therefore some work may be needed to integrate with your identity server
 
 # Install
@@ -76,20 +76,25 @@ usage: saml2aws [<flags>] <command> [<args> ...]
 A command line tool to help with SAML access to the AWS token service.
 
 Flags:
-      --help                   Show context-sensitive help (also try --help-long and --help-man).
+      --help                   Show context-sensitive help (also try --help-long
+                               and --help-man).
       --version                Show application version.
       --verbose                Enable verbose logging
-  -i, --provider=PROVIDER      This flag it is obsolete see https://github.com/Versent/saml2aws#adding-idp-accounts.
+  -i, --provider=PROVIDER      This flag it is obsolete see
+                               https://github.com/Versent/saml2aws#adding-idp-accounts.
   -a, --idp-account="default"  The name of the configured IDP account
-      --idp-provider=IDP-PROVIDER
+      --idp-provider=IDP-PROVIDER  
                                The configured IDP provider
-      --mfa="Auto"             The name of the mfa
+      --mfa=MFA                The name of the mfa
   -s, --skip-verify            Skip verification of server certificate.
       --url=URL                The URL of the SAML IDP server used to login.
       --username=USERNAME      The username used to login.
+      --password=PASSWORD      The password used to login.
       --role=ROLE              The ARN of the role to assume.
       --aws-urn=AWS-URN        The URN used by SAML when you login.
       --skip-prompt            Skip prompting for parameters during login.
+      --session-duration=SESSION-DURATION  
+                               The duration of your AWS Session.
 
 Commands:
   help [<command>...]
@@ -103,14 +108,15 @@ Commands:
   login [<flags>]
     Login to a SAML 2.0 IDP and convert the SAML assertion to an STS token.
 
-        --password=PASSWORD  The password used to login.
-    -p, --profile="saml"     The AWS profile to save the temporary credentials
+    -p, --profile="saml"  The AWS profile to save the temporary credentials
 
   exec [<flags>] [<command>...]
     Exec the supplied command with env vars from STS token.
 
-        --password=PASSWORD  The password used to login.
-    -p, --profile="saml"     The AWS profile to save the temporary credentials
+    -p, --profile="saml"  The AWS profile to save the temporary credentials
+
+  list-roles
+    List available role ARNs.
 
 ```
 

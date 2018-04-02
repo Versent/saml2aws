@@ -4,8 +4,9 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"time"
 
-	"github.com/mitchellh/go-homedir"
+	homedir "github.com/mitchellh/go-homedir"
 	"github.com/sirupsen/logrus"
 
 	"github.com/pkg/errors"
@@ -25,10 +26,12 @@ var (
 
 // AWSCredentials represents the set of attributes used to authenticate to AWS with a short lived session
 type AWSCredentials struct {
-	AWSAccessKey     string `ini:"aws_access_key_id"`
-	AWSSecretKey     string `ini:"aws_secret_access_key"`
-	AWSSessionToken  string `ini:"aws_session_token"`
-	AWSSecurityToken string `ini:"aws_security_token"`
+	AWSAccessKey     string    `ini:"aws_access_key_id"`
+	AWSSecretKey     string    `ini:"aws_secret_access_key"`
+	AWSSessionToken  string    `ini:"aws_session_token"`
+	AWSSecurityToken string    `ini:"aws_security_token"`
+	PrincipalARN     string    `ini:"x_principal_arn"`
+	Expires          time.Time `ini:"x_security_token_expires"`
 }
 
 // CredentialsProvider loads aws credentials file
@@ -46,7 +49,7 @@ func NewSharedCredentials(profile string) *CredentialsProvider {
 
 // CredsExists verify that the credentials exist
 func (p *CredentialsProvider) CredsExists() (bool, error) {
-	filename, err := p.filename()
+	filename, err := p.resolveFilename()
 	if err != nil {
 		return false, err
 	}
@@ -63,8 +66,8 @@ func (p *CredentialsProvider) CredsExists() (bool, error) {
 }
 
 // Save persist the credentials
-func (p *CredentialsProvider) Save(id, secret, token string) error {
-	filename, err := p.filename()
+func (p *CredentialsProvider) Save(awsCreds *AWSCredentials) error {
+	filename, err := p.resolveFilename()
 	if err != nil {
 		return err
 	}
@@ -72,44 +75,44 @@ func (p *CredentialsProvider) Save(id, secret, token string) error {
 	err = p.ensureConfigExists()
 	if err != nil {
 		if os.IsNotExist(err) {
-			return createAndSaveProfile(filename, p.Profile, id, secret, token)
+			return createAndSaveProfile(filename, p.Profile, awsCreds)
 		}
 		return errors.Wrap(err, "unable to load file")
 	}
 
-	return saveProfile(filename, p.Profile, id, secret, token)
+	return saveProfile(filename, p.Profile, awsCreds)
 }
 
 // Load load the aws credentials file
-func (p *CredentialsProvider) Load() (string, string, string, error) {
-	filename, err := p.filename()
+func (p *CredentialsProvider) Load() (*AWSCredentials, error) {
+	filename, err := p.resolveFilename()
 	if err != nil {
-		return "", "", "", err
+		return nil, err
 	}
 
 	config, err := ini.Load(filename)
 	if err != nil {
-		return "", "", "", err
+		return nil, err
 	}
 
 	iniProfile, err := config.GetSection(p.Profile)
 	if err != nil {
-		return "", "", "", ErrCredentialsNotFound
+		return nil, ErrCredentialsNotFound
 	}
 
 	awsCreds := new(AWSCredentials)
 
 	err = iniProfile.MapTo(awsCreds)
 	if err != nil {
-		return "", "", "", ErrCredentialsNotFound
+		return nil, ErrCredentialsNotFound
 	}
 
-	return awsCreds.AWSAccessKey, awsCreds.AWSSecretKey, awsCreds.AWSSecurityToken, nil
+	return awsCreds, nil
 }
 
 // ensureConfigExists verify that the config file exists
 func (p *CredentialsProvider) ensureConfigExists() error {
-	filename, err := p.filename()
+	filename, err := p.resolveFilename()
 	if err != nil {
 		return err
 	}
@@ -142,31 +145,43 @@ func (p *CredentialsProvider) ensureConfigExists() error {
 	return nil
 }
 
-func (p *CredentialsProvider) filename() (string, error) {
+func (p *CredentialsProvider) resolveFilename() (string, error) {
 	if p.Filename == "" {
-		if p.Filename = os.Getenv("AWS_SHARED_CREDENTIALS_FILE"); p.Filename != "" {
-			return p.Filename, nil
-		}
-
-		name, err := homedir.Expand("~/.aws/credentials")
+		filename, err := locateConfigFile()
 		if err != nil {
-			return "", ErrCredentialsHomeNotFound
+			return "", err
 		}
 
-		logger.WithField("name", name).Debug("Expand")
-
-		// is the filename a symlink?
-		name, err = resolveSymlink(name)
-		if err != nil {
-			return "", errors.Wrap(err, "unable to resolve symlink")
-		}
-
-		logger.WithField("name", name).Debug("resolveSymlink")
-
-		p.Filename = name
+		p.Filename = filename
 	}
 
 	return p.Filename, nil
+}
+
+func locateConfigFile() (string, error) {
+
+	filename := os.Getenv("AWS_SHARED_CREDENTIALS_FILE")
+
+	if filename != "" {
+		return filename, nil
+	}
+
+	name, err := homedir.Expand("~/.aws/credentials")
+	if err != nil {
+		return "", ErrCredentialsHomeNotFound
+	}
+
+	logger.WithField("name", name).Debug("Expand")
+
+	// is the filename a symlink?
+	name, err = resolveSymlink(name)
+	if err != nil {
+		return "", errors.Wrap(err, "unable to resolve symlink")
+	}
+
+	logger.WithField("name", name).Debug("resolveSymlink")
+
+	return name, nil
 }
 
 func resolveSymlink(filename string) (string, error) {
@@ -183,7 +198,7 @@ func resolveSymlink(filename string) (string, error) {
 	return sympath, nil
 }
 
-func createAndSaveProfile(filename, profile, id, secret, token string) error {
+func createAndSaveProfile(filename, profile string, awsCreds *AWSCredentials) error {
 
 	dirPath := filepath.Dir(filename)
 
@@ -197,10 +212,10 @@ func createAndSaveProfile(filename, profile, id, secret, token string) error {
 		return errors.Wrapf(err, "unable to create configuration")
 	}
 
-	return saveProfile(filename, profile, id, secret, token)
+	return saveProfile(filename, profile, awsCreds)
 }
 
-func saveProfile(filename, profile, id, secret, token string) error {
+func saveProfile(filename, profile string, awsCreds *AWSCredentials) error {
 	config, err := ini.Load(filename)
 	if err != nil {
 		return err
@@ -210,12 +225,7 @@ func saveProfile(filename, profile, id, secret, token string) error {
 		return err
 	}
 
-	err = iniProfile.ReflectFrom(&AWSCredentials{
-		AWSAccessKey:     id,
-		AWSSecretKey:     secret,
-		AWSSessionToken:  token,
-		AWSSecurityToken: token,
-	})
+	err = iniProfile.ReflectFrom(awsCreds)
 	if err != nil {
 		return err
 	}
