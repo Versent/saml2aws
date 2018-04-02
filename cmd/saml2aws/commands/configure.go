@@ -50,6 +50,8 @@ func Configure(configFlags *flags.CommonFlags) error {
 	}
 
 	fmt.Println("")
+	fmt.Println(account)
+	fmt.Println("")
 	fmt.Printf("Configuration saved for IDP account: %s\n", idpAccountName)
 
 	return nil
