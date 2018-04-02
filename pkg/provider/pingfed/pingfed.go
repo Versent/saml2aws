@@ -20,11 +20,11 @@ var logger = logrus.WithField("provider", "pingfed")
 
 // Client wrapper around PingFed + PingId enabling authentication and retrieval of assertions
 type Client struct {
-	client        *provider.HTTPClient
-	idpAccount    *cfg.IDPAccount
-	authSubmitURL string
-	samlAssertion string
-	mfaRequired   bool
+	client     *provider.HTTPClient
+	idpAccount *cfg.IDPAccount
+	//authSubmitURL string
+	//samlAssertion string
+	//mfaRequired   bool
 }
 
 // New create a new PingFed client
@@ -41,76 +41,47 @@ func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 	client.DisableFollowRedirect()
 
 	return &Client{
-		client:      client,
-		idpAccount:  idpAccount,
-		mfaRequired: false,
+		client:     client,
+		idpAccount: idpAccount,
+		//mfaRequired: false,
 	}, nil
 }
 
 // Authenticate Authenticate to PingFed and return the data from the body of the SAML assertion.
 func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error) {
 
-	authForm := url.Values{}
-
-	pingFedURL := fmt.Sprintf("%s/idp/startSSO.ping?PartnerSpId=%s", loginDetails.URL, ac.idpAccount.AmazonWebservicesURN)
-
-	logger.WithField("url", pingFedURL).Debug("GET")
-
-	res, err := ac.client.Get(pingFedURL)
+	authSubmitURL, authForm, err := ac.getLoginForm(loginDetails)
 	if err != nil {
-		return "", errors.Wrap(err, "error retieving form")
+		return "", errors.Wrap(err, "error retrieving login form")
 	}
 
-	doc, err := goquery.NewDocumentFromResponse(res)
-	if err != nil {
-		return "", errors.Wrap(err, "failed to build document from response")
-	}
-
-	doc.Find("input").Each(func(i int, s *goquery.Selection) {
-		updateLoginFormData(authForm, s, loginDetails)
-	})
-
-	doc.Find("form").Each(func(i int, s *goquery.Selection) {
-		action, ok := s.Attr("action")
-		if !ok {
-			return
-		}
-		ac.authSubmitURL = action
-	})
-
-	if ac.authSubmitURL == "" {
-		return "", fmt.Errorf("unable to locate IDP authentication form submit URL")
-	}
-
-	ac.authSubmitURL = fmt.Sprintf("%s%s", loginDetails.URL, ac.authSubmitURL)
-
-	//log.Printf("id authentication url: %s", authSubmitURL)
-
-	req, err := http.NewRequest("POST", ac.authSubmitURL, strings.NewReader(authForm.Encode()))
+	req, err := http.NewRequest("POST", authSubmitURL, strings.NewReader(authForm.Encode()))
 	if err != nil {
 		return "", errors.Wrap(err, "error building authentication request")
 	}
 
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 
-	logger.WithField("authSubmitURL", ac.authSubmitURL).WithField("req", dump.RequestString(req)).Debug("POST")
+	logger.WithField("authSubmitURL", authSubmitURL).WithField("req", dump.RequestString(req)).Debug("POST")
 
-	res, err = ac.client.Do(req)
+	res, err := ac.client.Do(req)
 	if err != nil {
 		return "", errors.Wrap(err, "error retrieving login form")
 	}
 
-	logger.WithField("authSubmitURL", ac.authSubmitURL).WithField("res", dump.ResponseString(res)).Debug("POST")
+	logger.WithField("authSubmitURL", authSubmitURL).WithField("res", dump.ResponseString(res)).Debug("POST")
+
+	var mfaRequired bool
 
 	//check for redirect, this indicates PingOne MFA being used
 	if res.StatusCode == 302 {
-		ac.mfaRequired = true
+		mfaRequired = true
 	}
 
-	logger.WithField("mfaRequired", ac.mfaRequired).Debug("POST")
+	logger.WithField("mfaRequired", mfaRequired).Debug("POST")
 
 	//process mfa
-	if ac.mfaRequired {
+	if mfaRequired {
 
 		mfaURL, err := res.Location()
 		if err != nil {
@@ -141,16 +112,23 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 			return "", errors.Wrap(err, "error building mfa authentication request")
 		}
 
+		logger.WithField("actionURL", actionURL).WithField("req", dump.RequestString(req)).Debug("POST")
+
 		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 		res, err = ac.client.Do(req)
 		if err != nil {
-			return "", errors.Wrap(err, "error retieving mfa response")
+			return "", errors.Wrap(err, "error retrieving mfa response")
 		}
 
 		logger.WithField("actionURL", actionURL).WithField("res", dump.ResponseString(res)).Debug("POST")
 
+		doc, err := goquery.NewDocumentFromResponse(res)
+		if err != nil {
+			return "", errors.Wrap(err, "failed to build document from response")
+		}
+
 		//extract form action and csrf token
-		form, actionURL, err = extractFormData(res)
+		form, actionURL, err = extractMfaFormData(doc)
 		if err != nil {
 			return "", errors.Wrap(err, "error extracting authentication form")
 		}
@@ -229,21 +207,60 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 	}
 
 	//try to extract SAMLResponse
-	doc, err = goquery.NewDocumentFromResponse(res)
+	doc, err := goquery.NewDocumentFromResponse(res)
 	if err != nil {
 		return "", errors.Wrap(err, "error parsing document")
 	}
 
 	var ok bool
 
-	ac.samlAssertion, ok = doc.Find("input[name=\"SAMLResponse\"]").Attr("value")
+	samlAssertion, ok := doc.Find("input[name=\"SAMLResponse\"]").Attr("value")
 	if !ok {
 		return "", errors.Wrap(err, "unable to locate saml response")
 	}
 
-	logger.WithField("samlAssertion", ac.samlAssertion).Debug("SAMLResponse")
+	logger.WithField("samlAssertion", samlAssertion).Debug("SAMLResponse")
 
-	return ac.samlAssertion, nil
+	return samlAssertion, nil
+}
+
+func (ac *Client) getLoginForm(loginDetails *creds.LoginDetails) (string, url.Values, error) {
+
+	authForm := url.Values{}
+
+	pingFedURL := fmt.Sprintf("%s/idp/startSSO.ping?PartnerSpId=%s", loginDetails.URL, ac.idpAccount.AmazonWebservicesURN)
+
+	logger.WithField("url", pingFedURL).Debug("GET")
+
+	res, err := ac.client.Get(pingFedURL)
+	if err != nil {
+		return "", nil, errors.Wrap(err, "error retieving form")
+	}
+
+	doc, err := goquery.NewDocumentFromResponse(res)
+	if err != nil {
+		return "", nil, errors.Wrap(err, "failed to build document from response")
+	}
+
+	doc.Find("input").Each(func(i int, s *goquery.Selection) {
+		updateLoginFormData(authForm, s, loginDetails)
+	})
+
+	authSubmitURL := ""
+
+	doc.Find("form").Each(func(i int, s *goquery.Selection) {
+		action, ok := s.Attr("action")
+		if !ok {
+			return
+		}
+		authSubmitURL = action
+	})
+
+	if authSubmitURL == "" {
+		return "", nil, fmt.Errorf("unable to locate IDP authentication form submit URL")
+	}
+
+	return fmt.Sprintf("%s%s", loginDetails.URL, authSubmitURL), authForm, nil
 }
 
 func updateLoginFormData(authForm url.Values, s *goquery.Selection, user *creds.LoginDetails) {
@@ -285,8 +302,36 @@ func extractFormData(res *http.Response) (url.Values, string, error) {
 		actionURL = action
 	})
 
-	// exxtract form data to passthrough
+	// extract form data to passthrough
 	doc.Find("input").Each(func(i int, s *goquery.Selection) {
+		name, ok := s.Attr("name")
+		if !ok {
+			return
+		}
+		val, ok := s.Attr("value")
+		if !ok {
+			return
+		}
+		formData.Add(name, val)
+	})
+
+	return formData, actionURL, nil
+}
+
+func extractMfaFormData(doc *goquery.Document) (url.Values, string, error) {
+	formData := url.Values{}
+	var actionURL string
+	//get action url
+	doc.Find("#form1").Each(func(i int, s *goquery.Selection) {
+		action, ok := s.Attr("action")
+		if !ok {
+			return
+		}
+		actionURL = action
+	})
+
+	// extract form data to passthrough
+	doc.Find("#form1 > input").Each(func(i int, s *goquery.Selection) {
 		name, ok := s.Attr("name")
 		if !ok {
 			return
