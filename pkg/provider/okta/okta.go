@@ -10,7 +10,6 @@ import (
 	"strings"
 	"time"
 
-	prompt "github.com/segmentio/go-prompt"
 	"github.com/sirupsen/logrus"
 	"github.com/versent/saml2aws/pkg/dump"
 	"github.com/versent/saml2aws/pkg/prompter"
@@ -43,7 +42,7 @@ var (
 	}
 )
 
-// OktaClient is a wrapper representing a Okta SAML client
+// Client is a wrapper representing a Okta SAML client
 type Client struct {
 	client   *provider.HTTPClient
 	prompter prompter.Prompter
@@ -79,6 +78,7 @@ func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 
 // Authenticate logs into Okta and returns a SAML response
 func (oc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error) {
+
 	var samlAssertion string
 
 	oktaURL, err := url.Parse(loginDetails.URL)
@@ -172,6 +172,8 @@ func parseMfaIdentifer(json string, arrayPosition int) string {
 }
 
 func verifyMfa(oc *Client, oktaOrgHost string, resp string) (string, error) {
+
+	var prompt = prompter.NewCli()
 
 	stateToken := gjson.Get(resp, "stateToken").String()
 
@@ -524,5 +526,4 @@ func verifyMfa(oc *Client, oktaOrgHost string, resp string) (string, error) {
 
 	// catch all
 	return "", errors.New("no mfa options provided")
-
 }

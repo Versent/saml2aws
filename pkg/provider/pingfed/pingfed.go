@@ -8,11 +8,11 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/pkg/errors"
-	prompt "github.com/segmentio/go-prompt"
 	"github.com/sirupsen/logrus"
 	"github.com/versent/saml2aws/pkg/cfg"
 	"github.com/versent/saml2aws/pkg/creds"
 	"github.com/versent/saml2aws/pkg/dump"
+	"github.com/versent/saml2aws/pkg/prompter"
 	"github.com/versent/saml2aws/pkg/provider"
 )
 
@@ -49,6 +49,8 @@ func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 
 // Authenticate Authenticate to PingFed and return the data from the body of the SAML assertion.
 func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error) {
+
+	var prompt = prompter.NewCli()
 
 	authSubmitURL, authForm, err := ac.getLoginForm(loginDetails)
 	if err != nil {
@@ -132,6 +134,8 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		if err != nil {
 			return "", errors.Wrap(err, "error extracting authentication form")
 		}
+
+		logger.WithField("actionURL", actionURL).Debug("POST")
 
 		//contine mfa auth with csrf token
 		req, err = http.NewRequest("POST", actionURL, strings.NewReader(form.Encode()))

@@ -10,13 +10,15 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/pkg/errors"
-	prompt "github.com/segmentio/go-prompt"
 	"github.com/versent/saml2aws/pkg/creds"
 	"github.com/versent/saml2aws/pkg/dump"
+	"github.com/versent/saml2aws/pkg/prompter"
 )
 
 // Authenticate authenticate the user using the supplied login details
 func (ac *Client) authenticateRsa(loginDetails *creds.LoginDetails) (string, error) {
+
+	var prompt = prompter.NewCli()
 
 	authSubmitURL, authForm, err := ac.getLoginForm(loginDetails)
 	if err != nil {
@@ -33,7 +35,7 @@ func (ac *Client) authenticateRsa(loginDetails *creds.LoginDetails) (string, err
 		return "", errors.Wrap(err, "error extracting mfa form data")
 	}
 
-	token := prompt.PasswordMasked("Enter passcode")
+	token := prompt.Password("Enter passcode")
 
 	passcodeForm.Set("Passcode", token)
 	passcodeForm.Del("submit")
@@ -48,7 +50,7 @@ func (ac *Client) authenticateRsa(loginDetails *creds.LoginDetails) (string, err
 		return "", errors.Wrap(err, "error extracting rsa form data")
 	}
 
-	nextCode := prompt.PasswordMasked("Enter nextCode")
+	nextCode := prompt.Password("Enter nextCode")
 
 	rsaForm.Set("NextCode", nextCode)
 	rsaForm.Del("submit")

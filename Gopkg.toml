@@ -58,10 +58,6 @@
   version = "0.8.0"
 
 [[constraint]]
-  name = "github.com/segmentio/go-prompt"
-  revision = "f3218e418a3d6dbe1dcab5809d80fa6e15c05cb4"
-
-[[constraint]]
   name = "github.com/sirupsen/logrus"
   version = "1.0.5"
 
@@ -84,3 +80,7 @@
 [prune]
   go-tests = true
   unused-packages = true
+
+[[constraint]]
+  name = "github.com/briandowns/spinner"
+  version = "1.0.0"

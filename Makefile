@@ -19,7 +19,7 @@ deps:
 	gometalinter --install
 	dep ensure
 
-compile: deps
+compile:
 	@rm -rf build/
 	@gox -ldflags "-X main.Version=$(VERSION)" \
 	-osarch="darwin/amd64" \
@@ -28,7 +28,7 @@ compile: deps
 	-osarch="windows/amd64" \
 	-osarch="windows/i386" \
 	-output "build/{{.Dir}}_$(VERSION)_{{.OS}}_{{.Arch}}/$(NAME)" \
-	$(shell ./glide novendor)
+	${SOURCE_FILES}
 
 # Run all the linters
 lint:

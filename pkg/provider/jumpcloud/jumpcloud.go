@@ -11,9 +11,9 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/pkg/errors"
-	"github.com/segmentio/go-prompt"
 	"github.com/versent/saml2aws/pkg/cfg"
 	"github.com/versent/saml2aws/pkg/creds"
+	"github.com/versent/saml2aws/pkg/prompter"
 	"github.com/versent/saml2aws/pkg/provider"
 )
 
@@ -39,6 +39,8 @@ func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 
 // Authenticate logs into JumpCloud and returns a SAML response
 func (jc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error) {
+	var prompt = prompter.NewCli()
+
 	var authSubmitURL string
 	var samlAssertion string
 	mfaRequired := false

@@ -5,11 +5,11 @@ import (
 	"os"
 
 	"github.com/pkg/errors"
-	prompt "github.com/segmentio/go-prompt"
 	"github.com/versent/saml2aws"
 	"github.com/versent/saml2aws/helper/credentials"
 	"github.com/versent/saml2aws/pkg/cfg"
 	"github.com/versent/saml2aws/pkg/flags"
+	"github.com/versent/saml2aws/pkg/prompter"
 )
 
 // Configure configure account profiles
@@ -58,14 +58,17 @@ func Configure(configFlags *flags.CommonFlags) error {
 }
 
 func storeCredentials(configFlags *flags.CommonFlags, account *cfg.IDPAccount) error {
+
+	var prompt = prompter.NewCli()
+
 	if configFlags.Password != "" {
 		if err := credentials.SaveCredentials(account.URL, account.Username, configFlags.Password); err != nil {
 			return errors.Wrap(err, "error storing password in keychain")
 		}
 	} else {
-		password := prompt.PasswordMasked("Password")
+		password := prompt.Password("Password")
 		if password != "" {
-			if confirmPassword := prompt.PasswordMasked("Confirm"); confirmPassword == password {
+			if confirmPassword := prompt.Password("Confirm"); confirmPassword == password {
 				if err := credentials.SaveCredentials(account.URL, account.Username, password); err != nil {
 					return errors.Wrap(err, "error storing password in keychain")
 				}
