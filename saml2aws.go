@@ -12,6 +12,7 @@ import (
 	"github.com/versent/saml2aws/pkg/provider/keycloak"
 	"github.com/versent/saml2aws/pkg/provider/okta"
 	"github.com/versent/saml2aws/pkg/provider/pingfed"
+	"github.com/versent/saml2aws/pkg/provider/pingone"
 )
 
 // ProviderList list of providers with their MFAs
@@ -22,6 +23,7 @@ var MFAsByProvider = ProviderList{
 	"ADFS":      []string{"Auto", "VIP"},
 	"ADFS2":     []string{"Auto", "RSA"}, // nothing automatic about ADFS 2.x
 	"Ping":      []string{"Auto"},        // automatically detects PingID
+	"PingOne":   []string{"Auto"},        // automatically detects PingID
 	"JumpCloud": []string{"Auto"},
 	"Okta":      []string{"Auto"}, // automatically detects DUO, SMS and ToTP
 	"KeyCloak":  []string{"Auto"}, // automatically detects ToTP
@@ -85,6 +87,11 @@ func NewSAMLClient(idpAccount *cfg.IDPAccount) (SAMLClient, error) {
 			return nil, fmt.Errorf("Invalid MFA type: %v for %v provider", idpAccount.MFA, idpAccount.Provider)
 		}
 		return pingfed.New(idpAccount)
+	case "PingOne":
+		if invalidMFA(idpAccount.Provider, idpAccount.MFA) {
+			return nil, fmt.Errorf("Invalid MFA type: %v for %v provider", idpAccount.MFA, idpAccount.Provider)
+		}
+		return pingone.New(idpAccount)
 	case "JumpCloud":
 		if invalidMFA(idpAccount.Provider, idpAccount.MFA) {
 			return nil, fmt.Errorf("Invalid MFA type: %v for %v provider", idpAccount.MFA, idpAccount.Provider)
