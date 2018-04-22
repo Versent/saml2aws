@@ -100,9 +100,6 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 	}
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 
-	if err != nil {
-		return "", errors.Wrap(err, "error building authentication request")
-	}
 	logger.WithField("postUrl", postUrl).WithField("req", dump.RequestString(req)).Debug("POST")
 
 	res, err = ac.client.Do(req)
