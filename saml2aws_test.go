@@ -10,7 +10,7 @@ func TestProviderList_Keys(t *testing.T) {
 
 	names := MFAsByProvider.Names()
 
-	require.Len(t, names, 6)
+	require.Len(t, names, 7)
 
 }
 
