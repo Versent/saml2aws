@@ -1,11 +1,6 @@
 package prompter
 
-import (
-	"errors"
-	"fmt"
-
-	"github.com/AlecAivazis/survey"
-)
+var defaultPrompter Prompter = NewCli()
 
 // Prompter handles prompting user for input
 type Prompter interface {
@@ -17,89 +12,37 @@ type Prompter interface {
 	Password(string) string
 }
 
-// CliPrompter used to prompt for cli input
-type CliPrompter struct {
-}
-
-// NewCli builds a new cli prompter
-func NewCli() *CliPrompter {
-	return &CliPrompter{}
+// SetPrompter configure an aternate prompter to the default one
+func SetPrompter(prmpt Prompter) {
+	defaultPrompter = prmpt
 }
 
 // RequestSecurityCode request a security code to be entered by the user
-func (cli *CliPrompter) RequestSecurityCode(pattern string) string {
-	token := ""
-	prompt := &survey.Input{
-		Message: fmt.Sprintf("Security Token [%s]", pattern),
-	}
-	survey.AskOne(prompt, &token, survey.Required)
-	return token
+func RequestSecurityCode(pattern string) string {
+	return defaultPrompter.RequestSecurityCode(pattern)
 }
 
 // ChooseWithDefault given the choice return the option selected with a default
-func (cli *CliPrompter) ChooseWithDefault(pr string, defaultValue string, options []string) (string, error) {
-	selected := ""
-	prompt := &survey.Select{
-		Message: pr,
-		Options: options,
-		Default: defaultValue,
-	}
-	survey.AskOne(prompt, &selected, survey.Required)
-
-	// return the selected element index
-	for i, option := range options {
-		if selected == option {
-			return options[i], nil
-		}
-	}
-	return "", errors.New("bad input")
+func ChooseWithDefault(pr string, defaultValue string, options []string) (string, error) {
+	return defaultPrompter.ChooseWithDefault(pr, defaultValue, options)
 }
 
 // Choose given the choice return the option selected
-func (cli *CliPrompter) Choose(pr string, options []string) int {
-	selected := ""
-	prompt := &survey.Select{
-		Message: pr,
-		Options: options,
-	}
-	survey.AskOne(prompt, &selected, survey.Required)
-
-	// return the selected element index
-	for i, option := range options {
-		if selected == option {
-			return i
-		}
-	}
-	return 0
+func Choose(pr string, options []string) int {
+	return defaultPrompter.Choose(pr, options)
 }
 
 // StringRequired prompt for string which is required
-func (cli *CliPrompter) String(pr string, defaultValue string) string {
-	val := ""
-	prompt := &survey.Input{
-		Message: pr,
-		Default: defaultValue,
-	}
-	survey.AskOne(prompt, &val, nil)
-	return val
+func StringRequired(pr string) string {
+	return defaultPrompter.StringRequired(pr)
 }
 
-// StringRequired prompt for string which is required
-func (cli *CliPrompter) StringRequired(pr string) string {
-	val := ""
-	prompt := &survey.Input{
-		Message: pr,
-	}
-	survey.AskOne(prompt, &val, survey.Required)
-	return val
+// String prompt for string which is required
+func String(pr string, defaultValue string) string {
+	return defaultPrompter.String(pr, defaultValue)
 }
 
 // Password prompt for password which is required
-func (cli *CliPrompter) Password(pr string) string {
-	val := ""
-	prompt := &survey.Password{
-		Message: pr,
-	}
-	survey.AskOne(prompt, &val, nil)
-	return val
+func Password(pr string) string {
+	return defaultPrompter.Password(pr)
 }

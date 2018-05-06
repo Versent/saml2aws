@@ -12,13 +12,11 @@ import (
 // PromptForConfigurationDetails prompt the user to present their hostname, username and mfa
 func PromptForConfigurationDetails(idpAccount *cfg.IDPAccount) error {
 
-	var prompt = prompter.NewCli()
-
 	providers := MFAsByProvider.Names()
 
 	var err error
 
-	idpAccount.Provider, err = prompt.ChooseWithDefault("Please choose a provider:", idpAccount.Provider, providers)
+	idpAccount.Provider, err = prompter.ChooseWithDefault("Please choose a provider:", idpAccount.Provider, providers)
 	if err != nil {
 		return errors.Wrap(err, "error selecting provider file")
 	}
@@ -27,7 +25,7 @@ func PromptForConfigurationDetails(idpAccount *cfg.IDPAccount) error {
 
 	// only prompt for MFA if there is more than one option
 	if len(mfas) > 1 {
-		idpAccount.MFA, err = prompt.ChooseWithDefault("Please choose an MFA", idpAccount.MFA, mfas)
+		idpAccount.MFA, err = prompter.ChooseWithDefault("Please choose an MFA", idpAccount.MFA, mfas)
 		if err != nil {
 			return errors.Wrap(err, "error selecting provider file")
 		}
@@ -38,8 +36,8 @@ func PromptForConfigurationDetails(idpAccount *cfg.IDPAccount) error {
 
 	fmt.Println("")
 
-	idpAccount.URL = prompt.String("URL", idpAccount.URL)
-	idpAccount.Username = prompt.String("Username", idpAccount.Username)
+	idpAccount.URL = prompter.String("URL", idpAccount.URL)
+	idpAccount.Username = prompter.String("Username", idpAccount.Username)
 
 	fmt.Println("")
 
@@ -48,13 +46,12 @@ func PromptForConfigurationDetails(idpAccount *cfg.IDPAccount) error {
 
 // PromptForLoginDetails prompt the user to present their username, password
 func PromptForLoginDetails(loginDetails *creds.LoginDetails) error {
-	var prompt = prompter.NewCli()
 
 	fmt.Println("To use saved password just hit enter.")
 
-	loginDetails.Username = prompt.String("Username", loginDetails.Username)
+	loginDetails.Username = prompter.String("Username", loginDetails.Username)
 
-	if enteredPassword := prompt.Password("Password"); enteredPassword != "" {
+	if enteredPassword := prompter.Password("Password"); enteredPassword != "" {
 		loginDetails.Password = enteredPassword
 	}
 
@@ -82,7 +79,7 @@ func PromptForAWSRoleSelection(accounts []*AWSAccount) (*AWSRole, error) {
 		roleOptions = append(roleOptions, k)
 	}
 
-	selectedRole, err := prompter.NewCli().ChooseWithDefault("Please choose the role", "", roleOptions)
+	selectedRole, err := prompter.ChooseWithDefault("Please choose the role", "", roleOptions)
 	if err != nil {
 		return nil, errors.Wrap(err, "Role selection failed")
 	}

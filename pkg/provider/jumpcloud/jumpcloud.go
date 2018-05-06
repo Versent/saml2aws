@@ -39,7 +39,7 @@ func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 
 // Authenticate logs into JumpCloud and returns a SAML response
 func (jc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error) {
-	var prompt = prompter.NewCli()
+	//var prompt = prompter.NewCli()
 
 	var authSubmitURL string
 	var samlAssertion string
@@ -110,7 +110,7 @@ func (jc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 	jc.client.EnableFollowRedirect()
 
 	if mfaRequired {
-		token := prompt.StringRequired("MFA Token")
+		token := prompter.StringRequired("MFA Token")
 		authForm.Add("otp", token)
 
 		req, err = http.NewRequest("POST", authSubmitURL, strings.NewReader(authForm.Encode()))
