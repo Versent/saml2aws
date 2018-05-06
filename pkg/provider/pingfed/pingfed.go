@@ -50,8 +50,6 @@ func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 // Authenticate Authenticate to PingFed and return the data from the body of the SAML assertion.
 func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error) {
 
-	var prompt = prompter.NewCli()
-
 	authSubmitURL, authForm, err := ac.getLoginForm(loginDetails)
 	if err != nil {
 		return "", errors.Wrap(err, "error retrieving login form")
@@ -160,7 +158,7 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		//if actionURL is OTP then prompt for token
 		//user has disabled swipe
 		if strings.Contains(actionURL, "/pingid/ppm/auth/otp") {
-			token := prompt.StringRequired("Enter passcode")
+			token := prompter.StringRequired("Enter passcode")
 
 			//build request
 			otpReq := url.Values{}

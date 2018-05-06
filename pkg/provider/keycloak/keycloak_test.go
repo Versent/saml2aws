@@ -82,7 +82,7 @@ func TestClient_postTotpForm(t *testing.T) {
 
 	pr.Mock.On("RequestSecurityCode", "000000").Return("111222")
 
-	kc := Client{client: &provider.HTTPClient{Client: http.Client{}}, prompter: pr}
+	kc := Client{client: &provider.HTTPClient{Client: http.Client{}}}
 
 	kc.postTotpForm(ts.URL, doc)
 }

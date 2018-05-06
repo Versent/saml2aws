@@ -46,8 +46,7 @@ var (
 
 // Client is a wrapper representing a Okta SAML client
 type Client struct {
-	client   *provider.HTTPClient
-	prompter prompter.Prompter
+	client *provider.HTTPClient
 }
 
 // AuthRequest represents an mfa okta request
@@ -73,8 +72,7 @@ func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 	}
 
 	return &Client{
-		client:   client,
-		prompter: prompter.NewCli(),
+		client: client,
 	}, nil
 }
 
@@ -175,8 +173,6 @@ func parseMfaIdentifer(json string, arrayPosition int) string {
 
 func verifyMfa(oc *Client, oktaOrgHost string, resp string) (string, error) {
 
-	var prompt = prompter.NewCli()
-
 	stateToken := gjson.Get(resp, "stateToken").String()
 
 	// choose an mfa option if there are multiple enabled
@@ -191,7 +187,7 @@ func verifyMfa(oc *Client, oktaOrgHost string, resp string) (string, error) {
 		}
 	}
 	if len(mfaOptions) > 1 {
-		mfaOption = prompt.Choose("Select which MFA option to use", mfaOptions)
+		mfaOption = prompter.Choose("Select which MFA option to use", mfaOptions)
 	}
 
 	factorID := gjson.Get(resp, fmt.Sprintf("_embedded.factors.%d.id", mfaOption)).String()
@@ -235,7 +231,7 @@ func verifyMfa(oc *Client, oktaOrgHost string, resp string) (string, error) {
 
 	switch mfa := mfaIdentifer; mfa {
 	case IdentifierSmsMfa, IdentifierTotpMfa, IdentifierOktaTotpMfa:
-		verifyCode := prompt.StringRequired("Enter verification code")
+		verifyCode := prompter.StringRequired("Enter verification code")
 		tokenReq := VerifyRequest{StateToken: stateToken, PassCode: verifyCode}
 		tokenBody := new(bytes.Buffer)
 		json.NewEncoder(tokenBody).Encode(tokenReq)
@@ -365,11 +361,11 @@ func verifyMfa(oc *Client, oktaOrgHost string, resp string) (string, error) {
 			"Duo Push",
 		}
 
-		duoMfaOption := prompt.Choose("Select a DUO MFA Option", duoMfaOptions)
+		duoMfaOption := prompter.Choose("Select a DUO MFA Option", duoMfaOptions)
 
 		if duoMfaOptions[duoMfaOption] == "Passcode" {
 			//get users DUO MFA Token
-			token = prompt.StringRequired("Enter passcode")
+			token = prompter.StringRequired("Enter passcode")
 		}
 
 		// send mfa auth request

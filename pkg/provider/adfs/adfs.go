@@ -24,7 +24,6 @@ var logger = logrus.WithField("provider", "adfs")
 type Client struct {
 	client     *provider.HTTPClient
 	idpAccount *cfg.IDPAccount
-	prompter   prompter.Prompter
 }
 
 // New create a new ADFS client
@@ -43,7 +42,6 @@ func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 	return &Client{
 		client:     client,
 		idpAccount: idpAccount,
-		prompter:   prompter.NewCli(),
 	}, nil
 }
 
@@ -150,7 +148,7 @@ func (ac *Client) vipMFA(authSubmitURL string, res *http.Response) (*http.Respon
 		return res, nil // if we didn't find the MFA flag then just continue
 	}
 
-	var token = ac.prompter.RequestSecurityCode("000000")
+	var token = prompter.RequestSecurityCode("000000")
 
 	doc.Find("input").Each(func(i int, s *goquery.Selection) {
 		updateOTPFormData(otpForm, s, token)

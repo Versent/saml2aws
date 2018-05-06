@@ -59,16 +59,14 @@ func Configure(configFlags *flags.CommonFlags) error {
 
 func storeCredentials(configFlags *flags.CommonFlags, account *cfg.IDPAccount) error {
 
-	var prompt = prompter.NewCli()
-
 	if configFlags.Password != "" {
 		if err := credentials.SaveCredentials(account.URL, account.Username, configFlags.Password); err != nil {
 			return errors.Wrap(err, "error storing password in keychain")
 		}
 	} else {
-		password := prompt.Password("Password")
+		password := prompter.Password("Password")
 		if password != "" {
-			if confirmPassword := prompt.Password("Confirm"); confirmPassword == password {
+			if confirmPassword := prompter.Password("Confirm"); confirmPassword == password {
 				if err := credentials.SaveCredentials(account.URL, account.Username, password); err != nil {
 					return errors.Wrap(err, "error storing password in keychain")
 				}

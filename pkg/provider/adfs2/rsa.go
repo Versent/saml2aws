@@ -18,8 +18,6 @@ import (
 // Authenticate authenticate the user using the supplied login details
 func (ac *Client) authenticateRsa(loginDetails *creds.LoginDetails) (string, error) {
 
-	var prompt = prompter.NewCli()
-
 	authSubmitURL, authForm, err := ac.getLoginForm(loginDetails)
 	if err != nil {
 		return "", errors.Wrap(err, "error retrieving login form from idp")
@@ -35,7 +33,7 @@ func (ac *Client) authenticateRsa(loginDetails *creds.LoginDetails) (string, err
 		return "", errors.Wrap(err, "error extracting mfa form data")
 	}
 
-	token := prompt.Password("Enter passcode")
+	token := prompter.Password("Enter passcode")
 
 	passcodeForm.Set("Passcode", token)
 	passcodeForm.Del("submit")
@@ -50,7 +48,7 @@ func (ac *Client) authenticateRsa(loginDetails *creds.LoginDetails) (string, err
 		return "", errors.Wrap(err, "error extracting rsa form data")
 	}
 
-	nextCode := prompt.Password("Enter nextCode")
+	nextCode := prompter.Password("Enter nextCode")
 
 	rsaForm.Set("NextCode", nextCode)
 	rsaForm.Del("submit")

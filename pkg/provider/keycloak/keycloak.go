@@ -24,8 +24,7 @@ var logger = logrus.WithField("provider", "keycloak")
 
 // Client wrapper around KeyCloak.
 type Client struct {
-	client   *provider.HTTPClient
-	prompter prompter.Prompter
+	client *provider.HTTPClient
 }
 
 // New create a new KeyCloakClient
@@ -39,8 +38,7 @@ func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 	}
 
 	return &Client{
-		client:   client,
-		prompter: prompter.NewCli(),
+		client: client,
 	}, nil
 }
 
@@ -152,7 +150,7 @@ func (kc *Client) postTotpForm(totpSubmitURL string, doc *goquery.Document) (*go
 
 	otpForm := url.Values{}
 
-	var token = kc.prompter.RequestSecurityCode("000000")
+	var token = prompter.RequestSecurityCode("000000")
 
 	doc.Find("input").Each(func(i int, s *goquery.Selection) {
 		updateOTPFormData(otpForm, s, token)

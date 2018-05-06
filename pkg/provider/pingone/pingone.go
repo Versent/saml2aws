@@ -55,8 +55,6 @@ func (ac *Client) EnableFollowRedirect() {
 // Authenticate Authenticate to PingOne and return the data from the body of the SAML assertion.
 func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error) {
 
-	var prompt = prompter.NewCli()
-
 	// Access to PingOne
 	authSubmitURL, authForm, err := ac.getLoginForm(loginDetails)
 	if err != nil {
@@ -182,7 +180,7 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 
 	//user has disabled swipe
 	if strings.Contains(actionURL, "/pingid/ppm/auth/otp") {
-		token := prompt.StringRequired("Enter passcode")
+		token := prompter.StringRequired("Enter passcode")
 
 		//build request
 		otpReq := url.Values{}
