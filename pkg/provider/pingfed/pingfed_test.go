@@ -17,7 +17,7 @@ func TestExtractMfaFormData(t *testing.T) {
 	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(data))
 	require.Nil(t, err)
 
-	mfaForm, actionURL, err := extractMfaFormData(doc)
+	mfaForm, actionURL, err := extractMfaFormData(doc, "#form1")
 	require.Nil(t, err)
 	require.Equal(t, "https://authenticator.pingone.com/pingid/ppm/auth/poll", actionURL)
 	require.Equal(t, url.Values{"csrfToken": []string{"fc80998c-34d8-4dd2-925c-3b3be8a0dee8"}}, mfaForm)

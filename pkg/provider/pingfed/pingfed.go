@@ -2,13 +2,16 @@ package pingfed
 
 import (
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+	"github.com/tidwall/gjson"
 	"github.com/versent/saml2aws/pkg/cfg"
 	"github.com/versent/saml2aws/pkg/creds"
 	"github.com/versent/saml2aws/pkg/dump"
@@ -128,7 +131,7 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		}
 
 		//extract form action and csrf token
-		form, actionURL, err = extractMfaFormData(doc)
+		form, actionURL, err = extractMfaFormData(doc, "#form1")
 		if err != nil {
 			return "", errors.Wrap(err, "error extracting authentication form")
 		}
@@ -136,39 +139,103 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		logger.WithField("actionURL", actionURL).Debug("POST")
 
 		//contine mfa auth with csrf token
-		req, err = http.NewRequest("POST", actionURL, strings.NewReader(form.Encode()))
+		req, err = http.NewRequest("GET", actionURL, strings.NewReader(form.Encode()))
 		if err != nil {
 			return "", errors.Wrap(err, "error building authentication request")
 		}
 
-		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+		otp := false
+
+		//check if a push is happening
+		if strings.Contains(actionURL, "/pingid/ppm/auth/status") {
+			req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+
+			for {
+				time.Sleep(3 * time.Second)
+
+				logger.WithField("actionURL", actionURL).WithField("req", dump.RequestString(req)).Debug("MFA")
+
+				res, err = ac.client.Do(req)
+				if err != nil {
+					return "", errors.Wrap(err, "error polling mfa device")
+				}
+
+				body, err := ioutil.ReadAll(res.Body)
+				if err != nil {
+					return "", errors.Wrap(err, "error parsing body from mfa response")
+				}
+
+				resp := string(body)
+
+				pingfedMFAStatusResponse := gjson.Get(resp, "status").String()
+
+				logger.WithField("actionURL", actionURL).WithField("res", dump.ResponseString(res)).WithField("mfa_response", gjson.Get(resp, "status").String()).Debug("POST")
+
+				//ASYNC_AUTH_WAIT indicates we keep going
+				//OK indicates someone swiped
+				//DEVICE_CLAIM_TIMEOUT indicates nobody swiped
+				//otherwise loop forever?
+
+				if pingfedMFAStatusResponse == "OK" {
+					break
+				}
+
+				if pingfedMFAStatusResponse == "DEVICE_CLAIM_TIMEOUT" || pingfedMFAStatusResponse == "TIMEOUT" {
+					otp = true
+					break
+				}
+
+			}
+		}
+
+		//spelling mistake intentional, that's just how the form is
+		form, actionURL, err = extractMfaFormData(doc, "#reponseView")
+		if err != nil {
+			return "", errors.Wrap(err, "error extracting post-mfa response location")
+		}
+
+		logger.WithField("actionURL", actionURL).WithField("req", dump.RequestString(req)).Debug("POST")
+
+		req, err = http.NewRequest("GET", actionURL, strings.NewReader(form.Encode()))
+		if err != nil {
+			return "", errors.Wrap(err, "error building authentication request")
+		}
+
 		res, err = ac.client.Do(req)
 		if err != nil {
-			return "", errors.Wrap(err, "error polling mfa device")
+			return "", errors.Wrap(err, "error calling success mfa response")
 		}
 
-		//extract form action and jwt token
-		form, actionURL, err = extractFormData(res)
-		if err != nil {
-			return "", errors.Wrap(err, "error extracting jwt form data")
+		//Need to save this for later
+		csrfForm := form
+
+		if otp == true {
+
+			doc, err = goquery.NewDocumentFromResponse(res)
+			if err != nil {
+				return "", errors.Wrap(err, "failed to build document from response")
+			}
+
+			form, actionURL, err = extractMfaFormData(doc, "#otp-form")
+			if err != nil {
+				return "", errors.Wrap(err, "error extracting otp form")
+			}
+
 		}
 
-		logger.WithField("actionURL", actionURL).Debug("POST")
+		// logger.WithField("actionURL", actionURL).Debug("POST-MFA")
 
 		//if actionURL is OTP then prompt for token
 		//user has disabled swipe
 		if strings.Contains(actionURL, "/pingid/ppm/auth/otp") {
 			token := prompter.StringRequired("Enter passcode")
 
-			//build request
-			otpReq := url.Values{}
-			otpReq.Add("otp", token)
-			otpReq.Add("message", "")
+			csrfForm.Add("otp", token)
 
 			//submit otp
-			req, err = http.NewRequest("POST", actionURL, strings.NewReader(otpReq.Encode()))
+			req, err = http.NewRequest("POST", actionURL, strings.NewReader(csrfForm.Encode()))
 			if err != nil {
-				return "", errors.Wrap(err, "error building authentication request")
+				return "", errors.Wrap(err, "error building totp request")
 			}
 
 			req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
@@ -177,18 +244,20 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 
 			res, err = ac.client.Do(req)
 			if err != nil {
-				return "", errors.Wrap(err, "error polling mfa device")
+				return "", errors.Wrap(err, "error submitting totp")
 			}
 
 			logger.WithField("actionURL", actionURL).WithField("res", dump.ResponseString(res)).Debug("POST")
 
-			//extract form action and jwt token
-			form, actionURL, err = extractFormData(res)
-			if err != nil {
-				return "", errors.Wrap(err, "error extracting mfa form data")
-			}
-
 		}
+
+		//extract form action and jwt token
+		form, actionURL, err = extractFormData(res)
+		if err != nil {
+			return "", errors.Wrap(err, "error extracting jwt form data")
+		}
+
+		logger.WithField("actionURL", actionURL).WithField("res", dump.ResponseString(res)).Debug("POST")
 
 		//pass PingId auth back to pingfed
 		req, err = http.NewRequest("POST", actionURL, strings.NewReader(form.Encode()))
@@ -320,11 +389,11 @@ func extractFormData(res *http.Response) (url.Values, string, error) {
 	return formData, actionURL, nil
 }
 
-func extractMfaFormData(doc *goquery.Document) (url.Values, string, error) {
+func extractMfaFormData(doc *goquery.Document, formID string) (url.Values, string, error) {
 	formData := url.Values{}
 	var actionURL string
 	//get action url
-	doc.Find("#form1").Each(func(i int, s *goquery.Selection) {
+	doc.Find(formID).Each(func(i int, s *goquery.Selection) {
 		action, ok := s.Attr("action")
 		if !ok {
 			return
@@ -333,7 +402,8 @@ func extractMfaFormData(doc *goquery.Document) (url.Values, string, error) {
 	})
 
 	// extract form data to passthrough
-	doc.Find("#form1 > input").Each(func(i int, s *goquery.Selection) {
+	searchString := formID + " > input"
+	doc.Find(searchString).Each(func(i int, s *goquery.Selection) {
 		name, ok := s.Attr("name")
 		if !ok {
 			return
