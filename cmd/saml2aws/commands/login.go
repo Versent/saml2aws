@@ -23,7 +23,12 @@ func Login(loginFlags *flags.LoginExecFlags) error {
 
 	logger := logrus.WithField("command", "login")
 
-	sharedCreds := awsconfig.NewSharedCredentials(loginFlags.Profile)
+	account, err := buildIdpAccount(loginFlags)
+	if err != nil {
+		return errors.Wrap(err, "error building login details")
+	}
+
+	sharedCreds := awsconfig.NewSharedCredentials(account.Profile)
 
 	logger.Debug("check if Creds Exist")
 
@@ -35,11 +40,6 @@ func Login(loginFlags *flags.LoginExecFlags) error {
 	if !exist {
 		fmt.Println("unable to load credentials, login required to create them")
 		return nil
-	}
-
-	account, err := buildIdpAccount(loginFlags)
-	if err != nil {
-		return errors.Wrap(err, "error building login details")
 	}
 
 	loginDetails, err := resolveLoginDetails(account, loginFlags)

@@ -34,6 +34,8 @@ func PromptForConfigurationDetails(idpAccount *cfg.IDPAccount) error {
 		idpAccount.MFA = mfas[0]
 	}
 
+	idpAccount.Profile = prompter.String("AWS Profile", idpAccount.Profile)
+
 	fmt.Println("")
 
 	idpAccount.URL = prompter.String("URL", idpAccount.URL)

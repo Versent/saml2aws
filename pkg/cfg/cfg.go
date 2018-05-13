@@ -24,6 +24,9 @@ const (
 	// DefaultSessionDuration this is the default session duration which can be overridden in the AWS console
 	// see https://aws.amazon.com/blogs/security/enable-federated-api-access-to-your-aws-resources-for-up-to-12-hours-using-iam-roles/
 	DefaultSessionDuration = 3600
+
+	// DefaultProfile this is the default profile name used to save the credentials in the aws cli
+	DefaultProfile = "saml"
 )
 
 // IDPAccount saml IDP account
@@ -36,6 +39,7 @@ type IDPAccount struct {
 	Timeout              int    `ini:"timeout"`
 	AmazonWebservicesURN string `ini:"aws_urn"`
 	SessionDuration      int    `ini:"aws_session_duration"`
+	Profile              string `ini:"aws_profile"`
 }
 
 func (ia IDPAccount) String() string {
@@ -47,7 +51,8 @@ func (ia IDPAccount) String() string {
   SkipVerify: %v
   AmazonWebservicesURN: %s
   SessionDuration: %d
-}`, ia.URL, ia.Username, ia.Provider, ia.MFA, ia.SkipVerify, ia.AmazonWebservicesURN, ia.SessionDuration)
+  Profile: %s
+}`, ia.URL, ia.Username, ia.Provider, ia.MFA, ia.SkipVerify, ia.AmazonWebservicesURN, ia.SessionDuration, ia.Profile)
 }
 
 // Validate validate the required / expected fields are set
@@ -69,6 +74,10 @@ func (ia *IDPAccount) Validate() error {
 		return errors.New("MFA empty in idp account")
 	}
 
+	if ia.Profile == "" {
+		return errors.New("Profile empty in idp account")
+	}
+
 	return nil
 }
 
@@ -77,6 +86,7 @@ func NewIDPAccount() *IDPAccount {
 	return &IDPAccount{
 		AmazonWebservicesURN: DefaultAmazonWebservicesURN,
 		SessionDuration:      DefaultSessionDuration,
+		Profile:              DefaultProfile,
 	}
 }
 

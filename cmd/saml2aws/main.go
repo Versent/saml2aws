@@ -70,13 +70,13 @@ func main() {
 	cmdLogin := app.Command("login", "Login to a SAML 2.0 IDP and convert the SAML assertion to an STS token.")
 	loginFlags := new(flags.LoginExecFlags)
 	loginFlags.CommonFlags = commonFlags
-	cmdLogin.Flag("profile", "The AWS profile to save the temporary credentials").Short('p').Default("saml").StringVar(&loginFlags.Profile)
+	cmdLogin.Flag("profile", "The AWS profile to save the temporary credentials").Short('p').StringVar(&commonFlags.Profile)
 
 	// `exec` command and settings
 	cmdExec := app.Command("exec", "Exec the supplied command with env vars from STS token.")
 	execFlags := new(flags.LoginExecFlags)
 	execFlags.CommonFlags = commonFlags
-	cmdExec.Flag("profile", "The AWS profile to save the temporary credentials").Short('p').Default("saml").StringVar(&execFlags.Profile)
+	cmdExec.Flag("profile", "The AWS profile to save the temporary credentials").Short('p').StringVar(&commonFlags.Profile)
 	cmdLine := buildCmdList(cmdExec.Arg("command", "The command to execute."))
 
 	// `list` command and settings

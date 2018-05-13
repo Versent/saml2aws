@@ -33,6 +33,7 @@ func TestNewConfigManagerLoad(t *testing.T) {
 		MFA:                  "sms",
 		AmazonWebservicesURN: DefaultAmazonWebservicesURN,
 		SessionDuration:      3600,
+		Profile:              "saml",
 	}, idpAccount)
 
 	idpAccount, err = cfgm.LoadIDPAccount("test1234")
@@ -40,6 +41,7 @@ func TestNewConfigManagerLoad(t *testing.T) {
 	require.Equal(t, &IDPAccount{
 		AmazonWebservicesURN: DefaultAmazonWebservicesURN,
 		SessionDuration:      3600,
+		Profile:              "saml",
 	}, idpAccount)
 }
 
@@ -59,6 +61,7 @@ func TestNewConfigManagerLoadVerify(t *testing.T) {
 		MFA:                  "sms",
 		AmazonWebservicesURN: DefaultAmazonWebservicesURN,
 		SessionDuration:      3600,
+		Profile:              "saml",
 	}, idpAccount)
 
 	idpAccount, err = cfgm.LoadVerifyIDPAccount("test1234")
@@ -76,6 +79,7 @@ func TestNewConfigManagerSave(t *testing.T) {
 		MFA:      "none",
 		Provider: "keycloak",
 		Username: "abc@whatever.com",
+		Profile:  "saml",
 	})
 	require.Nil(t, err)
 	idpAccount, err := cfgm.LoadVerifyIDPAccount("testing2")
@@ -86,6 +90,7 @@ func TestNewConfigManagerSave(t *testing.T) {
 		Provider:             "keycloak",
 		MFA:                  "none",
 		AmazonWebservicesURN: DefaultAmazonWebservicesURN,
+		Profile:              "saml",
 	}, idpAccount)
 
 	os.Remove(throwAwayConfig)
