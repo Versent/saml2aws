@@ -8,6 +8,9 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/sirupsen/logrus"
+	"github.com/versent/saml2aws/pkg/dump"
+
 	"github.com/briandowns/spinner"
 	"github.com/pkg/errors"
 	"golang.org/x/net/publicsuffix"
@@ -63,11 +66,15 @@ func (hc *HTTPClient) Do(req *http.Request) (*http.Response, error) {
 		cs = spinner.CharSets[26]
 	}
 
-	s := spinner.New(cs, 100*time.Millisecond)
-	defer func() {
-		s.Stop()
-	}()
-	s.Start()
+	if logrus.GetLevel() != logrus.DebugLevel {
+		s := spinner.New(cs, 100*time.Millisecond)
+		defer func() {
+			s.Stop()
+		}()
+		s.Start()
+	}
+
+	hc.logHTTPRequest(req)
 
 	resp, err := hc.Client.Do(req)
 	if err != nil {
@@ -81,6 +88,8 @@ func (hc *HTTPClient) Do(req *http.Request) (*http.Response, error) {
 			return resp, err
 		}
 	}
+
+	hc.logHTTPResponse(resp)
 
 	return resp, err
 }
@@ -104,4 +113,29 @@ func SuccessOrRedirectResponseValidator(req *http.Request, resp *http.Response) 
 	}
 
 	return errors.Errorf("request for url: %s failed status: %s", req.URL.String(), resp.Status)
+}
+
+func (hc *HTTPClient) logHTTPRequest(req *http.Request) {
+
+	if dump.ContentEnable() {
+		logrus.WithField("req", dump.RequestString(req)).Debug("HTTP Request")
+		return
+	}
+
+	logrus.WithField("http", "client").WithFields(logrus.Fields{
+		"URL":    req.URL.String(),
+		"method": req.Method,
+	}).Debug("HTTP Req")
+}
+
+func (hc *HTTPClient) logHTTPResponse(resp *http.Response) {
+
+	if dump.ContentEnable() {
+		logrus.WithField("response", dump.ResponseString(resp)).Debug("HTTP Response")
+		return
+	}
+
+	logrus.WithField("http", "client").WithFields(logrus.Fields{
+		"Status": resp.Status,
+	}).Debug("HTTP Res")
 }

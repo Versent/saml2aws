@@ -14,7 +14,6 @@ import (
 	"github.com/tidwall/gjson"
 	"github.com/versent/saml2aws/pkg/cfg"
 	"github.com/versent/saml2aws/pkg/creds"
-	"github.com/versent/saml2aws/pkg/dump"
 	"github.com/versent/saml2aws/pkg/prompter"
 	"github.com/versent/saml2aws/pkg/provider"
 )
@@ -65,14 +64,10 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 
-	logger.WithField("authSubmitURL", authSubmitURL).WithField("req", dump.RequestString(req)).Debug("POST")
-
 	res, err := ac.client.Do(req)
 	if err != nil {
 		return "", errors.Wrap(err, "error retrieving login form")
 	}
-
-	logger.WithField("authSubmitURL", authSubmitURL).WithField("res", dump.ResponseString(res)).Debug("POST")
 
 	var mfaRequired bool
 
@@ -81,8 +76,6 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		mfaRequired = true
 	}
 
-	logger.WithField("mfaRequired", mfaRequired).Debug("POST")
-
 	//process mfa
 	if mfaRequired {
 
@@ -90,8 +83,6 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		if err != nil {
 			return "", errors.Wrap(err, "error building mfa url")
 		}
-		//spew.Dump(mfaURL)
-		logger.WithField("mfaURL", mfaURL).Debug("GET")
 
 		//follow redirect
 		res, err = ac.client.Get(mfaURL.String())
@@ -99,15 +90,11 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 			return "", errors.Wrap(err, "error retrieving form")
 		}
 
-		logger.WithField("mfaURL", mfaURL).WithField("res", dump.ResponseString(res)).Debug("GET")
-
 		//extract form action and jwt token
 		form, actionURL, err := extractFormData(res)
 		if err != nil {
 			return "", errors.Wrap(err, "error extracting mfa form data")
 		}
-
-		logger.WithField("actionURL", actionURL).Debug("POST")
 
 		//request mfa auth via PingId (device swipe)
 		req, err := http.NewRequest("POST", actionURL, strings.NewReader(form.Encode()))
@@ -115,15 +102,11 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 			return "", errors.Wrap(err, "error building mfa authentication request")
 		}
 
-		logger.WithField("actionURL", actionURL).WithField("req", dump.RequestString(req)).Debug("POST")
-
 		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 		res, err = ac.client.Do(req)
 		if err != nil {
 			return "", errors.Wrap(err, "error retrieving mfa response")
 		}
-
-		logger.WithField("actionURL", actionURL).WithField("res", dump.ResponseString(res)).Debug("POST")
 
 		doc, err := goquery.NewDocumentFromResponse(res)
 		if err != nil {
@@ -135,8 +118,6 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		if err != nil {
 			return "", errors.Wrap(err, "error extracting authentication form")
 		}
-
-		logger.WithField("actionURL", actionURL).Debug("POST")
 
 		//contine mfa auth with csrf token
 		req, err = http.NewRequest("GET", actionURL, strings.NewReader(form.Encode()))
@@ -153,8 +134,6 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 			for {
 				time.Sleep(3 * time.Second)
 
-				logger.WithField("actionURL", actionURL).WithField("req", dump.RequestString(req)).Debug("MFA")
-
 				res, err = ac.client.Do(req)
 				if err != nil {
 					return "", errors.Wrap(err, "error polling mfa device")
@@ -168,8 +147,6 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 				resp := string(body)
 
 				pingfedMFAStatusResponse := gjson.Get(resp, "status").String()
-
-				logger.WithField("actionURL", actionURL).WithField("res", dump.ResponseString(res)).WithField("mfa_response", gjson.Get(resp, "status").String()).Debug("POST")
 
 				//ASYNC_AUTH_WAIT indicates we keep going
 				//OK indicates someone swiped
@@ -193,8 +170,6 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		if err != nil {
 			return "", errors.Wrap(err, "error extracting post-mfa response location")
 		}
-
-		logger.WithField("actionURL", actionURL).WithField("req", dump.RequestString(req)).Debug("POST")
 
 		req, err = http.NewRequest("GET", actionURL, strings.NewReader(form.Encode()))
 		if err != nil {
@@ -240,14 +215,10 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 
 			req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 
-			logger.WithField("actionURL", actionURL).WithField("req", dump.RequestString(req)).Debug("POST")
-
 			res, err = ac.client.Do(req)
 			if err != nil {
 				return "", errors.Wrap(err, "error submitting totp")
 			}
-
-			logger.WithField("actionURL", actionURL).WithField("res", dump.ResponseString(res)).Debug("POST")
 
 		}
 
@@ -257,8 +228,6 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 			return "", errors.Wrap(err, "error extracting jwt form data")
 		}
 
-		logger.WithField("actionURL", actionURL).WithField("res", dump.ResponseString(res)).Debug("POST")
-
 		//pass PingId auth back to pingfed
 		req, err = http.NewRequest("POST", actionURL, strings.NewReader(form.Encode()))
 		if err != nil {
@@ -267,14 +236,11 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 
 		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 
-		logger.WithField("actionURL", actionURL).WithField("req", dump.RequestString(req)).Debug("POST")
-
 		res, err = ac.client.Do(req)
 		if err != nil {
 			return "", errors.Wrap(err, "error authenticating mfa")
 		}
 
-		logger.WithField("actionURL", actionURL).WithField("res", dump.ResponseString(res)).Debug("POST")
 	}
 
 	//try to extract SAMLResponse
@@ -290,7 +256,7 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		return "", errors.Wrap(err, "unable to locate saml response")
 	}
 
-	logger.WithField("samlAssertion", samlAssertion).Debug("SAMLResponse")
+	logger.Debug("SAMLResponse received")
 
 	return samlAssertion, nil
 }

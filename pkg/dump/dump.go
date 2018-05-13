@@ -8,7 +8,7 @@ import (
 
 // RequestString helper method to dump the http request
 func RequestString(req *http.Request) string {
-	data, err := httputil.DumpRequest(req, dumpContentEnable())
+	data, err := httputil.DumpRequest(req, ContentEnable())
 
 	if err != nil {
 		return ""
@@ -19,7 +19,7 @@ func RequestString(req *http.Request) string {
 
 // ResponseString helper method to dump the http response
 func ResponseString(res *http.Response) string {
-	data, err := httputil.DumpResponse(res, dumpContentEnable())
+	data, err := httputil.DumpResponse(res, ContentEnable())
 
 	if err != nil {
 		return ""
@@ -28,6 +28,7 @@ func ResponseString(res *http.Response) string {
 	return string(data)
 }
 
-func dumpContentEnable() bool {
+// ContentEnable enable dumping of request / response content
+func ContentEnable() bool {
 	return os.Getenv("DUMP_CONTENT") == "true"
 }

@@ -11,7 +11,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/versent/saml2aws/pkg/cfg"
 	"github.com/versent/saml2aws/pkg/creds"
-	"github.com/versent/saml2aws/pkg/dump"
 	"github.com/versent/saml2aws/pkg/prompter"
 	"github.com/versent/saml2aws/pkg/provider"
 )
@@ -69,14 +68,10 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 
-	logger.WithField("authSubmitURL", authSubmitURL).WithField("req", dump.RequestString(req)).Debug("POST")
-
 	res, err := ac.client.Do(req)
 	if err != nil {
 		return "", errors.Wrap(err, "error retrieving login form")
 	}
-
-	logger.WithField("authSubmitURL", authSubmitURL).WithField("res", dump.ResponseString(res)).Debug("POST")
 
 	// parse form for action(url), SAMLREquest, RelayState
 	doc, err := goquery.NewDocumentFromResponse(res)
@@ -98,14 +93,10 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 	}
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 
-	logger.WithField("postUrl", postUrl).WithField("req", dump.RequestString(req)).Debug("POST")
-
 	res, err = ac.client.Do(req)
 	if err != nil {
 		return "", errors.Wrap(err, "error retrieving login form")
 	}
-
-	logger.WithField("postUrl", postUrl).WithField("res", dump.ResponseString(res)).Debug("POST")
 
 	// parse form for action(url), ppm_request, etc
 	doc, err = goquery.NewDocumentFromResponse(res)
@@ -123,15 +114,11 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		return "", errors.Wrap(err, "error retrieving login form")
 	}
 
-	logger.WithField("postUrl", postUrl).WithField("res", dump.ResponseString(res)).Debug("/pingid/ppm/auth")
-
 	//extract form action and jwt token
 	form, actionURL, err := extractFormData(res)
 	if err != nil {
 		return "", errors.Wrap(err, "error extracting mfa form data")
 	}
-
-	logger.WithField("actionURL", actionURL).Debug("POST")
 
 	//request mfa auth via PingId (device swipe) /pingid/ppm/auth/poll
 	req, err = http.NewRequest("POST", actionURL, strings.NewReader(form.Encode()))
@@ -139,15 +126,11 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		return "", errors.Wrap(err, "error building mfa authentication request")
 	}
 
-	logger.WithField("actionURL", actionURL).WithField("req", dump.RequestString(req)).Debug("/pingid/ppm/auth/poll")
-
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	res, err = ac.client.Do(req)
 	if err != nil {
 		return "", errors.Wrap(err, "error retrieving mfa response")
 	}
-
-	logger.WithField("actionURL", actionURL).WithField("res", dump.ResponseString(res)).Debug("POST /pingid/ppm/auth/poll")
 
 	doc, err = goquery.NewDocumentFromResponse(res)
 	if err != nil {
@@ -169,8 +152,6 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 	}
 
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-
-	logger.WithField("actionURL", actionURL).WithField("req", dump.RequestString(req)).Debug("extract mfa form")
 
 	// accept mfa
 	res, err = ac.client.Do(req)
@@ -195,14 +176,10 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 
 		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 
-		logger.WithField("actionURL", actionURL).WithField("req", dump.RequestString(req)).Debug("POST")
-
 		res, err = ac.client.Do(req)
 		if err != nil {
 			return "", errors.Wrap(err, "error polling mfa device")
 		}
-
-		logger.WithField("actionURL", actionURL).WithField("res", dump.ResponseString(res)).Debug("POST")
 
 		//extract form action and jwt token
 		form, actionURL, err = extractFormData(res)
@@ -218,14 +195,11 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 
 		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 
-		logger.WithField("actionURL", actionURL).WithField("req", dump.RequestString(req)).Debug("POST")
-
 		res, err = ac.client.Do(req)
 		if err != nil {
 			return "", errors.Wrap(err, "error authenticating mfa")
 		}
 
-		logger.WithField("actionURL", actionURL).WithField("res", dump.ResponseString(res)).Debug("POST")
 	}
 
 	//try to extract SAMLResponse
@@ -254,8 +228,6 @@ func (ac *Client) getLoginForm(loginDetails *creds.LoginDetails) (string, url.Va
 		return "", nil, errors.Wrap(err, "error retrieving AuthnRequest form")
 	}
 
-	logger.WithField("status", res.StatusCode).WithField("url", loginDetails.URL).WithField("res", dump.ResponseString(res)).Debug("GET")
-
 	// parse form for action(url), SAMLRequest, RelayState
 	doc, err := goquery.NewDocumentFromReader(res.Body)
 	if err != nil {
@@ -274,15 +246,11 @@ func (ac *Client) getLoginForm(loginDetails *creds.LoginDetails) (string, url.Va
 		return "", nil, errors.Wrap(err, "error retrieving login form")
 	}
 
-	logger.WithField("res", dump.ResponseString(res)).WithField("redirect_url", ac.lastAccessUrl).Debug("POST")
-
 	// 401 Unauthorized -> refresh same page with cookie
 	res, err = ac.client.Get(ac.lastAccessUrl.String())
 	if err != nil {
 		return "", nil, errors.Wrap(err, "error refresh same page")
 	}
-
-	logger.WithField("res", dump.ResponseString(res)).Debug("GET")
 
 	// Get login form
 	doc, err = goquery.NewDocumentFromResponse(res)

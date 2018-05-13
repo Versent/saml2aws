@@ -13,7 +13,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/versent/saml2aws/pkg/cfg"
 	"github.com/versent/saml2aws/pkg/creds"
-	"github.com/versent/saml2aws/pkg/dump"
 	"github.com/versent/saml2aws/pkg/prompter"
 	"github.com/versent/saml2aws/pkg/provider"
 )
@@ -90,15 +89,10 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 
-	logger.WithField("authSubmitURL", authSubmitURL).WithField("req", dump.RequestString(req)).Debug("POST")
-
 	res, err = ac.client.Do(req)
 	if err != nil {
 		return samlAssertion, errors.Wrap(err, "error retrieving login form results")
 	}
-
-	//log.Printf("res code = %v status = %s", res.StatusCode, res.Status)
-	logger.WithField("authSubmitURL", authSubmitURL).WithField("res", dump.ResponseString(res)).Debug("POST")
 
 	switch ac.idpAccount.MFA {
 	case "VIP":
