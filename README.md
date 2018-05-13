@@ -228,6 +228,10 @@ The exec sub command will export the following environment variables.
 * AWS_SESSION_TOKEN
 * AWS_SECURITY_TOKEN
 * EC2_SECURITY_TOKEN
+* AWS_PROFILE
+* AWS_DEFAULT_PROFILE
+
+Note: That profile environment variables enable you to use `exec` with a script or command which requires an explicit profile.
 
 # Dependencies
 

@@ -5,6 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/versent/saml2aws/pkg/awsconfig"
+	"github.com/versent/saml2aws/pkg/cfg"
 )
 
 func TestBuildEnvVars(t *testing.T) {
@@ -15,6 +16,12 @@ func TestBuildEnvVars(t *testing.T) {
 		"AWS_SESSION_TOKEN=567",
 		"AWS_SECURITY_TOKEN=567",
 		"EC2_SECURITY_TOKEN=567",
+		"AWS_PROFILE=saml",
+		"AWS_DEFAULT_PROFILE=saml",
+	}
+
+	account := &cfg.IDPAccount{
+		Profile: "saml",
 	}
 
 	awsCreds := &awsconfig.AWSCredentials{
@@ -24,5 +31,5 @@ func TestBuildEnvVars(t *testing.T) {
 		AWSSessionToken:  "567",
 	}
 
-	assert.Equal(t, expectedArray, BuildEnvVars(awsCreds))
+	assert.Equal(t, expectedArray, BuildEnvVars(awsCreds, account))
 }
