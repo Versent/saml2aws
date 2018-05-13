@@ -4,14 +4,14 @@
 [[projects]]
   name = "github.com/AlecAivazis/survey"
   packages = ["."]
-  revision = "9d3458c219bae9653d267883634bdb5375281fd8"
-  version = "v1.5.1"
+  revision = "e752db451e07e09c7d7dc8cada807a44bdb0fd47"
+  version = "v1.5.3"
 
 [[projects]]
   branch = "master"
   name = "github.com/Azure/go-ntlmssp"
   packages = ["."]
-  revision = "c92175d540060095c69ced311f76aea56c83ecdb"
+  revision = "4b934ac9dad38d389d34f0b98d98b2467c422012"
 
 [[projects]]
   name = "github.com/PuerkitoBio/goquery"
@@ -75,14 +75,14 @@
     "private/protocol/xml/xmlutil",
     "service/sts"
   ]
-  revision = "74ca63959be8b9a9a24cd86eaaea8bf99de8022d"
-  version = "v1.13.25"
+  revision = "31a85efbe3bc741eb539d6310c8e66030b7c5cb7"
+  version = "v1.13.47"
 
 [[projects]]
   name = "github.com/beevik/etree"
   packages = ["."]
-  revision = "15a30b44cfd6c5a16a7ddfe271bf146aaf2d3195"
-  version = "v1.0.0"
+  revision = "9d7e8feddccb4ed1b8afb54e368bd323d2ff652c"
+  version = "v1.0.1"
 
 [[projects]]
   name = "github.com/briandowns/spinner"
@@ -111,8 +111,8 @@
 [[projects]]
   name = "github.com/go-ini/ini"
   packages = ["."]
-  revision = "6333e38ac20b8949a8dd68baa3650f4dee8f39f0"
-  version = "v1.33.0"
+  revision = "6529cf7c58879c08d927016dde4477f18a0634cb"
+  version = "v1.36.0"
 
 [[projects]]
   name = "github.com/jmespath/go-jmespath"
@@ -196,7 +196,7 @@
     "md4",
     "ssh/terminal"
   ]
-  revision = "12892e8c234f4fe6f6803f052061de9057903bb2"
+  revision = "2d027ae1dddd4694d54f7a8b6cbe78dca8720226"
 
 [[projects]]
   branch = "master"
@@ -207,7 +207,7 @@
     "idna",
     "publicsuffix"
   ]
-  revision = "b68f30494add4df6bd8ef5e82803f308e7f7c59c"
+  revision = "2491c5de3490fced2f6cff376127c667efeed857"
 
 [[projects]]
   branch = "master"
@@ -216,7 +216,7 @@
     "unix",
     "windows"
   ]
-  revision = "378d26f46672a356c46195c28f61bdb4c0a781dd"
+  revision = "d0faeb539838e250bd0a9db4182d48d4a1915181"
 
 [[projects]]
   name = "golang.org/x/text"
@@ -245,14 +245,14 @@
     "core",
     "terminal"
   ]
-  revision = "9d3458c219bae9653d267883634bdb5375281fd8"
-  version = "v1.5.1"
+  revision = "e752db451e07e09c7d7dc8cada807a44bdb0fd47"
+  version = "v1.5.3"
 
 [[projects]]
   name = "gopkg.in/ini.v1"
   packages = ["."]
-  revision = "6333e38ac20b8949a8dd68baa3650f4dee8f39f0"
-  version = "v1.33.0"
+  revision = "6529cf7c58879c08d927016dde4477f18a0634cb"
+  version = "v1.36.0"
 
 [solve-meta]
   analyzer-name = "dep"

@@ -14,7 +14,7 @@ deps:
 	go get -u github.com/golang/dep/cmd/dep
 	go get -u github.com/mitchellh/gox
 	go get -u github.com/alecthomas/gometalinter
-	go get -u github.com/pierrre/gotestcover
+	go get -u github.com/axw/gocov/...
 	go get -u golang.org/x/tools/cmd/cover
 	gometalinter --install
 	dep ensure
@@ -54,7 +54,7 @@ release:
 	@github-release "v$(VERSION)" dist/* --commit "$(git rev-parse HEAD)" --github-repository versent/$(NAME)
 
 test:
-	@gotestcover $(TEST_OPTIONS) -covermode=atomic -coverprofile=coverage.txt $(SOURCE_FILES) -run $(TEST_PATTERN) -timeout=2m
+	@gocov test $(SOURCE_FILES) | gocov report
 
 clean:
 	@rm -fr ./build
