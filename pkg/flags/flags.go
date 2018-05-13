@@ -17,6 +17,7 @@ type CommonFlags struct {
 	SessionDuration      int
 	SkipPrompt           bool
 	SkipVerify           bool
+	Profile              string
 }
 
 // RoleSupplied role arn has been passed as a flag
@@ -27,7 +28,6 @@ func (cf *CommonFlags) RoleSupplied() bool {
 // LoginExecFlags flags for the Login / Exec commands
 type LoginExecFlags struct {
 	CommonFlags *CommonFlags
-	Profile     string
 }
 
 // ApplyFlagOverrides overrides IDPAccount with command line settings
@@ -58,5 +58,9 @@ func ApplyFlagOverrides(commonFlags *CommonFlags, account *cfg.IDPAccount) {
 
 	if commonFlags.SessionDuration != 0 {
 		account.SessionDuration = commonFlags.SessionDuration
+	}
+
+	if commonFlags.Profile != "" {
+		account.Profile = commonFlags.Profile
 	}
 }

@@ -36,6 +36,8 @@ func TestOverrideAllFlags(t *testing.T) {
 		URL:                  "https://id.example.com",
 		Username:             "myuser",
 		AmazonWebservicesURN: "urn:amazon:webservices",
+		SessionDuration:      3600,
+		Profile:              "saml",
 	}
 	idpa := &cfg.IDPAccount{
 		Provider:             "Ping",
@@ -53,6 +55,8 @@ func TestOverrideAllFlags(t *testing.T) {
 		URL:                  "https://id.example.com",
 		Username:             "myuser",
 		AmazonWebservicesURN: "urn:amazon:webservices",
+		SessionDuration:      3600,
+		Profile:              "saml",
 	}
 	ApplyFlagOverrides(commonFlags, idpa)
 
