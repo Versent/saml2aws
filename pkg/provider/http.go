@@ -9,12 +9,14 @@ import (
 	"time"
 
 	"github.com/briandowns/spinner"
+	"github.com/pkg/errors"
 	"golang.org/x/net/publicsuffix"
 )
 
 // HTTPClient saml2aws http client which extends the existing client
 type HTTPClient struct {
 	http.Client
+	CheckResponseStatus func(*http.Request, *http.Response) error
 }
 
 // NewDefaultTransport configure a transport with the TLS skip verify option
@@ -48,7 +50,7 @@ func NewHTTPClient(tr http.RoundTripper) (*HTTPClient, error) {
 
 	client := http.Client{Transport: tr, Jar: jar}
 
-	return &HTTPClient{client}, nil
+	return &HTTPClient{client, nil}, nil
 }
 
 // Do do the request
@@ -66,7 +68,21 @@ func (hc *HTTPClient) Do(req *http.Request) (*http.Response, error) {
 		s.Stop()
 	}()
 	s.Start()
-	return hc.Client.Do(req)
+
+	resp, err := hc.Client.Do(req)
+	if err != nil {
+		return resp, err
+	}
+
+	// if a response check has been configured
+	if hc.CheckResponseStatus != nil {
+		err = hc.CheckResponseStatus(req, resp)
+		if err != nil {
+			return resp, err
+		}
+	}
+
+	return resp, err
 }
 
 // DisableFollowRedirect disable redirects
@@ -79,4 +95,13 @@ func (hc *HTTPClient) DisableFollowRedirect() {
 // EnableFollowRedirect enable redirects
 func (hc *HTTPClient) EnableFollowRedirect() {
 	hc.CheckRedirect = nil
+}
+
+// SuccessOrRedirectResponseValidator this validates the response code is within range of 200 - 399
+func SuccessOrRedirectResponseValidator(req *http.Request, resp *http.Response) error {
+	if resp.StatusCode >= 200 && resp.StatusCode < 400 {
+		return nil
+	}
+
+	return errors.Errorf("request for url: %s failed status: %s", req.URL.String(), resp.Status)
 }

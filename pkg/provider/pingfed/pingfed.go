@@ -25,9 +25,6 @@ var logger = logrus.WithField("provider", "pingfed")
 type Client struct {
 	client     *provider.HTTPClient
 	idpAccount *cfg.IDPAccount
-	//authSubmitURL string
-	//samlAssertion string
-	//mfaRequired   bool
 }
 
 // New create a new PingFed client
@@ -40,13 +37,16 @@ func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 		return nil, errors.Wrap(err, "error building http client")
 	}
 
-	//disable default behaviour to follow redirects as we use this to detect mfa
+	// assign a response validator to ensure all responses are either success or a redirect
+	// this is to avoid have explicit checks for every single response
+	client.CheckResponseStatus = provider.SuccessOrRedirectResponseValidator
+
+	//disable default behavior to follow redirects as we use this to detect mfa
 	client.DisableFollowRedirect()
 
 	return &Client{
 		client:     client,
 		idpAccount: idpAccount,
-		//mfaRequired: false,
 	}, nil
 }
 
