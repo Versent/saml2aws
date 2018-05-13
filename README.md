@@ -58,16 +58,6 @@ Install the AWS CLI see https://docs.aws.amazon.com/cli/latest/userguide/install
 brew install awscli
 ```
 
-Configure an empty default profile with your region of choice, note the credentials will be overwritten when you first login and are supplied to unsure `~/.aws/credentials` file is created.
-
-```
-$ aws configure
-AWS Access Key ID [None]: test
-AWS Secret Access Key [None]: test
-Default region name [None]: us-west-2
-Default output format [None]:
-```
-
 # Usage
 
 ```
@@ -76,14 +66,12 @@ usage: saml2aws [<flags>] <command> [<args> ...]
 A command line tool to help with SAML access to the AWS token service.
 
 Flags:
-      --help                   Show context-sensitive help (also try --help-long
-                               and --help-man).
+      --help                   Show context-sensitive help (also try --help-long and --help-man).
       --version                Show application version.
       --verbose                Enable verbose logging
-  -i, --provider=PROVIDER      This flag it is obsolete see
-                               https://github.com/Versent/saml2aws#adding-idp-accounts.
+  -i, --provider=PROVIDER      This flag it is obsolete see https://github.com/Versent/saml2aws#adding-idp-accounts.
   -a, --idp-account="default"  The name of the configured IDP account
-      --idp-provider=IDP-PROVIDER  
+      --idp-provider=IDP-PROVIDER
                                The configured IDP provider
       --mfa=MFA                The name of the mfa
   -s, --skip-verify            Skip verification of server certificate.
@@ -93,27 +81,21 @@ Flags:
       --role=ROLE              The ARN of the role to assume.
       --aws-urn=AWS-URN        The URN used by SAML when you login.
       --skip-prompt            Skip prompting for parameters during login.
-      --session-duration=SESSION-DURATION  
+      --session-duration=SESSION-DURATION
                                The duration of your AWS Session.
 
 Commands:
   help [<command>...]
     Show help.
 
-
   configure
     Configure a new IDP account.
-
 
   login [<flags>]
     Login to a SAML 2.0 IDP and convert the SAML assertion to an STS token.
 
-    -p, --profile="saml"  The AWS profile to save the temporary credentials
-
   exec [<flags>] [<command>...]
     Exec the supplied command with env vars from STS token.
-
-    -p, --profile="saml"  The AWS profile to save the temporary credentials
 
   list-roles
     List available role ARNs.
@@ -128,25 +110,25 @@ To add a default IdP account to saml2aws just run the following command and foll
 
 ```
 $ saml2aws configure
+? Please choose a provider: Ping
+? AWS Profile myaccount
 
-Please choose the provider you would like to use:
+? URL https://example.com
+? Username me@example.com
 
-[ 0 ]:  ADFS
+? Password
+No password supplied
 
-[ 1 ]:  ADFS2
-
-[ 2 ]:  JumpCloud
-
-[ 3 ]:  KeyCloak
-
-[ 4 ]:  Okta
-
-[ 5 ]:  Ping
-
-Selection: 3
-
-URL []: https://id.example.com/auth/realms/master/protocol/saml/clients/amazon-aws
-Username []: mark@wolfe.id.au
+account {
+  URL: https://example.com
+  Username: me@example.com
+  Provider: Ping
+  MFA: Auto
+  SkipVerify: false
+  AmazonWebservicesURN: urn:amazon:webservices
+  SessionDuration: 3600
+  Profile: myaccount
+}
 
 Configuration saved for IDP account: default
 ```
@@ -221,22 +203,20 @@ To use this credential, call the AWS CLI with the --profile option (e.g. aws --p
 
 To build this software on osx clone to the repo to `$GOPATH/src/github.com/versent/saml2aws` and ensure you have `$GOPATH/bin` in your `$PATH`.
 
-If you don't have glide installed you can install it using [homebrew](http://brew.sh/).
-
 ```
-brew install glide
-```
-
-Then to build the software just run.
-
-```
-make
+make deps
 ```
 
 Install the binary to `$GOPATH/bin`.
 
 ```
 make install
+```
+
+Then to test the software just run.
+
+```
+make test
 ```
 
 # Environment vars
