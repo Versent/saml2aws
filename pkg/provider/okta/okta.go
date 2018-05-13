@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
-	"github.com/versent/saml2aws/pkg/dump"
 	"github.com/versent/saml2aws/pkg/prompter"
 
 	"github.com/PuerkitoBio/goquery"
@@ -115,8 +114,6 @@ func (oc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		return samlAssertion, errors.Wrap(err, "error retrieving auth response")
 	}
 
-	logger.WithField("status", res.StatusCode).WithField("authSubmitURL", authSubmitURL).WithField("res", dump.ResponseString(res)).Debug("POST")
-
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
 		return samlAssertion, errors.Wrap(err, "error retrieving body from response")
@@ -164,7 +161,7 @@ func (oc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		return samlAssertion, errors.Wrap(err, "unable to locate saml response")
 	}
 
-	logger.WithField("samlAssertion", samlAssertion).Debug("complete")
+	logger.Debug("auth complete")
 
 	return samlAssertion, nil
 }
@@ -224,8 +221,6 @@ func verifyMfa(oc *Client, oktaOrgHost string, resp string) (string, error) {
 	if err != nil {
 		return "", errors.Wrap(err, "error retrieving verify response")
 	}
-
-	logger.WithField("status", res.StatusCode).WithField("res", dump.ResponseString(res)).Debug("POST")
 
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {

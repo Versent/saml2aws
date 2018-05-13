@@ -13,7 +13,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/versent/saml2aws/pkg/cfg"
 	"github.com/versent/saml2aws/pkg/creds"
-	"github.com/versent/saml2aws/pkg/dump"
 	"github.com/versent/saml2aws/pkg/prompter"
 	"github.com/versent/saml2aws/pkg/provider"
 
@@ -101,8 +100,6 @@ func (kc *Client) getLoginForm(loginDetails *creds.LoginDetails) (string, url.Va
 		return "", nil, errors.Wrap(err, "error retrieving form")
 	}
 
-	logger.WithField("status", res.StatusCode).WithField("url", loginDetails.URL).WithField("res", dump.ResponseString(res)).Debug("GET")
-
 	doc, err := goquery.NewDocumentFromResponse(res)
 	if err != nil {
 		return "", nil, errors.Wrap(err, "failed to build document from response")
@@ -136,8 +133,6 @@ func (kc *Client) postLoginForm(authSubmitURL string, authForm url.Values) ([]by
 		return nil, errors.Wrap(err, "error retrieving login form")
 	}
 
-	logger.WithField("status", res.StatusCode).WithField("url", authSubmitURL).WithField("res", dump.ResponseString(res)).Debug("POST")
-
 	data, err := ioutil.ReadAll(res.Body)
 	if err != nil {
 		return nil, errors.Wrap(err, "error retrieving body")
@@ -163,14 +158,10 @@ func (kc *Client) postTotpForm(totpSubmitURL string, doc *goquery.Document) (*go
 
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 
-	logger.WithField("url", totpSubmitURL).WithField("req", dump.RequestString(req)).Debug("POST")
-
 	res, err := kc.client.Do(req)
 	if err != nil {
 		return nil, errors.Wrap(err, "error retrieving content")
 	}
-
-	logger.WithField("status", res.StatusCode).WithField("url", totpSubmitURL).WithField("res", dump.ResponseString(res)).Debug("POST")
 
 	doc, err = goquery.NewDocumentFromResponse(res)
 	if err != nil {
