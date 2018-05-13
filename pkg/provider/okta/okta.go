@@ -71,6 +71,10 @@ func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 		return nil, errors.Wrap(err, "error building http client")
 	}
 
+	// assign a response validator to ensure all responses are either success or a redirect
+	// this is to avoid have explicit checks for every single response
+	client.CheckResponseStatus = provider.SuccessOrRedirectResponseValidator
+
 	return &Client{
 		client: client,
 	}, nil
@@ -518,8 +522,7 @@ func verifyMfa(oc *Client, oktaOrgHost string, resp string) (string, error) {
 			return "", errors.Wrap(err, "error retrieving body from response")
 		}
 
-		resp = string(body)
-		return gjson.Get(resp, "sessionToken").String(), nil
+		return gjson.GetBytes(body, "sessionToken").String(), nil
 	}
 
 	// catch all
