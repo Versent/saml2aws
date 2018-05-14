@@ -258,6 +258,20 @@ To release run.
 make release
 ```
 
+# Debugging Issues with IDPs
+
+There are two levels of debugging, first emits debug information and the URL / Method / Status line of requests.
+
+```
+saml2aws login --verbose
+```
+
+The second emits the content of requests and responses, this includes authentication related information so don't copy and paste it into chat or tickets!
+
+```
+DUMP_CONTENT=true saml2aws login --verbose
+```
+
 # License
 
 This code is Copyright (c) 2018 [Versent](http://versent.com.au) and released under the MIT license. All rights not explicitly granted in the MIT license are reserved. See the included LICENSE.md file for more details.
