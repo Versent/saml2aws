@@ -11,7 +11,6 @@ import (
 	"github.com/PuerkitoBio/goquery"
 
 	"github.com/stretchr/testify/require"
-	"github.com/versent/saml2aws/mocks"
 	"github.com/versent/saml2aws/pkg/creds"
 	"github.com/versent/saml2aws/pkg/provider"
 )
@@ -78,13 +77,11 @@ func TestClient_postTotpForm(t *testing.T) {
 
 	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(data))
 	require.Nil(t, err)
-	pr := &mocks.Prompter{}
 
-	pr.Mock.On("RequestSecurityCode", "000000").Return("111222")
-
+	mfaToken := ""
 	kc := Client{client: &provider.HTTPClient{Client: http.Client{}}}
 
-	kc.postTotpForm(ts.URL, doc)
+	kc.postTotpForm(ts.URL, mfaToken, doc)
 }
 
 func TestClient_containsTotpForm(t *testing.T) {
