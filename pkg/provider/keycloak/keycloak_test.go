@@ -10,9 +10,11 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 
-	"github.com/stretchr/testify/require"
+	"github.com/versent/saml2aws/mocks"
 	"github.com/versent/saml2aws/pkg/creds"
+	"github.com/versent/saml2aws/pkg/prompter"
 	"github.com/versent/saml2aws/pkg/provider"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -78,10 +80,41 @@ func TestClient_postTotpForm(t *testing.T) {
 	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(data))
 	require.Nil(t, err)
 
+	pr := &mocks.Prompter{}
+	prompter.SetPrompter(pr)
+
+	pr.Mock.On("RequestSecurityCode", "000000").Return("123456")
+
 	mfaToken := ""
 	kc := Client{client: &provider.HTTPClient{Client: http.Client{}}}
 
 	kc.postTotpForm(ts.URL, mfaToken, doc)
+
+	pr.Mock.AssertCalled(t, "RequestSecurityCode", "000000")
+}
+
+func TestClient_postTotpFormWithProvidedMFAToken(t *testing.T) {
+
+	data, err := ioutil.ReadFile("example/assertion.html")
+	require.Nil(t, err)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write(data)
+	}))
+	defer ts.Close()
+
+	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(data))
+	require.Nil(t, err)
+
+	pr := &mocks.Prompter{}
+	prompter.SetPrompter(pr)
+
+	mfaToken := "123456"
+	kc := Client{client: &provider.HTTPClient{Client: http.Client{}}}
+
+	kc.postTotpForm(ts.URL, mfaToken, doc)
+
+	pr.Mock.AssertNumberOfCalls(t, "RequestSecurityCode", 0)
 }
 
 func TestClient_containsTotpForm(t *testing.T) {
