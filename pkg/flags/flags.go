@@ -9,6 +9,7 @@ type CommonFlags struct {
 	IdpAccount           string
 	IdpProvider          string
 	MFA                  string
+	MFAToken             string
 	URL                  string
 	Username             string
 	Password             string

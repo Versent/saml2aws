@@ -57,6 +57,7 @@ func main() {
 	app.Flag("url", "The URL of the SAML IDP server used to login.").StringVar(&commonFlags.URL)
 	app.Flag("username", "The username used to login.").Envar("SAML2AWS_USERNAME").StringVar(&commonFlags.Username)
 	app.Flag("password", "The password used to login.").Envar("SAML2AWS_PASSWORD").StringVar(&commonFlags.Password)
+	app.Flag("mfa-token", "The current MFA token (supported in Keycloak, ADFS).").Envar("SAML2AWS_MFA_TOKEN").StringVar(&commonFlags.MFAToken)
 	app.Flag("role", "The ARN of the role to assume.").StringVar(&commonFlags.RoleArn)
 	app.Flag("aws-urn", "The URN used by SAML when you login.").StringVar(&commonFlags.AmazonWebservicesURN)
 	app.Flag("skip-prompt", "Skip prompting for parameters during login.").BoolVar(&commonFlags.SkipPrompt)

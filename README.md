@@ -78,6 +78,7 @@ Flags:
       --url=URL                The URL of the SAML IDP server used to login.
       --username=USERNAME      The username used to login.
       --password=PASSWORD      The password used to login.
+      --mfa-token=MFA-TOKEN    The current MFA token (supported in Keycloak, ADFS).
       --role=ROLE              The ARN of the role to assume.
       --aws-urn=AWS-URN        The URN used by SAML when you login.
       --skip-prompt            Skip prompting for parameters during login.
