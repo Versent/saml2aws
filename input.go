@@ -7,6 +7,7 @@ import (
 	"github.com/versent/saml2aws/pkg/cfg"
 	"github.com/versent/saml2aws/pkg/creds"
 	"github.com/versent/saml2aws/pkg/prompter"
+	"sort"
 )
 
 // PromptForConfigurationDetails prompt the user to present their hostname, username and mfa
@@ -66,20 +67,17 @@ func PromptForLoginDetails(loginDetails *creds.LoginDetails) error {
 func PromptForAWSRoleSelection(accounts []*AWSAccount) (*AWSRole, error) {
 
 	roles := map[string]*AWSRole{}
+	var roleOptions []string
 
 	for _, account := range accounts {
 		for _, role := range account.Roles {
-			// name := fmt.Sprintf("%s / %s", role.Name, strings.TrimPrefix(account.Name, "Account: "))
 			name := fmt.Sprintf("%s / %s", role.Name, account.Name)
 			roles[name] = role
+			roleOptions = append(roleOptions, name)
 		}
 	}
 
-	roleOptions := []string{}
-
-	for k := range roles {
-		roleOptions = append(roleOptions, k)
-	}
+	sort.Strings(roleOptions)
 
 	selectedRole, err := prompter.ChooseWithDefault("Please choose the role", "", roleOptions)
 	if err != nil {
