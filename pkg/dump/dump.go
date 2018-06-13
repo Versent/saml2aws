@@ -8,7 +8,7 @@ import (
 
 // RequestString helper method to dump the http request
 func RequestString(req *http.Request) string {
-	data, err := httputil.DumpRequest(req, ContentEnable())
+	data, err := httputil.DumpRequestOut(req, ContentEnable())
 
 	if err != nil {
 		return ""
