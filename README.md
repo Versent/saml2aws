@@ -272,6 +272,12 @@ The second emits the content of requests and responses, this includes authentica
 DUMP_CONTENT=true saml2aws login --verbose
 ```
 
+# IDP-specific notes
+
+Additional IDP-specific notes are available for:
+
+* [Okta](pkg/provider/okta/README.md)
+
 # License
 
 This code is Copyright (c) 2018 [Versent](http://versent.com.au) and released under the MIT license. All rights not explicitly granted in the MIT license are reserved. See the included LICENSE.md file for more details.
