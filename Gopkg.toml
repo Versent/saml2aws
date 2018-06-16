@@ -39,7 +39,7 @@
 
 [[constraint]]
   name = "github.com/aws/aws-sdk-go"
-  version = "1.13.25"
+  version = "1.14.8"
 
 [[constraint]]
   name = "github.com/beevik/etree"
@@ -77,10 +77,10 @@
   name = "gopkg.in/ini.v1"
   version = "1.33.0"
 
-[prune]
-  go-tests = true
-  unused-packages = true
-
 [[constraint]]
   name = "github.com/briandowns/spinner"
   version = "1.0.0"
+
+[prune]
+  go-tests = true
+  unused-packages = true
