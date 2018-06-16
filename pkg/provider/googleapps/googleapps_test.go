@@ -1,0 +1,74 @@
+package googleapps
+
+import (
+	"io/ioutil"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
+	"strings"
+	"testing"
+
+	"github.com/PuerkitoBio/goquery"
+	"github.com/stretchr/testify/require"
+	"github.com/versent/saml2aws/pkg/provider"
+)
+
+func TestExtractInputByName(t *testing.T) {
+	html := `<html><body><input name="logincaptcha" value="test error message"\></body></html>`
+
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(html))
+	require.Nil(t, err)
+
+	captcha := mustFindInputByName(doc, "logincaptcha")
+	require.Equal(t, "test error message", captcha)
+}
+
+func TestExtractInputsByFormID(t *testing.T) {
+	html := `<html><body><form id="dev" action="http://example.com/test"><input name="pass" value="test error message"\></form></body></html>`
+
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(html))
+	require.Nil(t, err)
+
+	form, actionURL, err := extractInputsByFormID(doc, "dev")
+	require.Nil(t, err)
+	require.Equal(t, "http://example.com/test", actionURL)
+	require.Equal(t, "test error message", form.Get("pass"))
+}
+func TestExtractErrorMsg(t *testing.T) {
+	html := `<html><body><span class="error-msg">test error message</span></body></html>`
+
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(html))
+	require.Nil(t, err)
+
+	captcha := mustFindErrorMsg(doc)
+	require.Equal(t, "test error message", captcha)
+}
+
+func TestContentContainsMessage(t *testing.T) {
+	html := `<html><body><h2>This extra step shows it’s really you trying to sign in</h2></body></html>`
+
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(html))
+	require.Nil(t, err)
+
+	txt := extractNodeText(doc, "h2", "This extra step shows it’s really you trying to sign in")
+	require.Equal(t, "This extra step shows it’s really you trying to sign in", txt)
+}
+
+func TestChallengePage(t *testing.T) {
+
+	data, err := ioutil.ReadFile("example/challenge-totp.html")
+	require.Nil(t, err)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write(data)
+	}))
+	defer ts.Close()
+
+	kc := Client{client: &provider.HTTPClient{Client: http.Client{}}}
+	// loginDetails := &creds.LoginDetails{URL: ts.URL, Username: "test", Password: "test123"}
+	authForm := url.Values{}
+
+	challengeDoc, err := kc.loadChallengePage(ts.URL, "https://accounts.google.com/signin/challenge/sl/password", authForm)
+	require.Nil(t, err)
+	require.NotNil(t, challengeDoc)
+}
