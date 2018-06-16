@@ -2,6 +2,7 @@ package provider
 
 import (
 	"crypto/tls"
+	"fmt"
 	"net"
 	"net/http"
 	"net/http/cookiejar"
@@ -74,6 +75,8 @@ func (hc *HTTPClient) Do(req *http.Request) (*http.Response, error) {
 		s.Start()
 	}
 
+	req.Header.Set("User-Agent", fmt.Sprintf("saml2aws/1.0 (%s %s) Versent", runtime.GOOS, runtime.GOARCH))
+
 	hc.logHTTPRequest(req)
 
 	resp, err := hc.Client.Do(req)
@@ -118,7 +121,7 @@ func SuccessOrRedirectResponseValidator(req *http.Request, resp *http.Response) 
 func (hc *HTTPClient) logHTTPRequest(req *http.Request) {
 
 	if dump.ContentEnable() {
-		logrus.WithField("req", dump.RequestString(req)).Debug("HTTP Request")
+		fmt.Println(dump.RequestString(req))
 		return
 	}
 
@@ -131,7 +134,7 @@ func (hc *HTTPClient) logHTTPRequest(req *http.Request) {
 func (hc *HTTPClient) logHTTPResponse(resp *http.Response) {
 
 	if dump.ContentEnable() {
-		logrus.WithField("response", dump.ResponseString(resp)).Debug("HTTP Response")
+		fmt.Println(dump.ResponseString(resp))
 		return
 	}
 

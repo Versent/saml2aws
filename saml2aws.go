@@ -8,6 +8,7 @@ import (
 	"github.com/versent/saml2aws/pkg/creds"
 	"github.com/versent/saml2aws/pkg/provider/adfs"
 	"github.com/versent/saml2aws/pkg/provider/adfs2"
+	"github.com/versent/saml2aws/pkg/provider/googleapps"
 	"github.com/versent/saml2aws/pkg/provider/jumpcloud"
 	"github.com/versent/saml2aws/pkg/provider/keycloak"
 	"github.com/versent/saml2aws/pkg/provider/okta"
@@ -20,13 +21,14 @@ type ProviderList map[string][]string
 
 // MFAsByProvider a list of providers with their respective supported MFAs
 var MFAsByProvider = ProviderList{
-	"ADFS":      []string{"Auto", "VIP"},
-	"ADFS2":     []string{"Auto", "RSA"}, // nothing automatic about ADFS 2.x
-	"Ping":      []string{"Auto"},        // automatically detects PingID
-	"PingOne":   []string{"Auto"},        // automatically detects PingID
-	"JumpCloud": []string{"Auto"},
-	"Okta":      []string{"Auto"}, // automatically detects DUO, SMS and ToTP
-	"KeyCloak":  []string{"Auto"}, // automatically detects ToTP
+	"ADFS":       []string{"Auto", "VIP"},
+	"ADFS2":      []string{"Auto", "RSA"}, // nothing automatic about ADFS 2.x
+	"Ping":       []string{"Auto"},        // automatically detects PingID
+	"PingOne":    []string{"Auto"},        // automatically detects PingID
+	"JumpCloud":  []string{"Auto"},
+	"Okta":       []string{"Auto"}, // automatically detects DUO, SMS and ToTP
+	"KeyCloak":   []string{"Auto"}, // automatically detects ToTP
+	"GoogleApps": []string{"Auto"}, // automatically detects ToTP
 }
 
 // Names get a list of provider names
@@ -107,6 +109,11 @@ func NewSAMLClient(idpAccount *cfg.IDPAccount) (SAMLClient, error) {
 			return nil, fmt.Errorf("Invalid MFA type: %v for %v provider", idpAccount.MFA, idpAccount.Provider)
 		}
 		return keycloak.New(idpAccount)
+	case "GoogleApps":
+		if invalidMFA(idpAccount.Provider, idpAccount.MFA) {
+			return nil, fmt.Errorf("Invalid MFA type: %v for %v provider", idpAccount.MFA, idpAccount.Provider)
+		}
+		return googleapps.New(idpAccount)
 	default:
 		return nil, fmt.Errorf("Invalid provider: %v", idpAccount.Provider)
 	}

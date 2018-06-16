@@ -21,6 +21,7 @@ The process goes something like this:
   * PingFederate + PingId
   * Okta + (Duo, SMS, TOTP)
   * KeyCloak + (TOTP)
+  * Google Apps SAML see [How to Set Up Federated Single Sign-On to AWS Using Google Apps](https://aws.amazon.com/blogs/security/how-to-set-up-federated-single-sign-on-to-aws-using-google-apps/)
 * AWS SAML Provider configured
 
 # Caveats
