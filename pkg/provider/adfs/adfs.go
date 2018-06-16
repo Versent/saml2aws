@@ -96,7 +96,7 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 
 	switch ac.idpAccount.MFA {
 	case "VIP":
-		res, err = ac.vipMFA(authSubmitURL, res)
+		res, err = ac.vipMFA(authSubmitURL, loginDetails.MFAToken, res)
 		if err != nil {
 			return samlAssertion, errors.Wrap(err, "error retrieving mfa form results")
 		}
@@ -127,7 +127,7 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 
 // vipMFA when supplied with the the form response document attempt to extract the VIP mfa related field
 // then use that to trigger a submit of the MFA security token
-func (ac *Client) vipMFA(authSubmitURL string, res *http.Response) (*http.Response, error) {
+func (ac *Client) vipMFA(authSubmitURL string, mfaToken string, res *http.Response) (*http.Response, error) {
 
 	doc, err := goquery.NewDocumentFromResponse(res)
 	if err != nil {
@@ -142,10 +142,12 @@ func (ac *Client) vipMFA(authSubmitURL string, res *http.Response) (*http.Respon
 		return res, nil // if we didn't find the MFA flag then just continue
 	}
 
-	var token = prompter.RequestSecurityCode("000000")
+	if mfaToken == "" {
+		mfaToken = prompter.RequestSecurityCode("000000")
+	}
 
 	doc.Find("input").Each(func(i int, s *goquery.Selection) {
-		updateOTPFormData(otpForm, s, token)
+		updateOTPFormData(otpForm, s, mfaToken)
 	})
 
 	doc.Find("form").Each(func(i int, s *goquery.Selection) {

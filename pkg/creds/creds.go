@@ -6,6 +6,7 @@ import "errors"
 type LoginDetails struct {
 	Username string
 	Password string
+	MFAToken string
 	URL      string
 }
 
