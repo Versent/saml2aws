@@ -68,7 +68,7 @@ func (kc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 			return "", errors.Wrap(err, "unable to locate IDP totp form submit URL")
 		}
 
-		doc, err = kc.postTotpForm(totpSubmitURL, doc)
+		doc, err = kc.postTotpForm(totpSubmitURL, loginDetails.MFAToken, doc)
 		if err != nil {
 			return "", errors.Wrap(err, "error posting totp form")
 		}
@@ -141,14 +141,16 @@ func (kc *Client) postLoginForm(authSubmitURL string, authForm url.Values) ([]by
 	return data, nil
 }
 
-func (kc *Client) postTotpForm(totpSubmitURL string, doc *goquery.Document) (*goquery.Document, error) {
+func (kc *Client) postTotpForm(totpSubmitURL string, mfaToken string, doc *goquery.Document) (*goquery.Document, error) {
 
 	otpForm := url.Values{}
 
-	var token = prompter.RequestSecurityCode("000000")
+	if mfaToken == "" {
+		mfaToken = prompter.RequestSecurityCode("000000")
+	}
 
 	doc.Find("input").Each(func(i int, s *goquery.Selection) {
-		updateOTPFormData(otpForm, s, token)
+		updateOTPFormData(otpForm, s, mfaToken)
 	})
 
 	req, err := http.NewRequest("POST", totpSubmitURL, strings.NewReader(otpForm.Encode()))

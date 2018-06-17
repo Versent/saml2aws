@@ -124,7 +124,7 @@ func resolveLoginDetails(account *cfg.IDPAccount, loginFlags *flags.LoginExecFla
 
 	// fmt.Printf("loginFlags %+v\n", loginFlags)
 
-	loginDetails := &creds.LoginDetails{URL: account.URL, Username: account.Username}
+	loginDetails := &creds.LoginDetails{URL: account.URL, Username: account.Username, MFAToken: loginFlags.CommonFlags.MFAToken}
 
 	fmt.Printf("Using IDP Account %s to access %s %s\n", loginFlags.CommonFlags.IdpAccount, account.Provider, account.URL)
 
