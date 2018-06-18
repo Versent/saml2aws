@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"net/url"
 	"strings"
@@ -188,7 +187,7 @@ func (kc *Client) loadChallengePage(submitURL string, referer string, authForm u
 			return nil, errors.Wrap(err, "unable to extract challenge form")
 		}
 
-		logrus.Debugf("secondActionURL: %s", secondActionURL)
+		logger.Debugf("secondActionURL: %s", secondActionURL)
 
 		u, _ := url.Parse(submitURL)
 		u.Path = secondActionURL // we are just updating the path with the action as it is a relative path
@@ -215,7 +214,7 @@ func (kc *Client) loadChallengePage(submitURL string, referer string, authForm u
 
 			dataAttrs := extractDataAttributes(doc, "div[data-context]", []string{"data-context", "data-gapi-url", "data-tx-id", "data-api-key", "data-tx-lifetime"})
 
-			logrus.Debugf("prompt with data values: %+v", dataAttrs)
+			logger.Debugf("prompt with data values: %+v", dataAttrs)
 
 			waitValues := map[string]string{
 				"txId": dataAttrs["data-tx-id"],
@@ -293,7 +292,7 @@ func mustFindInputByName(doc *goquery.Document, name string) string {
 	doc.Find(q).Each(func(i int, s *goquery.Selection) {
 		val, ok := s.Attr("value")
 		if !ok {
-			log.Fatal("unable to locate field value")
+			logger.Fatal("unable to locate field value")
 		}
 		fieldValue = val
 	})
@@ -333,11 +332,11 @@ func extractInputsByFormID(doc *goquery.Document, formID string) (url.Values, st
 		if !ok {
 			return
 		}
-		logger.Info("name: ", name)
 		val, ok := s.Attr("value")
 		if !ok {
 			return
 		}
+		logger.Debugf("name: %s value: %s", name, val)
 		formData.Add(name, val)
 	})
 
