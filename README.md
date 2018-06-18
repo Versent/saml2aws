@@ -16,12 +16,12 @@ The process goes something like this:
 
 # Requirements
 
-* Identity Provider
+* One of the supported Identity Providers
   * ADFS (2.x or 3.x)
   * PingFederate + PingId
-  * Okta + (Duo, SMS, TOTP)
+  * [Okta](pkg/provider/okta/README.md)
   * KeyCloak + (TOTP)
-  * Google Apps SAML see [How to Set Up Federated Single Sign-On to AWS Using Google Apps](https://aws.amazon.com/blogs/security/how-to-set-up-federated-single-sign-on-to-aws-using-google-apps/)
+  * [Google Apps](pkg/provider/googleapps/README.md)
 * AWS SAML Provider configured
 
 # Caveats
@@ -273,12 +273,6 @@ The second emits the content of requests and responses, this includes authentica
 ```
 DUMP_CONTENT=true saml2aws login --verbose
 ```
-
-# IDP-specific notes
-
-Additional IDP-specific notes are available for:
-
-* [Okta](pkg/provider/okta/README.md)
 
 # License
 

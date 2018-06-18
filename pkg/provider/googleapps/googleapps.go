@@ -1,6 +1,8 @@
 package googleapps
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -197,12 +199,37 @@ func (kc *Client) loadChallengePage(submitURL string, referer string, authForm u
 			var token = prompter.RequestSecurityCode("000000")
 
 			responseForm.Set("Pin", token)
+			responseForm.Set("TrustDevice", "on") // Don't ask again on this computer
 
 			return kc.loadResponsePage(u.String(), submitURL, responseForm)
 		case strings.Contains(secondActionURL, "challenge/ipp/"): // handle SMS challenge
+
 			var token = prompter.StringRequired("Enter SMS token: G-")
 
 			responseForm.Set("Pin", token)
+			responseForm.Set("TrustDevice", "on") // Don't ask again on this computer
+
+			return kc.loadResponsePage(u.String(), submitURL, responseForm)
+
+		case strings.Contains(secondActionURL, "challenge/az/"): // handle phone challenge
+
+			dataAttrs := extractDataAttributes(doc, "div[data-context]", []string{"data-context", "data-gapi-url", "data-tx-id", "data-api-key", "data-tx-lifetime"})
+
+			logrus.Debugf("prompt with data values: %+v", dataAttrs)
+
+			waitValues := map[string]string{
+				"txId": dataAttrs["data-tx-id"],
+			}
+
+			fmt.Println("Open the Google App, and tap 'Yes' on the prompt to sign in")
+
+			_, err := kc.postJSON(fmt.Sprintf("https://content.googleapis.com/cryptauth/v1/authzen/awaittx?alt=json&key=%s", dataAttrs["data-api-key"]), waitValues, submitURL)
+			if err != nil {
+				return nil, errors.Wrap(err, "unable to extract post wait tx form")
+			}
+
+			// responseForm.Set("Pin", token)
+			responseForm.Set("TrustDevice", "on") // Don't ask again on this computer
 
 			return kc.loadResponsePage(u.String(), submitURL, responseForm)
 		}
@@ -212,6 +239,26 @@ func (kc *Client) loadChallengePage(submitURL string, referer string, authForm u
 
 	return doc, nil
 
+}
+
+func (kc *Client) postJSON(submitURL string, values map[string]string, referer string) (*http.Response, error) {
+
+	data, _ := json.Marshal(values)
+
+	req, err := http.NewRequest("POST", submitURL, bytes.NewReader(data))
+	if err != nil {
+		return nil, errors.Wrap(err, "error retrieving login form")
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Referer", referer)
+
+	res, err := kc.client.Do(req)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to post JSON")
+	}
+
+	return res, nil
 }
 
 func (kc *Client) loadResponsePage(submitURL string, referer string, responseForm url.Values) (*goquery.Document, error) {
@@ -308,4 +355,19 @@ func extractNodeText(doc *goquery.Document, tag, txt string) string {
 	})
 
 	return res
+}
+
+func extractDataAttributes(doc *goquery.Document, query string, attrsToSelect []string) map[string]string {
+
+	dataAttrs := make(map[string]string)
+
+	doc.Find(query).Each(func(_ int, sel *goquery.Selection) {
+		for _, f := range attrsToSelect {
+			if val, ok := sel.Attr(f); ok {
+				dataAttrs[f] = val
+			}
+		}
+	})
+
+	return dataAttrs
 }
