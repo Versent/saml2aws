@@ -1,6 +1,7 @@
 package googleapps
 
 import (
+	"bytes"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -71,4 +72,15 @@ func TestChallengePage(t *testing.T) {
 	challengeDoc, err := kc.loadChallengePage(ts.URL, "https://accounts.google.com/signin/challenge/sl/password", authForm)
 	require.Nil(t, err)
 	require.NotNil(t, challengeDoc)
+}
+
+func TestExtractDataAttributes(t *testing.T) {
+	data, err := ioutil.ReadFile("example/challenge-prompt.html")
+	require.Nil(t, err)
+	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(data))
+	require.Nil(t, err)
+
+	dataAttrs := extractDataAttributes(doc, "div[data-context]", []string{"data-context", "data-gapi-url", "data-tx-id", "data-tx-lifetime"})
+
+	require.Equal(t, "https://apis.google.com/js/base.js", dataAttrs["data-gapi-url"])
 }
