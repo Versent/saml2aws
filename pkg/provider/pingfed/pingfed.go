@@ -326,7 +326,10 @@ func extractAuthSubmitURL(baseURL string, doc *goquery.Document) (authSubmitURL 
 		return
 	}
 
-	authSubmitURL = fmt.Sprintf("%s%s", baseURL, authSubmitURL)
+	// account for relative action URI
+	if url, urlErr := url.ParseRequestURI(authSubmitURL); urlErr == nil && !url.IsAbs() {
+		authSubmitURL = fmt.Sprintf("%s%s", baseURL, authSubmitURL)
+	}
 
 	return
 }
