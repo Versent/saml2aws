@@ -283,21 +283,12 @@ func (ac *Client) getLoginForm(loginDetails *creds.LoginDetails) (string, url.Va
 		updateLoginFormData(authForm, s, loginDetails)
 	})
 
-	authSubmitURL := ""
-
-	doc.Find("form").Each(func(i int, s *goquery.Selection) {
-		action, ok := s.Attr("action")
-		if !ok {
-			return
-		}
-		authSubmitURL = action
-	})
-
-	if authSubmitURL == "" {
+	authSubmitURL, err := extractAuthSubmitURL(loginDetails.URL, doc)
+	if err != nil {
 		return "", nil, fmt.Errorf("unable to locate IDP authentication form submit URL")
 	}
 
-	return fmt.Sprintf("%s%s", loginDetails.URL, authSubmitURL), authForm, nil
+	return authSubmitURL, authForm, nil
 }
 
 func updateLoginFormData(authForm url.Values, s *goquery.Selection, user *creds.LoginDetails) {
@@ -319,6 +310,25 @@ func updateLoginFormData(authForm url.Values, s *goquery.Selection, user *creds.
 		}
 		authForm.Add(name, val)
 	}
+}
+
+func extractAuthSubmitURL(baseURL string, doc *goquery.Document) (authSubmitURL string, err error){
+	doc.Find("form").Each(func(i int, s *goquery.Selection) {
+		action, ok := s.Attr("action")
+		if !ok {
+			return
+		}
+		authSubmitURL = action
+	})
+
+	if authSubmitURL == "" {
+		err = fmt.Errorf("unable to locate IDP authentication form submit URL")
+		return
+	}
+
+	authSubmitURL = fmt.Sprintf("%s%s", baseURL, authSubmitURL)
+
+	return
 }
 
 func extractFormData(res *http.Response) (url.Values, string, error) {
