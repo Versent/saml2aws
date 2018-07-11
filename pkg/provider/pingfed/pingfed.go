@@ -96,15 +96,8 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		if err != nil {
 			return "", errors.Wrap(err, "error extracting mfa form data")
 		}
-
 		//request mfa auth via PingId (device swipe)
-		req, err := http.NewRequest("POST", form.URL, strings.NewReader(form.Values.Encode()))
-		if err != nil {
-			return "", errors.Wrap(err, "error building mfa authentication request")
-		}
-
-		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-		res, err = ac.client.Do(req)
+		res, err = form.Submit(ac.client)
 		if err != nil {
 			return "", errors.Wrap(err, "error retrieving mfa response")
 		}
@@ -120,8 +113,9 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 			return "", errors.Wrap(err, "error extracting authentication form")
 		}
 
-		//contine mfa auth with csrf token
-		req, err = http.NewRequest("GET", form.URL, strings.NewReader(form.Values.Encode()))
+		//contine mfa auth with csrf token. request must specifically be a GET
+		form.Method = "GET"
+		req, err = form.BuildRequest()
 		if err != nil {
 			return "", errors.Wrap(err, "error building authentication request")
 		}
@@ -130,8 +124,6 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 
 		//check if a push is happening
 		if strings.Contains(form.URL, "/pingid/ppm/auth/status") {
-			req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-
 			for {
 				time.Sleep(3 * time.Second)
 
@@ -172,12 +164,7 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 			return "", errors.Wrap(err, "error extracting post-mfa response location")
 		}
 
-		req, err = http.NewRequest("GET", form.URL, strings.NewReader(form.Values.Encode()))
-		if err != nil {
-			return "", errors.Wrap(err, "error building authentication request")
-		}
-
-		res, err = ac.client.Do(req)
+		res, err = form.Submit(ac.client)
 		if err != nil {
 			return "", errors.Wrap(err, "error calling success mfa response")
 		}
@@ -186,13 +173,7 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		csrfValues := form.Values
 
 		if otp == true {
-
-			doc, err = goquery.NewDocumentFromResponse(res)
-			if err != nil {
-				return "", errors.Wrap(err, "failed to build document from response")
-			}
-
-			form, err = page.NewFormFromDocument(doc, "#otp-form")
+			form, err = page.NewFormFromResponse(res, "#otp-form")
 			if err != nil {
 				return "", errors.Wrap(err, "error extracting otp form")
 			}
@@ -228,16 +209,8 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		if err != nil {
 			return "", errors.Wrap(err, "error extracting jwt form data")
 		}
-
 		//pass PingId auth back to pingfed
-		req, err = http.NewRequest("POST", form.URL, strings.NewReader(form.Values.Encode()))
-		if err != nil {
-			return "", errors.Wrap(err, "error building authentication request")
-		}
-
-		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-
-		res, err = ac.client.Do(req)
+		res, err = form.Submit(ac.client)
 		if err != nil {
 			return "", errors.Wrap(err, "error authenticating mfa")
 		}

@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/PuerkitoBio/goquery"
+	"github.com/versent/saml2aws/pkg/provider"
 )
 
 
@@ -14,6 +16,27 @@ type Form struct {
 	URL    string
 	Method string
 	Values *url.Values
+}
+
+func (form *Form) BuildRequest() (*http.Request, error) {
+	values := strings.NewReader(form.Values.Encode())
+	req, err := http.NewRequest(form.Method, form.URL, values)
+	if err != nil {
+		return nil, errors.Wrap(err, "error building request")
+	}
+	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+
+	return req, nil
+}
+
+func (form *Form) Submit(client *provider.HTTPClient) (*http.Response, error) {
+	if req, err := form.BuildRequest(); err != nil {
+		return nil, errors.Wrap(err, "error building request")
+	} else if res, err := client.Do(req); err != nil {
+		return nil, errors.Wrap(err, "error submitting form")
+	} else {
+		return res, nil
+	}
 }
 
 // If the document has multiple forms, the first form with an `action` attribute will be parsed.
@@ -36,7 +59,7 @@ func NewFormFromDocument(doc *goquery.Document, formFilter string) (*Form, error
 	}
 
 	if v, ok := formSelection.Attr("method"); ok {
-		form.Method = v
+		form.Method = strings.ToUpper(v)
 	} else {
 		form.Method = "POST"
 	}
