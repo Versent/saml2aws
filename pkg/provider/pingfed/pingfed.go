@@ -83,6 +83,9 @@ func (ac *Client) follow(ctx context.Context, req *http.Request) (string, error)
 	} else if docIsSwipe(doc) {
 		logger.WithField("type", "swipe").Debug("doc detect")
 		handler = ac.handleSwipe
+	} else if docIsFormRedirect(doc) {
+		logger.WithField("type", "form-redirect").Debug("doc detect")
+		handler = ac.handleFormRedirect
 	}
 	if handler == nil {
 		html, _ := doc.Selection.Html()
@@ -177,6 +180,15 @@ func (ac *Client) handleSwipe(ctx context.Context, doc *goquery.Document) (conte
 	return ctx, req, err
 }
 
+func (ac *Client) handleFormRedirect(ctx context.Context, doc *goquery.Document) (context.Context, *http.Request, error) {
+	form, err := page.NewFormFromDocument(doc, "")
+	if err != nil {
+		return ctx, nil, errors.Wrap(err, "error extracting redirect form")
+	}
+	req, err := form.BuildRequest()
+	return ctx, req, err
+}
+
 func docIsLogin(doc *goquery.Document) bool {
 	return doc.Has("form#login-form").Size() == 1
 }
@@ -187,6 +199,10 @@ func docIsOTP(doc *goquery.Document) bool {
 
 func docIsSwipe(doc *goquery.Document) bool {
 	return doc.Has("form#form1").Size() == 1 && doc.Has("form#reponseView").Size() == 1
+}
+
+func docIsFormRedirect(doc *goquery.Document) bool {
+	return doc.Has("input[name=\"ppm_request\"]").Size() == 1
 }
 
 func extractSAMLResponse(doc *goquery.Document) (v string, ok bool) {

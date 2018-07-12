@@ -26,12 +26,19 @@ var docTests = []struct {
 	{docIsLogin, "example/login.html", true},
 	{docIsLogin, "example/otp.html", false},
 	{docIsLogin, "example/swipe.html", false},
+	{docIsLogin, "example/form-redirect.html", false},
 	{docIsOTP, "example/login.html", false},
 	{docIsOTP, "example/otp.html", true},
 	{docIsOTP, "example/swipe.html", false},
+	{docIsOTP, "example/form-redirect.html", false},
 	{docIsSwipe, "example/login.html", false},
 	{docIsSwipe, "example/otp.html", false},
 	{docIsSwipe, "example/swipe.html", true},
+	{docIsSwipe, "example/form-redirect.html", false},
+	{docIsFormRedirect, "example/login.html", false},
+	{docIsFormRedirect, "example/otp.html", false},
+	{docIsFormRedirect, "example/swipe.html", false},
+	{docIsFormRedirect, "example/form-redirect.html", true},
 }
 
 func TestDocTypes(t *testing.T) {
@@ -94,4 +101,23 @@ func TestHandleOTP(t *testing.T) {
 
 	s := string(b[:])
 	require.Contains(t, s, "otp=5309")
+}
+
+func TestHandleFormRedirect(t *testing.T) {
+	data, err := ioutil.ReadFile("example/form-redirect.html")
+	require.Nil(t, err)
+
+	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(data))
+	require.Nil(t, err)
+
+	ac := Client{}
+	_, req, err := ac.handleFormRedirect(context.Background(), doc)
+	require.Nil(t, err)
+
+	b, err := ioutil.ReadAll(req.Body)
+	require.Nil(t, err)
+
+	s := string(b[:])
+	require.Contains(t, s, "ppm_request=secret")
+	require.Contains(t, s, "idp_account_id=some-uuid")
 }
