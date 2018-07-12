@@ -2,31 +2,96 @@ package pingfed
 
 import (
 	"bytes"
+	"context"
 	"io/ioutil"
 	"testing"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/stretchr/testify/require"
+	"github.com/versent/saml2aws/mocks"
+	"github.com/versent/saml2aws/pkg/creds"
+	"github.com/versent/saml2aws/pkg/prompter"
 )
 
-var extractAuthSubmitURLTests = []struct {
-        f        string // input html file
-        expected string // expected url
-}{
-	{"example/loginpage.html", "https://example.com/relative/login"},
-	{"example/loginpage_absolute.html", "https://other.example.com/login"},
+func TestMakeAbsoluteURL(t *testing.T) {
+	require.Equal(t, makeAbsoluteURL("/a", "https://example.com"), "https://example.com/a")
+	require.Equal(t, makeAbsoluteURL("https://foo.com/a/b", "https://bar.com"), "https://foo.com/a/b")
 }
 
-func TestExtractAuthSubmitURL(t *testing.T) {
-	for _, tt := range extractAuthSubmitURLTests {
-		data, err := ioutil.ReadFile(tt.f)
+var docTests = []struct {
+	fn       func(*goquery.Document) bool
+	file     string
+	expected bool
+}{
+	{docIsLogin, "example/login.html", true},
+	{docIsLogin, "example/otp.html", false},
+	{docIsLogin, "example/swipe.html", false},
+	{docIsOTP, "example/login.html", false},
+	{docIsOTP, "example/otp.html", true},
+	{docIsOTP, "example/swipe.html", false},
+	{docIsSwipe, "example/login.html", false},
+	{docIsSwipe, "example/otp.html", false},
+	{docIsSwipe, "example/swipe.html", true},
+}
+
+func TestDocTypes(t *testing.T) {
+	for _, tt := range docTests {
+		data, err := ioutil.ReadFile(tt.file)
 		require.Nil(t, err)
 
 		doc, err := goquery.NewDocumentFromReader(bytes.NewReader(data))
 		require.Nil(t, err)
 
-		url, err := extractAuthSubmitURL("https://example.com", doc)
-		require.Nil(t, err)
-		require.Equal(t, tt.expected, url)
+		if tt.fn(doc) != tt.expected {
+			t.Errorf("expect doc check of %v to be %v", tt.file, tt.expected)
+		}
 	}
+}
+
+func TestHandleLogin(t *testing.T) {
+	ac := Client{}
+	loginDetails := creds.LoginDetails{
+		Username: "fdsa",
+		Password: "secret",
+		URL:      "https://example.com/foo",
+	}
+	ctx := context.WithValue(context.Background(), ctxKey("login"), &loginDetails)
+
+	data, err := ioutil.ReadFile("example/login.html")
+	require.Nil(t, err)
+
+	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(data))
+	require.Nil(t, err)
+
+	ctx, req, err := ac.handleLogin(ctx, doc)
+	require.Nil(t, err)
+
+	b, err := ioutil.ReadAll(req.Body)
+	require.Nil(t, err)
+
+	s := string(b[:])
+	require.Contains(t, s, "pf.username=fdsa")
+	require.Contains(t, s, "pf.pass=secret")
+}
+
+func TestHandleOTP(t *testing.T) {
+	pr := &mocks.Prompter{}
+	prompter.SetPrompter(pr)
+	pr.Mock.On("StringRequired", "Enter passcode").Return("5309")
+
+	data, err := ioutil.ReadFile("example/otp.html")
+	require.Nil(t, err)
+
+	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(data))
+	require.Nil(t, err)
+
+	ac := Client{}
+	_, req, err := ac.handleOTP(context.Background(), doc)
+	require.Nil(t, err)
+
+	b, err := ioutil.ReadAll(req.Body)
+	require.Nil(t, err)
+
+	s := string(b[:])
+	require.Contains(t, s, "otp=5309")
 }
