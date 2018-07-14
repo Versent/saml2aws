@@ -178,9 +178,11 @@ func (kc *Client) loadChallengePage(submitURL string, referer string, authForm u
 	}
 
 	secondFactorHeader := "This extra step shows it’s really you trying to sign in"
+	secondFactorHeaderJp := "2 段階認証プロセス"
 
 	// have we been asked for 2-Step Verification
-	if extractNodeText(doc, "h2", secondFactorHeader) != "" {
+	if extractNodeText(doc, "h2", secondFactorHeader) != "" ||
+	   extractNodeText(doc, "h1", secondFactorHeaderJp) != "" {
 
 		responseForm, secondActionURL, err := extractInputsByFormID(doc, "challenge")
 		if err != nil {
