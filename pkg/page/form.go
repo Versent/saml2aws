@@ -42,7 +42,7 @@ func (form *Form) Submit(client *provider.HTTPClient) (*http.Response, error) {
 // If the document has multiple forms, the first form with an `action` attribute will be parsed.
 // You can specify the exact form using a CSS filter.
 func NewFormFromDocument(doc *goquery.Document, formFilter string) (*Form, error) {
-	form := Form{}
+	form := Form{Method: "POST"}
 
 	if formFilter == "" {
 		formFilter = "form[action]"
@@ -52,27 +52,30 @@ func NewFormFromDocument(doc *goquery.Document, formFilter string) (*Form, error
 		return nil, fmt.Errorf("could not find form")
 	}
 
-	if v, ok := formSelection.Attr("action"); !ok {
+	attrValue, ok := formSelection.Attr("action");
+	if !ok {
 		return nil, fmt.Errorf("could not extract form action")
-	} else {
-		form.URL = v
 	}
+	form.URL = attrValue
 
-	if v, ok := formSelection.Attr("method"); ok {
-		form.Method = strings.ToUpper(v)
-	} else {
-		form.Method = "POST"
+	attrValue, ok = formSelection.Attr("method")
+	if ok {
+		form.Method = strings.ToUpper(attrValue)
 	}
 
 	form.Values = &url.Values{}
 	formSelection.Find("input").Each(func(_ int, s *goquery.Selection) {
-		if name, ok := s.Attr("name"); !ok {
+		name, ok := s.Attr("name")
+		if !ok {
 			return
-		} else if val, ok := s.Attr("value"); !ok {
-			return
-		} else {
-			form.Values.Add(name, val)
 		}
+
+		val, ok := s.Attr("value")
+		if !ok {
+			return
+		}
+
+		form.Values.Add(name, val)
 	})
 
 	return &form, nil
