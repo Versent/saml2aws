@@ -1,6 +1,3 @@
-# Run this to configure your shell
-# saml2aws script --shell=powershell | Invoke-Expression
-
 $env:AWS_ACCESS_KEY_ID={{ .AWSAccessKey }}
 $env:AWS_SECRET_ACCESS_KEY=={{ .AWSSecretKey }}
 $env:AWS_SESSION_TOKEN={{ .AWSSessionToken }}
