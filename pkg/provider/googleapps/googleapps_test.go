@@ -55,6 +55,16 @@ func TestContentContainsMessage(t *testing.T) {
 	require.Equal(t, "This extra step shows it’s really you trying to sign in", txt)
 }
 
+func TestContentContainsMessage2(t *testing.T) {
+	html := `<html><body><h2>This extra step shows that it’s really you trying to sign in</h2></body></html>`
+
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(html))
+	require.Nil(t, err)
+
+	txt := extractNodeText(doc, "h2", "This extra step shows that it’s really you trying to sign in")
+	require.Equal(t, "This extra step shows that it’s really you trying to sign in", txt)
+}
+
 func TestChallengePage(t *testing.T) {
 
 	data, err := ioutil.ReadFile("example/challenge-totp.html")
