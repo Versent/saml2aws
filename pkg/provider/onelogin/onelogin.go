@@ -38,9 +38,9 @@ var logger = logrus.WithField("provider", ProviderName)
 
 var (
 	supportedMfaOptions = map[string]string{
-		IdentifierOneLoginProtectMfa: "OLP MFA authentication",
-		IdentifierSmsMfa:             "SMS MFA authentication",
-		IdentifierTotpMfa:            "TOTP MFA authentication",
+		IdentifierOneLoginProtectMfa: "OLP",
+		IdentifierSmsMfa:             "SMS",
+		IdentifierTotpMfa:            "TOTP",
 	}
 )
 
@@ -50,6 +50,8 @@ type Client struct {
 	AppID string
 	// Client is the HTTP client for accessing the IDP provider's APIs.
 	Client *provider.HTTPClient
+	// A predefined MFA name.
+	MFA string
 	// Subdomain is the organisation subdomain in OneLogin.
 	Subdomain string
 }
@@ -78,10 +80,7 @@ func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "error building http client")
 	}
-	// Assign a response validator to ensure all responses are either success or a redirect.
-	// This is to avoid have explicit checks for every single response.
-	client.CheckResponseStatus = provider.SuccessOrRedirectResponseValidator
-	return &Client{AppID: idpAccount.AppID, Client: client, Subdomain: idpAccount.Subdomain}, nil
+	return &Client{AppID: idpAccount.AppID, Client: client, MFA: idpAccount.MFA, Subdomain: idpAccount.Subdomain}, nil
 }
 
 // Authenticate logs into OneLogin and returns a SAML response.
@@ -212,15 +211,22 @@ func verifyMFA(oc *Client, oauthToken, appID, resp string) (string, error) {
 	// choose an mfa option if there are multiple enabled
 	var option int
 	var mfaOptions []string
-	for _, id := range gjson.Get(resp, "data.0.devices.#.device_type").Array() {
+	var preselected bool
+	for n, id := range gjson.Get(resp, "data.0.devices.#.device_type").Array() {
 		identifier := id.String()
 		if val, ok := supportedMfaOptions[identifier]; ok {
 			mfaOptions = append(mfaOptions, val)
+			// If there is pre-selected MFA option (thorugh the --mfa flag), then set MFA option index and break early.
+			if val == oc.MFA {
+				option = n
+				preselected = true
+				break
+			}
 		} else {
 			mfaOptions = append(mfaOptions, "UNSUPPORTED: "+identifier)
 		}
 	}
-	if len(mfaOptions) > 1 {
+	if !preselected && len(mfaOptions) > 1 {
 		option = prompter.Choose("Select which MFA option to use", mfaOptions)
 	}
 
