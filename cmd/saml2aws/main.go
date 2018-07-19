@@ -98,8 +98,10 @@ func main() {
 		os.Exit(1)
 	}
 
+	errtpl := "%v\n"
 	if *verbose {
 		logrus.SetLevel(logrus.DebugLevel)
+		errtpl = "%+v\n"
 	}
 
 	logrus.WithField("command", command).Debug("Running")
@@ -117,7 +119,7 @@ func main() {
 	}
 
 	if err != nil {
-		fmt.Printf("%+v\n", err)
+		fmt.Printf(errtpl, err)
 		os.Exit(1)
 	}
 }
