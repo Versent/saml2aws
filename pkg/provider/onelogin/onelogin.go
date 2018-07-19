@@ -295,6 +295,11 @@ func verifyMFA(oc *Client, oauthToken, appID, resp string) (string, error) {
 
 		resp = string(body)
 
+		message := gjson.Get(resp, "status.message").String()
+		if gjson.Get(resp, "status.error").Bool() {
+			return "", errors.New(message)
+		}
+
 		return gjson.Get(resp, "data").String(), nil
 
 	case IdentifierOneLoginProtectMfa:
