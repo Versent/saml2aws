@@ -106,7 +106,7 @@ func (ac *Client) handleLogin(ctx context.Context, doc *goquery.Document) (conte
 		return ctx, nil, fmt.Errorf("no context value for 'login'")
 	}
 
-	form, err := page.NewFormFromDocument(doc, "#login-form")
+	form, err := page.NewFormFromDocument(doc, "form")
 	if err != nil {
 		return ctx, nil, errors.Wrap(err, "error extracting login form")
 	}
@@ -190,7 +190,7 @@ func (ac *Client) handleFormRedirect(ctx context.Context, doc *goquery.Document)
 }
 
 func docIsLogin(doc *goquery.Document) bool {
-	return doc.Has("form#login-form").Size() == 1
+	return doc.Has("input[name=\"pf.pass\"]").Size() == 1
 }
 
 func docIsOTP(doc *goquery.Document) bool {
