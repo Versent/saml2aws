@@ -2,12 +2,12 @@ package saml2aws
 
 import (
 	"fmt"
+	"sort"
 
 	"github.com/pkg/errors"
 	"github.com/versent/saml2aws/pkg/cfg"
 	"github.com/versent/saml2aws/pkg/creds"
 	"github.com/versent/saml2aws/pkg/prompter"
-	"sort"
 )
 
 // PromptForConfigurationDetails prompt the user to present their hostname, username and mfa
@@ -44,11 +44,18 @@ func PromptForConfigurationDetails(idpAccount *cfg.IDPAccount) error {
 
 	fmt.Println("")
 
+	if idpAccount.Provider == "OneLogin" {
+		idpAccount.AppID = prompter.String("App ID", idpAccount.AppID)
+		fmt.Println("")
+		idpAccount.Subdomain = prompter.String("Subdomain", idpAccount.Subdomain)
+		fmt.Println("")
+	}
+
 	return nil
 }
 
 // PromptForLoginDetails prompt the user to present their username, password
-func PromptForLoginDetails(loginDetails *creds.LoginDetails) error {
+func PromptForLoginDetails(loginDetails *creds.LoginDetails, provider string) error {
 
 	fmt.Println("To use saved password just hit enter.")
 
@@ -57,8 +64,17 @@ func PromptForLoginDetails(loginDetails *creds.LoginDetails) error {
 	if enteredPassword := prompter.Password("Password"); enteredPassword != "" {
 		loginDetails.Password = enteredPassword
 	}
-
 	fmt.Println("")
+	if provider == "OneLogin" {
+		if enteredClientID := prompter.Password("Client ID"); enteredClientID != "" {
+			loginDetails.ClientID = enteredClientID
+		}
+		fmt.Println("")
+		if enteredCientSecret := prompter.Password("Client Secret"); enteredCientSecret != "" {
+			loginDetails.ClientSecret = enteredCientSecret
+		}
+		fmt.Println("")
+	}
 
 	return nil
 }

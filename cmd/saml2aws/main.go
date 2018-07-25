@@ -46,13 +46,13 @@ func main() {
 
 	// Settings not related to commands
 	verbose := app.Flag("verbose", "Enable verbose logging").Bool()
-	provider := app.Flag("provider", "This flag it is obsolete see https://github.com/Versent/saml2aws#adding-idp-accounts.").Short('i').Enum("ADFS", "ADFS2", "Ping", "JumpCloud", "Okta", "KeyCloak")
+	provider := app.Flag("provider", "This flag it is obsolete see https://github.com/Versent/saml2aws#adding-idp-accounts.").Short('i').Enum("ADFS", "ADFS2", "Ping", "JumpCloud", "Okta", "OneLogin", "KeyCloak")
 
 	// Common (to all commands) settings
 	commonFlags := new(flags.CommonFlags)
 	app.Flag("idp-account", "The name of the configured IDP account").Short('a').Default("default").StringVar(&commonFlags.IdpAccount)
-	app.Flag("idp-provider", "The configured IDP provider").EnumVar(&commonFlags.IdpProvider, "ADFS", "ADFS2", "Ping", "JumpCloud", "Okta", "KeyCloak")
-	app.Flag("mfa", "The name of the mfa").EnumVar(&commonFlags.MFA, "Auto", "VIP")
+	app.Flag("idp-provider", "The configured IDP provider").EnumVar(&commonFlags.IdpProvider, "ADFS", "ADFS2", "Ping", "JumpCloud", "Okta", "OneLogin", "KeyCloak")
+	app.Flag("mfa", "The name of the mfa").StringVar(&commonFlags.MFA)
 	app.Flag("skip-verify", "Skip verification of server certificate.").Short('s').BoolVar(&commonFlags.SkipVerify)
 	app.Flag("url", "The URL of the SAML IDP server used to login.").StringVar(&commonFlags.URL)
 	app.Flag("username", "The username used to login.").Envar("SAML2AWS_USERNAME").StringVar(&commonFlags.Username)
@@ -65,6 +65,10 @@ func main() {
 
 	// `configure` command and settings
 	cmdConfigure := app.Command("configure", "Configure a new IDP account.")
+	cmdConfigure.Flag("app-id", "OneLogin app id required for SAML assertion.").Envar("ONELOGIN_APP_ID").StringVar(&commonFlags.AppID)
+	cmdConfigure.Flag("client-id", "OneLogin client id, used to generate API access token.").Envar("ONELOGIN_CLIENT_ID").StringVar(&commonFlags.ClientID)
+	cmdConfigure.Flag("client-secret", "OneLogin client secret, used to generate API access token.").Envar("ONELOGIN_CLIENT_SECRET").StringVar(&commonFlags.ClientSecret)
+	cmdConfigure.Flag("subdomain", "OneLogin subdomain of your company account.").Envar("ONELOGIN_SUBDOMAIN").StringVar(&commonFlags.Subdomain)
 	configFlags := commonFlags
 
 	// `login` command and settings
@@ -94,8 +98,10 @@ func main() {
 		os.Exit(1)
 	}
 
+	errtpl := "%v\n"
 	if *verbose {
 		logrus.SetLevel(logrus.DebugLevel)
+		errtpl = "%+v\n"
 	}
 
 	logrus.WithField("command", command).Debug("Running")
@@ -113,7 +119,7 @@ func main() {
 	}
 
 	if err != nil {
-		fmt.Printf("%+v\n", err)
+		fmt.Printf(errtpl, err)
 		os.Exit(1)
 	}
 }

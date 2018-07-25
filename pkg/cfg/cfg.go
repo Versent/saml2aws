@@ -31,6 +31,7 @@ const (
 
 // IDPAccount saml IDP account
 type IDPAccount struct {
+	AppID                string `ini:"app_id"` // used by OneLogin
 	URL                  string `ini:"url"`
 	Username             string `ini:"username"`
 	Provider             string `ini:"provider"`
@@ -40,10 +41,18 @@ type IDPAccount struct {
 	AmazonWebservicesURN string `ini:"aws_urn"`
 	SessionDuration      int    `ini:"aws_session_duration"`
 	Profile              string `ini:"aws_profile"`
+	Subdomain            string `ini:"subdomain"` // used by OneLogin
 }
 
 func (ia IDPAccount) String() string {
-	return fmt.Sprintf(`account {
+	var appID string
+	if ia.Provider == "OneLogin" {
+		appID = fmt.Sprintf(`
+  AppID: %s
+  Subdomain: %s`, ia.AppID, ia.Subdomain)
+	}
+
+	return fmt.Sprintf(`account {%s
   URL: %s
   Username: %s
   Provider: %s
@@ -52,11 +61,20 @@ func (ia IDPAccount) String() string {
   AmazonWebservicesURN: %s
   SessionDuration: %d
   Profile: %s
-}`, ia.URL, ia.Username, ia.Provider, ia.MFA, ia.SkipVerify, ia.AmazonWebservicesURN, ia.SessionDuration, ia.Profile)
+}`, appID, ia.URL, ia.Username, ia.Provider, ia.MFA, ia.SkipVerify, ia.AmazonWebservicesURN, ia.SessionDuration, ia.Profile)
 }
 
 // Validate validate the required / expected fields are set
 func (ia *IDPAccount) Validate() error {
+	if ia.Provider == "OneLogin" {
+		if ia.AppID == "" {
+			return errors.New("app ID empty in idp account")
+		}
+		if ia.Subdomain == "" {
+			return errors.New("subdomain empty in idp account")
+		}
+	}
+
 	if ia.URL == "" {
 		return errors.New("URL empty in idp account")
 	}

@@ -4,10 +4,12 @@ import "errors"
 
 // LoginDetails used to authenticate
 type LoginDetails struct {
-	Username string
-	Password string
-	MFAToken string
-	URL      string
+	ClientID     string // used by OneLogin
+	ClientSecret string // used by OneLogin
+	Username     string
+	Password     string
+	MFAToken     string
+	URL          string
 }
 
 // Validate validate the login details

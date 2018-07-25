@@ -6,6 +6,9 @@ import (
 
 // CommonFlags flags common to all of the `saml2aws` commands (except `help`)
 type CommonFlags struct {
+	AppID                string
+	ClientID             string
+	ClientSecret         string
 	IdpAccount           string
 	IdpProvider          string
 	MFA                  string
@@ -19,6 +22,7 @@ type CommonFlags struct {
 	SkipPrompt           bool
 	SkipVerify           bool
 	Profile              string
+	Subdomain            string
 }
 
 // RoleSupplied role arn has been passed as a flag
@@ -33,6 +37,10 @@ type LoginExecFlags struct {
 
 // ApplyFlagOverrides overrides IDPAccount with command line settings
 func ApplyFlagOverrides(commonFlags *CommonFlags, account *cfg.IDPAccount) {
+	if commonFlags.AppID != "" {
+		account.AppID = commonFlags.AppID
+	}
+
 	if commonFlags.URL != "" {
 		account.URL = commonFlags.URL
 	}
@@ -63,5 +71,9 @@ func ApplyFlagOverrides(commonFlags *CommonFlags, account *cfg.IDPAccount) {
 
 	if commonFlags.Profile != "" {
 		account.Profile = commonFlags.Profile
+	}
+
+	if commonFlags.Subdomain != "" {
+		account.Subdomain = commonFlags.Subdomain
 	}
 }
