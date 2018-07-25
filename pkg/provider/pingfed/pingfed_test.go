@@ -24,6 +24,7 @@ var docTests = []struct {
 	expected bool
 }{
 	{docIsLogin, "example/login.html", true},
+	{docIsLogin, "example/login2.html", true},
 	{docIsLogin, "example/otp.html", false},
 	{docIsLogin, "example/swipe.html", false},
 	{docIsLogin, "example/form-redirect.html", false},
