@@ -3,6 +3,7 @@ package commands
 import (
 	"fmt"
 	"os"
+	"path"
 
 	"github.com/pkg/errors"
 	"github.com/versent/saml2aws"
@@ -10,7 +11,11 @@ import (
 	"github.com/versent/saml2aws/pkg/cfg"
 	"github.com/versent/saml2aws/pkg/flags"
 	"github.com/versent/saml2aws/pkg/prompter"
+	"github.com/versent/saml2aws/pkg/provider/onelogin"
 )
+
+// OneLoginOAuthPath is the path used to generate OAuth token in order to access OneLogin's API.
+const OneLoginOAuthPath = "/auth/oauth2/v2/token"
 
 // Configure configure account profiles
 func Configure(configFlags *flags.CommonFlags) error {
@@ -76,6 +81,15 @@ func storeCredentials(configFlags *flags.CommonFlags, account *cfg.IDPAccount) e
 			}
 		} else {
 			fmt.Println("No password supplied")
+		}
+	}
+	if account.Provider == onelogin.ProviderName {
+		if configFlags.ClientID == "" || configFlags.ClientSecret == "" {
+			fmt.Println("OneLogin provider requires --client_id and --client_secret flags to be set.")
+			os.Exit(1)
+		}
+		if err := credentials.SaveCredentials(path.Join(account.URL, OneLoginOAuthPath), configFlags.ClientID, configFlags.ClientSecret); err != nil {
+			return errors.Wrap(err, "error storing client_id and client_secret in keychain")
 		}
 	}
 	return nil

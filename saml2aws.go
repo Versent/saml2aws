@@ -12,6 +12,7 @@ import (
 	"github.com/versent/saml2aws/pkg/provider/jumpcloud"
 	"github.com/versent/saml2aws/pkg/provider/keycloak"
 	"github.com/versent/saml2aws/pkg/provider/okta"
+	"github.com/versent/saml2aws/pkg/provider/onelogin"
 	"github.com/versent/saml2aws/pkg/provider/pingfed"
 	"github.com/versent/saml2aws/pkg/provider/pingone"
 )
@@ -26,9 +27,10 @@ var MFAsByProvider = ProviderList{
 	"Ping":       []string{"Auto"},        // automatically detects PingID
 	"PingOne":    []string{"Auto"},        // automatically detects PingID
 	"JumpCloud":  []string{"Auto"},
-	"Okta":       []string{"Auto"}, // automatically detects DUO, SMS and ToTP
-	"KeyCloak":   []string{"Auto"}, // automatically detects ToTP
-	"GoogleApps": []string{"Auto"}, // automatically detects ToTP
+	"Okta":       []string{"Auto"},                       // automatically detects DUO, SMS and ToTP
+	"OneLogin":   []string{"Auto", "OLP", "SMS", "TOTP"}, // automatically detects OneLogin Protect, SMS and ToTP
+	"KeyCloak":   []string{"Auto"},                       // automatically detects ToTP
+	"GoogleApps": []string{"Auto"},                       // automatically detects ToTP
 }
 
 // Names get a list of provider names
@@ -104,6 +106,11 @@ func NewSAMLClient(idpAccount *cfg.IDPAccount) (SAMLClient, error) {
 			return nil, fmt.Errorf("Invalid MFA type: %v for %v provider", idpAccount.MFA, idpAccount.Provider)
 		}
 		return okta.New(idpAccount)
+	case "OneLogin":
+		if invalidMFA(idpAccount.Provider, idpAccount.MFA) {
+			return nil, fmt.Errorf("Invalid MFA type: %v for %v provider", idpAccount.MFA, idpAccount.Provider)
+		}
+		return onelogin.New(idpAccount)
 	case "KeyCloak":
 		if invalidMFA(idpAccount.Provider, idpAccount.MFA) {
 			return nil, fmt.Errorf("Invalid MFA type: %v for %v provider", idpAccount.MFA, idpAccount.Provider)

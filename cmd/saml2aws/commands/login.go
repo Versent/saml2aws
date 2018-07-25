@@ -128,7 +128,7 @@ func resolveLoginDetails(account *cfg.IDPAccount, loginFlags *flags.LoginExecFla
 
 	fmt.Printf("Using IDP Account %s to access %s %s\n", loginFlags.CommonFlags.IdpAccount, account.Provider, account.URL)
 
-	err := credentials.LookupCredentials(loginDetails)
+	err := credentials.LookupCredentials(loginDetails, account.Provider)
 	if err != nil {
 		if !credentials.IsErrCredentialsNotFound(err) {
 			return nil, errors.Wrap(err, "error loading saved password")
@@ -154,7 +154,7 @@ func resolveLoginDetails(account *cfg.IDPAccount, loginFlags *flags.LoginExecFla
 		return loginDetails, nil
 	}
 
-	err = saml2aws.PromptForLoginDetails(loginDetails)
+	err = saml2aws.PromptForLoginDetails(loginDetails, account.Provider)
 	if err != nil {
 		return nil, errors.Wrap(err, "Error occurred accepting input")
 	}
