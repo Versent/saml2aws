@@ -1,5 +1,0 @@
-set -gx AWS_ACCESS_KEY_ID {{ .AWSAccessKey }}
-set -gx AWS_SECRET_ACCESS_KEY {{ .AWSSecretKey }}
-set -gx AWS_SESSION_TOKEM {{ .AWSSessionToken }}
-set -gx AWS_SECURITY_TOKEN {{ .AWSSecurityToken }}
-set -gx ASSUMED_ROLE {{ .PrincipalARN }}
