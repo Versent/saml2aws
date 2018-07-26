@@ -90,7 +90,7 @@ func main() {
 	listRolesFlags.CommonFlags = commonFlags
 
 	// `script` command and settings
-	cmdScript := app.Command("script", "Script will emit a bash script that will export environment variables")
+	cmdScript := app.Command("script", "Script will emit a script that will export environment variables")
 	scriptFlags := new(flags.LoginExecFlags)
 	scriptFlags.CommonFlags = commonFlags
 	cmdScript.Flag("profile", "The AWS profile to save the temporary credentials").Short('p').StringVar(&commonFlags.Profile)
