@@ -22,6 +22,7 @@ The process goes something like this:
   * [Okta](pkg/provider/okta/README.md)
   * KeyCloak + (TOTP)
   * [Google Apps](pkg/provider/googleapps/README.md)
+  * Shibboleth
 * AWS SAML Provider configured
 
 # Caveats
