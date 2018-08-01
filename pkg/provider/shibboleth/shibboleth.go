@@ -206,8 +206,8 @@ func verifyMfa(oc *Client, shibbolethHost string, resp string) (*http.Response, 
 	var token string
 
 	var duoMfaOptions = []string{
-		"Passcode",
 		"Duo Push",
+		"Passcode",
 		"Phone Call",
 	}
 
