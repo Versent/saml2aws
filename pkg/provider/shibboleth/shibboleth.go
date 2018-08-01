@@ -208,6 +208,7 @@ func verifyMfa(oc *Client, shibbolethHost string, resp string) (*http.Response, 
 	var duoMfaOptions = []string{
 		"Passcode",
 		"Duo Push",
+		"Phone Call",
 	}
 
 	duoMfaOption := prompter.Choose("Select a DUO MFA Option", duoMfaOptions)
