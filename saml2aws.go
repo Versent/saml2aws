@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/vacovsky/saml2aws/pkg/provider/shibboleth"
 	"github.com/versent/saml2aws/pkg/cfg"
 	"github.com/versent/saml2aws/pkg/creds"
 	"github.com/versent/saml2aws/pkg/provider/adfs"
@@ -16,6 +15,7 @@ import (
 	"github.com/versent/saml2aws/pkg/provider/onelogin"
 	"github.com/versent/saml2aws/pkg/provider/pingfed"
 	"github.com/versent/saml2aws/pkg/provider/pingone"
+	"github.com/versent/saml2aws/pkg/provider/shibboleth"
 )
 
 // ProviderList list of providers with their MFAs
