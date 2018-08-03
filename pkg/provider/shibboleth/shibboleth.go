@@ -1,7 +1,5 @@
 package shibboleth
 
-// github.com/anaskhan96/soup
-
 import (
 	"crypto/tls"
 	"fmt"
@@ -57,7 +55,6 @@ func (sc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 	var authSubmitURL string
 	var samlAssertion string
 
-	// https://idp.calpoly.edu/idp/profile/SAML2/Unsolicited/SSO?providerId=urn:amazon:webservices
 	shibbolethURL := fmt.Sprintf("%s/idp/profile/SAML2/Unsolicited/SSO?providerId=%s", loginDetails.URL, sc.idpAccount.AmazonWebservicesURN)
 
 	res, err := sc.client.Get(shibbolethURL)
@@ -104,9 +101,12 @@ func (sc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 
 	switch sc.idpAccount.MFA {
 	case "Auto":
-		// loginDetails.MFAToken
 		b, _ := ioutil.ReadAll(res.Body)
+
 		mfaRes, err := verifyMfa(sc, loginDetails.URL, string(b))
+		if err != nil {
+			return mfaRes.Status, errors.Wrap(err, "error verifying MFA results")
+		}
 
 		doc, err = goquery.NewDocumentFromResponse(mfaRes)
 		if err != nil {
@@ -135,7 +135,6 @@ func updateFormData(authForm url.Values, s *goquery.Selection, user *creds.Login
 	name, ok := s.Attr("name")
 	authForm.Add("_eventId_proceed", "")
 
-	//	log.Printf("name = %s ok = %v", name, ok)
 	if !ok {
 		return
 	}
@@ -163,8 +162,6 @@ func verifyMfa(oc *Client, shibbolethHost string, resp string) (*http.Response, 
 	// initiate duo mfa to get sid
 	duoSubmitURL := fmt.Sprintf("https://%s/frame/web/v1/auth", duoHost)
 
-	// https://idp-dev.calpoly.edu/idp/profile/SAML2/Unsolicited/SSO?execution=e1s2
-
 	duoForm := url.Values{}
 	duoForm.Add("parent", dpa)
 	duoForm.Add("java_version", "")
@@ -189,7 +186,7 @@ func verifyMfa(oc *Client, shibbolethHost string, resp string) (*http.Response, 
 		return nil, errors.Wrap(err, "error retrieving verify response")
 	}
 
-	// 	//try to extract sid
+	//try to extract sid
 	doc, err := goquery.NewDocumentFromResponse(res)
 	if err != nil {
 		return nil, errors.Wrap(err, "error parsing document")
@@ -201,8 +198,8 @@ func verifyMfa(oc *Client, shibbolethHost string, resp string) (*http.Response, 
 	}
 	duoSID = html.UnescapeString(duoSID)
 
-	// 	//prompt for mfa type
-	// 	//only supporting push or passcode for now
+	//prompt for mfa type
+	//only supporting push or passcode for now
 	var token string
 
 	var duoMfaOptions = []string{
@@ -218,7 +215,7 @@ func verifyMfa(oc *Client, shibbolethHost string, resp string) (*http.Response, 
 		token = prompter.StringRequired("Enter passcode")
 	}
 
-	// 	// send mfa auth request
+	// send mfa auth request
 	duoSubmitURL = fmt.Sprintf("https://%s/frame/prompt", duoHost)
 
 	duoForm = url.Values{}
@@ -348,6 +345,7 @@ func parseTokens(blob string) (string, string, string, string) {
 	rs := sigRgx.FindStringSubmatch(blob)
 	host := hostRgx.FindStringSubmatch(blob)
 	dpa := dpaRgx.FindStringSubmatch(blob)
-	duoSiguatres := strings.Split(rs[1], ":")
-	return duoSiguatres[0], duoSiguatres[1], host[1], dpa[1]
+
+	duoSignatures := strings.Split(rs[1], ":")
+	return duoSignatures[0], duoSignatures[1], host[1], dpa[1]
 }

@@ -11,3 +11,4 @@ vendor
 /package
 /stage
 coverage.txt
+.ctags
