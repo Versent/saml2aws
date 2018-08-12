@@ -325,6 +325,10 @@ func verifyMfa(oc *Client, shibbolethHost string, resp string) (*http.Response, 
 	idpForm.Add("sig_response", duoTxCookie+":"+app)
 
 	req, err = http.NewRequest("POST", dpa, strings.NewReader(idpForm.Encode()))
+	if err != nil {
+		return nil, errors.Wrap(err, "error posting multi-factor verification to shibboleth server")
+	}
+
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	req.URL.Scheme = "https"
 	req.URL.Host = strings.Replace(shibbolethHost, "https://", "", -1)
