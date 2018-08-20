@@ -67,10 +67,11 @@ type AuthRequest struct {
 
 // VerifyRequest represents an mfa verify request
 type VerifyRequest struct {
-	AppID      string `json:"app_id"`
-	DeviceID   string `json:"device_id"`
-	OTPToken   string `json:"otp_token,omitempty"`
-	StateToken string `json:"state_token"`
+	AppID       string `json:"app_id"`
+	DeviceID    string `json:"device_id"`
+	DoNotNotify bool   `json:"do_not_notify"`
+	OTPToken    string `json:"otp_token,omitempty"`
+	StateToken  string `json:"state_token"`
 }
 
 // New creates a new OneLogin client.
@@ -172,7 +173,6 @@ func (c *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error) 
 // For more infor read https://developers.onelogin.com/api-docs/1/oauth20-tokens/generate-tokens-2
 func generateToken(oc *Client, loginDetails *creds.LoginDetails, host string) (string, error) {
 	oauthTokenURL := fmt.Sprintf("https://%s/auth/oauth2/v2/token", host)
-
 	req, err := http.NewRequest("POST", oauthTokenURL, strings.NewReader(`{"grant_type":"client_credentials"}`))
 	if err != nil {
 		return "", errors.Wrap(err, "error building oauth token request")
@@ -180,7 +180,6 @@ func generateToken(oc *Client, loginDetails *creds.LoginDetails, host string) (s
 
 	addContentHeaders(req)
 	req.SetBasicAuth(loginDetails.ClientID, loginDetails.ClientSecret)
-
 	res, err := oc.Client.Do(req)
 	if err != nil {
 		return "", errors.Wrap(err, "error retrieving oauth token response")
@@ -242,21 +241,19 @@ func verifyMFA(oc *Client, oauthToken, appID, resp string) (string, error) {
 	}
 
 	// get signature & callback
-	verifyReq := VerifyRequest{AppID: appID, DeviceID: mfaDeviceID, StateToken: stateToken}
-	verifyBody := new(bytes.Buffer)
-	err := json.NewEncoder(verifyBody).Encode(verifyReq)
+	var verifyBody bytes.Buffer
+	err := json.NewEncoder(&verifyBody).Encode(VerifyRequest{AppID: appID, DeviceID: mfaDeviceID, StateToken: stateToken})
 	if err != nil {
 		return "", errors.Wrap(err, "error encoding verifyReq")
 	}
 
-	req, err := http.NewRequest("POST", callbackURL, verifyBody)
+	req, err := http.NewRequest("POST", callbackURL, &verifyBody)
 	if err != nil {
 		return "", errors.Wrap(err, "error building verify request")
 	}
 
 	addContentHeaders(req)
 	addAuthHeader(req, oauthToken)
-
 	res, err := oc.Client.Do(req)
 	if err != nil {
 		return "", errors.Wrap(err, "error retrieving verify response")
@@ -267,22 +264,23 @@ func verifyMFA(oc *Client, oauthToken, appID, resp string) (string, error) {
 		return "", errors.Wrap(err, "error retrieving body from response")
 	}
 	resp = string(body)
+	if gjson.Get(resp, "status.error").Bool() {
+		msg := gjson.Get(resp, "status.message").String()
+		return "", errors.New(msg)
+	}
 
-	switch mfa := mfaIdentifer; mfa {
+	switch mfaIdentifer {
 	case IdentifierSmsMfa, IdentifierTotpMfa:
 		verifyCode := prompter.StringRequired("Enter verification code")
-		tokenReq := VerifyRequest{AppID: appID, DeviceID: mfaDeviceID, StateToken: stateToken, OTPToken: verifyCode}
-		tokenBody := new(bytes.Buffer)
-		json.NewEncoder(tokenBody).Encode(tokenReq)
-
-		req, err = http.NewRequest("POST", callbackURL, tokenBody)
+		var tokenBody bytes.Buffer
+		json.NewEncoder(&tokenBody).Encode(VerifyRequest{AppID: appID, DeviceID: mfaDeviceID, StateToken: stateToken, OTPToken: verifyCode})
+		req, err = http.NewRequest("POST", callbackURL, &tokenBody)
 		if err != nil {
 			return "", errors.Wrap(err, "error building token post request")
 		}
 
 		addContentHeaders(req)
 		addAuthHeader(req, oauthToken)
-
 		res, err := oc.Client.Do(req)
 		if err != nil {
 			return "", errors.Wrap(err, "error retrieving token post response")
@@ -303,8 +301,16 @@ func verifyMFA(oc *Client, oauthToken, appID, resp string) (string, error) {
 		return gjson.Get(resp, "data").String(), nil
 
 	case IdentifierOneLoginProtectMfa:
-		fmt.Printf("\nWaiting for approval, please check your OneLogin Protect app ...")
+		// change the body payload to disable further push notifications (i.e. set do_not_notify to true)
+		// https://developers.onelogin.com/api-docs/1/saml-assertions/verify-factor
+		verifyBody.Reset()
+		err = json.NewEncoder(&verifyBody).Encode(VerifyRequest{AppID: appID, DeviceID: mfaDeviceID, DoNotNotify: true, StateToken: stateToken})
+		if err != nil {
+			return "", errors.New("error encoding verify MFA request body")
+		}
+		req.Body = ioutil.NopCloser(&verifyBody)
 
+		fmt.Printf("\nWaiting for approval, please check your OneLogin Protect app ...")
 		started := time.Now()
 		// loop until success, error, or timeout
 		for {
@@ -334,7 +340,7 @@ func verifyMFA(oc *Client, oauthToken, appID, resp string) (string, error) {
 			switch gjson.Get(string(body), "status.type").String() {
 			case TypePending:
 				time.Sleep(time.Second)
-				fmt.Printf(".")
+				fmt.Print(".")
 
 			case TypeSuccess:
 				fmt.Println(" Approved")
