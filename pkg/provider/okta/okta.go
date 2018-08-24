@@ -430,12 +430,9 @@ func verifyMfa(oc *Client, oktaOrgHost string, resp string) (string, error) {
 
 		resp = string(body)
 
-		duoTxResult := gjson.Get(resp, "response.result").String()
-		duoTxCookie := gjson.Get(resp, "response.cookie").String()
+		duoStatusCode := gjson.Get(resp, "response.status_code").String()
 
-		fmt.Println(gjson.Get(resp, "response.status").String())
-
-		if duoTxResult != "SUCCESS" {
+		if duoStatusCode == "pushed" {
 			//poll as this is likely a push request
 			for {
 				time.Sleep(3 * time.Second)
@@ -459,44 +456,44 @@ func verifyMfa(oc *Client, oktaOrgHost string, resp string) (string, error) {
 
 				resp := string(body)
 
-				duoTxResult = gjson.Get(resp, "response.result").String()
-				duoResultURL := gjson.Get(resp, "response.result_url").String()
+				duoStatusCode = gjson.Get(resp, "response.status_code").String()
 
-				fmt.Println(gjson.Get(resp, "response.status").String())
-
-				if duoTxResult == "FAILURE" {
+				if duoStatusCode == "deny" {
 					return "", errors.Wrap(err, "failed to authenticate device")
 				}
 
-				if duoTxResult == "SUCCESS" {
-					duoRequestURL := fmt.Sprintf("https://%s%s", duoHost, duoResultURL)
-					req, err = http.NewRequest("POST", duoRequestURL, strings.NewReader(duoForm.Encode()))
-					if err != nil {
-						return "", errors.Wrap(err, "error constructing request object to result url")
-					}
-
-					req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-
-					res, err = oc.client.Do(req)
-					if err != nil {
-						return "", errors.Wrap(err, "error retrieving duo result response")
-					}
-
-					body, err = ioutil.ReadAll(res.Body)
-					if err != nil {
-						return "", errors.Wrap(err, "duoResultSubmit: error retrieving body from response")
-					}
-
-					resp := string(body)
-					duoTxCookie = gjson.Get(resp, "response.cookie").String()
-					if duoTxCookie == "" {
-						return "", errors.Wrap(err, "duoResultSubmit: Unable to get response.cookie")
-					}
-
+				if duoStatusCode == "allow" {
+					duoResultURL := gjson.Get(resp, "response.result_url").String()
+					duoSubmitURL = fmt.Sprintf("https://%s%s", duoHost, duoResultURL)
 					break
 				}
 			}
 		}
+
+		duoForm = url.Values{}
+		duoForm.Add("sid", duoSID)
+		duoForm.Add("txid", duoTxID)
+
+		req, err = http.NewRequest("POST", duoSubmitURL, strings.NewReader(duoForm.Encode()))
+		if err != nil {
+			return "", errors.Wrap(err, "error building authentication request")
+		}
+
+		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+
+		res, err = oc.client.Do(req)
+		if err != nil {
+			return "", errors.Wrap(err, "error retrieving verify response")
+		}
+
+		body, err = ioutil.ReadAll(res.Body)
+		if err != nil {
+			return "", errors.Wrap(err, "error retrieving body from response")
+		}
+
+		resp = string(body)
+
+		duoTxCookie := gjson.Get(resp, "response.cookie").String()
 
 		// callback to okta with cookie
 		oktaForm := url.Values{}
