@@ -12,3 +12,4 @@ vendor
 /stage
 coverage.txt
 .ctags
+.vscode
