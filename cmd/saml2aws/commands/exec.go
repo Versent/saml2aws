@@ -2,10 +2,8 @@ package commands
 
 import (
 	"fmt"
-	"os"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sts"
@@ -77,7 +75,7 @@ func checkToken(profile string) (bool, error) {
 
 	params := &sts.GetCallerIdentityInput{}
 
-	resp, err := svc.GetCallerIdentity(params)
+	_, err = svc.GetCallerIdentity(params)
 	if err != nil {
 		if awsErr, ok := err.(awserr.Error); ok {
 			if awsErr.Code() == "ExpiredToken" || awsErr.Code() == "NoCredentialProviders" {
@@ -88,6 +86,6 @@ func checkToken(profile string) (bool, error) {
 		return false, err
 	}
 
-	fmt.Fprintln(os.Stderr, "Running command as:", aws.StringValue(resp.Arn))
+	//fmt.Fprintln(os.Stderr, "Running command as:", aws.StringValue(resp.Arn))
 	return true, nil
 }

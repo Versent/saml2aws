@@ -14,7 +14,27 @@ The process goes something like this:
 * Exchange the role and SAML assertion with [AWS STS service](https://docs.aws.amazon.com/STS/latest/APIReference/Welcome.html) to get a temporary set of credentials
 * Save these credentials to an aws profile named "saml"
 
-# Requirements
+## Table of Contents
+
+<!-- TOC depthFrom:2 -->
+
+- [Table of Contents](#table-of-contents)
+- [Requirements](#requirements)
+- [Caveats](#caveats)
+- [Install](#install)
+    - [OSX](#osx)
+    - [Windows](#windows)
+- [Dependency Setup](#dependency-setup)
+- [Usage](#usage)
+    - [`saml2aws script`](#saml2aws-script)
+    - [Configuring IDP Accounts](#configuring-idp-accounts)
+- [Example](#example)
+- [Building](#building)
+- [Environment vars](#environment-vars)
+
+<!-- /TOC -->
+
+## Requirements
 
 * One of the supported Identity Providers
   * ADFS (2.x or 3.x)
@@ -25,16 +45,16 @@ The process goes something like this:
   * Shibboleth
 * AWS SAML Provider configured
 
-# Caveats
+## Caveats
 
 Aside from Okta, most of the providers in this project are using screen scraping to log users into SAML, this isn't ideal and hopefully vendors make this easier in the future. In addition to this there are some things you need to know:
 
 1. AWS defaults to session tokens being issued with a duration of up to 3600 seconds (1 hour), this can now be configured as per [Enable Federated API Access to your AWS Resources for up to 12 hours Using IAM Roles](https://aws.amazon.com/blogs/security/enable-federated-api-access-to-your-aws-resources-for-up-to-12-hours-using-iam-roles/) and `--session-duration` flag.
 2. Every SAML provider is different, the login process, MFA support is pluggable and therefore some work may be needed to integrate with your identity server
 
-# Install
+## Install
 
-## OSX
+### OSX
 
 If you're on OSX you can install saml2aws using homebrew!
 
@@ -43,7 +63,7 @@ brew tap versent/homebrew-taps
 brew install saml2aws
 ```
 
-## Windows
+### Windows
 
 If you're on Windows you can install saml2aws using chocolatey!
 
@@ -52,15 +72,15 @@ choco install saml2aws
 saml2aws --version
 ```
 
-# Dependency Setup
+## Dependency Setup
 
-Install the AWS CLI see https://docs.aws.amazon.com/cli/latest/userguide/installing.html, in our case we are using [homebrew](http://brew.sh/) on OSX.
+Install the AWS CLI [see](https://docs.aws.amazon.com/cli/latest/userguide/installing.html), in our case we are using [homebrew](http://brew.sh/) on OSX.
 
 ```
 brew install awscli
 ```
 
-# Usage
+## Usage
 
 ```
 usage: saml2aws [<flags>] <command> [<args> ...]
@@ -68,10 +88,12 @@ usage: saml2aws [<flags>] <command> [<args> ...]
 A command line tool to help with SAML access to the AWS token service.
 
 Flags:
-      --help                   Show context-sensitive help (also try --help-long and --help-man).
+      --help                   Show context-sensitive help (also try --help-long
+                               and --help-man).
       --version                Show application version.
       --verbose                Enable verbose logging
-  -i, --provider=PROVIDER      This flag it is obsolete see https://github.com/Versent/saml2aws#adding-idp-accounts.
+  -i, --provider=PROVIDER      This flag it is obsolete see
+                               https://github.com/Versent/saml2aws#adding-idp-accounts.
   -a, --idp-account="default"  The name of the configured IDP account
       --idp-provider=IDP-PROVIDER
                                The configured IDP provider
@@ -80,7 +102,8 @@ Flags:
       --url=URL                The URL of the SAML IDP server used to login.
       --username=USERNAME      The username used to login.
       --password=PASSWORD      The password used to login.
-      --mfa-token=MFA-TOKEN    The current MFA token (supported in Keycloak, ADFS).
+      --mfa-token=MFA-TOKEN    The current MFA token (supported in Keycloak,
+                               ADFS).
       --role=ROLE              The ARN of the role to assume.
       --aws-urn=AWS-URN        The URN used by SAML when you login.
       --skip-prompt            Skip prompting for parameters during login.
@@ -103,9 +126,38 @@ Commands:
   list-roles
     List available role ARNs.
 
+  script [<flags>]
+    Script will emit a script that will export environment variables
 ```
 
-# Configuring IDP Accounts
+
+### `saml2aws script`
+
+If the `script` sub-command is called, `saml2aws` will output the following temporary security credentials:
+```
+export AWS_ACCESS_KEY_ID="ASIAI....UOCA"
+export AWS_SECRET_ACCESS_KEY="DuH...G1d"
+export AWS_SESSION_TOKEN="AQ...1BQ=="
+export AWS_SECURITY_TOKEN="AQ...1BQ=="
+SAML2AWS_PROFILE=saml
+```
+
+Powershell, and fish shells are supported as well.
+
+If you use `eval $(sam2aws script)` frequently, you may want to create a alias for it:
+
+zsh:
+```
+alias s2a="function(){eval $( $(command saml2aws) script --shell=bash --profile=$@);}"
+```
+
+bash:
+```
+function s2a { eval $( $(which saml2aws) script --shell=bash --profile=$@); }
+```
+
+
+### Configuring IDP Accounts
 
 This is the *new* way of adding IDP provider accounts, it enables you to have named accounts with whatever settings you like and supports having one *default* account which is used if you omit the account flag. This replaces the --provider flag and old configuration file in 1.x.
 
@@ -158,7 +210,7 @@ saml2aws configure -a wolfeidau --idp-provider KeyCloak --username mark@wolfe.id
 
 Then your ready to use saml2aws.
 
-# Example
+## Example
 
 Log into a service (without MFA).
 
@@ -202,7 +254,7 @@ Note that it will expire at 2016-09-19 15:59:49 +1000 AEST
 To use this credential, call the AWS CLI with the --profile option (e.g. aws --profile saml ec2 describe-instances --region us-east-1).
 ```
 
-# Building
+## Building
 
 To build this software on osx clone to the repo to `$GOPATH/src/github.com/versent/saml2aws` and ensure you have `$GOPATH/bin` in your `$PATH`.
 
@@ -222,7 +274,7 @@ Then to test the software just run.
 make test
 ```
 
-# Environment vars
+## Environment vars
 
 The exec sub command will export the following environment variables.
 
@@ -235,6 +287,7 @@ The exec sub command will export the following environment variables.
 * AWS_DEFAULT_PROFILE
 
 Note: That profile environment variables enable you to use `exec` with a script or command which requires an explicit profile.
+
 
 # Dependencies
 

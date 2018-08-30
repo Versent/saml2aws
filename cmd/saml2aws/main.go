@@ -89,6 +89,17 @@ func main() {
 	listRolesFlags := new(flags.LoginExecFlags)
 	listRolesFlags.CommonFlags = commonFlags
 
+	// `script` command and settings
+	cmdScript := app.Command("script", "Script will emit a script that will export environment variables")
+	scriptFlags := new(flags.LoginExecFlags)
+	scriptFlags.CommonFlags = commonFlags
+	cmdScript.Flag("profile", "The AWS profile to save the temporary credentials").Short('p').StringVar(&commonFlags.Profile)
+	var shell string
+	cmdScript.
+		Flag("shell", "Type of shell environment, options include: bash, powershell, fish").
+		Default("bash").
+		EnumVar(&shell, "bash", "powershell", "fish")
+
 	// Trigger the parsing of the command line inputs via kingpin
 	command := kingpin.MustParse(app.Parse(os.Args[1:]))
 
@@ -108,6 +119,8 @@ func main() {
 
 	var err error
 	switch command {
+	case cmdScript.FullCommand():
+		err = commands.Script(scriptFlags, shell)
 	case cmdLogin.FullCommand():
 		err = commands.Login(loginFlags)
 	case cmdExec.FullCommand():
