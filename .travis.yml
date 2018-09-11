@@ -1,7 +1,4 @@
-sudo: required
 language: go
-os:
-    - osx
 go:
     - "1.10"
 
@@ -13,17 +10,6 @@ install:
 env:
     - "PATH=/home/travis/gopath/bin:$PATH"
 
-before_script:
-    - "export DISPLAY=:99.0"
-    - if [[ "$TRAVIS_OS_NAME" == "linux"  ]]; then sh ci/before_script_linux.sh; fi
-            
 script:
     - make ci
 
-addons:
-    apt:
-        packages:
-        - build-essential
-        - fakeroot
-        - git
-        - libsecret-1-dev
