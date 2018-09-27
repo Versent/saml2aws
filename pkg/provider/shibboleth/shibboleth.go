@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"html"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -105,28 +104,17 @@ func (sc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 
 		mfaRes, err := verifyMfa(sc, loginDetails.URL, string(b))
 		if err != nil {
-			return mfaRes.Status, errors.Wrap(err, "error verifying MFA results")
+			return mfaRes.Status, errors.Wrap(err, "error verifying MFA")
 		}
 
-		doc, err = goquery.NewDocumentFromResponse(mfaRes)
-		if err != nil {
-			return samlAssertion, errors.Wrap(err, "error retrieving mfa form results")
-		}
+		res = mfaRes
+
 	}
 
-	doc.Find("input").Each(func(i int, s *goquery.Selection) {
-		name, ok := s.Attr("name")
-		if !ok {
-			log.Fatalf("unable to locate IDP authentication form submit URL")
-		}
-		if name == "SAMLResponse" {
-			val, ok := s.Attr("value")
-			if !ok {
-				log.Fatalf("unable to locate saml assertion value")
-			}
-			samlAssertion = val
-		}
-	})
+	samlAssertion, err = extractSamlResponse(res)
+	if err != nil {
+		return samlAssertion, errors.Wrap(err, "error extracting SAMLResponse blob from final Shibboleth response")
+	}
 
 	return samlAssertion, nil
 }
@@ -157,13 +145,40 @@ func updateFormData(authForm url.Values, s *goquery.Selection, user *creds.Login
 
 func verifyMfa(oc *Client, shibbolethHost string, resp string) (*http.Response, error) {
 
-	tx, app, duoHost, dpa := parseTokens(resp)
+	duoHost, postAction, tx, app := parseTokens(resp)
 
+	parent := fmt.Sprintf(shibbolethHost + postAction)
+
+	duoTxCookie, err := verifyDuoMfa(oc, duoHost, parent, tx)
+	if err != nil {
+		return nil, errors.Wrap(err, "error when interacting with Duo iframe")
+	}
+
+	idpForm := url.Values{}
+	idpForm.Add("_eventId", "proceed")
+	idpForm.Add("sig_response", duoTxCookie+":"+app)
+
+	req, err := http.NewRequest("POST", parent, strings.NewReader(idpForm.Encode()))
+	if err != nil {
+		return nil, errors.Wrap(err, "error posting multi-factor verification to shibboleth server")
+	}
+
+	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+
+	res, err := oc.client.Do(req)
+	if err != nil {
+		return nil, errors.Wrap(err, "error retrieving verify response")
+	}
+
+	return res, nil
+}
+
+func verifyDuoMfa(oc *Client, duoHost string, parent string, tx string) (string, error) {
 	// initiate duo mfa to get sid
 	duoSubmitURL := fmt.Sprintf("https://%s/frame/web/v1/auth", duoHost)
 
 	duoForm := url.Values{}
-	duoForm.Add("parent", dpa)
+	duoForm.Add("parent", parent)
 	duoForm.Add("java_version", "")
 	duoForm.Add("java_version", "")
 	duoForm.Add("flash_version", "")
@@ -173,7 +188,7 @@ func verifyMfa(oc *Client, shibbolethHost string, resp string) (*http.Response, 
 
 	req, err := http.NewRequest("POST", duoSubmitURL, strings.NewReader(duoForm.Encode()))
 	if err != nil {
-		return nil, errors.Wrap(err, "error building authentication request")
+		return "", errors.Wrap(err, "error building authentication request")
 	}
 	q := req.URL.Query()
 	q.Add("tx", tx)
@@ -183,29 +198,30 @@ func verifyMfa(oc *Client, shibbolethHost string, resp string) (*http.Response, 
 
 	res, err := oc.client.Do(req)
 	if err != nil {
-		return nil, errors.Wrap(err, "error retrieving verify response")
+		return "", errors.Wrap(err, "error retrieving verify response")
 	}
 
 	//try to extract sid
 	doc, err := goquery.NewDocumentFromResponse(res)
 	if err != nil {
-		return nil, errors.Wrap(err, "error parsing document")
+		return "", errors.Wrap(err, "error parsing document")
 	}
 
 	duoSID, ok := doc.Find("input[name=\"sid\"]").Attr("value")
 	if !ok {
-		return nil, errors.Wrap(err, "unable to locate saml response")
+		return "", errors.Wrap(err, "unable to locate saml response")
 	}
 	duoSID = html.UnescapeString(duoSID)
 
 	//prompt for mfa type
-	//only supporting push or passcode for now
+	//supporting push, call, and passcode for now
+
 	var token string
 
 	var duoMfaOptions = []string{
 		"Duo Push",
-		"Passcode",
 		"Phone Call",
+		"Passcode",
 	}
 
 	duoMfaOption := prompter.Choose("Select a DUO MFA Option", duoMfaOptions)
@@ -229,30 +245,30 @@ func verifyMfa(oc *Client, shibbolethHost string, resp string) (*http.Response, 
 
 	req, err = http.NewRequest("POST", duoSubmitURL, strings.NewReader(duoForm.Encode()))
 	if err != nil {
-		return nil, errors.Wrap(err, "error building authentication request")
+		return "", errors.Wrap(err, "error building authentication request")
 	}
 
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 
 	res, err = oc.client.Do(req)
 	if err != nil {
-		return nil, errors.Wrap(err, "error retrieving verify response")
+		return "", errors.Wrap(err, "error retrieving verify response")
 	}
 
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		return nil, errors.Wrap(err, "error retrieving body from response")
+		return "", errors.Wrap(err, "error retrieving body from response")
 	}
 
-	resp = string(body)
+	resp := string(body)
 
 	duoTxStat := gjson.Get(resp, "stat").String()
 	duoTxID := gjson.Get(resp, "response.txid").String()
 	if duoTxStat != "OK" {
-		return nil, errors.Wrap(err, "error authenticating mfa device")
+		return "", errors.Wrap(err, "error authenticating mfa device")
 	}
 
-	// 	// get duo cookie
+	// get duo cookie
 	duoSubmitURL = fmt.Sprintf("https://%s/frame/status", duoHost)
 
 	duoForm = url.Values{}
@@ -261,25 +277,27 @@ func verifyMfa(oc *Client, shibbolethHost string, resp string) (*http.Response, 
 
 	req, err = http.NewRequest("POST", duoSubmitURL, strings.NewReader(duoForm.Encode()))
 	if err != nil {
-		return nil, errors.Wrap(err, "error building authentication request")
+		return "", errors.Wrap(err, "error building authentication request")
 	}
 
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 
 	res, err = oc.client.Do(req)
 	if err != nil {
-		return nil, errors.Wrap(err, "error retrieving verify response")
+		return "", errors.Wrap(err, "error retrieving verify response")
 	}
 
 	body, err = ioutil.ReadAll(res.Body)
 	if err != nil {
-		return nil, errors.Wrap(err, "error retrieving body from response")
+		return "", errors.Wrap(err, "error retrieving body from response")
 	}
 
 	resp = string(body)
 
 	duoTxResult := gjson.Get(resp, "response.result").String()
-	duoTxCookie := gjson.Get(resp, "response.cookie").String()
+	duoResultURL := gjson.Get(resp, "response.result_url").String()
+
+	fmt.Println(gjson.Get(resp, "response.status").String())
 
 	if duoTxResult != "SUCCESS" {
 		//poll as this is likely a push request
@@ -288,30 +306,30 @@ func verifyMfa(oc *Client, shibbolethHost string, resp string) (*http.Response, 
 
 			req, err = http.NewRequest("POST", duoSubmitURL, strings.NewReader(duoForm.Encode()))
 			if err != nil {
-				return nil, errors.Wrap(err, "error building authentication request")
+				return "", errors.Wrap(err, "error building authentication request")
 			}
 
 			req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 
 			res, err = oc.client.Do(req)
 			if err != nil {
-				return nil, errors.Wrap(err, "error retrieving verify response")
+				return "", errors.Wrap(err, "error retrieving verify response")
 			}
 
 			body, err = ioutil.ReadAll(res.Body)
 			if err != nil {
-				return nil, errors.Wrap(err, "error retrieving body from response")
+				return "", errors.Wrap(err, "error retrieving body from response")
 			}
 
 			resp := string(body)
 
 			duoTxResult = gjson.Get(resp, "response.result").String()
-			duoTxCookie = gjson.Get(resp, "response.cookie").String()
+			duoResultURL = gjson.Get(resp, "response.result_url").String()
 
 			fmt.Println(gjson.Get(resp, "response.status").String())
 
 			if duoTxResult == "FAILURE" {
-				return nil, errors.Wrap(err, "failed to authenticate device")
+				return "", errors.Wrap(err, "failed to authenticate device")
 			}
 
 			if duoTxResult == "SUCCESS" {
@@ -320,25 +338,32 @@ func verifyMfa(oc *Client, shibbolethHost string, resp string) (*http.Response, 
 		}
 	}
 
-	idpForm := url.Values{}
-	idpForm.Add("_eventId", "proceed")
-	idpForm.Add("sig_response", duoTxCookie+":"+app)
-
-	req, err = http.NewRequest("POST", dpa, strings.NewReader(idpForm.Encode()))
+	duoRequestURL := fmt.Sprintf("https://%s%s", duoHost, duoResultURL)
+	req, err = http.NewRequest("POST", duoRequestURL, strings.NewReader(duoForm.Encode()))
 	if err != nil {
-		return nil, errors.Wrap(err, "error posting multi-factor verification to shibboleth server")
+		return "", errors.Wrap(err, "error constructing request object to result url")
 	}
 
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-	req.URL.Scheme = "https"
-	req.URL.Host = strings.Replace(shibbolethHost, "https://", "", -1)
 
 	res, err = oc.client.Do(req)
 	if err != nil {
-		return nil, errors.Wrap(err, "error retrieving verify response")
+		return "", errors.Wrap(err, "error retrieving duo result response")
 	}
 
-	return res, errors.New("no mfa options provided")
+	body, err = ioutil.ReadAll(res.Body)
+	if err != nil {
+		return "", errors.Wrap(err, "duoResultSubmit: error retrieving body from response")
+	}
+
+	resp = string(body)
+
+	duoTxCookie := gjson.Get(resp, "response.cookie").String()
+	if duoTxCookie == "" {
+		return "", errors.Wrap(err, "duoResultSubmit: Unable to get response.cookie")
+	}
+
+	return duoTxCookie, nil
 }
 
 func parseTokens(blob string) (string, string, string, string) {
@@ -346,10 +371,21 @@ func parseTokens(blob string) (string, string, string, string) {
 	sigRgx := regexp.MustCompile(`data-sig-request=\"(.*?)\"`)
 	dpaRgx := regexp.MustCompile(`data-post-action=\"(.*?)\"`)
 
-	rs := sigRgx.FindStringSubmatch(blob)
-	host := hostRgx.FindStringSubmatch(blob)
-	dpa := dpaRgx.FindStringSubmatch(blob)
+	dataSigRequest := sigRgx.FindStringSubmatch(blob)
+	duoHost := hostRgx.FindStringSubmatch(blob)
+	postAction := dpaRgx.FindStringSubmatch(blob)
 
-	duoSignatures := strings.Split(rs[1], ":")
-	return duoSignatures[0], duoSignatures[1], host[1], dpa[1]
+	duoSignatures := strings.Split(dataSigRequest[1], ":")
+	return duoHost[1], postAction[1], duoSignatures[0], duoSignatures[1]
+}
+
+func extractSamlResponse(res *http.Response) (string, error) {
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return "", errors.Wrap(err, "extractSamlResponse: error retrieving body from response")
+	}
+
+	samlRgx := regexp.MustCompile(`name=\"SAMLResponse\" value=\"(.*?)\"/>`)
+	samlResponseValue := samlRgx.FindStringSubmatch(string(body))
+	return samlResponseValue[1], nil
 }
