@@ -73,6 +73,6 @@ func ApplyFlagOverrides(commonFlags *CommonFlags, account *cfg.IDPAccount) {
 	}
 
 	if commonFlags.RoleArn != "" {
-		account.Role = commonFlags.RoleArn
+		account.RoleARN = commonFlags.RoleArn
 	}
 }

@@ -42,7 +42,7 @@ type IDPAccount struct {
 	SessionDuration      int    `ini:"aws_session_duration"`
 	Profile              string `ini:"aws_profile"`
 	Subdomain            string `ini:"subdomain"` // used by OneLogin
-	Role                 string `ini:"role"`
+	RoleARN              string `ini:"role_arn"`
 }
 
 func (ia IDPAccount) String() string {
@@ -62,7 +62,7 @@ func (ia IDPAccount) String() string {
   AmazonWebservicesURN: %s
   SessionDuration: %d
   Profile: %s
-  Role: %s
+  RoleARN: %s
 }`, appID, ia.URL, ia.Username, ia.Provider, ia.MFA, ia.SkipVerify, ia.AmazonWebservicesURN, ia.SessionDuration, ia.Profile, ia.Role)
 }
 
