@@ -42,6 +42,7 @@ type IDPAccount struct {
 	SessionDuration      int    `ini:"aws_session_duration"`
 	Profile              string `ini:"aws_profile"`
 	Subdomain            string `ini:"subdomain"` // used by OneLogin
+	Role                 string `ini:"role"`
 }
 
 func (ia IDPAccount) String() string {
@@ -61,7 +62,8 @@ func (ia IDPAccount) String() string {
   AmazonWebservicesURN: %s
   SessionDuration: %d
   Profile: %s
-}`, appID, ia.URL, ia.Username, ia.Provider, ia.MFA, ia.SkipVerify, ia.AmazonWebservicesURN, ia.SessionDuration, ia.Profile)
+  Role: %s
+}`, appID, ia.URL, ia.Username, ia.Provider, ia.MFA, ia.SkipVerify, ia.AmazonWebservicesURN, ia.SessionDuration, ia.Profile, ia.Role)
 }
 
 // Validate validate the required / expected fields are set
