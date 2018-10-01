@@ -39,7 +39,7 @@ func TestResolveRoleSingleEntry(t *testing.T) {
 		adminRole,
 	}
 
-	got, err := resolveRole(awsRoles, "", &flags.LoginExecFlags{CommonFlags: &flags.CommonFlags{}})
+	got, err := resolveRole(awsRoles, "", cfg.NewIDPAccount())
 	assert.Empty(t, err)
 	assert.Equal(t, got, adminRole)
 }
