@@ -42,6 +42,11 @@ func Login(loginFlags *flags.LoginExecFlags) error {
 		return nil
 	}
 
+	if !sharedCreds.Expired() && !loginFlags.Force {
+		fmt.Println("credentials are not expired skipping")
+		return nil
+	}
+
 	loginDetails, err := resolveLoginDetails(account, loginFlags)
 	if err != nil {
 		fmt.Printf("%+v\n", err)
