@@ -28,6 +28,7 @@ type CommonFlags struct {
 // LoginExecFlags flags for the Login / Exec commands
 type LoginExecFlags struct {
 	CommonFlags *CommonFlags
+	Force       bool
 }
 
 // ApplyFlagOverrides overrides IDPAccount with command line settings

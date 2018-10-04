@@ -76,6 +76,7 @@ func main() {
 	loginFlags := new(flags.LoginExecFlags)
 	loginFlags.CommonFlags = commonFlags
 	cmdLogin.Flag("profile", "The AWS profile to save the temporary credentials").Short('p').StringVar(&commonFlags.Profile)
+	cmdLogin.Flag("force", "Refreshes credentials even if not expired").BoolVar(&loginFlags.Force)
 
 	// `exec` command and settings
 	cmdExec := app.Command("exec", "Exec the supplied command with env vars from STS token.")

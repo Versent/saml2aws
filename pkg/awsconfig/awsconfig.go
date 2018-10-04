@@ -110,6 +110,16 @@ func (p *CredentialsProvider) Load() (*AWSCredentials, error) {
 	return awsCreds, nil
 }
 
+// Expired checks if the current credentials are expired
+func (p *CredentialsProvider) Expired() bool {
+	creds, err := p.Load()
+	if err != nil {
+		return true
+	}
+
+	return time.Now().After(creds.Expires)
+}
+
 // ensureConfigExists verify that the config file exists
 func (p *CredentialsProvider) ensureConfigExists() error {
 	filename, err := p.resolveFilename()
