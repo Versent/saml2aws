@@ -28,10 +28,10 @@ var MFAsByProvider = ProviderList{
 	"Ping":       []string{"Auto"},        // automatically detects PingID
 	"PingOne":    []string{"Auto"},        // automatically detects PingID
 	"JumpCloud":  []string{"Auto"},
-	"Okta":       []string{"Auto"},                       // automatically detects DUO, SMS and ToTP
-	"OneLogin":   []string{"Auto", "OLP", "SMS", "TOTP"}, // automatically detects OneLogin Protect, SMS and ToTP
-	"KeyCloak":   []string{"Auto"},                       // automatically detects ToTP
-	"GoogleApps": []string{"Auto"},                       // automatically detects ToTP
+	"Okta":       []string{"Auto", "PUSH", "DUO", "SMS", "TOTP", "OKTA"}, // automatically detects DUO, SMS and ToTP
+	"OneLogin":   []string{"Auto", "OLP", "SMS", "TOTP"},                 // automatically detects OneLogin Protect, SMS and ToTP
+	"KeyCloak":   []string{"Auto"},                                       // automatically detects ToTP
+	"GoogleApps": []string{"Auto"},                                       // automatically detects ToTP
 	"Shibboleth": []string{"Auto"},
 }
 

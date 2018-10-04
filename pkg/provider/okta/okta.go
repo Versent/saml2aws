@@ -46,6 +46,7 @@ var (
 // Client is a wrapper representing a Okta SAML client
 type Client struct {
 	client *provider.HTTPClient
+	mfa    string
 }
 
 // AuthRequest represents an mfa okta request
@@ -76,6 +77,7 @@ func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 
 	return &Client{
 		client: client,
+		mfa:    idpAccount.MFA,
 	}, nil
 }
 
@@ -185,6 +187,15 @@ func verifyMfa(oc *Client, oktaOrgHost string, resp string) (string, error) {
 			mfaOptions = append(mfaOptions, val)
 		} else {
 			mfaOptions = append(mfaOptions, "UNSUPPORTED: "+identifier)
+		}
+	}
+
+	if oc.mfa != "AUTO" {
+		for _, val := range mfaOptions {
+			if strings.HasPrefix(val, oc.mfa) {
+				mfaOptions = []string{val}
+				break
+			}
 		}
 	}
 	if len(mfaOptions) > 1 {
