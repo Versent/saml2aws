@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"net/http/cookiejar"
 	"runtime"
 	"time"
 
 	"github.com/sirupsen/logrus"
+	"github.com/versent/saml2aws/pkg/cookiejar"
 	"github.com/versent/saml2aws/pkg/dump"
 
 	"github.com/briandowns/spinner"
