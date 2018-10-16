@@ -1,12 +1,12 @@
 package jumpcloud
 
 import (
-	"bytes"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
-	"net/url"
+	"regexp"
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
@@ -17,9 +17,34 @@ import (
 	"github.com/versent/saml2aws/pkg/provider"
 )
 
+const (
+	jcSSOBaseURL  = "https://sso.jumpcloud.com/"
+	xsrfURL       = "https://console.jumpcloud.com/userconsole/xsrf"
+	authSubmitURL = "https://console.jumpcloud.com/userconsole/auth"
+)
+
 // Client is a wrapper representing a JumpCloud SAML client
 type Client struct {
 	client *provider.HTTPClient
+}
+
+// XSRF is for unmarshalling the xsrf token in the response
+type XSRF struct {
+	Token string `json:"xsrf"`
+}
+
+// AuthRequest is to be sent to JumpCloud as the auth req body
+type AuthRequest struct {
+	Context    string
+	RedirectTo string
+	Email      string
+	Password   string
+	OTP        string
+}
+
+// JCRedirect is for unmarshalling the redirect address from the response after the auth
+type JCRedirect struct {
+	Address string `json:"redirectTo"`
 }
 
 // New creates a new JumpCloud client
@@ -39,137 +64,125 @@ func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 
 // Authenticate logs into JumpCloud and returns a SAML response
 func (jc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error) {
-	//var prompt = prompter.NewCli()
-
-	var authSubmitURL string
 	var samlAssertion string
-	mfaRequired := false
+	var a AuthRequest
+	re := regexp.MustCompile(jcSSOBaseURL)
 
-	authForm := url.Values{}
-	jumpCloudURL := loginDetails.URL
-
-	res, err := jc.client.Get(jumpCloudURL)
+	// Start by getting the XSRF Token
+	res, err := jc.client.Get(xsrfURL)
 	if err != nil {
-		return samlAssertion, errors.Wrap(err, "error retieving form")
+		return samlAssertion, errors.Wrap(err, "error retieving XSRF Token")
 	}
 
-	doc, err := goquery.NewDocumentFromResponse(res)
+	// Grab the web response that has the xsrf in it
+	xsrfBody, err := ioutil.ReadAll(res.Body)
+
+	// Unmarshall the answer and store the token
+	var x = new(XSRF)
+	err = json.Unmarshal(xsrfBody, &x)
 	if err != nil {
-		return samlAssertion, errors.Wrap(err, "failed to build document from response")
+		log.Fatalf("Error unmarshalling xsrf response! %v", err)
 	}
 
-	doc.Find("input").Each(func(i int, s *goquery.Selection) {
-		updateJumpCloudForm(authForm, s, loginDetails)
-	})
+	// Populate our Auth body for the POST
+	a.Context = "sso"
+	a.RedirectTo = re.ReplaceAllString(loginDetails.URL, "")
+	a.Email = loginDetails.Username
+	a.Password = loginDetails.Password
 
-	doc.Find("form").Each(func(i int, s *goquery.Selection) {
-		action, ok := s.Attr("action")
-		if !ok {
-			return
-		}
-		authSubmitURL = action
-	})
-
-	if authSubmitURL == "" {
-		return samlAssertion, fmt.Errorf("unable to locate IDP authentication form submit URL")
+	authBody, err := json.Marshal(a)
+	if err != nil {
+		return samlAssertion, errors.Wrap(err, "failed to build auth request body")
 	}
 
-	authSubmitURL = fmt.Sprintf("https://sso.jumpcloud.com/%s", authSubmitURL)
-
-	req, err := http.NewRequest("POST", authSubmitURL, strings.NewReader(authForm.Encode()))
+	// Generate our auth request
+	req, err := http.NewRequest("POST", authSubmitURL, strings.NewReader(string(authBody)))
 	if err != nil {
 		return samlAssertion, errors.Wrap(err, "error building authentication request")
 	}
 
-	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	// Add the necessary headers to the auth request
+	req.Header.Add("X-Xsrftoken", x.Token)
+	req.Header.Add("Accept", "application/json")
+	req.Header.Add("Content-Type", "application/json")
 
-	// Temporarily disable following redirects so we can detect MFA.
-	jc.client.DisableFollowRedirect()
 	res, err = jc.client.Do(req)
 	if err != nil {
 		return samlAssertion, errors.Wrap(err, "error retrieving login form")
 	}
 
-	if res.StatusCode == 302 {
-		location, err := res.Location()
+	// Check if we get a 401.  If we did, MFA is required and the OTP was not provided.
+	// Get the OTP and resubmit.
+	if res.StatusCode == 401 {
+		// Get the user's MFA token and re-build the body
+		a.OTP = prompter.StringRequired("MFA Token")
+		authBody, err = json.Marshal(a)
 		if err != nil {
-			return samlAssertion, errors.Wrap(err, "error retrieving redirect location")
+			return samlAssertion, errors.Wrap(err, "error building authentication req body after getting MFA Token")
 		}
 
-		if location.EscapedPath() == "/login/user/mfa" {
-			mfaRequired = true
-		} else {
-			// Just follow the redirect.
-			res, err = jc.client.Get(location.String())
-			if err != nil {
-				return samlAssertion, errors.Wrap(err, "error retrieving SAML response")
-			}
-		}
-	}
-
-	jc.client.EnableFollowRedirect()
-
-	if mfaRequired {
-		token := prompter.StringRequired("MFA Token")
-		authForm.Add("otp", token)
-
-		req, err = http.NewRequest("POST", authSubmitURL, strings.NewReader(authForm.Encode()))
+		// Re-request with our OTP
+		req, err = http.NewRequest("POST", authSubmitURL, strings.NewReader(string(authBody)))
 		if err != nil {
 			return samlAssertion, errors.Wrap(err, "error building MFA authentication request")
 		}
 
-		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+		// Re-add the necessary headers to our remade auth request
+		req.Header.Add("X-Xsrftoken", x.Token)
+		req.Header.Add("Accept", "application/json")
+		req.Header.Add("Content-Type", "application/json")
 
+		// Resubmit
 		res, err = jc.client.Do(req)
 		if err != nil {
 			return samlAssertion, errors.Wrap(err, "error submitting MFA login form")
 		}
 	}
 
-	data, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return samlAssertion, errors.Wrap(err, "error retieving body")
-	}
+	// Check if our auth was successful
+	if res.StatusCode == 200 {
+		// Grab the body from the response that has the redirect in it.
+		reDirBody, err := ioutil.ReadAll(res.Body)
 
-	doc, err = goquery.NewDocumentFromReader(bytes.NewBuffer(data))
-	if err != nil {
-		return samlAssertion, errors.Wrap(err, "error parsing document")
-	}
-
-	doc.Find("input").Each(func(i int, s *goquery.Selection) {
-		name, ok := s.Attr("name")
-		if !ok {
-			log.Fatalf("unable to locate IDP authentication form submit URL")
+		// Unmarshall the body to get the redirect address
+		var jcrd = new(JCRedirect)
+		err = json.Unmarshal(reDirBody, &jcrd)
+		if err != nil {
+			log.Fatalf("Error unmarshalling redirectTo response! %v", err)
 		}
-		if name == "SAMLResponse" {
-			val, ok := s.Attr("value")
+
+		// Send the final GET for our SAML response
+		res, err = jc.client.Get(jcrd.Address)
+		if err != nil {
+			return samlAssertion, errors.Wrap(err, "error submitting request for SAML value")
+		}
+
+		//try to extract SAMLResponse
+		doc, err := goquery.NewDocumentFromReader(res.Body)
+		if err != nil {
+			return samlAssertion, errors.Wrap(err, "error parsing document")
+		}
+
+		doc.Find("input").Each(func(i int, s *goquery.Selection) {
+			name, ok := s.Attr("name")
 			if !ok {
-				log.Fatalf("unable to locate saml assertion value")
+				log.Fatalf("unable to locate IDP authentication form submit URL")
 			}
-			samlAssertion = val
-		}
-	})
+
+			if name == "SAMLResponse" {
+				val, ok := s.Attr("value")
+				if !ok {
+					log.Fatalf("unable to locate saml assertion value")
+				}
+				samlAssertion = val
+			}
+
+		})
+
+	} else {
+		errMsg := fmt.Sprintf("error when trying to auth, status code %d", res.StatusCode)
+		return samlAssertion, errors.Wrap(err, errMsg)
+	}
 
 	return samlAssertion, nil
-}
-
-func updateJumpCloudForm(authForm url.Values, s *goquery.Selection, user *creds.LoginDetails) {
-	name, ok := s.Attr("name")
-	if !ok {
-		return
-	}
-
-	lname := strings.ToLower(name)
-	if strings.Contains(lname, "email") {
-		authForm.Add(name, user.Username)
-	} else if strings.Contains(lname, "password") {
-		authForm.Add(name, user.Password)
-	} else {
-		// pass through any hidden fields
-		val, ok := s.Attr("value")
-		if !ok {
-			return
-		}
-		authForm.Add(name, val)
-	}
 }
