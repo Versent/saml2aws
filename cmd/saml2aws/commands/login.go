@@ -86,7 +86,7 @@ func Login(loginFlags *flags.LoginExecFlags) error {
 
 	role, err := selectAwsRole(samlAssertion, account)
 	if err != nil {
-		return errors.Wrap(err, "Failed to assume role, please check you are permitted to assume the given role for the AWS service")
+		return errors.Wrap(err, "Failed to assume role, please check whether you are permitted to assume the given role for the AWS service")
 	}
 
 	fmt.Println("Selected role:", role.RoleARN)
