@@ -367,8 +367,8 @@ func verifyMfa(oc *Client, oktaOrgHost string, resp string) (string, error) {
 		var token string
 
 		var duoMfaOptions = []string{
-			"Passcode",
 			"Duo Push",
+			"Passcode",
 		}
 
 		duoMfaOption := prompter.Choose("Select a DUO MFA Option", duoMfaOptions)
