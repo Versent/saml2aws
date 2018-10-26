@@ -24,6 +24,7 @@ The process goes something like this:
 - [Install](#install)
     - [OSX](#osx)
     - [Windows](#windows)
+    - [Linux](#linux)
 - [Dependency Setup](#dependency-setup)
 - [Usage](#usage)
     - [`saml2aws script`](#saml2aws-script)
@@ -70,6 +71,19 @@ If you're on Windows you can install saml2aws using chocolatey!
 ```
 choco install saml2aws
 saml2aws --version
+```
+
+### Linux
+
+If you're on linux you will need [Go Tools](https://golang.org/doc/install) (you can check your package maintainer as well) installed and the [Go Lint tool](https://github.com/alecthomas/gometalinter)
+
+Clone this repo to your `$GOPATH/src` directory
+
+Now you can install by running 
+
+```
+make
+make install
 ```
 
 ## Dependency Setup
