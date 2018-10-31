@@ -1,13 +1,11 @@
 package googleapps
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
-	"os"
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
@@ -67,193 +65,42 @@ func (kc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		return "", errors.Wrap(err, "error loading challenge page")
 	}
 
-	// Hacking around a captcha support
-
-	// TODO: insert a check that a captcha exists in this page
-
 	captchaFound := responseDoc.Find("#logincaptcha")
 
-	if captchaFound != nil && captchaFound.Length() > 0 {
-		f, err := os.Create("captcha.html")
-		if err != nil {
-			return "", errors.Wrap(err, "cannot create captcha file on disk")
-		}
-		html, _ := responseDoc.Html()
-		f.WriteString(html)
+	for captchaFound != nil && captchaFound.Length() > 0 {
 
-		//  this has to be improved ...
 		captchaImgDiv := responseDoc.Find(".captcha-img")
 		captchaPictureURL, found := goquery.NewDocumentFromNode(captchaImgDiv.Children().Nodes[0]).Attr("src")
 
 		if !found {
-
+			return "", errors.New("captcha image not found but requested")
 		}
-		fmt.Println("Got a Captcha, open this link in a browser and type here the answer: ", captchaPictureURL)
-		fmt.Println(">")
 
-		reader := bufio.NewReader(os.Stdin)
-		text, _ := reader.ReadString('\n')
+		fmt.Println("Open this link in a browser:\n", captchaPictureURL)
+
+		captcha := prompter.String("Captcha", "")
 
 		captchaForm, captchaURL, err := extractInputsByFormID(responseDoc, "gaia_loginform")
-		captchaForm.Set("Passwd", loginDetails.Password)
-		captchaForm.Set("logincaptcha", text)
-		// gaiaForm := responseDoc.Find("#gaia_loginform")
 
-		responseDoc, err := kc.loadChallengePage(captchaURL+"?hl=en&loc=US", captchaURL, captchaForm)
+		logger.Debugf("captchaURL: %s", captchaURL)
+
+		captchaForm.Set("Passwd", loginDetails.Password)
+		captchaForm.Set("logincaptcha", captcha)
+
+		responseDoc, err = kc.loadChallengePage(captchaURL+"?hl=en&loc=US", captchaURL, captchaForm)
 		if err != nil {
 			return "", errors.Wrap(err, "error loading challenge page")
 		}
 
-		captchaAgain := responseDoc.Find("#logincaptcha")
-
-		if captchaAgain != nil && captchaAgain.Length() > 0 {
-			fmt.Println("found another captcha :-(")
-			return "", errors.Wrap(err, "captcha again")
-		}
-
-		f, _ = os.Create("debug1.html")
-		html, _ = responseDoc.Html()
-		f.WriteString(html)
-
-		fmt.Println("Let be optimistic!!!")
-
-		samlAssertion := mustFindInputByName(responseDoc, "SAMLResponse")
-		if samlAssertion == "" {
-			return "", errors.New("page is missing saml assertion")
-		}
-
-		return samlAssertion, nil
-
-		// on from here
-
-		// req, err := http.NewRequest("POST", captchaURL, strings.NewReader(captchaForm.Encode()))
-		// if err != nil {
-		// 	return "", errors.Wrap(err, "error retrieving login form")
-		// }
-
-		// req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-		// req.Header.Set("Accept-Language", "en-US")
-		// req.Header.Set("Content-Language", "en-US")
-		// req.Header.Set("Referer", passwordURL)
-
-		// res, err := kc.client.Do(req)
-		// if err != nil {
-		// 	return "", errors.Wrap(err, "failed to make request to login form")
-		// }
-
-		// doc, err := goquery.NewDocumentFromReader(res.Body)
-		// if err != nil {
-		// 	return "", errors.Wrap(err, "error parsing login page html document")
-		// }
-
-		// captchaAgain := doc.Find("#logincaptcha")
-
-		// if captchaAgain != nil && captchaAgain.Length() > 0 {
-		// 	fmt.Println("found another captcha :-(")
-		// 	return "", errors.Wrap(err, "captcha again")
-		// }
-
-		// f, err = os.Create("debug1.html")
-		// if err != nil {
-		// 	return "", errors.Wrap(err, "cannot create captcha file on disk")
-		// }
-		// html, _ = doc.Html()
-		// f.WriteString(html)
-
-		// passwordAgainForm, passwordAgainURL, err := extractInputsByFormID(doc, "gaia_loginform")
-		// passwordAgainForm.Set("Passwd", loginDetails.Password)
-
-		// req, err = http.NewRequest("POST", passwordAgainURL, strings.NewReader(passwordAgainForm.Encode()))
-		// if err != nil {
-		// 	return "", errors.Wrap(err, "error retrieving login form")
-		// }
-
-		// req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-		// req.Header.Set("Accept-Language", "en-US")
-		// req.Header.Set("Content-Language", "en-US")
-		// req.Header.Set("Referer", captchaURL)
-
-		// res, err = kc.client.Do(req)
-		// if err != nil {
-		// 	return "", errors.Wrap(err, "failed to make request to login form")
-		// }
-
-		// doc, err = goquery.NewDocumentFromReader(res.Body)
-		// if err != nil {
-		// 	return "", errors.Wrap(err, "error parsing login page html document")
-		// }
-
-		// f, err = os.Create("debug2.html")
-		// if err != nil {
-		// 	return "", errors.Wrap(err, "cannot create captcha file on disk")
-		// }
-		// html, _ = doc.Html()
-		// f.WriteString(html)
-
-		// captchaAgain = doc.Find("#logincaptcha")
-
-		// if captchaAgain != nil && captchaAgain.Length() > 0 {
-		// 	fmt.Println("found another captcha :-(")
-		// 	return "", errors.Wrap(err, "captcha again")
-		// }
-
-		// passwordForm := doc.Find("gaia_loginform")
-
-		// passwordForm.Set("Passwd", loginDetails.Password)
-
-		// req, err = http.NewRequest("POST", captchaURL, strings.NewReader(passwordForm.Encode()))
-		// if err != nil {
-		// 	return "", errors.Wrap(err, "error retrieving login form")
-		// }
-
-		// req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-		// req.Header.Set("Accept-Language", "en-US")
-		// req.Header.Set("Content-Language", "en-US")
-		// req.Header.Set("Referer", captchaURL+"?hl=en&loc=US")
-
-		// res, err = kc.client.Do(req)
-		// if err != nil {
-		// 	return "", errors.Wrap(err, "failed to make request to login form")
-		// }
-
-		// doc, err = goquery.NewDocumentFromReader(res.Body)
-		// if err != nil {
-		// 	return "", errors.Wrap(err, "error parsing login page html document")
-		// }
-
-		// f, err = os.Create("debug2.html")
-		// if err != nil {
-		// 	return "", errors.Wrap(err, "cannot create captcha file on disk")
-		// }
-		// html, _ = doc.Html()
-		// f.WriteString(html)
-
-		// _, _, err = kc.loadLoginPage(passwordURL+"?hl=en&loc=US", captchaURL+"&hl=en&loc=US", passwordForm)
-		// if err != nil {
-		// 	return "", errors.Wrap(err, "error loading login page")
-		// }
-
-		// fmt.Println("END")
-
-		// samlAssertion := mustFindInputByName(samlSomething, "SAMLResponse")
-		// if samlAssertion == "" {
-		// return "", errors.New("page is missing saml assertion")
-		// }
-
-		// return samlAssertion, nil
-	} else {
-
-		// return samlAssertion, nil
-
-		// TODO: this has to be back
-		// extract the saml assertion
-		samlAssertion := mustFindInputByName(responseDoc, "SAMLResponse")
-		if samlAssertion == "" {
-			return "", errors.New("page is missing saml assertion")
-		}
-
-		return samlAssertion, nil
+		captchaFound = responseDoc.Find("#logincaptcha")
 	}
+
+	samlAssertion := mustFindInputByName(responseDoc, "SAMLResponse")
+	if samlAssertion == "" {
+		return "", errors.New("page is missing saml assertion")
+	}
+
+	return samlAssertion, nil
 }
 
 func (kc *Client) loadFirstPage(loginDetails *creds.LoginDetails) (string, url.Values, error) {
