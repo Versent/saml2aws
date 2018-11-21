@@ -2,7 +2,7 @@
 
 
 [[projects]]
-  digest = "1:f8810373a82e746e36ae75d76e979562b19640986c2fc2429e44776c70bd1839"
+  digest = "1:02af1b0c1b08031a940a6c6ad1f55c292c84a7cdd3c435d5c841bcee46819f3d"
   name = "github.com/AlecAivazis/survey"
   packages = ["."]
   pruneopts = "UT"
@@ -35,7 +35,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:45a787c1adea69a03a5384865b307c7a72bb28bd5844bd57679d889a726a588b"
+  digest = "1:315c5f2f60c76d89b871c73f9bd5fe689cad96597afd50fb9992228ef80bdd34"
   name = "github.com/alecthomas/template"
   packages = [
     ".",
@@ -61,7 +61,7 @@
   version = "v1.0.0"
 
 [[projects]]
-  digest = "1:572a558f325deb4f667adda03a0242c4e98a20ddb47b22a89f2b2ba8ddf7aeae"
+  digest = "1:10cdb19adf265e8deb8e62b02e7a8c81117a214fded00d2a07c75c8bb2a02542"
   name = "github.com/aws/aws-sdk-go"
   packages = [
     "aws",
@@ -144,6 +144,21 @@
   version = "v1.37.0"
 
 [[projects]]
+  branch = "master"
+  digest = "1:34cb7d19f5610289f8f9ed202b2bfeaa37390308d59ac5fd6cb82bd187e663b1"
+  name = "github.com/headzoo/surf"
+  packages = [
+    ".",
+    "agent",
+    "browser",
+    "errors",
+    "jar",
+    "util",
+  ]
+  pruneopts = "UT"
+  revision = "a4a8c16c01dc47ef3a25326d21745806f3e6797a"
+
+[[projects]]
   digest = "1:e22af8c7518e1eab6f2eab2b7d7558927f816262586cd6ed9f349c97a6c285c4"
   name = "github.com/jmespath/go-jmespath"
   packages = ["."]
@@ -199,6 +214,22 @@
   version = "v1.0.0"
 
 [[projects]]
+  branch = "master"
+  digest = "1:dbfe572cc258e5bcf54cb650a06d90edd0da04e42ca1ed909cc1d49f00011c63"
+  name = "github.com/robertkrimen/otto"
+  packages = [
+    ".",
+    "ast",
+    "dbg",
+    "file",
+    "parser",
+    "registry",
+    "token",
+  ]
+  pruneopts = "UT"
+  revision = "15f95af6e78dcd2030d8195a138bd88d4f403546"
+
+[[projects]]
   digest = "1:9e9193aa51197513b3abcb108970d831fbcf40ef96aa845c4f03276e1fa316d2"
   name = "github.com/sirupsen/logrus"
   packages = ["."]
@@ -215,7 +246,7 @@
   version = "v0.1.1"
 
 [[projects]]
-  digest = "1:0ce644ed4e959cb140cb8ece625650cdad11499671a00f5878ccd0c38c334010"
+  digest = "1:cf4fdb98e23a565bd82473027d37512a3d5b186fba3a1895d7e8401d8ce3ffe1"
   name = "github.com/stretchr/testify"
   packages = [
     "assert",
@@ -244,7 +275,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:0db47756e69b5d1749fbfc501974538c6885bb9593b62c54736c9de035dbe057"
+  digest = "1:ee04668811bcca0958f730d2595813a8d2561e9a9e68b0387de6362545d9823b"
   name = "golang.org/x/crypto"
   packages = [
     "md4",
@@ -255,7 +286,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:d4c427db92c1d8c0df6c3ba45ce63c10d967dbb31d8bf5a87e16f1714ae370d2"
+  digest = "1:aa1b5903bc0257d88515fdf5025bf42c689605bdf92c249e0c557accdd3652cd"
   name = "golang.org/x/net"
   packages = [
     "html",
@@ -268,7 +299,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:63c79e21224f8c86558234dbadf41df6cd77d9312dc60326129200b84e32d1d6"
+  digest = "1:0d0ca6aa81eb65a52a6e128bddf01753daed51c82550ddd9db9822b272f69f72"
   name = "golang.org/x/sys"
   packages = [
     "unix",
@@ -278,7 +309,7 @@
   revision = "8014b7b116a67fea23fbb82cd834c9ad656ea44b"
 
 [[projects]]
-  digest = "1:7509ba4347d1f8de6ae9be8818b0cd1abc3deeffe28aeaf4be6d4b6b5178d9ca"
+  digest = "1:a2ab62866c75542dd18d2b069fec854577a20211d7c0ea6ae746072a1dccdd18"
   name = "golang.org/x/text"
   packages = [
     "collate",
@@ -301,7 +332,7 @@
   version = "v0.3.0"
 
 [[projects]]
-  digest = "1:7a08a75e5e4fad22b3377922414fbb3449a4a7c868f9da41e8acb2daac40497d"
+  digest = "1:7849dff11be3defef1f33a9e469329f8786afb4649d115d7b2027717fe4eb4eb"
   name = "gopkg.in/AlecAivazis/survey.v1"
   packages = [
     "core",
@@ -319,6 +350,17 @@
   revision = "06f5f3d67269ccec1fe5fe4134ba6e982984f7f5"
   version = "v1.37.0"
 
+[[projects]]
+  digest = "1:9935525a8c49b8434a0b0a54e1980e94a6fae73aaff45c5d33ba8dff69de123e"
+  name = "gopkg.in/sourcemap.v1"
+  packages = [
+    ".",
+    "base64vlq",
+  ]
+  pruneopts = "UT"
+  revision = "6e83acea0053641eff084973fee085f0c193c61a"
+  version = "v1.0.5"
+
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
@@ -334,8 +376,11 @@
     "github.com/beevik/etree",
     "github.com/briandowns/spinner",
     "github.com/danieljoos/wincred",
+    "github.com/headzoo/surf",
+    "github.com/headzoo/surf/browser",
     "github.com/mitchellh/go-homedir",
     "github.com/pkg/errors",
+    "github.com/robertkrimen/otto",
     "github.com/sirupsen/logrus",
     "github.com/stretchr/testify/assert",
     "github.com/stretchr/testify/mock",
