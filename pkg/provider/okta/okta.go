@@ -128,7 +128,7 @@ func (oc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 
 	// mfa required
 	if authStatus == "MFA_REQUIRED" {
-		oktaSessionToken, err = verifyMfa(oc, oktaOrgHost, resp)
+		oktaSessionToken, err = verifyMfa(oc, oktaOrgHost, loginDetails, resp)
 		if err != nil {
 			return samlAssertion, errors.Wrap(err, "error verifying MFA")
 		}
@@ -174,7 +174,7 @@ func parseMfaIdentifer(json string, arrayPosition int) string {
 	return fmt.Sprintf("%s %s", mfaProvider, factorType)
 }
 
-func verifyMfa(oc *Client, oktaOrgHost string, resp string) (string, error) {
+func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails, resp string) (string, error) {
 
 	stateToken := gjson.Get(resp, "stateToken").String()
 
@@ -371,7 +371,15 @@ func verifyMfa(oc *Client, oktaOrgHost string, resp string) (string, error) {
 			"Passcode",
 		}
 
-		duoMfaOption := prompter.Choose("Select a DUO MFA Option", duoMfaOptions)
+		duoMfaOption := 0
+
+		if loginDetails.DuoMFAOption == "Duo Push" {
+			duoMfaOption = 0
+		} else if loginDetails.DuoMFAOption == "Passcode" {
+			duoMfaOption = 1
+		} else {
+			duoMfaOption = prompter.Choose("Select a DUO MFA Option", duoMfaOptions)
+		}
 
 		if duoMfaOptions[duoMfaOption] == "Passcode" {
 			//get users DUO MFA Token
