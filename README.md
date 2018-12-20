@@ -16,7 +16,19 @@ The process goes something like this:
 
 ## Table of Contents
 
-<!-- TOC depthFrom:2 -->autoauto- [Table of Contents](#table-of-contents)auto- [Requirements](#requirements)auto- [Caveats](#caveats)auto- [Install](#install)auto    - [OSX](#osx)auto    - [Windows](#windows)auto- [Dependency Setup](#dependency-setup)auto- [Usage](#usage)auto    - [`saml2aws script`](#saml2aws-script)auto    - [Configuring IDP Accounts](#configuring-idp-accounts)auto- [Example](#example)auto- [Building](#building)auto- [Environment vars](#environment-vars)autoauto<!-- /TOC -->
+- [Table of Contents](#table-of-contents)
+- [Requirements](#requirements)
+- [Caveats](#caveats)
+- [Install](#install)
+    - [OSX](#osx)
+    - [Windows](#windows)
+- [Dependency Setup](#dependency-setup)
+- [Usage](#usage)
+    - [`saml2aws script`](#saml2aws-script)
+    - [Configuring IDP Accounts](#configuring-idp-accounts)
+- [Example](#example)
+- [Building](#building)
+- [Environment vars](#environment-vars)
 
 ## Requirements
 
