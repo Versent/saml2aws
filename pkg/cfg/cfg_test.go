@@ -36,37 +36,13 @@ func TestNewConfigManagerLoad(t *testing.T) {
 		Profile:              "saml",
 	}, idpAccount)
 
-	idpAccount, err = cfgm.LoadIDPAccount("test1234")
+	idpAccount, err = cfgm.LoadIDPAccount("")
 	require.Nil(t, err)
 	require.Equal(t, &IDPAccount{
 		AmazonWebservicesURN: DefaultAmazonWebservicesURN,
 		SessionDuration:      3600,
 		Profile:              "saml",
 	}, idpAccount)
-}
-
-func TestNewConfigManagerLoadVerify(t *testing.T) {
-
-	cfgm, err := NewConfigManager("example/saml2aws.ini")
-	require.Nil(t, err)
-
-	require.NotNil(t, cfgm)
-
-	idpAccount, err := cfgm.LoadVerifyIDPAccount("test123")
-	require.Nil(t, err)
-	require.Equal(t, &IDPAccount{
-		URL:                  "https://id.whatever.com",
-		Username:             "abc@whatever.com",
-		Provider:             "keycloak",
-		MFA:                  "sms",
-		AmazonWebservicesURN: DefaultAmazonWebservicesURN,
-		SessionDuration:      3600,
-		Profile:              "saml",
-	}, idpAccount)
-
-	idpAccount, err = cfgm.LoadVerifyIDPAccount("test1234")
-	require.Equal(t, ErrIdpAccountNotFound, err)
-	require.Nil(t, idpAccount)
 }
 
 func TestNewConfigManagerSave(t *testing.T) {
@@ -82,7 +58,7 @@ func TestNewConfigManagerSave(t *testing.T) {
 		Profile:  "saml",
 	})
 	require.Nil(t, err)
-	idpAccount, err := cfgm.LoadVerifyIDPAccount("testing2")
+	idpAccount, err := cfgm.LoadIDPAccount("testing2")
 	require.Nil(t, err)
 	require.Equal(t, &IDPAccount{
 		URL:                  "https://id.whatever.com",
