@@ -87,7 +87,7 @@ func PromptForAWSRoleSelection(accounts []*AWSAccount) (*AWSRole, error) {
 
 	for _, account := range accounts {
 		for _, role := range account.Roles {
-			name := fmt.Sprintf("%s / %s", role.Name, account.Name)
+			name := fmt.Sprintf("%s / %s", account.Name, role.Name)
 			roles[name] = role
 			roleOptions = append(roleOptions, name)
 		}
