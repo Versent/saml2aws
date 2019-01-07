@@ -86,6 +86,9 @@ func (ac *Client) follow(ctx context.Context, req *http.Request) (string, error)
 	} else if docIsFormRedirect(doc) {
 		logger.WithField("type", "form-redirect").Debug("doc detect")
 		handler = ac.handleFormRedirect
+	} else if docIsWebAuthn(doc) {
+		logger.WithField("type", "webauthn").Debug("doc detect")
+		handler = ac.handleWebAuthn
 	}
 	if handler == nil {
 		html, _ := doc.Selection.Html()
@@ -189,6 +192,16 @@ func (ac *Client) handleFormRedirect(ctx context.Context, doc *goquery.Document)
 	return ctx, req, err
 }
 
+func (ac *Client) handleWebAuthn(ctx context.Context, doc *goquery.Document) (context.Context, *http.Request, error) {
+	form, err := page.NewFormFromDocument(doc, "")
+	if err != nil {
+		return ctx, nil, errors.Wrap(err, "error extracting webauthn form")
+	}
+	form.Values.Set("isWebAuthnSupportedByBrowser", "false")
+	req, err := form.BuildRequest()
+	return ctx, req, err
+}
+
 func docIsLogin(doc *goquery.Document) bool {
 	return doc.Has("input[name=\"pf.pass\"]").Size() == 1
 }
@@ -203,6 +216,10 @@ func docIsSwipe(doc *goquery.Document) bool {
 
 func docIsFormRedirect(doc *goquery.Document) bool {
 	return doc.Has("input[name=\"ppm_request\"]").Size() == 1
+}
+
+func docIsWebAuthn(doc *goquery.Document) bool {
+	return doc.Has("input[name=\"isWebAuthnSupportedByBrowser\"]").Size() == 1
 }
 
 func extractSAMLResponse(doc *goquery.Document) (v string, ok bool) {
