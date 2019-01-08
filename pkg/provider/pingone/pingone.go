@@ -1,27 +1,31 @@
 package pingone
 
 import (
+	"context"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/url"
-	"strings"
+	"time"
+	"encoding/base64"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+	"github.com/tidwall/gjson"
 	"github.com/versent/saml2aws/pkg/cfg"
 	"github.com/versent/saml2aws/pkg/creds"
+	"github.com/versent/saml2aws/pkg/page"
 	"github.com/versent/saml2aws/pkg/prompter"
 	"github.com/versent/saml2aws/pkg/provider"
 )
 
 var logger = logrus.WithField("provider", "pingone")
 
-// Client wrapper around PingOne + PingID enabling authentication and retrieval of assertions
+// Client wrapper around PingOne + PingId enabling authentication and retrieval of assertions
 type Client struct {
-	client        *provider.HTTPClient
-	idpAccount    *cfg.IDPAccount
-	lastAccessUrl *url.URL
+	client     *provider.HTTPClient
+	idpAccount *cfg.IDPAccount
 }
 
 // New create a new PingOne client
@@ -34,430 +38,226 @@ func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 		return nil, errors.Wrap(err, "error building http client")
 	}
 
-	//disable default behaviour to follow redirects as we use this to detect mfa
-	client.DisableFollowRedirect()
+	// assign a response validator to ensure all responses are either success or a redirect
+	// this is to avoid have explicit checks for every single response
+	client.CheckResponseStatus = provider.SuccessOrRedirectResponseValidator
 
 	return &Client{
 		client:     client,
 		idpAccount: idpAccount,
-		//mfaRequired: false,
 	}, nil
 }
 
-func (ac *Client) EnableFollowRedirect() {
-	ac.client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
-		ac.lastAccessUrl = req.URL
-		return nil
-	}
-}
+type ctxKey string
 
 // Authenticate Authenticate to PingOne and return the data from the body of the SAML assertion.
 func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error) {
-
-	// Access to PingOne
-	authSubmitURL, authForm, err := ac.getLoginForm(loginDetails)
+	req, err := http.NewRequest("GET", loginDetails.URL, nil)
 	if err != nil {
-		return "", errors.Wrap(err, "error retrieving login form")
+		return "", errors.Wrap(err, "error building request")
 	}
+	ctx := context.WithValue(context.Background(), ctxKey("login"), loginDetails)
+	return ac.follow(ctx, req)
+}
 
-	// Access to PingFederate
-	req, err := http.NewRequest("POST", authSubmitURL, strings.NewReader(authForm.Encode()))
-	if err != nil {
-		return "", errors.Wrap(err, "error building authentication request")
-	}
-
-	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-
+func (ac *Client) follow(ctx context.Context, req *http.Request) (string, error) {
 	res, err := ac.client.Do(req)
 	if err != nil {
-		return "", errors.Wrap(err, "error retrieving login form")
+		return "", errors.Wrap(err, "error following")
 	}
 
-	// parse form for action(url), SAMLREquest, RelayState
 	doc, err := goquery.NewDocumentFromResponse(res)
-	if err != nil {
-		return "", errors.Wrap(err, "error parsing document")
-	}
-
-	postUrl, formData, err := parseSAMLResponseForm(doc)
-	if err != nil {
-		return "", errors.Wrap(err, "error parse SAMLResponse form")
-	}
-
-	// Redirect from PingFederate to PingOne
-	ac.client.DisableFollowRedirect()
-
-	req, err = http.NewRequest("POST", postUrl, strings.NewReader(formData.Encode()))
-	if err != nil {
-		return "", errors.Wrap(err, "error building authentication request to PingOne")
-	}
-	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-
-	res, err = ac.client.Do(req)
-	if err != nil {
-		return "", errors.Wrap(err, "error retrieving login form")
-	}
-
-	// parse form for action(url), ppm_request, etc
-	doc, err = goquery.NewDocumentFromResponse(res)
-	if err != nil {
-		return "", errors.Wrap(err, "error parsing document")
-	}
-	postUrl, formData, err = parsePpmRequestForm(doc)
-	if err != nil {
-		return "", errors.Wrap(err, "error parse ppm_request form")
-	}
-
-	// post to /pingid/ppm/auth
-	res, err = ac.client.PostForm(postUrl, formData)
-	if err != nil {
-		return "", errors.Wrap(err, "error retrieving login form")
-	}
-
-	//extract form action and jwt token
-	form, actionURL, err := extractFormData(res)
-	if err != nil {
-		return "", errors.Wrap(err, "error extracting mfa form data")
-	}
-
-	//request mfa auth via PingId (device swipe) /pingid/ppm/auth/poll
-	req, err = http.NewRequest("POST", actionURL, strings.NewReader(form.Encode()))
-	if err != nil {
-		return "", errors.Wrap(err, "error building mfa authentication request")
-	}
-
-	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-	res, err = ac.client.Do(req)
-	if err != nil {
-		return "", errors.Wrap(err, "error retrieving mfa response")
-	}
-
-	doc, err = goquery.NewDocumentFromResponse(res)
 	if err != nil {
 		return "", errors.Wrap(err, "failed to build document from response")
 	}
 
-	//extract form action and csrf token
-	form, actionURL, err = extractMfaFormData(doc)
+	var handler func(context.Context, *goquery.Document, *http.Response) (context.Context, *http.Request, error)
+
+	if docIsFormRedirectToAWS(doc) {
+		logger.WithField("type", "saml-response-to-aws").Debug("doc detect")
+		if samlResponse, ok := extractSAMLResponse(doc); ok {
+			decodedSamlResponse, err := base64.StdEncoding.DecodeString(samlResponse)
+			if err != nil {
+				return "", errors.Wrap(err, "failed to decode saml-response")
+			}
+			logger.WithField("type", "saml-response").WithField("saml-response", string(decodedSamlResponse)).Debug("doc detect")
+			return samlResponse, nil
+		}
+	} else if docIsFormSamlRequest(doc) {
+		logger.WithField("type", "saml-request").Debug("doc detect")
+		handler = ac.handleFormRedirect
+	} else if docIsFormResume(doc) {
+		logger.WithField("type", "resume").Debug("doc detect")
+		handler = ac.handleFormRedirect
+	} else if docIsLogin(doc) {
+		logger.WithField("type", "login").Debug("doc detect")
+		handler = ac.handleLogin
+	} else if docIsOTP(doc) {
+		logger.WithField("type", "otp").Debug("doc detect")
+		handler = ac.handleOTP
+	} else if docIsSwipe(doc) {
+		logger.WithField("type", "swipe").Debug("doc detect")
+		handler = ac.handleSwipe
+	} else if docIsFormRedirect(doc) {
+		logger.WithField("type", "form-redirect").Debug("doc detect")
+		handler = ac.handleFormRedirect
+	}
+	if handler == nil {
+		html, _ := doc.Selection.Html()
+		logger.WithField("doc", html).Debug("Unknown document type")
+		return "", fmt.Errorf("Unknown document type")
+	}
+
+	ctx, req, err = handler(ctx, doc, res)
 	if err != nil {
-		return "", errors.Wrap(err, "error extracting authentication form")
+		return "", err
 	}
+	return ac.follow(ctx, req)
+}
 
-	logger.WithField("actionURL", actionURL).WithField("form", form).Debug("extract mfa form")
-
-	//contine mfa auth with csrf token
-	req, err = http.NewRequest("POST", actionURL, strings.NewReader(form.Encode()))
-	if err != nil {
-		return "", errors.Wrap(err, "error building authentication request")
-	}
-
-	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-
-	// accept mfa
-	res, err = ac.client.Do(req)
-	if err != nil {
-		return "", errors.Wrap(err, "error polling mfa device")
-	}
-
-	//user has disabled swipe
-	if strings.Contains(actionURL, "/pingid/ppm/auth/otp") {
-		token := prompter.StringRequired("Enter passcode")
-
-		//build request
-		otpReq := url.Values{}
-		otpReq.Add("otp", token)
-		otpReq.Add("message", "")
-
-		//submit otp
-		req, err = http.NewRequest("POST", actionURL, strings.NewReader(otpReq.Encode()))
-		if err != nil {
-			return "", errors.Wrap(err, "error building authentication request")
-		}
-
-		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-
-		res, err = ac.client.Do(req)
-		if err != nil {
-			return "", errors.Wrap(err, "error polling mfa device")
-		}
-
-		//extract form action and jwt token
-		form, actionURL, err = extractFormData(res)
-		if err != nil {
-			return "", errors.Wrap(err, "error extracting mfa form data")
-		}
-
-		//pass PingId auth back to pingfed
-		req, err = http.NewRequest("POST", actionURL, strings.NewReader(form.Encode()))
-		if err != nil {
-			return "", errors.Wrap(err, "error building authentication request")
-		}
-
-		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-
-		res, err = ac.client.Do(req)
-		if err != nil {
-			return "", errors.Wrap(err, "error authenticating mfa")
-		}
-
-	}
-
-	//try to extract SAMLResponse
-	doc, err = goquery.NewDocumentFromResponse(res)
-	if err != nil {
-		return "", errors.Wrap(err, "error parsing document")
-	}
-
-	var ok bool
-
-	samlAssertion, ok := doc.Find("input[name=\"SAMLResponse\"]").Attr("value")
+func (ac *Client) handleLogin(ctx context.Context, doc *goquery.Document, res *http.Response) (context.Context, *http.Request, error) {
+	loginDetails, ok := ctx.Value(ctxKey("login")).(*creds.LoginDetails)
 	if !ok {
-		return "", errors.Wrap(err, "unable to locate saml response")
+		return ctx, nil, fmt.Errorf("no context value for 'login'")
 	}
 
-	logger.WithField("samlAssertion", samlAssertion).Debug("SAMLResponse")
+	form, err := page.NewFormFromDocument(doc, "form")
+	if err != nil {
+		return ctx, nil, errors.Wrap(err, "error extracting login form")
+	}
 
-	return samlAssertion, nil
+	baseURL := makeBaseURL(res.Request.URL)
+	logger.WithField("baseURL", baseURL).Debug("base url")
+
+	form.Values.Set("pf.username", loginDetails.Username)
+	form.Values.Set("pf.pass", loginDetails.Password)
+	form.URL = makeAbsoluteURL(form.URL, baseURL)
+
+	req, err := form.BuildRequest()
+	return ctx, req, err
 }
 
-func (ac *Client) getLoginForm(loginDetails *creds.LoginDetails) (string, url.Values, error) {
-
-	// request to PingOne
-	res, err := ac.client.Get(loginDetails.URL)
+func (ac *Client) handleOTP(ctx context.Context, doc *goquery.Document, _ *http.Response) (context.Context, *http.Request, error) {
+	form, err := page.NewFormFromDocument(doc, "#otp-form")
 	if err != nil {
-		return "", nil, errors.Wrap(err, "error retrieving AuthnRequest form")
+		return ctx, nil, errors.Wrap(err, "error extracting OTP form")
 	}
 
-	// parse form for action(url), SAMLRequest, RelayState
-	doc, err := goquery.NewDocumentFromReader(res.Body)
-	if err != nil {
-		return "", nil, errors.Wrap(err, "error parsing document")
-	}
-
-	postUrl, formData, err := parseSAMLRequestForm(doc)
-	if err != nil {
-		return "", nil, errors.Wrap(err, "error parse SAMLRequest form")
-	}
-
-	// AuthnRequest to PingFederate
-	ac.EnableFollowRedirect()
-	res, err = ac.client.PostForm(postUrl, formData)
-	if err != nil {
-		return "", nil, errors.Wrap(err, "error retrieving login form")
-	}
-
-	// 401 Unauthorized -> refresh same page with cookie
-	res, err = ac.client.Get(ac.lastAccessUrl.String())
-	if err != nil {
-		return "", nil, errors.Wrap(err, "error refresh same page")
-	}
-
-	// Get login form
-	doc, err = goquery.NewDocumentFromResponse(res)
-	if err != nil {
-		return "", nil, errors.Wrap(err, "failed to build document from response")
-	}
-
-	doc.Find("input").Each(func(i int, s *goquery.Selection) {
-		updateLoginFormData(formData, s, loginDetails)
-	})
-
-	formAction := ""
-
-	doc.Find("form").Each(func(i int, s *goquery.Selection) {
-		action, ok := s.Attr("action")
-		if !ok {
-			return
-		}
-		formAction = action
-	})
-
-	if formAction == "" {
-		return "", nil, fmt.Errorf("unable to locate IDP authentication form submit URL")
-	}
-
-	authSubmitURL, err := url.Parse(formAction)
-	if err != nil {
-		return "", nil, fmt.Errorf("unable parse form action")
-	}
-
-	if !authSubmitURL.IsAbs() {
-		authSubmitURL.Scheme = ac.lastAccessUrl.Scheme
-		authSubmitURL.Host = ac.lastAccessUrl.Host
-	}
-
-	return authSubmitURL.String(), formData, nil
+	token := prompter.StringRequired("Enter passcode")
+	form.Values.Set("otp", token)
+	req, err := form.BuildRequest()
+	return ctx, req, err
 }
 
-func parseSAMLRequestForm(doc *goquery.Document) (string, url.Values, error) {
-
-	formSelection := doc.Find("form")
-	postUrl, exists := formSelection.Attr("action")
-	if !exists {
-		return "", nil, fmt.Errorf("error parsing form")
-	}
-
-	formData := url.Values{}
-	samlRequest, exists := formSelection.Find("input[name=\"SAMLRequest\"]").Attr("value")
-	if !exists {
-		return "", nil, fmt.Errorf("error SAMLRequest not found")
-	}
-	formData.Add("SAMLRequest", samlRequest)
-
-	relayState, exists := formSelection.Find("input[name=\"RelayState\"]").Attr("value")
-	if !exists {
-		return "", nil, fmt.Errorf("error RelayState not found")
-	}
-	formData.Add("RelayState", relayState)
-
-	logger.WithField("url", postUrl).WithField("SAMLRequest", samlRequest).WithField("RelayState", relayState).Debug("SAMLRequest")
-
-	return postUrl, formData, nil
-}
-
-func parseSAMLResponseForm(doc *goquery.Document) (string, url.Values, error) {
-
-	formSelection := doc.Find("form")
-	postUrl, exists := formSelection.Attr("action")
-	if !exists {
-		return "", nil, fmt.Errorf("error parsing form")
-	}
-
-	formData := url.Values{}
-	samlRequest, exists := formSelection.Find("input[name=\"SAMLResponse\"]").Attr("value")
-	if !exists {
-		return "", nil, fmt.Errorf("error SAMLResponse not found")
-	}
-	formData.Add("SAMLResponse", samlRequest)
-
-	relayState, exists := formSelection.Find("input[name=\"RelayState\"]").Attr("value")
-	if !exists {
-		return "", nil, fmt.Errorf("error RelayState not found")
-	}
-	formData.Add("RelayState", relayState)
-
-	logger.WithField("url", postUrl).WithField("SAMLResponse", samlRequest).WithField("RelayState", relayState).Debug("SAMLResponse")
-
-	return postUrl, formData, nil
-}
-
-func parsePpmRequestForm(doc *goquery.Document) (string, url.Values, error) {
-
-	formSelection := doc.Find("form")
-	postUrl, exists := formSelection.Attr("action")
-	if !exists {
-		return "", nil, fmt.Errorf("error parsing form")
-	}
-
-	formData := url.Values{}
-	ppmRequest, exists := formSelection.Find("input[name=\"ppm_request\"]").Attr("value")
-	if !exists {
-		return "", nil, fmt.Errorf("error ppm_request not found")
-	}
-	formData.Add("ppm_request", ppmRequest)
-
-	iss, exists := formSelection.Find("input[name=\"iss\"]").Attr("value")
-	if !exists {
-		return "", nil, fmt.Errorf("error iss not found")
-	}
-	formData.Add("iss", iss)
-
-	idpAccountId, exists := formSelection.Find("input[name=\"idp_account_id\"]").Attr("value")
-	if !exists {
-		return "", nil, fmt.Errorf("error idp_account_id not found")
-	}
-	formData.Add("idp_account_id", idpAccountId)
-
-	userAgentId, exists := formSelection.Find("input[name=\"userAgentId\"]").Attr("value")
-	if !exists {
-		return "", nil, fmt.Errorf("error userAgentId not found")
-	}
-	formData.Add("userAgentId", userAgentId)
-
-	logger.WithField("postUrl", postUrl).WithField("ppm_request", ppmRequest).WithField("iss", iss).WithField("idp_account_id", idpAccountId).WithField("userAgentId", userAgentId).Debug("ppm_request")
-
-	return postUrl, formData, nil
-}
-
-func updateLoginFormData(authForm url.Values, s *goquery.Selection, user *creds.LoginDetails) {
-	name, ok := s.Attr("name")
-	//	log.Printf("name = %s ok = %v", name, ok)
-	if !ok {
-		return
-	}
-	lname := strings.ToLower(name)
-	if strings.Contains(lname, "pf.username") {
-		authForm.Add(name, user.Username)
-	} else if strings.Contains(lname, "pf.pass") {
-		authForm.Add(name, user.Password)
-	} else {
-		// pass through any hidden fields
-		val, ok := s.Attr("value")
-		if !ok {
-			return
-		}
-		authForm.Add(name, val)
-	}
-}
-
-func extractFormData(res *http.Response) (url.Values, string, error) {
-	formData := url.Values{}
-	var actionURL string
-
-	doc, err := goquery.NewDocumentFromResponse(res)
+func (ac *Client) handleSwipe(ctx context.Context, doc *goquery.Document, _ *http.Response) (context.Context, *http.Request, error) {
+	form, err := page.NewFormFromDocument(doc, "#form1")
 	if err != nil {
-		return formData, actionURL, errors.Wrap(err, "failed to build document from response")
+		return ctx, nil, errors.Wrap(err, "error extracting swipe status form")
 	}
 
-	//get action url
-	doc.Find("form[method=\"POST\"]").Each(func(i int, s *goquery.Selection) {
-		action, ok := s.Attr("action")
-		if !ok {
-			return
-		}
-		actionURL = action
-	})
+	// poll status. request must specifically be a GET
+	form.Method = "GET"
+	req, err := form.BuildRequest()
+	if err != nil {
+		return ctx, nil, err
+	}
 
-	// extract form data to passthrough
-	doc.Find("form[method=\"POST\"] > input").Each(func(i int, s *goquery.Selection) {
-		name, ok := s.Attr("name")
-		if !ok {
-			return
-		}
-		val, ok := s.Attr("value")
-		if !ok {
-			return
-		}
-		formData.Add(name, val)
-	})
+	for {
+		time.Sleep(3 * time.Second)
 
-	return formData, actionURL, nil
+		res, err := ac.client.Do(req)
+		if err != nil {
+			return ctx, nil, errors.Wrap(err, "error polling swipe status")
+		}
+
+		body, err := ioutil.ReadAll(res.Body)
+		if err != nil {
+			return ctx, nil, errors.Wrap(err, "error parsing body from swipe status response")
+		}
+
+		resp := string(body)
+
+		pingfedMFAStatusResponse := gjson.Get(resp, "status").String()
+
+		//ASYNC_AUTH_WAIT indicates we keep going
+		//OK indicates someone swiped
+		//DEVICE_CLAIM_TIMEOUT indicates nobody swiped
+		//otherwise loop forever?
+
+		if pingfedMFAStatusResponse == "OK" || pingfedMFAStatusResponse == "DEVICE_CLAIM_TIMEOUT" || pingfedMFAStatusResponse == "TIMEOUT" {
+			break
+		}
+	}
+
+	// now build a request for getting response of MFA
+	form, err = page.NewFormFromDocument(doc, "#reponseView")
+	if err != nil {
+		return ctx, nil, errors.Wrap(err, "error extracting swipe response form")
+	}
+	req, err = form.BuildRequest()
+	return ctx, req, err
 }
 
-func extractMfaFormData(doc *goquery.Document) (url.Values, string, error) {
-	formData := url.Values{}
-	var actionURL string
-	//get action url
-	doc.Find("#form1").Each(func(i int, s *goquery.Selection) {
-		action, ok := s.Attr("action")
-		if !ok {
-			return
-		}
-		actionURL = action
-	})
-
-	// extract form data to passthrough
-	doc.Find("#form1 > input").Each(func(i int, s *goquery.Selection) {
-		name, ok := s.Attr("name")
-		if !ok {
-			return
-		}
-		val, ok := s.Attr("value")
-		if !ok {
-			return
-		}
-		formData.Add(name, val)
-	})
-
-	return formData, actionURL, nil
+func (ac *Client) handleFormRedirect(ctx context.Context, doc *goquery.Document, _ *http.Response) (context.Context, *http.Request, error) {
+	form, err := page.NewFormFromDocument(doc, "")
+	if err != nil {
+		return ctx, nil, errors.Wrap(err, "error extracting redirect form")
+	}
+	req, err := form.BuildRequest()
+	return ctx, req, err
 }
+
+func (ac *Client) handleFormSamlRequest(ctx context.Context, doc *goquery.Document, _ *http.Response) (context.Context, *http.Request, error) {
+	form, err := page.NewFormFromDocument(doc, "")
+	if err != nil {
+		return ctx, nil, errors.Wrap(err, "error extracting samlrequest form")
+	}
+	req, err := form.BuildRequest()
+	return ctx, req, err
+}
+
+func docIsLogin(doc *goquery.Document) bool {
+	return doc.Has("input[name=\"pf.pass\"]").Size() == 1
+}
+
+func docIsOTP(doc *goquery.Document) bool {
+	return doc.Has("form#otp-form").Size() == 1
+}
+
+func docIsSwipe(doc *goquery.Document) bool {
+	return doc.Has("form#form1").Size() == 1 && doc.Has("form#reponseView").Size() == 1
+}
+
+func docIsFormRedirect(doc *goquery.Document) bool {
+	return doc.Has("input[name=\"ppm_request\"]").Size() == 1
+}
+
+func docIsFormSamlRequest(doc *goquery.Document) bool {
+	return doc.Find("input[name=\"SAMLRequest\"]").Size() == 1
+}
+
+func docIsFormResume(doc *goquery.Document) bool {
+	return doc.Find("input[name=\"RelayState\"]").Size() == 1
+}
+
+func docIsFormRedirectToAWS(doc *goquery.Document) bool {
+	return doc.Find("form[action=\"https://signin.aws.amazon.com/saml\"]").Size() == 1
+}
+
+func extractSAMLResponse(doc *goquery.Document) (v string, ok bool) {
+	return doc.Find("input[name=\"SAMLResponse\"]").Attr("value")
+}
+
+func makeBaseURL(url *url.URL) string {
+	return url.Scheme + "://" + url.Hostname()
+}
+
+// ensures given url is an absolute URL. if not, it will be combined with the base URL
+func makeAbsoluteURL(v string, base string) string {
+	logger.WithField("base", base).WithField("v", v).Debug("make absolute url")
+	if u, err := url.ParseRequestURI(v); err == nil && !u.IsAbs() {
+		return fmt.Sprintf("%s%s", base, v)
+	}
+	return v
+}
+
