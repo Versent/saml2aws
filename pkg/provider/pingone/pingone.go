@@ -22,13 +22,13 @@ import (
 
 var logger = logrus.WithField("provider", "pingone")
 
-// Client wrapper around PingFed + PingId enabling authentication and retrieval of assertions
+// Client wrapper around PingOne + PingId enabling authentication and retrieval of assertions
 type Client struct {
 	client     *provider.HTTPClient
 	idpAccount *cfg.IDPAccount
 }
 
-// New create a new PingFed client
+// New create a new PingOne client
 func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 
 	tr := provider.NewDefaultTransport(idpAccount.SkipVerify)
@@ -50,7 +50,7 @@ func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 
 type ctxKey string
 
-// Authenticate Authenticate to PingFed and return the data from the body of the SAML assertion.
+// Authenticate Authenticate to PingOne and return the data from the body of the SAML assertion.
 func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error) {
 	req, err := http.NewRequest("GET", loginDetails.URL, nil)
 	if err != nil {
