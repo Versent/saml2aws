@@ -92,6 +92,9 @@ func (ac *Client) follow(ctx context.Context, req *http.Request) (string, error)
 	} else if docIsLogin(doc) {
 		logger.WithField("type", "login").Debug("doc detect")
 		handler = ac.handleLogin
+	} else if docIsCheckWebAuthn(doc) {
+		logger.WithField("type", "check-webauthn").Debug("doc detect")
+		handler = ac.handleCheckWebAuthn
 	} else if docIsOTP(doc) {
 		logger.WithField("type", "otp").Debug("doc detect")
 		handler = ac.handleOTP
@@ -132,6 +135,18 @@ func (ac *Client) handleLogin(ctx context.Context, doc *goquery.Document, res *h
 	form.Values.Set("pf.username", loginDetails.Username)
 	form.Values.Set("pf.pass", loginDetails.Password)
 	form.URL = makeAbsoluteURL(form.URL, baseURL)
+
+	req, err := form.BuildRequest()
+	return ctx, req, err
+}
+
+func (ac *Client) handleCheckWebAuthn(ctx context.Context, doc *goquery.Document, res *http.Response) (context.Context, *http.Request, error) {
+	form, err := page.NewFormFromDocument(doc, "form")
+	if err != nil {
+		return ctx, nil, errors.Wrap(err, "error extracting login form")
+	}
+
+	form.Values.Set("isWebAuthnSupportedByBrowser", "false")
 
 	req, err := form.BuildRequest()
 	return ctx, req, err
@@ -222,6 +237,10 @@ func docIsLogin(doc *goquery.Document) bool {
 
 func docIsOTP(doc *goquery.Document) bool {
 	return doc.Has("form#otp-form").Size() == 1
+}
+
+func docIsCheckWebAuthn(doc *goquery.Document) bool {
+	return doc.Has("input[name=\"isWebAuthnSupportedByBrowser\"]").Size() == 1
 }
 
 func docIsSwipe(doc *goquery.Document) bool {
