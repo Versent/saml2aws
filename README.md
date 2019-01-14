@@ -43,6 +43,7 @@ The process goes something like this:
   * KeyCloak + (TOTP)
   * [Google Apps](pkg/provider/googleapps/README.md)
   * [Shibboleth](pkg/provider/shibboleth/README.md)
+  * [PSU](pkg/provider/psu/README.md)
 * AWS SAML Provider configured
 
 ## Caveats
@@ -92,29 +93,37 @@ Flags:
                                and --help-man).
       --version                Show application version.
       --verbose                Enable verbose logging
-  -i, --provider=PROVIDER      This flag it is obsolete see
-                               https://github.com/Versent/saml2aws#adding-idp-accounts.
-  -a, --idp-account="default"  The name of the configured IDP account
-      --idp-provider=IDP-PROVIDER
-                               The configured IDP provider
-      --mfa=MFA                The name of the mfa
+  -i, --provider=PROVIDER      This flag is obsolete. See:
+                               https://github.com/Versent/saml2aws#configuring-idp-accounts
+  -a, --idp-account="default"  The name of the configured IDP account. (env:
+                               SAML2AWS_IDP_ACCOUNT)
+      --idp-provider=IDP-PROVIDER  
+                               The configured IDP provider. (env:
+                               SAML2AWS_IDP_PROVIDER)
+      --mfa=MFA                The name of the mfa. (env: SAML2AWS_MFA)
   -s, --skip-verify            Skip verification of server certificate.
       --url=URL                The URL of the SAML IDP server used to login.
-      --username=USERNAME      The username used to login.
-      --password=PASSWORD      The password used to login.
+                               (env: SAML2AWS_URL)
+      --username=USERNAME      The username used to login. (env:
+                               SAML2AWS_USERNAME)
+      --password=PASSWORD      The password used to login. (env:
+                               SAML2AWS_PASSWORD)
       --mfa-token=MFA-TOKEN    The current MFA token (supported in Keycloak,
-                               ADFS).
-      --role=ROLE              The ARN of the role to assume.
-      --aws-urn=AWS-URN        The URN used by SAML when you login.
+                               ADFS). (env: SAML2AWS_MFA_TOKEN)
+      --role=ROLE              The ARN of the role to assume. (env:
+                               SAML2AWS_ROLE)
+      --aws-urn=AWS-URN        The URN used by SAML when you login. (env:
+                               SAML2AWS_AWS_URN)
       --skip-prompt            Skip prompting for parameters during login.
-      --session-duration=SESSION-DURATION
-                               The duration of your AWS Session.
+      --session-duration=SESSION-DURATION  
+                               The duration of your AWS Session. (env:
+                               SAML2AWS_SESSION_DURATION)
 
 Commands:
   help [<command>...]
     Show help.
 
-  configure
+  configure [<flags>]
     Configure a new IDP account.
 
   login [<flags>]
@@ -127,7 +136,7 @@ Commands:
     List available role ARNs.
 
   script [<flags>]
-    Script will emit a script that will export environment variables
+    Emit a script that will export environment variables.
 ```
 
 
