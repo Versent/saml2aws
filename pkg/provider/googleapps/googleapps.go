@@ -50,7 +50,7 @@ func (kc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 
 	authForm.Set("Email", loginDetails.Username)
 
-	passwordURL, _, err := kc.loadLoginPage(authURL, loginDetails.URL, authForm)
+	passwordURL, _, err := kc.loadLoginPage(authURL+"?hl=en&loc=US", loginDetails.URL+"&hl=en&loc=US", authForm)
 	if err != nil {
 		return "", errors.Wrap(err, "error loading login page")
 	}
@@ -60,12 +60,41 @@ func (kc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 	authForm.Set("Passwd", loginDetails.Password)
 	authForm.Set("rawidentifier", loginDetails.Username)
 
-	responseDoc, err := kc.loadChallengePage(passwordURL, authURL, authForm)
+	responseDoc, err := kc.loadChallengePage(passwordURL+"?hl=en&loc=US", authURL, authForm)
 	if err != nil {
 		return "", errors.Wrap(err, "error loading challenge page")
 	}
 
-	// extract the saml assertion
+	captchaFound := responseDoc.Find("#logincaptcha")
+
+	for captchaFound != nil && captchaFound.Length() > 0 {
+
+		captchaImgDiv := responseDoc.Find(".captcha-img")
+		captchaPictureURL, found := goquery.NewDocumentFromNode(captchaImgDiv.Children().Nodes[0]).Attr("src")
+
+		if !found {
+			return "", errors.New("captcha image not found but requested")
+		}
+
+		fmt.Println("Open this link in a browser:\n", captchaPictureURL)
+
+		captcha := prompter.String("Captcha", "")
+
+		captchaForm, captchaURL, err := extractInputsByFormID(responseDoc, "gaia_loginform")
+
+		logger.Debugf("captchaURL: %s", captchaURL)
+
+		captchaForm.Set("Passwd", loginDetails.Password)
+		captchaForm.Set("logincaptcha", captcha)
+
+		responseDoc, err = kc.loadChallengePage(captchaURL+"?hl=en&loc=US", captchaURL, captchaForm)
+		if err != nil {
+			return "", errors.Wrap(err, "error loading challenge page")
+		}
+
+		captchaFound = responseDoc.Find("#logincaptcha")
+	}
+
 	samlAssertion := mustFindInputByName(responseDoc, "SAMLResponse")
 	if samlAssertion == "" {
 		return "", errors.New("page is missing saml assertion")
@@ -76,7 +105,7 @@ func (kc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 
 func (kc *Client) loadFirstPage(loginDetails *creds.LoginDetails) (string, url.Values, error) {
 
-	req, err := http.NewRequest("GET", loginDetails.URL, nil)
+	req, err := http.NewRequest("GET", loginDetails.URL+"&hl=en&loc=US", nil)
 	if err != nil {
 		return "", nil, errors.Wrap(err, "error retrieving login form from idp")
 	}
@@ -131,6 +160,8 @@ func (kc *Client) loadLoginPage(submitURL string, referer string, authForm url.V
 	}
 
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Accept-Language", "en-US")
+	req.Header.Set("Content-Language", "en-US")
 	req.Header.Set("Referer", referer)
 
 	res, err := kc.client.Do(req)
@@ -159,6 +190,8 @@ func (kc *Client) loadChallengePage(submitURL string, referer string, authForm u
 	}
 
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Accept-Language", "en-US")
+	req.Header.Set("Content-Language", "en-US")
 	req.Header.Set("Referer", referer)
 
 	res, err := kc.client.Do(req)
@@ -183,8 +216,8 @@ func (kc *Client) loadChallengePage(submitURL string, referer string, authForm u
 
 	// have we been asked for 2-Step Verification
 	if extractNodeText(doc, "h2", secondFactorHeader) != "" ||
-	   extractNodeText(doc, "h2", secondFactorHeader2) != "" ||
-	   extractNodeText(doc, "h1", secondFactorHeaderJp) != "" {
+		extractNodeText(doc, "h2", secondFactorHeader2) != "" ||
+		extractNodeText(doc, "h1", secondFactorHeaderJp) != "" {
 
 		responseForm, secondActionURL, err := extractInputsByFormID(doc, "challenge")
 		if err != nil {
@@ -254,6 +287,8 @@ func (kc *Client) postJSON(submitURL string, values map[string]string, referer s
 	}
 
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept-Language", "en-US")
+	req.Header.Set("Content-Language", "en-US")
 	req.Header.Set("Referer", referer)
 
 	res, err := kc.client.Do(req)
@@ -272,6 +307,8 @@ func (kc *Client) loadResponsePage(submitURL string, referer string, responseFor
 	}
 
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Accept-Language", "en")
+	req.Header.Set("Content-Language", "en-US")
 	req.Header.Set("Referer", submitURL)
 
 	res, err := kc.client.Do(req)

@@ -44,7 +44,7 @@ func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 	}, nil
 }
 
-// Authenticate authenticate to ADFS and return the data from the body of the SAML assertion.
+// Authenticate to ADFS and return the data from the body of the SAML assertion.
 func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error) {
 
 	var authSubmitURL string
@@ -54,7 +54,7 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 
 	res, err := ac.client.Get(adfsURL)
 	if err != nil {
-		return samlAssertion, errors.Wrap(err, "error retieving form")
+		return samlAssertion, errors.Wrap(err, "error retrieving form")
 	}
 
 	doc, err := goquery.NewDocumentFromResponse(res)

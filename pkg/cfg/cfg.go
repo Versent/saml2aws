@@ -3,7 +3,6 @@ package cfg
 import (
 	"fmt"
 	"net/url"
-	"reflect"
 
 	"github.com/mitchellh/go-homedir"
 	"github.com/pkg/errors"
@@ -42,6 +41,7 @@ type IDPAccount struct {
 	SessionDuration      int    `ini:"aws_session_duration"`
 	Profile              string `ini:"aws_profile"`
 	Subdomain            string `ini:"subdomain"` // used by OneLogin
+	RoleARN              string `ini:"role_arn"`
 }
 
 func (ia IDPAccount) String() string {
@@ -61,7 +61,8 @@ func (ia IDPAccount) String() string {
   AmazonWebservicesURN: %s
   SessionDuration: %d
   Profile: %s
-}`, appID, ia.URL, ia.Username, ia.Provider, ia.MFA, ia.SkipVerify, ia.AmazonWebservicesURN, ia.SessionDuration, ia.Profile)
+  RoleARN: %s
+}`, appID, ia.URL, ia.Username, ia.Provider, ia.MFA, ia.SkipVerify, ia.AmazonWebservicesURN, ia.SessionDuration, ia.Profile, ia.RoleARN)
 }
 
 // Validate validate the required / expected fields are set
@@ -165,32 +166,14 @@ func (cm *ConfigManager) LoadIDPAccount(idpAccountName string) (*IDPAccount, err
 		return nil, errors.Wrap(err, "Unable to load configuration file")
 	}
 
-	return readAccount(idpAccountName, cfg)
-}
-
-// LoadVerifyIDPAccount load the idp account and verify it isn't empty
-func (cm *ConfigManager) LoadVerifyIDPAccount(idpAccountName string) (*IDPAccount, error) {
-
-	cfg, err := ini.LoadSources(ini.LoadOptions{Loose: true}, cm.configPath)
-	if err != nil {
-		return nil, errors.Wrap(err, "Unable to load configuration file")
-	}
-
+	// attempt to map a specific idp account by name	
+	// this will return an empty account if one is not found by the given name
 	account, err := readAccount(idpAccountName, cfg)
 	if err != nil {
 		return nil, errors.Wrap(err, "Unable to read idp account")
 	}
 
-	if reflect.DeepEqual(account, NewIDPAccount()) {
-		return nil, ErrIdpAccountNotFound
-	}
-
 	return account, nil
-}
-
-// IsErrIdpAccountNotFound check if the error is a ErrIdpAccountNotFound
-func IsErrIdpAccountNotFound(err error) bool {
-	return err == ErrIdpAccountNotFound
 }
 
 func readAccount(idpAccountName string, cfg *ini.File) (*IDPAccount, error) {

@@ -42,6 +42,11 @@ func Login(loginFlags *flags.LoginExecFlags) error {
 		return nil
 	}
 
+	if !sharedCreds.Expired() && !loginFlags.Force {
+		fmt.Println("credentials are not expired skipping")
+		return nil
+	}
+
 	loginDetails, err := resolveLoginDetails(account, loginFlags)
 	if err != nil {
 		fmt.Printf("%+v\n", err)
@@ -79,9 +84,9 @@ func Login(loginFlags *flags.LoginExecFlags) error {
 		return errors.Wrap(err, "error storing password in keychain")
 	}
 
-	role, err := selectAwsRole(samlAssertion, loginFlags)
+	role, err := selectAwsRole(samlAssertion, account)
 	if err != nil {
-		return errors.Wrap(err, "Failed to assume role, please check you are permitted to assume the given role for the AWS service")
+		return errors.Wrap(err, "Failed to assume role, please check whether you are permitted to assume the given role for the AWS service")
 	}
 
 	fmt.Println("Selected role:", role.RoleARN)
@@ -100,12 +105,8 @@ func buildIdpAccount(loginFlags *flags.LoginExecFlags) (*cfg.IDPAccount, error) 
 		return nil, errors.Wrap(err, "failed to load configuration")
 	}
 
-	account, err := cfgm.LoadVerifyIDPAccount(loginFlags.CommonFlags.IdpAccount)
+	account, err := cfgm.LoadIDPAccount(loginFlags.CommonFlags.IdpAccount)
 	if err != nil {
-		if cfg.IsErrIdpAccountNotFound(err) {
-			fmt.Printf("%v\n", err)
-			os.Exit(1)
-		}
 		return nil, errors.Wrap(err, "failed to load idp account")
 	}
 
@@ -162,7 +163,7 @@ func resolveLoginDetails(account *cfg.IDPAccount, loginFlags *flags.LoginExecFla
 	return loginDetails, nil
 }
 
-func selectAwsRole(samlAssertion string, loginFlags *flags.LoginExecFlags) (*saml2aws.AWSRole, error) {
+func selectAwsRole(samlAssertion string, account *cfg.IDPAccount) (*saml2aws.AWSRole, error) {
 	data, err := base64.StdEncoding.DecodeString(samlAssertion)
 	if err != nil {
 		return nil, errors.Wrap(err, "error decoding saml assertion")
@@ -184,15 +185,15 @@ func selectAwsRole(samlAssertion string, loginFlags *flags.LoginExecFlags) (*sam
 		return nil, errors.Wrap(err, "error parsing aws roles")
 	}
 
-	return resolveRole(awsRoles, samlAssertion, loginFlags)
+	return resolveRole(awsRoles, samlAssertion, account)
 }
 
-func resolveRole(awsRoles []*saml2aws.AWSRole, samlAssertion string, loginFlags *flags.LoginExecFlags) (*saml2aws.AWSRole, error) {
+func resolveRole(awsRoles []*saml2aws.AWSRole, samlAssertion string, account *cfg.IDPAccount) (*saml2aws.AWSRole, error) {
 	var role = new(saml2aws.AWSRole)
 
 	if len(awsRoles) == 1 {
-		if loginFlags.CommonFlags.RoleSupplied() {
-			return saml2aws.LocateRole(awsRoles, loginFlags.CommonFlags.RoleArn)
+		if account.RoleARN != "" {
+			return saml2aws.LocateRole(awsRoles, account.RoleARN)
 		}
 		return awsRoles[0], nil
 	} else if len(awsRoles) == 0 {
@@ -206,8 +207,8 @@ func resolveRole(awsRoles []*saml2aws.AWSRole, samlAssertion string, loginFlags 
 
 	saml2aws.AssignPrincipals(awsRoles, awsAccounts)
 
-	if loginFlags.CommonFlags.RoleSupplied() {
-		return saml2aws.LocateRole(awsRoles, loginFlags.CommonFlags.RoleArn)
+	if account.RoleARN != "" {
+		return saml2aws.LocateRole(awsRoles, account.RoleARN)
 	}
 
 	for {

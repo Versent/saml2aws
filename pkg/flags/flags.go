@@ -25,14 +25,10 @@ type CommonFlags struct {
 	Subdomain            string
 }
 
-// RoleSupplied role arn has been passed as a flag
-func (cf *CommonFlags) RoleSupplied() bool {
-	return cf.RoleArn != ""
-}
-
 // LoginExecFlags flags for the Login / Exec commands
 type LoginExecFlags struct {
 	CommonFlags *CommonFlags
+	Force       bool
 }
 
 // ApplyFlagOverrides overrides IDPAccount with command line settings
@@ -75,5 +71,9 @@ func ApplyFlagOverrides(commonFlags *CommonFlags, account *cfg.IDPAccount) {
 
 	if commonFlags.Subdomain != "" {
 		account.Subdomain = commonFlags.Subdomain
+	}
+
+	if commonFlags.RoleArn != "" {
+		account.RoleARN = commonFlags.RoleArn
 	}
 }
