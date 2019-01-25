@@ -2,6 +2,14 @@
 
 
 [[projects]]
+  branch = "master"
+  digest = "1:2d4b3819ba28ab9226dc4106d297e7d1ecd32cef88e5eea07a119ecad9d625be"
+  name = "github.com/99designs/keyring"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "82da6802f65f1ac7963cfc3b7c62ae12dab8ee5d"
+
+[[projects]]
   digest = "1:02af1b0c1b08031a940a6c6ad1f55c292c84a7cdd3c435d5c841bcee46819f3d"
   name = "github.com/AlecAivazis/survey"
   packages = ["."]
@@ -59,6 +67,14 @@
   pruneopts = "UT"
   revision = "901648c87902174f774fac311d7f176f8647bdaa"
   version = "v1.0.0"
+
+[[projects]]
+  branch = "master"
+  digest = "1:d73d422b7f34d8e930d6d9c3ae6ce5c8f4a2c77e1ea43f7f127a5cd084e32ccb"
+  name = "github.com/aulanov/go.dbus"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "25c3068a42a0b50b877953fb249dbcffc6bd1bca"
 
 [[projects]]
   digest = "1:10cdb19adf265e8deb8e62b02e7a8c81117a214fded00d2a07c75c8bb2a02542"
@@ -128,6 +144,23 @@
   version = "v1.1.0"
 
 [[projects]]
+  digest = "1:92dfb1cad60fdfecac5def0f398e05b2b92d2422ac6ad2d7d8e4bdb6057a3d83"
+  name = "github.com/dvsekhvalnov/jose2go"
+  packages = [
+    ".",
+    "aes",
+    "arrays",
+    "base64url",
+    "compact",
+    "kdf",
+    "keys/ecc",
+    "padding",
+  ]
+  pruneopts = "UT"
+  revision = "f21a8cedbbae609f623613ec8f81125c243212e6"
+  version = "v1.3"
+
+[[projects]]
   digest = "1:865079840386857c809b72ce300be7580cb50d3d3129ce11bf9aa6ca2bc1934a"
   name = "github.com/fatih/color"
   packages = ["."]
@@ -142,6 +175,22 @@
   pruneopts = "UT"
   revision = "06f5f3d67269ccec1fe5fe4134ba6e982984f7f5"
   version = "v1.37.0"
+
+[[projects]]
+  digest = "1:b3d20bcdedab2050e6bc58e52f4fdc46f710b4c74e1a1ecee262ebec1aee7b6e"
+  name = "github.com/godbus/dbus"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "2ff6f7ffd60f0f2410b3105864bdd12c7894f844"
+  version = "v5.0.1"
+
+[[projects]]
+  branch = "master"
+  digest = "1:36f5bd9b89fcd728488eee3a0cf8787448579ac381fded60edd6e3ac01fe1a38"
+  name = "github.com/gsterjov/go-libsecret"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "a6f4afe4910cad8688db3e0e9b9ac92ad22d54e1"
 
 [[projects]]
   branch = "master"
@@ -164,6 +213,14 @@
   packages = ["."]
   pruneopts = "UT"
   revision = "0b12d6b5"
+
+[[projects]]
+  branch = "master"
+  digest = "1:00e5d2ab594acd9a96265e8e6a46bbf07f0cfcbe20f0e8e415eb80536b1b7ccf"
+  name = "github.com/keybase/go-keychain"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "f1daa725cce4049b1715f1e97d6a51880e401e70"
 
 [[projects]]
   digest = "1:c658e84ad3916da105a761660dcaeb01e63416c8ec7bc62256a9b411a05fcd67"
@@ -365,6 +422,7 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "github.com/99designs/keyring",
     "github.com/AlecAivazis/survey",
     "github.com/Azure/go-ntlmssp",
     "github.com/PuerkitoBio/goquery",
@@ -375,7 +433,6 @@
     "github.com/aws/aws-sdk-go/service/sts",
     "github.com/beevik/etree",
     "github.com/briandowns/spinner",
-    "github.com/danieljoos/wincred",
     "github.com/headzoo/surf",
     "github.com/headzoo/surf/browser",
     "github.com/mitchellh/go-homedir",
