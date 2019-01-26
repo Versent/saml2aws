@@ -3,7 +3,9 @@ package awsconfig
 import (
 	"io/ioutil"
 	"os"
+	"path"
 	"path/filepath"
+	"runtime"
 	"time"
 
 	homedir "github.com/mitchellh/go-homedir"
@@ -176,11 +178,16 @@ func locateConfigFile() (string, error) {
 		return filename, nil
 	}
 
-	name, err := homedir.Expand("~/.aws/credentials")
-	if err != nil {
-		return "", ErrCredentialsHomeNotFound
+	var name string
+	var err error
+	if runtime.GOOS == "windows" {
+		name = path.Join(os.Getenv("USERPROFILE"), ".aws", "credentials")
+	} else {
+		name, err = homedir.Expand("~/.aws/credentials")
+		if err != nil {
+			return "", ErrCredentialsHomeNotFound
+		}
 	}
-
 	logger.WithField("name", name).Debug("Expand")
 
 	// is the filename a symlink?
