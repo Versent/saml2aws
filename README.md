@@ -153,7 +153,7 @@ SAML2AWS_PROFILE=saml
 
 Powershell, and fish shells are supported as well.
 
-If you use `eval $(sam2aws script)` frequently, you may want to create a alias for it:
+If you use `eval $(saml2aws script)` frequently, you may want to create a alias for it:
 
 zsh:
 ```
