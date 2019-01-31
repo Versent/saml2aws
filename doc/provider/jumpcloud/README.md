@@ -40,10 +40,6 @@ Based on the [instructions from JumpCloud][4], we'll generate a public
 certificate and private key pair for administrative access to our production
 AWS account.
 
-> I believe it's possible to use the same certificate and key for all SSO
-> applications; however, I think it is best practice to generate a pair for
-> each application.
-
 Create `production.cnf`:
 
 ```
