@@ -105,12 +105,8 @@ func buildIdpAccount(loginFlags *flags.LoginExecFlags) (*cfg.IDPAccount, error) 
 		return nil, errors.Wrap(err, "failed to load configuration")
 	}
 
-	account, err := cfgm.LoadVerifyIDPAccount(loginFlags.CommonFlags.IdpAccount)
+	account, err := cfgm.LoadIDPAccount(loginFlags.CommonFlags.IdpAccount)
 	if err != nil {
-		if cfg.IsErrIdpAccountNotFound(err) {
-			fmt.Printf("%v\n", err)
-			os.Exit(1)
-		}
 		return nil, errors.Wrap(err, "failed to load idp account")
 	}
 

@@ -29,6 +29,7 @@ The process goes something like this:
 - [Example](#example)
 - [Building](#building)
 - [Environment vars](#environment-vars)
+- [Provider Specific Documentation](#provider-specific-documentation)
 
 ## Requirements
 
@@ -150,7 +151,7 @@ SAML2AWS_PROFILE=saml
 
 Powershell, and fish shells are supported as well.
 
-If you use `eval $(sam2aws script)` frequently, you may want to create a alias for it:
+If you use `eval $(saml2aws script)` frequently, you may want to create a alias for it:
 
 zsh:
 ```
@@ -294,6 +295,9 @@ The exec sub command will export the following environment variables.
 
 Note: That profile environment variables enable you to use `exec` with a script or command which requires an explicit profile.
 
+## Provider Specific Documentation
+
+* [JumpCloud](./doc/provider/jumpcloud)
 
 # Dependencies
 

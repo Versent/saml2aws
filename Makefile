@@ -1,6 +1,6 @@
 NAME=saml2aws
 ARCH=$(shell uname -m)
-VERSION=2.11.0
+VERSION=2.13.0
 ITERATION := 1
 
 SOURCE_FILES?=$$(go list ./... | grep -v /vendor/)
