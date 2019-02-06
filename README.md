@@ -31,6 +31,7 @@ The process goes something like this:
 - [Example](#example)
 - [Building](#building)
 - [Environment vars](#environment-vars)
+- [Provider Specific Documentation](#provider-specific-documentation)
 
 <!-- /TOC -->
 
@@ -297,6 +298,9 @@ The exec sub command will export the following environment variables.
 
 Note: That profile environment variables enable you to use `exec` with a script or command which requires an explicit profile.
 
+## Provider Specific Documentation
+
+* [JumpCloud](./doc/provider/jumpcloud)
 
 # Dependencies
 
