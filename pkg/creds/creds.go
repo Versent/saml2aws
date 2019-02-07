@@ -9,6 +9,7 @@ type LoginDetails struct {
 	Username     string
 	Password     string
 	MFAToken     string
+	DuoMFAOption string
 	URL          string
 }
 
