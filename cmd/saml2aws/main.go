@@ -9,8 +9,6 @@ import (
 	"github.com/alecthomas/kingpin"
 	"github.com/sirupsen/logrus"
 	"github.com/versent/saml2aws/cmd/saml2aws/commands"
-	"github.com/versent/saml2aws/helper/credentials"
-	"github.com/versent/saml2aws/helper/keyring"
 	"github.com/versent/saml2aws/pkg/flags"
 )
 
@@ -126,13 +124,6 @@ func main() {
 	// Set the default transport settings so all http clients will pick them up.
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: commonFlags.SkipVerify}
 	http.DefaultTransport.(*http.Transport).Proxy = http.ProxyFromEnvironment
-
-	// Try to open a keyring, keep default in-memory implementation if failed
-	if keyringHelper, err := keyring.NewKeyringHelper(); err == nil {
-		credentials.CurrentHelper = keyringHelper
-	} else {
-		logrus.Debug("could not open a keyring, using default implementation")
-	}
 
 	logrus.WithField("command", command).Debug("Running")
 

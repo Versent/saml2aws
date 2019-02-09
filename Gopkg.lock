@@ -433,6 +433,7 @@
     "github.com/aws/aws-sdk-go/service/sts",
     "github.com/beevik/etree",
     "github.com/briandowns/spinner",
+    "github.com/danieljoos/wincred",
     "github.com/headzoo/surf",
     "github.com/headzoo/surf/browser",
     "github.com/mitchellh/go-homedir",
