@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"os"
+	"net/http"
+	"crypto/tls"
 
 	"github.com/alecthomas/kingpin"
 	"github.com/sirupsen/logrus"
@@ -116,6 +118,10 @@ func main() {
 		logrus.SetLevel(logrus.DebugLevel)
 		errtpl = "%+v\n"
 	}
+
+	// Set the default transport settings so all http clients will pick them up.
+	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: commonFlags.SkipVerify,}
+	http.DefaultTransport.(*http.Transport).Proxy = http.ProxyFromEnvironment
 
 	logrus.WithField("command", command).Debug("Running")
 
