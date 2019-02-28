@@ -40,19 +40,22 @@ type IDPAccount struct {
 	AmazonWebservicesURN string `ini:"aws_urn"`
 	SessionDuration      int    `ini:"aws_session_duration"`
 	Profile              string `ini:"aws_profile"`
+	PolicyID             string `ini:"policy_id"` // used by F5APM
 	Subdomain            string `ini:"subdomain"` // used by OneLogin
 	RoleARN              string `ini:"role_arn"`
 }
 
 func (ia IDPAccount) String() string {
 	var appID string
-	if ia.Provider == "OneLogin" {
-		appID = fmt.Sprintf(`
-  AppID: %s
-  Subdomain: %s`, ia.AppID, ia.Subdomain)
+	var policyID string
+	switch ia.Provider {
+	case "OneLogin":
+		appID = fmt.Sprintf("\n  AppID: %s\n  Subdomain: %s", ia.AppID, ia.Subdomain)
+	case "F5APM":
+		policyID = fmt.Sprintf("\n  PolicyID: %s", ia.PolicyID)
 	}
 
-	return fmt.Sprintf(`account {%s
+	return fmt.Sprintf(`account {%s%s
   URL: %s
   Username: %s
   Provider: %s
@@ -62,17 +65,22 @@ func (ia IDPAccount) String() string {
   SessionDuration: %d
   Profile: %s
   RoleARN: %s
-}`, appID, ia.URL, ia.Username, ia.Provider, ia.MFA, ia.SkipVerify, ia.AmazonWebservicesURN, ia.SessionDuration, ia.Profile, ia.RoleARN)
+}`, appID, policyID, ia.URL, ia.Username, ia.Provider, ia.MFA, ia.SkipVerify, ia.AmazonWebservicesURN, ia.SessionDuration, ia.Profile, ia.RoleARN)
 }
 
 // Validate validate the required / expected fields are set
 func (ia *IDPAccount) Validate() error {
-	if ia.Provider == "OneLogin" {
+	switch ia.Provider {
+	case "OneLogin":
 		if ia.AppID == "" {
-			return errors.New("app ID empty in idp account")
+			return errors.New("App ID empty in idp account")
 		}
 		if ia.Subdomain == "" {
 			return errors.New("subdomain empty in idp account")
+		}
+	case "F5APM":
+		if ia.PolicyID == "" {
+			return errors.New("Policy ID empty in idp account")
 		}
 	}
 
@@ -166,7 +174,7 @@ func (cm *ConfigManager) LoadIDPAccount(idpAccountName string) (*IDPAccount, err
 		return nil, errors.Wrap(err, "Unable to load configuration file")
 	}
 
-	// attempt to map a specific idp account by name	
+	// attempt to map a specific idp account by name
 	// this will return an empty account if one is not found by the given name
 	account, err := readAccount(idpAccountName, cfg)
 	if err != nil {

@@ -37,18 +37,15 @@ func PromptForConfigurationDetails(idpAccount *cfg.IDPAccount) error {
 
 	idpAccount.Profile = prompter.String("AWS Profile", idpAccount.Profile)
 
-	fmt.Println("")
-
 	idpAccount.URL = prompter.String("URL", idpAccount.URL)
 	idpAccount.Username = prompter.String("Username", idpAccount.Username)
 
-	fmt.Println("")
-
-	if idpAccount.Provider == "OneLogin" {
+	switch idpAccount.Provider {
+	case "OneLogin":
 		idpAccount.AppID = prompter.String("App ID", idpAccount.AppID)
-		fmt.Println("")
 		idpAccount.Subdomain = prompter.String("Subdomain", idpAccount.Subdomain)
-		fmt.Println("")
+	case "F5APM":
+		idpAccount.PolicyID = prompter.String("Policy ID", idpAccount.PolicyID)
 	}
 
 	return nil
