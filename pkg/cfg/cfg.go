@@ -40,8 +40,8 @@ type IDPAccount struct {
 	AmazonWebservicesURN string `ini:"aws_urn"`
 	SessionDuration      int    `ini:"aws_session_duration"`
 	Profile              string `ini:"aws_profile"`
-	PolicyID             string `ini:"policy_id"` // used by F5APM
-	Subdomain            string `ini:"subdomain"` // used by OneLogin
+	ResourceID           string `ini:"resource_id"` // used by F5APM
+	Subdomain            string `ini:"subdomain"`   // used by OneLogin
 	RoleARN              string `ini:"role_arn"`
 }
 
@@ -52,7 +52,7 @@ func (ia IDPAccount) String() string {
 	case "OneLogin":
 		appID = fmt.Sprintf("\n  AppID: %s\n  Subdomain: %s", ia.AppID, ia.Subdomain)
 	case "F5APM":
-		policyID = fmt.Sprintf("\n  PolicyID: %s", ia.PolicyID)
+		policyID = fmt.Sprintf("\n  ResourceID: %s", ia.ResourceID)
 	}
 
 	return fmt.Sprintf(`account {%s%s
@@ -79,8 +79,8 @@ func (ia *IDPAccount) Validate() error {
 			return errors.New("subdomain empty in idp account")
 		}
 	case "F5APM":
-		if ia.PolicyID == "" {
-			return errors.New("Policy ID empty in idp account")
+		if ia.ResourceID == "" {
+			return errors.New("Resource ID empty in idp account")
 		}
 	}
 

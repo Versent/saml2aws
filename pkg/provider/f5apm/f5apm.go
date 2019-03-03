@@ -38,7 +38,7 @@ func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "Error building HTTP client")
 	}
-	return &Client{client: client, policyID: idpAccount.PolicyID}, nil
+	return &Client{client: client, policyID: idpAccount.ResourceID}, nil
 }
 
 // Authenticate logs into F5 APM and returns a SAML response

@@ -45,7 +45,7 @@ func PromptForConfigurationDetails(idpAccount *cfg.IDPAccount) error {
 		idpAccount.AppID = prompter.String("App ID", idpAccount.AppID)
 		idpAccount.Subdomain = prompter.String("Subdomain", idpAccount.Subdomain)
 	case "F5APM":
-		idpAccount.PolicyID = prompter.String("Policy ID", idpAccount.PolicyID)
+		idpAccount.ResourceID = prompter.String("Resource ID", idpAccount.ResourceID)
 	}
 
 	return nil
