@@ -73,7 +73,7 @@ func (ia *IDPAccount) Validate() error {
 	switch ia.Provider {
 	case "OneLogin":
 		if ia.AppID == "" {
-			return errors.New("App ID empty in idp account")
+			return errors.New("app ID empty in idp account")
 		}
 		if ia.Subdomain == "" {
 			return errors.New("subdomain empty in idp account")
