@@ -50,7 +50,9 @@ func (ia IDPAccount) String() string {
 	var policyID string
 	switch ia.Provider {
 	case "OneLogin":
-		appID = fmt.Sprintf("\n  AppID: %s\n  Subdomain: %s", ia.AppID, ia.Subdomain)
+		appID = fmt.Sprintf(`
+  AppID: %s
+  Subdomain: %s`, ia.AppID, ia.Subdomain)
 	case "F5APM":
 		policyID = fmt.Sprintf("\n  ResourceID: %s", ia.ResourceID)
 	}

@@ -43,7 +43,9 @@ func PromptForConfigurationDetails(idpAccount *cfg.IDPAccount) error {
 	switch idpAccount.Provider {
 	case "OneLogin":
 		idpAccount.AppID = prompter.String("App ID", idpAccount.AppID)
+		fmt.Println("")
 		idpAccount.Subdomain = prompter.String("Subdomain", idpAccount.Subdomain)
+		fmt.Println("")
 	case "F5APM":
 		idpAccount.ResourceID = prompter.String("Resource ID", idpAccount.ResourceID)
 	}
