@@ -26,11 +26,11 @@ set -gx SAML2AWS_PROFILE {{ .ProfileName }}
 "
 `
 
-const powershellTmpl = `$env:AWS_ACCESS_KEY_ID={{ .AWSAccessKey }}
-$env:AWS_SECRET_ACCESS_KEY=={{ .AWSSecretKey }}
-$env:AWS_SESSION_TOKEN={{ .AWSSessionToken }}
-$env:AWS_SECURITY_TOKEN={{ .AWSSecurityToken }}
-$env:SAML2AWS_PROFILE={{ .ProfileName }}"
+const powershellTmpl = `$env:AWS_ACCESS_KEY_ID='{{ .AWSAccessKey }}'
+$env:AWS_SECRET_ACCESS_KEY='{{ .AWSSecretKey }}'
+$env:AWS_SESSION_TOKEN='{{ .AWSSessionToken }}'
+$env:AWS_SECURITY_TOKEN='{{ .AWSSecurityToken }}'
+$env:SAML2AWS_PROFILE='{{ .ProfileName }}'
 `
 
 // Script will emit a bash script that will export environment variables

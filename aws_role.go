@@ -39,10 +39,10 @@ func parseRole(role string) (*AWSRole, error) {
 
 	for _, token := range tokens {
 		if strings.Contains(token, ":saml-provider") {
-			awsRole.PrincipalARN = token
+			awsRole.PrincipalARN = strings.TrimSpace(token)
 		}
 		if strings.Contains(token, ":role") {
-			awsRole.RoleARN = token
+			awsRole.RoleARN = strings.TrimSpace(token)
 		}
 	}
 
