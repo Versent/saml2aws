@@ -23,6 +23,7 @@ type CommonFlags struct {
 	SkipVerify           bool
 	Profile              string
 	Subdomain            string
+	ResourceID           string
 }
 
 // LoginExecFlags flags for the Login / Exec commands
@@ -76,5 +77,8 @@ func ApplyFlagOverrides(commonFlags *CommonFlags, account *cfg.IDPAccount) {
 
 	if commonFlags.RoleArn != "" {
 		account.RoleARN = commonFlags.RoleArn
+	}
+	if commonFlags.ResourceID != "" {
+		account.ResourceID = commonFlags.ResourceID
 	}
 }
