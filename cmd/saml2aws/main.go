@@ -48,12 +48,12 @@ func main() {
 
 	// Settings not related to commands
 	verbose := app.Flag("verbose", "Enable verbose logging").Bool()
-	provider := app.Flag("provider", "This flag is obsolete. See: https://github.com/Versent/saml2aws#configuring-idp-accounts").Short('i').Enum("ADFS", "ADFS2", "Ping", "JumpCloud", "Okta", "OneLogin", "PSU", "KeyCloak")
+	provider := app.Flag("provider", "This flag is obsolete. See: https://github.com/Versent/saml2aws#configuring-idp-accounts").Short('i').Enum("ADFS", "ADFS2", "Ping", "JumpCloud", "Okta", "OneLogin", "PSU", "KeyCloak","GoogleApps")
 
 	// Common (to all commands) settings
 	commonFlags := new(flags.CommonFlags)
 	app.Flag("idp-account", "The name of the configured IDP account. (env: SAML2AWS_IDP_ACCOUNT)").Envar("SAML2AWS_IDP_ACCOUNT").Short('a').Default("default").StringVar(&commonFlags.IdpAccount)
-	app.Flag("idp-provider", "The configured IDP provider. (env: SAML2AWS_IDP_PROVIDER)").Envar("SAML2AWS_IDP_PROVIDER").EnumVar(&commonFlags.IdpProvider, "ADFS", "ADFS2", "Ping", "JumpCloud", "Okta", "OneLogin", "PSU", "KeyCloak")
+	app.Flag("idp-provider", "The configured IDP provider. (env: SAML2AWS_IDP_PROVIDER)").Envar("SAML2AWS_IDP_PROVIDER").EnumVar(&commonFlags.IdpProvider, "ADFS", "ADFS2", "Ping", "JumpCloud", "Okta", "OneLogin", "PSU", "KeyCloak","GoogleApps")
 	app.Flag("mfa", "The name of the mfa. (env: SAML2AWS_MFA)").Envar("SAML2AWS_MFA").StringVar(&commonFlags.MFA)
 	app.Flag("skip-verify", "Skip verification of server certificate. (env: SAML2AWS_SKIP_VERIFY)").Envar("SAML2AWS_SKIP_VERIFY").Short('s').BoolVar(&commonFlags.SkipVerify)
 	app.Flag("url", "The URL of the SAML IDP server used to login. (env: SAML2AWS_URL)").Envar("SAML2AWS_URL").StringVar(&commonFlags.URL)
