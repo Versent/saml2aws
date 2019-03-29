@@ -112,7 +112,6 @@ Flags:
                                SAML2AWS_ROLE)
       --aws-urn=AWS-URN        The URN used by SAML when you login. (env:
                                SAML2AWS_AWS_URN)
-      --duo-mfa-option         The MFA option you want to use to authenticate (env: SAML_DUO_MFA_OPTION)
       --skip-prompt            Skip prompting for parameters during login.
       --session-duration=SESSION-DURATION
                                The duration of your AWS Session. (env:
