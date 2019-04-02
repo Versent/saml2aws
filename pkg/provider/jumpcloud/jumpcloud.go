@@ -115,7 +115,12 @@ func (jc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 	// Get the OTP and resubmit.
 	if res.StatusCode == 401 {
 		// Get the user's MFA token and re-build the body
-		a.OTP = prompter.StringRequired("MFA Token")
+		if loginDetails.MFAToken == "" {
+			a.OTP = prompter.StringRequired("MFA Token")
+		} else {
+			a.OTP = loginDetails.MFAToken
+		}
+
 		authBody, err = json.Marshal(a)
 		if err != nil {
 			return samlAssertion, errors.Wrap(err, "error building authentication req body after getting MFA Token")
