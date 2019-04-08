@@ -40,6 +40,7 @@ The process goes something like this:
   * KeyCloak + (TOTP)
   * [Google Apps](pkg/provider/googleapps/README.md)
   * [Shibboleth](pkg/provider/shibboleth/README.md)
+  * [F5APM](pkg/provider/f5apm/README.md)
   * [PSU](pkg/provider/psu/README.md)
 * AWS SAML Provider configured
 

@@ -50,7 +50,9 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 	var authSubmitURL string
 	var samlAssertion string
 
-	adfsURL := fmt.Sprintf("%s/adfs/ls/IdpInitiatedSignOn.aspx?loginToRp=%s", loginDetails.URL, ac.idpAccount.AmazonWebservicesURN)
+	awsURN := url.QueryEscape(ac.idpAccount.AmazonWebservicesURN)
+
+	adfsURL := fmt.Sprintf("%s/adfs/ls/IdpInitiatedSignOn.aspx?loginToRp=%s", loginDetails.URL, awsURN)
 
 	res, err := ac.client.Get(adfsURL)
 	if err != nil {

@@ -8,6 +8,7 @@ import (
 	"github.com/versent/saml2aws/pkg/creds"
 	"github.com/versent/saml2aws/pkg/provider/adfs"
 	"github.com/versent/saml2aws/pkg/provider/adfs2"
+	"github.com/versent/saml2aws/pkg/provider/f5apm"
 	"github.com/versent/saml2aws/pkg/provider/googleapps"
 	"github.com/versent/saml2aws/pkg/provider/jumpcloud"
 	"github.com/versent/saml2aws/pkg/provider/keycloak"
@@ -35,6 +36,7 @@ var MFAsByProvider = ProviderList{
 	"GoogleApps": []string{"Auto"},                                       // automatically detects ToTP
 	"Shibboleth": []string{"Auto"},
 	"PSU":        []string{"Auto"},
+	"F5APM":      []string{"Auto"},
 }
 
 // Names get a list of provider names
@@ -135,6 +137,12 @@ func NewSAMLClient(idpAccount *cfg.IDPAccount) (SAMLClient, error) {
 			return nil, fmt.Errorf("Invalid MFA type: %v for %v provider", idpAccount.MFA, idpAccount.Provider)
 		}
 		return psu.New(idpAccount)
+	case "F5APM":
+		if invalidMFA(idpAccount.Provider, idpAccount.MFA) {
+			return nil, fmt.Errorf("Invalid MFA type: %v for %v provider", idpAccount.MFA, idpAccount.Provider)
+		}
+		return f5apm.New(idpAccount)
+
 	default:
 		return nil, fmt.Errorf("Invalid provider: %v", idpAccount.Provider)
 	}
