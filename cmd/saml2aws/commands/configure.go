@@ -22,7 +22,7 @@ func Configure(configFlags *flags.CommonFlags) error {
 
 	idpAccountName := configFlags.IdpAccount
 
-	cfgm, err := cfg.NewConfigManager(cfg.DefaultConfigPath)
+	cfgm, err := cfg.NewConfigManager(configFlags.ConfigFile)
 	if err != nil {
 		return errors.Wrap(err, "failed to load configuration")
 	}
