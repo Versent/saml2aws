@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"time"
+	"encoding/base64"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/pkg/errors"
@@ -71,9 +72,26 @@ func (ac *Client) follow(ctx context.Context, req *http.Request) (string, error)
 	}
 
 	var handler func(context.Context, *goquery.Document) (context.Context, *http.Request, error)
-
-	if samlResponse, ok := extractSAMLResponse(doc); ok {
-		return samlResponse, nil
+	
+	if docIsFormRedirectToAWS(doc) {
+		logger.WithField("type", "saml-response-to-aws").Debug("doc detect")
+		if samlResponse, ok := extractSAMLResponse(doc); ok {
+			decodedSamlResponse, err := base64.StdEncoding.DecodeString(samlResponse)
+			if err != nil {
+				return "", errors.Wrap(err, "failed to decode saml-response")
+			}
+			logger.WithField("type", "saml-response").WithField("saml-response", string(decodedSamlResponse)).Debug("doc detect")
+			return samlResponse, nil
+		}
+	} else if docIsFormSamlRequest(doc) {
+		logger.WithField("type", "saml-request").Debug("doc detect")
+		handler = ac.handleFormRedirect
+	} else if docIsFormResume(doc) {
+		logger.WithField("type", "resume").Debug("doc detect")
+		handler = ac.handleFormRedirect
+	} else if docIsFormSamlResponse(doc) {
+		logger.WithField("type", "saml-response").Debug("doc detect")
+		handler = ac.handleFormRedirect
 	} else if docIsLogin(doc) {
 		logger.WithField("type", "login").Debug("doc detect")
 		handler = ac.handleLogin
@@ -220,6 +238,22 @@ func docIsFormRedirect(doc *goquery.Document) bool {
 
 func docIsWebAuthn(doc *goquery.Document) bool {
 	return doc.Has("input[name=\"isWebAuthnSupportedByBrowser\"]").Size() == 1
+}
+
+func docIsFormSamlRequest(doc *goquery.Document) bool {
+	return doc.Find("input[name=\"SAMLRequest\"]").Size() == 1
+}
+
+func docIsFormSamlResponse(doc *goquery.Document) bool {
+	return doc.Find("input[name=\"SAMLResponse\"]").Size() == 1
+}
+
+func docIsFormResume(doc *goquery.Document) bool {
+	return doc.Find("input[name=\"RelayState\"]").Size() == 1
+}
+
+func docIsFormRedirectToAWS(doc *goquery.Document) bool {
+	return doc.Find("form[action=\"https://signin.aws.amazon.com/saml\"]").Size() == 1
 }
 
 func extractSAMLResponse(doc *goquery.Document) (v string, ok bool) {
