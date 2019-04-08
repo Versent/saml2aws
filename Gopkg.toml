@@ -46,10 +46,6 @@
   version = "1.0.0"
 
 [[constraint]]
-  name = "github.com/danieljoos/wincred"
-  version = "1.0.1"
-
-[[constraint]]
   branch = "master"
   name = "github.com/mitchellh/go-homedir"
 
