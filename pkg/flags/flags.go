@@ -9,6 +9,7 @@ type CommonFlags struct {
 	AppID                string
 	ClientID             string
 	ClientSecret         string
+	ConfigFile           string
 	IdpAccount           string
 	IdpProvider          string
 	MFA                  string
