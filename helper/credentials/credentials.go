@@ -33,8 +33,6 @@ type Helper interface {
 	// Get retrieves credentials from the store.
 	// It returns username and secret as strings.
 	Get(serverURL string) (string, string, error)
-	// List returns the stored serverURLs and their associated usernames.
-	List() (map[string]string, error)
 	// SupportsCredentialStorage returns true or false if there is credential storage.
 	SupportsCredentialStorage() bool
 }
@@ -57,10 +55,6 @@ func (defaultHelper) Delete(serverURL string) error {
 
 func (defaultHelper) Get(serverURL string) (string, string, error) {
 	return "", "", ErrCredentialsNotFound
-}
-
-func (defaultHelper) List() (map[string]string, error) {
-	return map[string]string{}, nil
 }
 
 func (defaultHelper) SupportsCredentialStorage() bool {

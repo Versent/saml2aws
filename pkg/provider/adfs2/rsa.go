@@ -48,16 +48,17 @@ func (ac *Client) authenticateRsa(loginDetails *creds.LoginDetails) (string, err
 		return "", errors.Wrap(err, "error extracting rsa form data")
 	}
 
-	nextCode := prompter.Password("Enter nextCode")
+	if rsaForm.Get("SAMLResponse") == "" {
+		nextCode := prompter.Password("Enter nextCode")
 
-	rsaForm.Set("NextCode", nextCode)
-	rsaForm.Del("submit")
+		rsaForm.Set("NextCode", nextCode)
+		rsaForm.Del("submit")
 
-	doc, err = ac.postRSAForm(rsaActionURL, rsaForm)
-	if err != nil {
-		return "", errors.Wrap(err, "error posting rsa form")
+		doc, err = ac.postRSAForm(rsaActionURL, rsaForm)
+		if err != nil {
+			return "", errors.Wrap(err, "error posting rsa form")
+		}
 	}
-
 	return extractSamlAssertion(doc)
 }
 
