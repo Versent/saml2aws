@@ -22,6 +22,7 @@ func Configure(configFlags *flags.CommonFlags) error {
 
 	idpAccountName := configFlags.IdpAccount
 
+	// pass in alternative location of saml2aws config file, if set.
 	cfgm, err := cfg.NewConfigManager(configFlags.ConfigFile)
 	if err != nil {
 		return errors.Wrap(err, "failed to load configuration")
