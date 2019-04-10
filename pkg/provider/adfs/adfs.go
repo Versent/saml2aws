@@ -1,12 +1,15 @@
 package adfs
 
 import (
+	"bytes"
 	"crypto/tls"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/pkg/errors"
@@ -97,6 +100,11 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 	}
 
 	switch ac.idpAccount.MFA {
+	case "Azure":
+		res, err = ac.azureMFA(authSubmitURL, loginDetails.MFAToken, res)
+		if err != nil {
+			return samlAssertion, errors.Wrap(err, "error retrieving mfa form results")
+		}
 	case "VIP":
 		res, err = ac.vipMFA(authSubmitURL, loginDetails.MFAToken, res)
 		if err != nil {
@@ -125,6 +133,100 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 	})
 
 	return samlAssertion, nil
+}
+
+// azureMFA handler
+func (ac *Client) azureMFA(authSubmitURL string, mfaToken string, res *http.Response) (*http.Response, error) {
+
+	// doc, err := goquery.NewDocumentFromResponse(res)
+	doc, err := goquery.NewDocumentFromResponse(res)
+	if err != nil {
+		return nil, errors.Wrap(err, "error retrieving MFA form response body")
+	}
+
+	azureIndex := doc.Find("input#authMethod[value=AzureMfaAuthentication]").Index()
+
+	if azureIndex == -1 {
+		return res, nil // if we didn't find the MFA flag then just continue
+	}
+
+	logger.Debug("Found Azure MFA form")
+
+	mfaForm := url.Values{}
+
+	mfaFormURL, _ := doc.Find("form#options").Attr("action")
+
+	instructions := doc.Find("#instructions").Text()
+
+	log.Printf(instructions)
+
+	doc.Find("input").Each(func(i int, s *goquery.Selection) {
+		updateAzureFormData(mfaForm, s)
+	})
+
+	for start := time.Now(); time.Since(start) < 120*time.Second; {
+		if strings.Contains(instructions, "verification") {
+			logger.Debug("Azure MFA code required")
+
+			mfaCode := prompter.StringRequired("Enter MFA code")
+			mfaForm.Set("VerificationCode", mfaCode)
+
+			logger.Debugf("Azure MFA form: %v", mfaForm)
+			req, err := http.NewRequest("POST", mfaFormURL, strings.NewReader(mfaForm.Encode()))
+			if err != nil {
+				return nil, errors.Wrap(err, "error building MFA verification form request")
+			}
+
+			res, err = ac.client.Do(req)
+			if err != nil {
+				return nil, errors.Wrap(err, "error retrieving MFA verification form")
+			}
+
+			doc, err = goquery.NewDocumentFromResponse(res)
+			if err != nil {
+				return nil, errors.Wrap(err, "error retrieving MFA verification form body")
+			}
+
+			doc.Find("input").Each(func(i int, s *goquery.Selection) {
+				updateAzureFormData(mfaForm, s)
+			})
+		}
+
+		logger.Debugf("Azure MFA form: %v", mfaForm)
+		req, err := http.NewRequest("POST", mfaFormURL, strings.NewReader(mfaForm.Encode()))
+		if err != nil {
+			return nil, errors.Wrap(err, "error building MFA request")
+		}
+
+		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+
+		time.Sleep(5 * time.Second)
+
+		res, err = ac.client.Do(req)
+		if err != nil {
+			return nil, errors.Wrap(err, "error retrieving content")
+		}
+
+		// Copy the body byte stream for re-use later
+		bodyBytes, err := ioutil.ReadAll(res.Body)
+		if err != nil {
+			return nil, errors.Wrap(err, "error reading response body")
+		}
+
+		// Reset response body to avoid error when reading for SAML response
+		res.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
+		doc, err = goquery.NewDocumentFromResponse(res)
+
+		samlResponse := doc.Find("input[name=SAMLResponse]").Length()
+
+		if samlResponse == 1 {
+			// Reset response body to avoid error when reading for SAML response
+			res.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
+			return res, nil
+		}
+	}
+
+	return nil, errors.New("Unable to complete Azure MFA verification")
 }
 
 // vipMFA when supplied with the the form response document attempt to extract the VIP mfa related field
@@ -199,6 +301,25 @@ func updateFormData(authForm url.Values, s *goquery.Selection, user *creds.Login
 			return
 		}
 		authForm.Add(name, val)
+	}
+}
+
+func updateAzureFormData(authForm url.Values, s *goquery.Selection) {
+	name, ok := s.Attr("name")
+	if !ok {
+		return
+	}
+
+	val, ok := s.Attr("value")
+	if !ok {
+		return
+	}
+
+	switch name {
+	case
+		"AuthMethod",
+		"Context":
+		authForm.Set(name, val)
 	}
 }
 

@@ -25,7 +25,7 @@ type ProviderList map[string][]string
 
 // MFAsByProvider a list of providers with their respective supported MFAs
 var MFAsByProvider = ProviderList{
-	"ADFS":       []string{"Auto", "VIP"},
+	"ADFS":       []string{"Auto", "Azure", "VIP"},
 	"ADFS2":      []string{"Auto", "RSA"}, // nothing automatic about ADFS 2.x
 	"Ping":       []string{"Auto"},        // automatically detects PingID
 	"PingOne":    []string{"Auto"},        // automatically detects PingID
