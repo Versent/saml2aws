@@ -118,6 +118,12 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		return samlAssertion, errors.Wrap(err, "error retrieving login response body")
 	}
 
+	errorText := doc.Find("#errorText").Text()
+
+	if errorText != "" {
+		return samlAssertion, errors.New(errorText)
+	}
+
 	doc.Find("input").Each(func(i int, s *goquery.Selection) {
 		name, ok := s.Attr("name")
 		if !ok {
@@ -138,7 +144,15 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 // azureMFA handler
 func (ac *Client) azureMFA(authSubmitURL string, mfaToken string, res *http.Response) (*http.Response, error) {
 
-	// doc, err := goquery.NewDocumentFromResponse(res)
+	// Copy the body byte stream for re-use later
+	bodyBytes, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return nil, errors.Wrap(err, "error reading response body")
+	}
+
+	// Reset response body to avoid error if response is returned later
+	res.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
+
 	doc, err := goquery.NewDocumentFromResponse(res)
 	if err != nil {
 		return nil, errors.Wrap(err, "error retrieving MFA form response body")
@@ -147,6 +161,8 @@ func (ac *Client) azureMFA(authSubmitURL string, mfaToken string, res *http.Resp
 	azureIndex := doc.Find("input#authMethod[value=AzureMfaAuthentication]").Index()
 
 	if azureIndex == -1 {
+		// Reset response body to avoid error if response is returned later
+		res.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
 		return res, nil // if we didn't find the MFA flag then just continue
 	}
 
