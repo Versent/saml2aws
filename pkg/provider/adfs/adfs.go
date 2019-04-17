@@ -158,6 +158,14 @@ func (ac *Client) azureMFA(authSubmitURL string, mfaToken string, res *http.Resp
 		return nil, errors.Wrap(err, "error retrieving MFA form response body")
 	}
 
+	errorMessage := doc.Find("#errorMessage").Text()
+
+	if strings.Contains(errorMessage, "authentication method is not available") {
+		return nil, errors.New("You must setup MFA via https://aka.ms/mfasetup")
+	} else if errorMessage != "" {
+		return nil, errors.New(errorMessage)
+	}
+
 	azureIndex := doc.Find("input#authMethod[value=AzureMfaAuthentication]").Index()
 
 	if azureIndex == -1 {
