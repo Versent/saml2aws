@@ -256,7 +256,7 @@ func docIsFormSamlRequest(doc *goquery.Document) bool {
 }
 
 func docIsFormResume(doc *goquery.Document) bool {
-	return doc.Find("input[name=\"RelayState\"]").Size() == 1
+	return doc.Find("input[name=\"RelayState\"]").Size() == 1 || doc.Find("input[name=\"Resume\"]").Size() == 1
 }
 
 func docIsFormRedirectToAWS(doc *goquery.Document) bool {
