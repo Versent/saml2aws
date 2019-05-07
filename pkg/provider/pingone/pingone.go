@@ -95,6 +95,9 @@ func (ac *Client) follow(ctx context.Context, req *http.Request) (string, error)
 	} else if docIsCheckWebAuthn(doc) {
 		logger.WithField("type", "check-webauthn").Debug("doc detect")
 		handler = ac.handleCheckWebAuthn
+	} else if docIsFormSelectDevice(doc) {
+		logger.WithField("type", "select-device").Debug("doc detect")
+		handler = ac.handleFormSelectDevice
 	} else if docIsOTP(doc) {
 		logger.WithField("type", "otp").Debug("doc detect")
 		handler = ac.handleOTP
@@ -231,6 +234,33 @@ func (ac *Client) handleFormSamlRequest(ctx context.Context, doc *goquery.Docume
 	return ctx, req, err
 }
 
+func (ac *Client) handleFormSelectDevice(ctx context.Context, doc *goquery.Document, res *http.Response) (context.Context, *http.Request, error) {
+	deviceList := make(map[string]string)
+	var deviceNameList []string
+
+	doc.Find("ul.device-list > li").Each(func(_ int, s *goquery.Selection) {
+		deviceId, _ := s.Attr("data-id")
+		deviceName, _ := s.Find("a > div.device-name").Html()
+
+		logger.WithField("device name", deviceName).WithField("device id", deviceId).Debug("Select Device")
+		deviceList[deviceName] = deviceId
+		deviceNameList = append(deviceNameList, deviceName)
+	})
+
+	var chooseDevice = prompter.Choose("Select which MFA Device to use", deviceNameList)
+
+	form, err := page.NewFormFromDocument(doc, "")
+	if err != nil {
+		return ctx, nil, errors.Wrap(err, "error extracting select device form")
+	}
+
+	form.Values.Set("deviceId", deviceList[deviceNameList[chooseDevice]])
+	form.URL = makeAbsoluteURL(form.URL, makeBaseURL(res.Request.URL))
+	logger.WithField("value", form.Values.Encode()).Debug("Select Device")
+	req, err := form.BuildRequest()
+	return ctx, req, err
+}
+
 func docIsLogin(doc *goquery.Document) bool {
 	return doc.Has("input[name=\"pf.pass\"]").Size() == 1
 }
@@ -248,7 +278,7 @@ func docIsSwipe(doc *goquery.Document) bool {
 }
 
 func docIsFormRedirect(doc *goquery.Document) bool {
-	return doc.Has("input[name=\"ppm_request\"]").Size() == 1
+	return doc.Has("input[name=\"ppm_request\"]").Size() == 1 || doc.Find("form[action=\"https://authenticator.pingone.com/pingid/ppm/auth\"]").Size() == 1
 }
 
 func docIsFormSamlRequest(doc *goquery.Document) bool {
@@ -263,7 +293,12 @@ func docIsFormRedirectToAWS(doc *goquery.Document) bool {
 	return doc.Find("form[action=\"https://signin.aws.amazon.com/saml\"]").Size() == 1
 }
 
+func docIsFormSelectDevice(doc *goquery.Document) bool {
+	return doc.Has("form[name=\"device-form\"]").Size() == 1
+}
+
 func extractSAMLResponse(doc *goquery.Document) (v string, ok bool) {
+
 	return doc.Find("input[name=\"SAMLResponse\"]").Attr("value")
 }
 
