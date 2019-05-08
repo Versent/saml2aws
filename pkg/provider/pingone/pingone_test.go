@@ -18,8 +18,13 @@ var docTests = []struct {
 }
 
 func TestMakeAbsoluteURL(t *testing.T) {
-	require.Equal(t, makeAbsoluteURL("/pingid/ppm/devices", "https://authentication.pingone.com"), "https://authentication.pingone.com/pingid/ppm/devices")
-	require.Equal(t, makeAbsoluteURL("/pingid/ppm/devices", "https://authentication.pingone.com/"), "https://authentication.pingone.com/pingid/ppm/devices")
+	url1, _ := makeAbsoluteURL("/pingid/ppm/devices", "https://authentication.pingone.com")
+	url2, _ := makeAbsoluteURL("/pingid/ppm/devices", "https://authentication.pingone.com/")
+	url3, _ := makeAbsoluteURL("https://authentication.pingone.com/pingid/ppm/devices", "https://authentication.pingone.com/")
+
+	require.Equal(t, url1, "https://authentication.pingone.com/pingid/ppm/devices")
+	require.Equal(t, url2, "https://authentication.pingone.com/pingid/ppm/devices")
+	require.Equal(t, url3, "https://authentication.pingone.com/pingid/ppm/devices")
 }
 
 func TestDocTypes(t *testing.T) {
