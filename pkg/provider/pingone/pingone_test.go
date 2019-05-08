@@ -17,6 +17,11 @@ var docTests = []struct {
 	{docIsFormSelectDevice, "example/selectdevice.html", true},
 }
 
+func TestMakeAbsoluteURL(t *testing.T) {
+	require.Equal(t, makeAbsoluteURL("/pingid/ppm/devices", "https://authentication.pingone.com"), "https://authentication.pingone.com/pingid/ppm/devices")
+	require.Equal(t, makeAbsoluteURL("/pingid/ppm/devices", "https://authentication.pingone.com/"), "https://authentication.pingone.com/pingid/ppm/devices")
+}
+
 func TestDocTypes(t *testing.T) {
 	for _, tt := range docTests {
 		data, err := ioutil.ReadFile(tt.file)
