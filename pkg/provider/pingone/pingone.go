@@ -137,7 +137,10 @@ func (ac *Client) handleLogin(ctx context.Context, doc *goquery.Document, res *h
 
 	form.Values.Set("pf.username", loginDetails.Username)
 	form.Values.Set("pf.pass", loginDetails.Password)
-	form.URL = makeAbsoluteURL(form.URL, baseURL)
+	form.URL, err = makeAbsoluteURL(form.URL, baseURL)
+	if err != nil {
+		return ctx, nil, err
+	}
 
 	req, err := form.BuildRequest()
 	return ctx, req, err
@@ -255,7 +258,11 @@ func (ac *Client) handleFormSelectDevice(ctx context.Context, doc *goquery.Docum
 	}
 
 	form.Values.Set("deviceId", deviceList[deviceNameList[chooseDevice]])
-	form.URL = makeAbsoluteURL(form.URL, makeBaseURL(res.Request.URL))
+	form.URL, err = makeAbsoluteURL(form.URL, makeBaseURL(res.Request.URL))
+	if err != nil {
+		return ctx, nil, err
+	}
+
 	logger.WithField("value", form.Values.Encode()).Debug("Select Device")
 	req, err := form.BuildRequest()
 	return ctx, req, err
@@ -307,11 +314,18 @@ func makeBaseURL(url *url.URL) string {
 }
 
 // ensures given url is an absolute URL. if not, it will be combined with the base URL
-func makeAbsoluteURL(v string, base string) string {
+func makeAbsoluteURL(v string, base string) (string, error) {
 	logger.WithField("base", base).WithField("v", v).Debug("make absolute url")
-	if u, err := url.ParseRequestURI(v); err == nil && !u.IsAbs() {
-		return fmt.Sprintf("%s%s", base, v)
+	baseURL, err := url.Parse(base)
+	if err != nil {
+		return "", err
 	}
-	return v
+	pathURL, err := url.ParseRequestURI(v)
+	if err != nil {
+		return "", err
+	}
+	if pathURL.IsAbs() {
+		return pathURL.String(), nil
+	}
+	return baseURL.ResolveReference(pathURL).String(), nil
 }
-
