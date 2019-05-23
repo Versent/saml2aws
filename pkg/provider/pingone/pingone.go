@@ -95,6 +95,9 @@ func (ac *Client) follow(ctx context.Context, req *http.Request) (string, error)
 	} else if docIsCheckWebAuthn(doc) {
 		logger.WithField("type", "check-webauthn").Debug("doc detect")
 		handler = ac.handleCheckWebAuthn
+	} else if docIsFormSelectDevice(doc) {
+		logger.WithField("type", "select-device").Debug("doc detect")
+		handler = ac.handleFormSelectDevice
 	} else if docIsOTP(doc) {
 		logger.WithField("type", "otp").Debug("doc detect")
 		handler = ac.handleOTP
@@ -134,7 +137,10 @@ func (ac *Client) handleLogin(ctx context.Context, doc *goquery.Document, res *h
 
 	form.Values.Set("pf.username", loginDetails.Username)
 	form.Values.Set("pf.pass", loginDetails.Password)
-	form.URL = makeAbsoluteURL(form.URL, baseURL)
+	form.URL, err = makeAbsoluteURL(form.URL, baseURL)
+	if err != nil {
+		return ctx, nil, err
+	}
 
 	req, err := form.BuildRequest()
 	return ctx, req, err
@@ -231,6 +237,37 @@ func (ac *Client) handleFormSamlRequest(ctx context.Context, doc *goquery.Docume
 	return ctx, req, err
 }
 
+func (ac *Client) handleFormSelectDevice(ctx context.Context, doc *goquery.Document, res *http.Response) (context.Context, *http.Request, error) {
+	deviceList := make(map[string]string)
+	var deviceNameList []string
+
+	doc.Find("ul.device-list > li").Each(func(_ int, s *goquery.Selection) {
+		deviceId, _ := s.Attr("data-id")
+		deviceName, _ := s.Find("a > div.device-name").Html()
+
+		logger.WithField("device name", deviceName).WithField("device id", deviceId).Debug("Select Device")
+		deviceList[deviceName] = deviceId
+		deviceNameList = append(deviceNameList, deviceName)
+	})
+
+	var chooseDevice = prompter.Choose("Select which MFA Device to use", deviceNameList)
+
+	form, err := page.NewFormFromDocument(doc, "")
+	if err != nil {
+		return ctx, nil, errors.Wrap(err, "error extracting select device form")
+	}
+
+	form.Values.Set("deviceId", deviceList[deviceNameList[chooseDevice]])
+	form.URL, err = makeAbsoluteURL(form.URL, makeBaseURL(res.Request.URL))
+	if err != nil {
+		return ctx, nil, err
+	}
+
+	logger.WithField("value", form.Values.Encode()).Debug("Select Device")
+	req, err := form.BuildRequest()
+	return ctx, req, err
+}
+
 func docIsLogin(doc *goquery.Document) bool {
 	return doc.Has("input[name=\"pf.pass\"]").Size() == 1
 }
@@ -248,7 +285,7 @@ func docIsSwipe(doc *goquery.Document) bool {
 }
 
 func docIsFormRedirect(doc *goquery.Document) bool {
-	return doc.Has("input[name=\"ppm_request\"]").Size() == 1
+	return doc.Has("input[name=\"ppm_request\"]").Size() == 1 || doc.Find("form[action=\"https://authenticator.pingone.com/pingid/ppm/auth\"]").Size() == 1
 }
 
 func docIsFormSamlRequest(doc *goquery.Document) bool {
@@ -256,14 +293,19 @@ func docIsFormSamlRequest(doc *goquery.Document) bool {
 }
 
 func docIsFormResume(doc *goquery.Document) bool {
-	return doc.Find("input[name=\"RelayState\"]").Size() == 1
+	return doc.Find("input[name=\"RelayState\"]").Size() == 1 || doc.Find("input[name=\"Resume\"]").Size() == 1
 }
 
 func docIsFormRedirectToAWS(doc *goquery.Document) bool {
 	return doc.Find("form[action=\"https://signin.aws.amazon.com/saml\"]").Size() == 1
 }
 
+func docIsFormSelectDevice(doc *goquery.Document) bool {
+	return doc.Has("form[name=\"device-form\"]").Size() == 1
+}
+
 func extractSAMLResponse(doc *goquery.Document) (v string, ok bool) {
+
 	return doc.Find("input[name=\"SAMLResponse\"]").Attr("value")
 }
 
@@ -272,11 +314,18 @@ func makeBaseURL(url *url.URL) string {
 }
 
 // ensures given url is an absolute URL. if not, it will be combined with the base URL
-func makeAbsoluteURL(v string, base string) string {
+func makeAbsoluteURL(v string, base string) (string, error) {
 	logger.WithField("base", base).WithField("v", v).Debug("make absolute url")
-	if u, err := url.ParseRequestURI(v); err == nil && !u.IsAbs() {
-		return fmt.Sprintf("%s%s", base, v)
+	baseURL, err := url.Parse(base)
+	if err != nil {
+		return "", err
 	}
-	return v
+	pathURL, err := url.ParseRequestURI(v)
+	if err != nil {
+		return "", err
+	}
+	if pathURL.IsAbs() {
+		return pathURL.String(), nil
+	}
+	return baseURL.ResolveReference(pathURL).String(), nil
 }
-
