@@ -185,6 +185,14 @@
   version = "v5.0.1"
 
 [[projects]]
+  digest = "1:582b704bebaa06b48c29b0cec224a6058a09c86883aaddabde889cd1a5f73e1b"
+  name = "github.com/google/uuid"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "0cd6bf5da1e1c83f8b45653022c74f71af0538a4"
+  version = "v1.1.1"
+
+[[projects]]
   branch = "master"
   digest = "1:36f5bd9b89fcd728488eee3a0cf8787448579ac381fded60edd6e3ac01fe1a38"
   name = "github.com/gsterjov/go-libsecret"
@@ -434,6 +442,7 @@
     "github.com/beevik/etree",
     "github.com/briandowns/spinner",
     "github.com/danieljoos/wincred",
+    "github.com/google/uuid",
     "github.com/headzoo/surf",
     "github.com/headzoo/surf/browser",
     "github.com/mitchellh/go-homedir",

@@ -18,6 +18,7 @@ import (
 	"github.com/versent/saml2aws/pkg/provider/pingone"
 	"github.com/versent/saml2aws/pkg/provider/psu"
 	"github.com/versent/saml2aws/pkg/provider/shibboleth"
+	"github.com/versent/saml2aws/pkg/provider/shibbolethecp"
 )
 
 // ProviderList list of providers with their MFAs
@@ -25,18 +26,19 @@ type ProviderList map[string][]string
 
 // MFAsByProvider a list of providers with their respective supported MFAs
 var MFAsByProvider = ProviderList{
-	"ADFS":       []string{"Auto", "VIP"},
-	"ADFS2":      []string{"Auto", "RSA"}, // nothing automatic about ADFS 2.x
-	"Ping":       []string{"Auto"},        // automatically detects PingID
-	"PingOne":    []string{"Auto"},        // automatically detects PingID
-	"JumpCloud":  []string{"Auto"},
-	"Okta":       []string{"Auto", "PUSH", "DUO", "SMS", "TOTP", "OKTA"}, // automatically detects DUO, SMS and ToTP
-	"OneLogin":   []string{"Auto", "OLP", "SMS", "TOTP"},                 // automatically detects OneLogin Protect, SMS and ToTP
-	"KeyCloak":   []string{"Auto"},                                       // automatically detects ToTP
-	"GoogleApps": []string{"Auto"},                                       // automatically detects ToTP
-	"Shibboleth": []string{"Auto"},
-	"PSU":        []string{"Auto"},
-	"F5APM":      []string{"Auto"},
+	"ADFS":          []string{"Auto", "VIP"},
+	"ADFS2":         []string{"Auto", "RSA"}, // nothing automatic about ADFS 2.x
+	"Ping":          []string{"Auto"},        // automatically detects PingID
+	"PingOne":       []string{"Auto"},        // automatically detects PingID
+	"JumpCloud":     []string{"Auto"},
+	"Okta":          []string{"Auto", "PUSH", "DUO", "SMS", "TOTP", "OKTA"}, // automatically detects DUO, SMS and ToTP
+	"OneLogin":      []string{"Auto", "OLP", "SMS", "TOTP"},                 // automatically detects OneLogin Protect, SMS and ToTP
+	"KeyCloak":      []string{"Auto"},                                       // automatically detects ToTP
+	"GoogleApps":    []string{"Auto"},                                       // automatically detects ToTP
+	"Shibboleth":    []string{"Auto"},
+	"PSU":           []string{"Auto"},
+	"F5APM":         []string{"Auto"},
+	"ShibbolethECP": []string{"auto", "phone", "push", "passcode"},
 }
 
 // Names get a list of provider names
@@ -132,6 +134,11 @@ func NewSAMLClient(idpAccount *cfg.IDPAccount) (SAMLClient, error) {
 			return nil, fmt.Errorf("Invalid MFA type: %v for %v provider", idpAccount.MFA, idpAccount.Provider)
 		}
 		return shibboleth.New(idpAccount)
+	case "ShibbolethECP":
+		if invalidMFA(idpAccount.Provider, idpAccount.MFA) {
+			return nil, fmt.Errorf("Invalid MFA type: %v for %v provider", idpAccount.MFA, idpAccount.Provider)
+		}
+		return shibbolethecp.New(idpAccount)
 	case "PSU":
 		if invalidMFA(idpAccount.Provider, idpAccount.MFA) {
 			return nil, fmt.Errorf("Invalid MFA type: %v for %v provider", idpAccount.MFA, idpAccount.Provider)
