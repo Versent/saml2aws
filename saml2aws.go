@@ -20,6 +20,7 @@ import (
 	"github.com/versent/saml2aws/pkg/provider/psu"
 	"github.com/versent/saml2aws/pkg/provider/shibboleth"
 	"github.com/versent/saml2aws/pkg/provider/akamai"
+	"github.com/versent/saml2aws/pkg/provider/shibbolethecp"
 )
 
 // ProviderList list of providers with their MFAs
@@ -41,6 +42,7 @@ var MFAsByProvider = ProviderList{
 	"PSU":        []string{"Auto"},
 	"F5APM":      []string{"Auto"},
 	"Akamai":     []string{"Auto", "DUO", "SMS", "EMAIL", "TOTP"},
+	"ShibbolethECP": []string{"auto", "phone", "push", "passcode"},
 }
 
 // Names get a list of provider names
@@ -141,6 +143,11 @@ func NewSAMLClient(idpAccount *cfg.IDPAccount) (SAMLClient, error) {
 			return nil, fmt.Errorf("Invalid MFA type: %v for %v provider", idpAccount.MFA, idpAccount.Provider)
 		}
 		return shibboleth.New(idpAccount)
+	case "ShibbolethECP":
+		if invalidMFA(idpAccount.Provider, idpAccount.MFA) {
+			return nil, fmt.Errorf("Invalid MFA type: %v for %v provider", idpAccount.MFA, idpAccount.Provider)
+		}
+		return shibbolethecp.New(idpAccount)
 	case "PSU":
 		if invalidMFA(idpAccount.Provider, idpAccount.MFA) {
 			return nil, fmt.Errorf("Invalid MFA type: %v for %v provider", idpAccount.MFA, idpAccount.Provider)
