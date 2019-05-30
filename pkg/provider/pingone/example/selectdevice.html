@@ -1,0 +1,125 @@
+<!DOCTYPE html><html><head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <meta name="format-detection" content="telephone=no"/>
+    <meta http-equiv="x-ua-compatible" content="IE=edge"/>
+    <title>Change Authenticating Device</title>
+    <link rel="stylesheet" href="/pingid/assets/css/main-v21.219.css" media="screen" title="no title" charset="utf-8"/>
+    <link rel="stylesheet" media="screen" type="text/css" href="/pingid/assets/css/jsdisabled.css"/>
+    <script type="text/javascript" src="/pingid/assets/js/jquery-1.11.1.min.js"></script>
+    <script type="text/javascript" src="/pingid/assets/js/wizards/devices.js"></script>
+    <script type="text/javascript" src="/pingid/assets/js/utils/signout.js"></script>
+</head>
+<body>
+<noscript>
+    
+
+
+
+
+
+
+
+
+<!DOCTYPE html>
+<html>
+<head>
+	<title></title>
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<meta name = "format-detection" content = "telephone=no">
+	<link rel="stylesheet" href="/pingid/assets/css/jsdisabled.css" media="screen" title="no title" charset="utf-8">
+</head>
+<body>
+    <div class="nojspage dialog">
+            
+
+            <div class="window error">
+                <div class="content">
+                    <div class="status"></div>
+        			<div class="title-text">
+        			    Important
+                    </div>
+
+        	            <div class="error-text">
+        					<div class="text">
+        					    PingID requires Javascript to be enabled. If the problem persists, please contact your administrator.
+        					</div>
+        	            </div>
+
+                </div>
+            </div>
+
+            <div class="admin-message" /><!-- admin message pushes footer to the bottom of the page -->
+
+            <div class="footer">
+                <div class="pingid_logo"></div>
+                <div class="copyright">
+                    Copyright &copy; 2003-2019 Ping Identity Corporation. All rights reserved.
+                </div>
+            </div>
+    </div>
+</body>
+</html>
+    <style type="text/css">
+		.dialog { display:none; }
+	</style>
+</noscript>
+<div class="dialog">
+    <div class="window change-device">
+        <div class="content">
+            <div class="title">
+                Change Authenticating Device
+            </div>
+            <ul class="device-list">
+                
+                    <li class="device mobile-phone selected" data-id="3270134077889335000">
+                        <a>
+                            iPhone
+                            <div class="device-name">iPhone</div>
+                        </a>
+                    </li>
+                
+                    <li class="device mobile-phone" data-id="3964291169487703000">
+                        <a>
+                            Android
+                            <div class="device-name">Android</div>
+                        </a>
+                    </li>
+                
+            </ul>
+
+            <form id="device-form" name="device-form" action="/pingid/ppm/devices" method="post">
+                <input type="hidden" name="csrfToken" id="csrfToken" value="217c0510-62ab-4033-a8b9-4836121b8ae4" encode="false"/>
+                <input type="hidden" name="deviceId" id="deviceId" value="3270134077889335000" encode="false"/>
+
+                <div class="buttons">
+                	
+                    	<a class="button settings-btn" href="https://authenticator.pingone.com/pingid/ppm/settings">Settings</a>
+                    
+                    <input type="Submit" value="Sign On" class="primary"/>
+                </div>
+                
+                    <div class="rescueCode">
+                        <a class="forgotYourDevice" href="https://authenticator.pingone.com/pingid/ppm/rescueCodeDevices">
+                            Forgot your device?</a>
+                    </div>
+                
+                
+            </form>
+        </div>
+    </div>
+
+    <div class="admin-message"></div>
+
+    <div class="footer">
+        <div class="logo"></div>
+        <div class="copyright">
+            Copyright © 2003-2019 Ping Identity Corporation. All rights reserved.
+        </div>
+    </div>
+    <form method="POST" action="/pingid/ppm/signoutredirect" id="signoutForm">
+        <input type="hidden" name="csrfToken" id="csrfToken" value="217c0510-62ab-4033-a8b9-4836121b8ae4" encode="false"/>
+    </form>
+</div>
+
+</body></html>

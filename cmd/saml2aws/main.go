@@ -73,6 +73,7 @@ func main() {
 	cmdConfigure.Flag("subdomain", "OneLogin subdomain of your company account. (env: ONELOGIN_SUBDOMAIN)").Envar("ONELOGIN_SUBDOMAIN").StringVar(&commonFlags.Subdomain)
 	cmdConfigure.Flag("profile", "The AWS profile to save the temporary credentials. (env: SAML2AWS_PROFILE)").Envar("SAML2AWS_PROFILE").Short('p').StringVar(&commonFlags.Profile)
 	cmdConfigure.Flag("resource-id", "F5APM SAML resource ID of your company account. (env: SAML2AWS_F5APM_RESOURCE_ID)").Envar("SAML2AWS_F5APM_RESOURCE_ID").StringVar(&commonFlags.ResourceID)
+	cmdConfigure.Flag("config", "Path/filename of saml2aws config file (env: SAML2AWS_CONFIGFILE)").Envar("SAML2AWS_CONFIGFILE").StringVar(&commonFlags.ConfigFile)
 	configFlags := commonFlags
 
 	// `login` command and settings
