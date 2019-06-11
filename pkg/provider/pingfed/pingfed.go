@@ -66,13 +66,14 @@ func (ac *Client) follow(ctx context.Context, req *http.Request) (string, error)
 	if err != nil {
 		return "", errors.Wrap(err, "error following")
 	}
+
 	doc, err := goquery.NewDocumentFromResponse(res)
 	if err != nil {
 		return "", errors.Wrap(err, "failed to build document from response")
 	}
 
-	var handler func(context.Context, *goquery.Document) (context.Context, *http.Request, error)
-	
+	var handler func(context.Context, *goquery.Document, *http.Response) (context.Context, *http.Request, error)
+
 	if docIsFormRedirectToAWS(doc) {
 		logger.WithField("type", "saml-response-to-aws").Debug("doc detect")
 		if samlResponse, ok := extractSAMLResponse(doc); ok {
@@ -89,12 +90,15 @@ func (ac *Client) follow(ctx context.Context, req *http.Request) (string, error)
 	} else if docIsFormResume(doc) {
 		logger.WithField("type", "resume").Debug("doc detect")
 		handler = ac.handleFormRedirect
-	} else if docIsFormSamlResponse(doc) {
-		logger.WithField("type", "saml-response").Debug("doc detect")
-		handler = ac.handleFormRedirect
 	} else if docIsLogin(doc) {
 		logger.WithField("type", "login").Debug("doc detect")
 		handler = ac.handleLogin
+	} else if docIsCheckWebAuthn(doc) {
+		logger.WithField("type", "check-webauthn").Debug("doc detect")
+		handler = ac.handleCheckWebAuthn
+	} else if docIsFormSelectDevice(doc) {
+		logger.WithField("type", "select-device").Debug("doc detect")
+		handler = ac.handleFormSelectDevice
 	} else if docIsOTP(doc) {
 		logger.WithField("type", "otp").Debug("doc detect")
 		handler = ac.handleOTP
@@ -104,9 +108,6 @@ func (ac *Client) follow(ctx context.Context, req *http.Request) (string, error)
 	} else if docIsFormRedirect(doc) {
 		logger.WithField("type", "form-redirect").Debug("doc detect")
 		handler = ac.handleFormRedirect
-	} else if docIsWebAuthn(doc) {
-		logger.WithField("type", "webauthn").Debug("doc detect")
-		handler = ac.handleWebAuthn
 	}
 	if handler == nil {
 		html, _ := doc.Selection.Html()
@@ -114,14 +115,14 @@ func (ac *Client) follow(ctx context.Context, req *http.Request) (string, error)
 		return "", fmt.Errorf("Unknown document type")
 	}
 
-	ctx, req, err = handler(ctx, doc)
+	ctx, req, err = handler(ctx, doc, res)
 	if err != nil {
 		return "", err
 	}
 	return ac.follow(ctx, req)
 }
 
-func (ac *Client) handleLogin(ctx context.Context, doc *goquery.Document) (context.Context, *http.Request, error) {
+func (ac *Client) handleLogin(ctx context.Context, doc *goquery.Document, res *http.Response) (context.Context, *http.Request, error) {
 	loginDetails, ok := ctx.Value(ctxKey("login")).(*creds.LoginDetails)
 	if !ok {
 		return ctx, nil, fmt.Errorf("no context value for 'login'")
@@ -132,15 +133,33 @@ func (ac *Client) handleLogin(ctx context.Context, doc *goquery.Document) (conte
 		return ctx, nil, errors.Wrap(err, "error extracting login form")
 	}
 
+	baseURL := makeBaseURL(res.Request.URL)
+	logger.WithField("baseURL", baseURL).Debug("base url")
+
 	form.Values.Set("pf.username", loginDetails.Username)
 	form.Values.Set("pf.pass", loginDetails.Password)
-	form.URL = makeAbsoluteURL(form.URL, loginDetails.URL)
+	form.URL, err = makeAbsoluteURL(form.URL, baseURL)
+	if err != nil {
+		return ctx, nil, err
+	}
 
 	req, err := form.BuildRequest()
 	return ctx, req, err
 }
 
-func (ac *Client) handleOTP(ctx context.Context, doc *goquery.Document) (context.Context, *http.Request, error) {
+func (ac *Client) handleCheckWebAuthn(ctx context.Context, doc *goquery.Document, res *http.Response) (context.Context, *http.Request, error) {
+	form, err := page.NewFormFromDocument(doc, "form")
+	if err != nil {
+		return ctx, nil, errors.Wrap(err, "error extracting login form")
+	}
+
+	form.Values.Set("isWebAuthnSupportedByBrowser", "false")
+
+	req, err := form.BuildRequest()
+	return ctx, req, err
+}
+
+func (ac *Client) handleOTP(ctx context.Context, doc *goquery.Document, _ *http.Response) (context.Context, *http.Request, error) {
 	form, err := page.NewFormFromDocument(doc, "#otp-form")
 	if err != nil {
 		return ctx, nil, errors.Wrap(err, "error extracting OTP form")
@@ -152,7 +171,7 @@ func (ac *Client) handleOTP(ctx context.Context, doc *goquery.Document) (context
 	return ctx, req, err
 }
 
-func (ac *Client) handleSwipe(ctx context.Context, doc *goquery.Document) (context.Context, *http.Request, error) {
+func (ac *Client) handleSwipe(ctx context.Context, doc *goquery.Document, _ *http.Response) (context.Context, *http.Request, error) {
 	form, err := page.NewFormFromDocument(doc, "#form1")
 	if err != nil {
 		return ctx, nil, errors.Wrap(err, "error extracting swipe status form")
@@ -201,7 +220,7 @@ func (ac *Client) handleSwipe(ctx context.Context, doc *goquery.Document) (conte
 	return ctx, req, err
 }
 
-func (ac *Client) handleFormRedirect(ctx context.Context, doc *goquery.Document) (context.Context, *http.Request, error) {
+func (ac *Client) handleFormRedirect(ctx context.Context, doc *goquery.Document, _ *http.Response) (context.Context, *http.Request, error) {
 	form, err := page.NewFormFromDocument(doc, "")
 	if err != nil {
 		return ctx, nil, errors.Wrap(err, "error extracting redirect form")
@@ -210,12 +229,42 @@ func (ac *Client) handleFormRedirect(ctx context.Context, doc *goquery.Document)
 	return ctx, req, err
 }
 
-func (ac *Client) handleWebAuthn(ctx context.Context, doc *goquery.Document) (context.Context, *http.Request, error) {
+func (ac *Client) handleFormSamlRequest(ctx context.Context, doc *goquery.Document, _ *http.Response) (context.Context, *http.Request, error) {
 	form, err := page.NewFormFromDocument(doc, "")
 	if err != nil {
-		return ctx, nil, errors.Wrap(err, "error extracting webauthn form")
+		return ctx, nil, errors.Wrap(err, "error extracting samlrequest form")
 	}
-	form.Values.Set("isWebAuthnSupportedByBrowser", "false")
+	req, err := form.BuildRequest()
+	return ctx, req, err
+}
+
+func (ac *Client) handleFormSelectDevice(ctx context.Context, doc *goquery.Document, res *http.Response) (context.Context, *http.Request, error) {
+	deviceList := make(map[string]string)
+	var deviceNameList []string
+
+	doc.Find("ul.device-list > li").Each(func(_ int, s *goquery.Selection) {
+		deviceId, _ := s.Attr("data-id")
+		deviceName, _ := s.Find("a > div.device-name").Html()
+
+		logger.WithField("device name", deviceName).WithField("device id", deviceId).Debug("Select Device")
+		deviceList[deviceName] = deviceId
+		deviceNameList = append(deviceNameList, deviceName)
+	})
+
+	var chooseDevice = prompter.Choose("Select which MFA Device to use", deviceNameList)
+
+	form, err := page.NewFormFromDocument(doc, "")
+	if err != nil {
+		return ctx, nil, errors.Wrap(err, "error extracting select device form")
+	}
+
+	form.Values.Set("deviceId", deviceList[deviceNameList[chooseDevice]])
+	form.URL, err = makeAbsoluteURL(form.URL, makeBaseURL(res.Request.URL))
+	if err != nil {
+		return ctx, nil, err
+	}
+
+	logger.WithField("value", form.Values.Encode()).Debug("Select Device")
 	req, err := form.BuildRequest()
 	return ctx, req, err
 }
@@ -228,42 +277,56 @@ func docIsOTP(doc *goquery.Document) bool {
 	return doc.Has("form#otp-form").Size() == 1
 }
 
+func docIsCheckWebAuthn(doc *goquery.Document) bool {
+	return doc.Has("input[name=\"isWebAuthnSupportedByBrowser\"]").Size() == 1
+}
+
 func docIsSwipe(doc *goquery.Document) bool {
 	return doc.Has("form#form1").Size() == 1 && doc.Has("form#reponseView").Size() == 1
 }
 
 func docIsFormRedirect(doc *goquery.Document) bool {
-	return doc.Has("input[name=\"ppm_request\"]").Size() == 1
-}
-
-func docIsWebAuthn(doc *goquery.Document) bool {
-	return doc.Has("input[name=\"isWebAuthnSupportedByBrowser\"]").Size() == 1
+	return doc.Has("input[name=\"ppm_request\"]").Size() == 1 || doc.Find("form[action=\"https://authenticator.pingone.com/pingid/ppm/auth\"]").Size() == 1
 }
 
 func docIsFormSamlRequest(doc *goquery.Document) bool {
 	return doc.Find("input[name=\"SAMLRequest\"]").Size() == 1
 }
 
-func docIsFormSamlResponse(doc *goquery.Document) bool {
-	return doc.Find("input[name=\"SAMLResponse\"]").Size() == 1
-}
-
 func docIsFormResume(doc *goquery.Document) bool {
-	return doc.Find("input[name=\"RelayState\"]").Size() == 1
+	return doc.Find("input[name=\"RelayState\"]").Size() == 1 || doc.Find("input[name=\"Resume\"]").Size() == 1
 }
 
 func docIsFormRedirectToAWS(doc *goquery.Document) bool {
 	return doc.Find("form[action=\"https://signin.aws.amazon.com/saml\"]").Size() == 1
 }
 
+func docIsFormSelectDevice(doc *goquery.Document) bool {
+	return doc.Has("form[name=\"device-form\"]").Size() == 1
+}
+
 func extractSAMLResponse(doc *goquery.Document) (v string, ok bool) {
+
 	return doc.Find("input[name=\"SAMLResponse\"]").Attr("value")
 }
 
+func makeBaseURL(url *url.URL) string {
+	return url.Scheme + "://" + url.Hostname()
+}
+
 // ensures given url is an absolute URL. if not, it will be combined with the base URL
-func makeAbsoluteURL(v string, base string) string {
-	if u, err := url.ParseRequestURI(v); err == nil && !u.IsAbs() {
-		return fmt.Sprintf("%s%s", base, v)
+func makeAbsoluteURL(v string, base string) (string, error) {
+	logger.WithField("base", base).WithField("v", v).Debug("make absolute url")
+	baseURL, err := url.Parse(base)
+	if err != nil {
+		return "", err
 	}
-	return v
+	pathURL, err := url.ParseRequestURI(v)
+	if err != nil {
+		return "", err
+	}
+	if pathURL.IsAbs() {
+		return pathURL.String(), nil
+	}
+	return baseURL.ResolveReference(pathURL).String(), nil
 }
