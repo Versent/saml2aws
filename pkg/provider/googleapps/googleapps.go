@@ -270,11 +270,80 @@ func (kc *Client) loadChallengePage(submitURL string, referer string, authForm u
 			return kc.loadResponsePage(u.String(), submitURL, responseForm)
 		}
 
-		return nil, errors.Errorf("unsupported second factor: %s", secondActionURL)
+		skipResponseForm, skipActionURL, err := extractInputsByFormQuery(doc, `[action$="skip"]`)
+		if err != nil {
+			return nil, errors.Wrap(err, "unable to extract skip form")
+		}
+
+		if skipActionURL == "" {
+			return nil, errors.Errorf("unsupported second factor: %s", secondActionURL)
+		}
+
+		u.Path = skipActionURL
+
+		return kc.loadAlternateChallengePage(u.String(), submitURL, skipResponseForm)
+
 	}
 
 	return doc, nil
 
+}
+
+func (kc *Client) loadAlternateChallengePage(submitURL string, referer string, authForm url.Values) (*goquery.Document, error) {
+
+	req, err := http.NewRequest("POST", submitURL, strings.NewReader(authForm.Encode()))
+	if err != nil {
+		return nil, errors.Wrap(err, "error retrieving login form")
+	}
+
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Accept-Language", "en-US")
+	req.Header.Set("Content-Language", "en-US")
+	req.Header.Set("Referer", referer)
+
+	res, err := kc.client.Do(req)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to make request to login form")
+	}
+
+	doc, err := goquery.NewDocumentFromReader(res.Body)
+	if err != nil {
+		return nil, errors.Wrap(err, "error parsing login page html document")
+	}
+
+	var challengeEntry string
+
+	doc.Find("form[data-challengeentry]").EachWithBreak(func(i int, s *goquery.Selection) bool {
+		action, ok := s.Attr("action")
+		if !ok {
+			return true
+		}
+
+		if strings.Contains(action, "challenge/totp/") ||
+			strings.Contains(action, "challenge/ipp/") ||
+			strings.Contains(action, "challenge/az/") {
+
+			challengeEntry, _ = s.Attr("data-challengeentry")
+			return false
+		}
+
+		return true
+	})
+
+	if challengeEntry == "" {
+		return nil, errors.New("unable to find supported second factor")
+	}
+
+	query := fmt.Sprintf(`[data-challengeentry="%s"]`, challengeEntry)
+	responseForm, newActionURL, err := extractInputsByFormQuery(doc, query)
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to extract challenge form")
+	}
+
+	u, _ := url.Parse(submitURL)
+	u.Path = newActionURL
+
+	return kc.loadChallengePage(u.String(), submitURL, responseForm)
 }
 
 func (kc *Client) postJSON(submitURL string, values map[string]string, referer string) (*http.Response, error) {
@@ -351,10 +420,14 @@ func mustFindErrorMsg(doc *goquery.Document) string {
 }
 
 func extractInputsByFormID(doc *goquery.Document, formID string) (url.Values, string, error) {
+	return extractInputsByFormQuery(doc, fmt.Sprintf("#%s", formID))
+}
+
+func extractInputsByFormQuery(doc *goquery.Document, formQuery string) (url.Values, string, error) {
 	formData := url.Values{}
 	var actionURL string
 
-	query := fmt.Sprintf("form#%s", formID)
+	query := fmt.Sprintf("form%s", formQuery)
 
 	//get action url
 	doc.Find(query).Each(func(i int, s *goquery.Selection) {
@@ -365,7 +438,7 @@ func extractInputsByFormID(doc *goquery.Document, formID string) (url.Values, st
 		actionURL = action
 	})
 
-	query = fmt.Sprintf("form#%s", formID)
+	query = fmt.Sprintf("form%s", formQuery)
 
 	// extract form data to passthrough
 	doc.Find(query).Find("input").Each(func(i int, s *goquery.Selection) {
