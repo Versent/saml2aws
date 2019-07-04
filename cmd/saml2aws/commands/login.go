@@ -204,6 +204,9 @@ func resolveRole(awsRoles []*saml2aws.AWSRole, samlAssertion string, account *cf
 	if err != nil {
 		return nil, errors.Wrap(err, "error parsing aws role accounts")
 	}
+	if len(awsAccounts) == 0 {
+		return nil, errors.New("no accounts available")
+	}
 
 	saml2aws.AssignPrincipals(awsRoles, awsAccounts)
 
