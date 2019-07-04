@@ -24,16 +24,21 @@ func TestExtractInputByName(t *testing.T) {
 	require.Equal(t, "test error message", captcha)
 }
 
-func TestExtractInputsByFormID(t *testing.T) {
+func TestExtractInputsByFormQuery(t *testing.T) {
 	html := `<html><body><form id="dev" action="http://example.com/test"><input name="pass" value="test error message"\></form></body></html>`
 
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(html))
 	require.Nil(t, err)
 
-	form, actionURL, err := extractInputsByFormID(doc, "dev")
+	form, actionURL, err := extractInputsByFormQuery(doc, "#dev")
 	require.Nil(t, err)
 	require.Equal(t, "http://example.com/test", actionURL)
 	require.Equal(t, "test error message", form.Get("pass"))
+
+	form2, actionURL2, err := extractInputsByFormQuery(doc, `[action$="/test"]`)
+	require.Nil(t, err)
+	require.Equal(t, "http://example.com/test", actionURL2)
+	require.Equal(t, "test error message", form2.Get("pass"))
 }
 func TestExtractErrorMsg(t *testing.T) {
 	html := `<html><body><span class="error-msg">test error message</span></body></html>`
