@@ -30,7 +30,7 @@ const (
 
 // IDPAccount saml IDP account
 type IDPAccount struct {
-	AppID                string `ini:"app_id"` // used by OneLogin
+	AppID                string `ini:"app_id"` // used by OneLogin and AzureAD
 	URL                  string `ini:"url"`
 	Username             string `ini:"username"`
 	Provider             string `ini:"provider"`
@@ -55,6 +55,9 @@ func (ia IDPAccount) String() string {
   Subdomain: %s`, ia.AppID, ia.Subdomain)
 	case "F5APM":
 		policyID = fmt.Sprintf("\n  ResourceID: %s", ia.ResourceID)
+	case "AzureAD":
+		appID = fmt.Sprintf(`
+  AppID: %s`, ia.AppID)
 	}
 
 	return fmt.Sprintf(`account {%s%s
@@ -83,6 +86,10 @@ func (ia *IDPAccount) Validate() error {
 	case "F5APM":
 		if ia.ResourceID == "" {
 			return errors.New("Resource ID empty in idp account")
+		}
+	case "AzureAD":
+		if ia.AppID == "" {
+			return errors.New("app ID empty in idp account")
 		}
 	}
 
