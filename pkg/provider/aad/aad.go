@@ -693,6 +693,13 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 	if err := json.Unmarshal([]byte(loginPasswordJson), &loginPasswordSkipMfaResp); err != nil {
 		return samlAssertion, errors.Wrap(err, "loginPassword response unmarshal error")
 	}
+	var restartSAMLResp startSAMLResponse
+	if err := json.Unmarshal([]byte(loginPasswordJson), &restartSAMLResp); err != nil {
+		return samlAssertion, errors.Wrap(err, "startSAML response unmarshal error")
+	}
+  if restartSAMLResp.URLGitHubFed != "" {
+			return samlAssertion, errors.Wrap(err, "login failed")
+  }
 
 	// skip mfa
 	if loginPasswordSkipMfaResp.URLSkipMfaRegistration != "" {
@@ -704,6 +711,9 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 
 		// start mfa
 		mfas := loginPasswordResp.ArrUserProofs
+		if len(mfas) == 0 {
+			return samlAssertion, errors.Wrap(err, "mfa not found")
+		}
 		mfa := mfas[0]
 		switch ac.idpAccount.MFA {
 
@@ -749,7 +759,7 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		}
 
 		//  mfa end
-		for {
+    for i:=0;; i++{
 			mfaReq = mfaRequest{
 				AuthMethodID: mfaResp.AuthMethodID,
 				Method:       "EndAuth",
@@ -761,6 +771,9 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 				verifyCode := prompter.StringRequired("Enter verification code")
 				mfaReq.AdditionalAuthData = verifyCode
 			}
+      if mfaReq.AuthMethodID == "PhoneAppNotification" && i==0 {
+        fmt.Println("Phone approval required.")
+      }
 			mfaReqJson, err := json.Marshal(mfaReq)
 			if err != nil {
 				return samlAssertion, err
