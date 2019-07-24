@@ -10,14 +10,6 @@
   revision = "82da6802f65f1ac7963cfc3b7c62ae12dab8ee5d"
 
 [[projects]]
-  digest = "1:02af1b0c1b08031a940a6c6ad1f55c292c84a7cdd3c435d5c841bcee46819f3d"
-  name = "github.com/AlecAivazis/survey"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "e752db451e07e09c7d7dc8cada807a44bdb0fd47"
-  version = "v1.5.3"
-
-[[projects]]
   branch = "master"
   digest = "1:bf641dbf159d010db3c6da01311806f3b85a97cf26da3299bfa690ee4caf9ae4"
   name = "github.com/Azure/go-ntlmssp"
@@ -389,9 +381,10 @@
   version = "v0.3.0"
 
 [[projects]]
-  digest = "1:7849dff11be3defef1f33a9e469329f8786afb4649d115d7b2027717fe4eb4eb"
+  digest = "1:42763582556a1a345ad6fe11ef6a73ed706b74997fa24c648a566251c1c2255d"
   name = "gopkg.in/AlecAivazis/survey.v1"
   packages = [
+    ".",
     "core",
     "terminal",
   ]
@@ -423,7 +416,6 @@
   analyzer-version = 1
   input-imports = [
     "github.com/99designs/keyring",
-    "github.com/AlecAivazis/survey",
     "github.com/Azure/go-ntlmssp",
     "github.com/PuerkitoBio/goquery",
     "github.com/alecthomas/kingpin",
@@ -445,6 +437,7 @@
     "github.com/stretchr/testify/require",
     "github.com/tidwall/gjson",
     "golang.org/x/net/publicsuffix",
+    "gopkg.in/AlecAivazis/survey.v1",
     "gopkg.in/ini.v1",
   ]
   solver-name = "gps-cdcl"
