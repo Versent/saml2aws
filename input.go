@@ -48,6 +48,9 @@ func PromptForConfigurationDetails(idpAccount *cfg.IDPAccount) error {
 		fmt.Println("")
 	case "F5APM":
 		idpAccount.ResourceID = prompter.String("Resource ID", idpAccount.ResourceID)
+	case "AzureAD":
+		idpAccount.AppID = prompter.String("App ID", idpAccount.AppID)
+		fmt.Println("")
 	}
 
 	return nil
