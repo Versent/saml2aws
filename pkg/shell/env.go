@@ -18,14 +18,11 @@ func BuildEnvVars(awsCreds *awsconfig.AWSCredentials, account *cfg.IDPAccount, e
 
 	//To run exec with a non default (saml) profile 'AWS_ACCESS_KEY_ID' and 'AWS_SECRET_ACCESS_KEY' must not be set
 	if execFlags.ExecProfile == "" {
-		print("In here")
 		environmentVars = append(environmentVars, fmt.Sprintf("AWS_ACCESS_KEY_ID=%s", awsCreds.AWSAccessKey))
 		environmentVars = append(environmentVars, fmt.Sprintf("AWS_SECRET_ACCESS_KEY=%s", awsCreds.AWSSecretKey))
 		fmt.Sprintf("AWS_PROFILE=%s", account.Profile)
 		fmt.Sprintf("AWS_DEFAULT_PROFILE=%s", account.Profile)
 	} else {
-		print("Nope!")
-		print(execFlags.ExecProfile)
 		environmentVars = append(environmentVars, fmt.Sprintf("AWS_PROFILE=%s", execFlags.ExecProfile))
 		environmentVars = append(environmentVars, fmt.Sprintf("AWS_DEFAULT_PROFILE=%s", execFlags.ExecProfile))
 	}
