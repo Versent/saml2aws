@@ -17,7 +17,7 @@ var (
 	Version = "1.0.0"
 )
 
-// The `cmdLineList` type is used to make a `[]string` meet the requiements
+// The `cmdLineList` type is used to make a `[]string` meet the requirements
 // of the kingpin.Value interface
 type cmdLineList []string
 
@@ -89,8 +89,9 @@ func main() {
 	execFlags := new(flags.LoginExecFlags)
 	execFlags.CommonFlags = commonFlags
 	cmdExec.Flag("profile", "The AWS profile to save the temporary credentials. (env: SAML2AWS_PROFILE)").Envar("SAML2AWS_PROFILE").Short('p').StringVar(&commonFlags.Profile)
-	cmdExec.Flag("exec-profile", "The AWS profile to utilize for command execution. (env: SAML2AWS_EXEC_PROFILE)").Envar("SAML2AWS_EXEC_PROFILE").StringVar(&execFlags.ExecProfile)
+	cmdExec.Flag("exec-profile", "The AWS profile to utilize for command execution. Useful to allow the aws cli to perform secondary role assumption. (env: SAML2AWS_EXEC_PROFILE)").Envar("SAML2AWS_EXEC_PROFILE").StringVar(&execFlags.ExecProfile)
 	cmdLine := buildCmdList(cmdExec.Arg("command", "The command to execute."))
+
 
 	// `list` command and settings
 	cmdListRoles := app.Command("list-roles", "List available role ARNs.")
@@ -148,3 +149,4 @@ func main() {
 		os.Exit(1)
 	}
 }
+
