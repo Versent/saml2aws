@@ -3,7 +3,6 @@ package shell
 import (
 	"fmt"
 	"github.com/versent/saml2aws/pkg/flags"
-
 	"github.com/versent/saml2aws/pkg/awsconfig"
 	"github.com/versent/saml2aws/pkg/cfg"
 )
