@@ -89,6 +89,7 @@ func main() {
 	execFlags := new(flags.LoginExecFlags)
 	execFlags.CommonFlags = commonFlags
 	cmdExec.Flag("profile", "The AWS profile to save the temporary credentials. (env: SAML2AWS_PROFILE)").Envar("SAML2AWS_PROFILE").Short('p').StringVar(&commonFlags.Profile)
+	cmdExec.Flag("exec-profile", "The AWS profile to utilize for command execution. (env: SAML2AWS_EXEC_PROFILE)").Envar("SAML2AWS_EXEC_PROFILE").StringVar(&execFlags.ExecProfile)
 	cmdLine := buildCmdList(cmdExec.Arg("command", "The command to execute."))
 
 	// `list` command and settings
