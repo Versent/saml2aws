@@ -38,6 +38,7 @@ func Exec(execFlags *flags.LoginExecFlags, cmdline []string) error {
 		fmt.Println("unable to load credentials, login required to create them")
 		return nil
 	}
+
 	awsCreds, err := sharedCreds.Load()
 	if err != nil {
 		return errors.Wrap(err, "error loading credentials")
