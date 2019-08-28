@@ -436,6 +436,7 @@
     "github.com/danieljoos/wincred",
     "github.com/headzoo/surf",
     "github.com/headzoo/surf/browser",
+    "github.com/mattn/go-isatty",
     "github.com/mitchellh/go-homedir",
     "github.com/pkg/errors",
     "github.com/robertkrimen/otto",
