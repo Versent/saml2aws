@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"os"
 	"runtime"
 	"time"
 
@@ -13,6 +14,7 @@ import (
 	"github.com/versent/saml2aws/pkg/dump"
 
 	"github.com/briandowns/spinner"
+	"github.com/mattn/go-isatty"
 	"github.com/pkg/errors"
 	"golang.org/x/net/publicsuffix"
 )
@@ -60,19 +62,21 @@ func NewHTTPClient(tr http.RoundTripper) (*HTTPClient, error) {
 // Do do the request
 func (hc *HTTPClient) Do(req *http.Request) (*http.Response, error) {
 
-	cs := spinner.CharSets[14]
+	if isatty.IsTerminal(os.Stdout.Fd()) {
+		cs := spinner.CharSets[14]
 
-	// use a NON unicode spinner for windows
-	if runtime.GOOS == "windows" {
-		cs = spinner.CharSets[26]
-	}
+		// use a NON unicode spinner for windows
+		if runtime.GOOS == "windows" {
+			cs = spinner.CharSets[26]
+		}
 
-	if logrus.GetLevel() != logrus.DebugLevel {
-		s := spinner.New(cs, 100*time.Millisecond)
-		defer func() {
-			s.Stop()
-		}()
-		s.Start()
+		if logrus.GetLevel() != logrus.DebugLevel {
+			s := spinner.New(cs, 100*time.Millisecond)
+			defer func() {
+				s.Stop()
+			}()
+			s.Start()
+		}
 	}
 
 	req.Header.Set("User-Agent", fmt.Sprintf("saml2aws/1.0 (%s %s) Versent", runtime.GOOS, runtime.GOARCH))

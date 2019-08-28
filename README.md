@@ -297,6 +297,7 @@ Note: That profile environment variables enable you to use `exec` with a script 
 
 ## Provider Specific Documentation
 
+* [Azure Active Directory](./doc/provider/aad)
 * [JumpCloud](./doc/provider/jumpcloud)
 
 # Dependencies
