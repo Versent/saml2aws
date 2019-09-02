@@ -2,6 +2,8 @@ package okta
 
 import (
 	"bytes"
+	"context"
+	"encoding/base64"
 	"fmt"
 	"html"
 	"io/ioutil"
@@ -18,6 +20,7 @@ import (
 	"github.com/tidwall/gjson"
 	"github.com/versent/saml2aws/pkg/cfg"
 	"github.com/versent/saml2aws/pkg/creds"
+	"github.com/versent/saml2aws/pkg/page"
 	"github.com/versent/saml2aws/pkg/provider"
 
 	"encoding/json"
@@ -81,14 +84,14 @@ func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 	}, nil
 }
 
+type ctxKey string
+
 // Authenticate logs into Okta and returns a SAML response
 func (oc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error) {
 
-	var samlAssertion string
-
 	oktaURL, err := url.Parse(loginDetails.URL)
 	if err != nil {
-		return samlAssertion, errors.Wrap(err, "error building oktaURL")
+		return "", errors.Wrap(err, "error building oktaURL")
 	}
 
 	oktaOrgHost := oktaURL.Host
@@ -98,14 +101,14 @@ func (oc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 	authBody := new(bytes.Buffer)
 	err = json.NewEncoder(authBody).Encode(authReq)
 	if err != nil {
-		return samlAssertion, errors.Wrap(err, "error encoding authreq")
+		return "", errors.Wrap(err, "error encoding authreq")
 	}
 
 	authSubmitURL := fmt.Sprintf("https://%s/api/v1/authn", oktaOrgHost)
 
 	req, err := http.NewRequest("POST", authSubmitURL, authBody)
 	if err != nil {
-		return samlAssertion, errors.Wrap(err, "error building authentication request")
+		return "", errors.Wrap(err, "error building authentication request")
 	}
 
 	req.Header.Add("Content-Type", "application/json")
@@ -113,12 +116,12 @@ func (oc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 
 	res, err := oc.client.Do(req)
 	if err != nil {
-		return samlAssertion, errors.Wrap(err, "error retrieving auth response")
+		return "", errors.Wrap(err, "error retrieving auth response")
 	}
 
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		return samlAssertion, errors.Wrap(err, "error retrieving body from response")
+		return "", errors.Wrap(err, "error retrieving body from response")
 	}
 
 	resp := string(body)
@@ -130,7 +133,7 @@ func (oc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 	if authStatus == "MFA_REQUIRED" {
 		oktaSessionToken, err = verifyMfa(oc, oktaOrgHost, loginDetails, resp)
 		if err != nil {
-			return samlAssertion, errors.Wrap(err, "error verifying MFA")
+			return "", errors.Wrap(err, "error verifying MFA")
 		}
 	}
 
@@ -139,7 +142,7 @@ func (oc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 
 	req, err = http.NewRequest("GET", oktaSessionRedirectURL, nil)
 	if err != nil {
-		return samlAssertion, errors.Wrap(err, "error building authentication request")
+		return "", errors.Wrap(err, "error building authentication request")
 	}
 	q := req.URL.Query()
 	q.Add("checkAccountSetupComplete", "true")
@@ -147,31 +150,91 @@ func (oc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 	q.Add("redirectUrl", loginDetails.URL)
 	req.URL.RawQuery = q.Encode()
 
-	res, err = oc.client.Do(req)
-	if err != nil {
-		return samlAssertion, errors.Wrap(err, "error retrieving verify response")
-	}
+	ctx := context.WithValue(context.Background(), ctxKey("login"), loginDetails)
+	return oc.follow(ctx, req)
+}
 
-	//try to extract SAMLResponse
+func (oc *Client) follow(ctx context.Context, req *http.Request) (string, error) {
+
+	res, err := oc.client.Do(req)
+	if err != nil {
+		return "", errors.Wrap(err, "error following")
+	}
 	doc, err := goquery.NewDocumentFromResponse(res)
 	if err != nil {
-		return samlAssertion, errors.Wrap(err, "error parsing document")
+		return "", errors.Wrap(err, "failed to build document from response")
 	}
 
-	samlAssertion, ok := doc.Find("input[name=\"SAMLResponse\"]").Attr("value")
-	if !ok {
-		return samlAssertion, errors.Wrap(err, "unable to locate saml response")
+	var handler func(context.Context, *goquery.Document) (context.Context, *http.Request, error)
+
+	if docIsFormRedirectToAWS(doc) {
+		logger.WithField("type", "saml-response-to-aws").Debug("doc detect")
+		if samlResponse, ok := extractSAMLResponse(doc); ok {
+			decodedSamlResponse, err := base64.StdEncoding.DecodeString(samlResponse)
+			if err != nil {
+				return "", errors.Wrap(err, "failed to decode saml-response")
+			}
+			logger.WithField("type", "saml-response").WithField("saml-response", string(decodedSamlResponse)).Debug("doc detect")
+			return samlResponse, nil
+		}
+	} else if docIsFormSamlRequest(doc) {
+		logger.WithField("type", "saml-request").Debug("doc detect")
+		handler = oc.handleFormRedirect
+	} else if docIsFormResume(doc) {
+		logger.WithField("type", "resume").Debug("doc detect")
+		handler = oc.handleFormRedirect
+	} else if docIsFormSamlResponse(doc) {
+		logger.WithField("type", "saml-response").Debug("doc detect")
+		handler = oc.handleFormRedirect
 	}
 
-	logger.Debug("auth complete")
+	if handler == nil {
+		html, _ := doc.Selection.Html()
+		logger.WithField("doc", html).Debug("Unknown document type")
+		return "", fmt.Errorf("Unknown document type")
+	}
 
-	return samlAssertion, nil
+	ctx, req, err = handler(ctx, doc)
+	if err != nil {
+		return "", err
+	}
+	return oc.follow(ctx, req)
+
 }
 
 func parseMfaIdentifer(json string, arrayPosition int) string {
 	mfaProvider := gjson.Get(json, fmt.Sprintf("_embedded.factors.%d.provider", arrayPosition)).String()
 	factorType := strings.ToUpper(gjson.Get(json, fmt.Sprintf("_embedded.factors.%d.factorType", arrayPosition)).String())
 	return fmt.Sprintf("%s %s", mfaProvider, factorType)
+}
+
+func (oc *Client) handleFormRedirect(ctx context.Context, doc *goquery.Document) (context.Context, *http.Request, error) {
+	form, err := page.NewFormFromDocument(doc, "")
+	if err != nil {
+		return ctx, nil, errors.Wrap(err, "error extracting redirect form")
+	}
+	req, err := form.BuildRequest()
+	return ctx, req, err
+}
+
+func docIsFormSamlRequest(doc *goquery.Document) bool {
+	return doc.Find("input[name=\"SAMLRequest\"]").Size() == 1
+}
+
+func docIsFormSamlResponse(doc *goquery.Document) bool {
+	return doc.Find("input[name=\"SAMLResponse\"]").Size() == 1
+}
+
+func docIsFormResume(doc *goquery.Document) bool {
+	return doc.Find("input[name=\"RelayState\"]").Size() == 1
+}
+
+func docIsFormRedirectToAWS(doc *goquery.Document) bool {
+	return doc.Find("form[action=\"https://signin.aws.amazon.com/saml\"]").Size() == 1
+}
+
+func extractSAMLResponse(doc *goquery.Document) (v string, ok bool) {
+	return doc.Find("input[name=\"SAMLResponse\"]").Attr("value")
 }
 
 func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails, resp string) (string, error) {
