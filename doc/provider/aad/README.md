@@ -56,6 +56,7 @@ Currently this provider supports the following MFA scenarios:
 
 * PhoneAppOTP
 * PhoneAppNotification
+* OneWaySMS
 
 [1]: https://azure.microsoft.com/en-au/services/active-directory/
 [2]: https://github.com/Versent/saml2aws

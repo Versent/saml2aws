@@ -767,7 +767,7 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 				FlowToken:    mfaResp.FlowToken,
 				SessionID:    mfaResp.SessionID,
 			}
-			if mfaReq.AuthMethodID == "PhoneAppOTP" {
+			if mfaReq.AuthMethodID == "PhoneAppOTP" || mfaReq.AuthMethodID == "OneWaySMS" {
 				verifyCode := prompter.StringRequired("Enter verification code")
 				mfaReq.AdditionalAuthData = verifyCode
 			}
