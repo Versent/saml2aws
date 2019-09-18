@@ -185,13 +185,23 @@ func updateFormData(authForm url.Values, s *goquery.Selection, user *creds.Login
 	if !ok {
 		return
 	}
+
+	typeValue, typeFound := s.Attr("type")
+	hiddenAttr := typeFound && typeValue == "hidden"
+
 	lname := strings.ToLower(name)
 	if strings.Contains(lname, "user") {
-		authForm.Add(name, user.Username)
+		if !hiddenAttr {
+			authForm.Add(name, user.Username)
+		}
 	} else if strings.Contains(lname, "email") {
-		authForm.Add(name, user.Username)
+		if !hiddenAttr {
+			authForm.Add(name, user.Username)
+		}
 	} else if strings.Contains(lname, "pass") {
-		authForm.Add(name, user.Password)
+		if !hiddenAttr {
+			authForm.Add(name, user.Password)
+		}
 	} else {
 		// pass through any hidden fields
 		val, ok := s.Attr("value")
