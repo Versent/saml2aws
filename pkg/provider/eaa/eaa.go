@@ -446,8 +446,9 @@ func (c *Client) DoMFAVerify(loginInfo *LoginInfo, mfaInfo *MFAInfo) (string, er
 		logger.WithField("body", resp).Debug("the body of push result")
 	}
 
+	// the uuid of every totp method will be google, so don't display it
 	code := prompter.StringRequired(fmt.Sprintf(
-		"Enter verification code from %s [ %s ]", mfaInfo.Option, mfaInfo.Target))
+		"Enter verification code from %s", mfaInfo.Option))
 
 	verifyRequest := VerifyRequest{
 		Category: mfaInfo.Option,
