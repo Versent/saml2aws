@@ -13,3 +13,9 @@ vendor
 coverage.txt
 .ctags
 .vscode
+bin/
+# JetBrains tool
+.idea
+
+# direnv
+.envrc
