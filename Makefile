@@ -17,9 +17,10 @@ prepare: prepare.metalinter
 	GOBIN=$(BIN_DIR) go install github.com/axw/gocov/gocov
 	GOBIN=$(BIN_DIR) go install golang.org/x/tools/cmd/cover
 
-# Gometalinter is deprecated so let's use the sh instead
+# Gometalinter is deprecated and broken dependency so let's use with GO111MODULE=off
 prepare.metalinter:
-	@curl https://raw.githubusercontent.com/alecthomas/gometalinter/master/scripts/install.sh | sh
+	GO111MODULE=off go get -u github.com/alecthomas/gometalinter
+	GO111MODULE=off gometalinter --fast --install
 
 mod:
 	@go mod download
@@ -38,7 +39,7 @@ compile: mod
 
 # Run all the linters
 lint:
-	@$(BIN_DIR)/gometalinter --vendor ./...
+	@gometalinter --vendor ./...
 
 # gofmt and goimports all go files
 fmt:
