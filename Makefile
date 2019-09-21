@@ -11,14 +11,21 @@ BIN_DIR := $(CURDIR)/bin
 
 ci: prepare test
 
-prepare:
+prepare: prepare.metalinter
 	GOBIN=$(BIN_DIR) go install github.com/buildkite/github-release
-	GOBIN=$(BIN_DIR) go install github.com/golangci/golangci-lint/cmd/golangci-lint
 	GOBIN=$(BIN_DIR) go install github.com/mitchellh/gox
-	GOBIN=$(BIN_DIR) go install github.com/axw/gocov/...
+	GOBIN=$(BIN_DIR) go install github.com/axw/gocov/gocov
 	GOBIN=$(BIN_DIR) go install golang.org/x/tools/cmd/cover
 
-compile:
+# Gometalinter is deprecated so let's use the sh instead
+prepare.metalinter:
+	@curl https://raw.githubusercontent.com/alecthomas/gometalinter/master/scripts/install.sh | sh
+
+mod:
+	@go mod download
+	@go mod tidy
+
+compile: mod
 	@rm -rf build/
 	@$(BIN_DIR)/gox -ldflags "-X main.Version=$(VERSION)" \
 	-osarch="darwin/amd64" \
@@ -31,7 +38,7 @@ compile:
 
 # Run all the linters
 lint:
-	@$(BIN_DIR)/golangci-lint run ./...
+	@$(BIN_DIR)/gometalinter --vendor ./...
 
 # gofmt and goimports all go files
 fmt:
@@ -53,7 +60,7 @@ release:
 	@$(BIN_DIR)/github-release "v$(VERSION)" dist/* --commit "$(git rev-parse HEAD)" --github-repository versent/$(NAME)
 
 test:
-	@$(BIN_DIR)/gocov test $(SOURCE_FILES) | gocov report
+	@$(BIN_DIR)/gocov test $(SOURCE_FILES) | $(BIN_DIR)/gocov report
 
 clean:
 	@rm -fr ./build
@@ -70,4 +77,4 @@ packages:
 generate-mocks:
 	mockery -dir pkg/prompter --all
 
-.PHONY: default prepare compile lint fmt dist release test clean generate-mocks
+.PHONY: default prepare.metalinter prepare mod compile lint fmt dist release test clean generate-mocks
