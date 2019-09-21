@@ -325,7 +325,7 @@ To use this you will need to export `AWS_DEFAULT_PROFILE=customer-test` environm
 To build this software on osx clone to the repo to `$GOPATH/src/github.com/versent/saml2aws` and ensure you have `$GOPATH/bin` in your `$PATH`.
 
 ```
-make deps
+make mod
 ```
 
 Install the binary to `$GOPATH/bin`.
