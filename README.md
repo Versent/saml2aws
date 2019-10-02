@@ -27,6 +27,9 @@ The process goes something like this:
     - [`saml2aws script`](#saml2aws-script)
     - [Configuring IDP Accounts](#configuring-idp-accounts)
 - [Example](#example)
+- [Advanced Configuration](#advanced-configuration)
+    - [Dev Account Setup](#dev-account-setup)
+    - [Test Account Setup](#test-account-setup)
 - [Building](#building)
 - [Environment vars](#environment-vars)
 - [Provider Specific Documentation](#provider-specific-documentation)
@@ -273,7 +276,6 @@ saml2aws configure -a wolfeidau --idp-provider KeyCloak --username mark@wolfe.id
   --url https://keycloak.wolfe.id.au/auth/realms/master/protocol/saml/clients/amazon-aws --skip-prompt
 ```
 
-
 Then your ready to use saml2aws.
 
 ## Example
@@ -319,6 +321,62 @@ Your new access key pair has been stored in the AWS configuration
 Note that it will expire at 2016-09-19 15:59:49 +1000 AEST
 To use this credential, call the AWS CLI with the --profile option (e.g. aws --profile saml ec2 describe-instances --region us-east-1).
 ```
+
+## Advanced Configuration
+
+Configuring multiple accounts with custom role and profile in `~/.aws/config` with goal being isolation between infra code when deploying to these environments. This setup assumes your using separate roles and probably AWS accounts for `dev` and `test` and is designed to help operations staff avoid accidentally deploying to the wrong AWS account in complex environments.
+
+### Dev Account Setup
+
+To setup the dev account run the following and enter URL, username and password, and assign a standard role to be automatically selected on login.
+
+```
+saml2aws configure -a customer-dev --role=arn:aws:iam::121234567890:role/customer-admin-role -p customer-dev
+```
+
+This will result in the following configuration in `~/.saml2aws`.
+
+```
+[customer-dev]
+url                     = https://id.customer.cloud
+username                = mark@wolfe.id.au
+provider                = Ping
+mfa                     = Auto
+skip_verify             = false
+timeout                 = 0
+aws_urn                 = urn:amazon:webservices
+aws_session_duration    = 28800
+aws_profile             = customer-dev
+role_arn                = arn:aws:iam::121234567890:role/customer-admin-role
+```
+
+To use this you will need to export `AWS_DEFAULT_PROFILE=customer-dev` environment variable to target `dev`.
+
+### Test Account Setup
+
+To setup the test account run the following and enter URL, username and password.
+
+```
+saml2aws configure -a customer-test --role=arn:aws:iam::121234567891:role/customer-admin-role -p customer-test
+```
+
+This results in the following configuration in `~/.saml2aws`.
+
+```
+[customer-test]
+url                     = https://id.customer.cloud
+username                = mark@wolfe.id.au
+provider                = Ping
+mfa                     = Auto
+skip_verify             = false
+timeout                 = 0
+aws_urn                 = urn:amazon:webservices
+aws_session_duration    = 28800
+aws_profile             = customer-test
+role_arn                = arn:aws:iam::121234567891:role/customer-admin-role
+```
+
+To use this you will need to export `AWS_DEFAULT_PROFILE=customer-test` environment variable to target `test`.
 
 ## Building
 
