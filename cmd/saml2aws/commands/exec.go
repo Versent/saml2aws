@@ -60,7 +60,7 @@ func Exec(execFlags *flags.LoginExecFlags, cmdline []string) error {
 		return errors.Wrap(err, "error logging in")
 	}
 
-	return shell.ExecShellCmd(cmdline, shell.BuildEnvVars(awsCreds, account))
+	return shell.ExecShellCmd(cmdline, shell.BuildEnvVars(awsCreds, account, execFlags))
 }
 
 func checkToken(profile string) (bool, error) {
