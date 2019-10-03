@@ -32,6 +32,7 @@ type LoginExecFlags struct {
 	CommonFlags  *CommonFlags
 	Force        bool
 	DuoMFAOption string
+	ExecProfile  string
 }
 
 // ApplyFlagOverrides overrides IDPAccount with command line settings
