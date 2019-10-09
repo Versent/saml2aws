@@ -175,7 +175,10 @@ func (ac *Client) handleDuoIFrame(ctx context.Context, doc *goquery.Document) (c
 	if !ok {
 		return ctx, nil, fmt.Errorf("no context value for 'login'")
 	}
-	duoHost, postAction, tx, app := parseTokens(html)
+	duoHost, postAction, tx, app, err := parseTokens(html)
+	if err != nil {
+		return nil, nil, err
+	}
 	ctx = context.WithValue(ctx, ctxKey("duoHost"), duoHost)
 
 	parent := fmt.Sprintf(loginDetails.URL + postAction)
@@ -545,14 +548,16 @@ func makeAbsoluteURL(v string, base string) string {
 	return v
 }
 
-func parseTokens(blob string) (string, string, string, string) {
-
+func parseTokens(blob string) (string, string, string, string, error){
 	hostRgx := regexp.MustCompile(`'host': '(.*?)'`)
 	sigRgx := regexp.MustCompile(`'sig_request': '(.*?)'`)
 	dpaRgx := regexp.MustCompile(`'post_action': '(.*?)'`)
 	dataSigRequest := sigRgx.FindStringSubmatch(blob)
 	duoHost := hostRgx.FindStringSubmatch(blob)
 	postAction := dpaRgx.FindStringSubmatch(blob)
+	if len(dataSigRequest) != 2 {
+		return "", "", "", "", errors.New("data sig request returned unexpected amount of values")
+	}
 	duoSignatures := strings.Split(dataSigRequest[1], ":")
-	return duoHost[1], postAction[1], duoSignatures[0], duoSignatures[1]
+	return duoHost[1], postAction[1], duoSignatures[0], duoSignatures[1], nil
 }
