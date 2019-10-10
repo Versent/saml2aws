@@ -25,6 +25,7 @@ type CommonFlags struct {
 	Profile              string
 	Subdomain            string
 	ResourceID           string
+	NoKeychain           bool
 }
 
 // LoginExecFlags flags for the Login / Exec commands
