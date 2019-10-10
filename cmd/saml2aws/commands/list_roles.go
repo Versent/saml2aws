@@ -52,9 +52,11 @@ func ListRoles(loginFlags *flags.LoginExecFlags) error {
 		os.Exit(1)
 	}
 
-	err = credentials.SaveCredentials(loginDetails.URL, loginDetails.Username, loginDetails.Password)
-	if err != nil {
-		return errors.Wrap(err, "error storing password in keychain")
+	if !loginFlags.CommonFlags.NoKeychain {
+		err = credentials.SaveCredentials(loginDetails.URL, loginDetails.Username, loginDetails.Password)
+		if err != nil {
+			return errors.Wrap(err, "error storing password in keychain")
+		}
 	}
 
 	data, err := base64.StdEncoding.DecodeString(samlAssertion)
