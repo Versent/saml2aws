@@ -17,7 +17,6 @@ import (
 	"github.com/versent/saml2aws/pkg/provider/onelogin"
 	"github.com/versent/saml2aws/pkg/provider/pingfed"
 	"github.com/versent/saml2aws/pkg/provider/pingone"
-	"github.com/versent/saml2aws/pkg/provider/psu"
 	"github.com/versent/saml2aws/pkg/provider/shibboleth"
 )
 
@@ -37,7 +36,6 @@ var MFAsByProvider = ProviderList{
 	"KeyCloak":   []string{"Auto"},                                       // automatically detects ToTP
 	"GoogleApps": []string{"Auto"},                                       // automatically detects ToTP
 	"Shibboleth": []string{"Auto"},
-	"PSU":        []string{"Auto"},
 	"F5APM":      []string{"Auto"},
 }
 
@@ -139,11 +137,6 @@ func NewSAMLClient(idpAccount *cfg.IDPAccount) (SAMLClient, error) {
 			return nil, fmt.Errorf("Invalid MFA type: %v for %v provider", idpAccount.MFA, idpAccount.Provider)
 		}
 		return shibboleth.New(idpAccount)
-	case "PSU":
-		if invalidMFA(idpAccount.Provider, idpAccount.MFA) {
-			return nil, fmt.Errorf("Invalid MFA type: %v for %v provider", idpAccount.MFA, idpAccount.Provider)
-		}
-		return psu.New(idpAccount)
 	case "F5APM":
 		if invalidMFA(idpAccount.Provider, idpAccount.MFA) {
 			return nil, fmt.Errorf("Invalid MFA type: %v for %v provider", idpAccount.MFA, idpAccount.Provider)

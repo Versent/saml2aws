@@ -22,8 +22,6 @@ require (
 	github.com/godbus/dbus v4.1.0+incompatible // indirect
 	github.com/golang/protobuf v1.3.2 // indirect
 	github.com/gsterjov/go-libsecret v0.0.0-20161001094733-a6f4afe4910c // indirect
-	github.com/headzoo/surf v1.0.1-0.20180909134844-a4a8c16c01dc
-	github.com/headzoo/ut v0.0.0-20181013193318-a13b5a7a02ca // indirect
 	github.com/jmespath/go-jmespath v0.0.0-20160202185014-0b12d6b521d8 // indirect
 	github.com/keybase/go-keychain v0.0.0-20181011010623-f1daa725cce4 // indirect
 	github.com/kr/pretty v0.1.0 // indirect
@@ -34,7 +32,6 @@ require (
 	github.com/onsi/ginkgo v1.10.1 // indirect
 	github.com/onsi/gomega v1.7.0 // indirect
 	github.com/pkg/errors v0.8.1
-	github.com/robertkrimen/otto v0.0.0-20180617131154-15f95af6e78d
 	github.com/sirupsen/logrus v1.0.5
 	github.com/smartystreets/goconvey v0.0.0-20190731233626-505e41936337 // indirect
 	github.com/stretchr/objx v0.2.0 // indirect
@@ -50,5 +47,4 @@ require (
 	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
 	gopkg.in/gemnasium/logrus-airbrake-hook.v2 v2.1.2 // indirect
 	gopkg.in/ini.v1 v1.37.0
-	gopkg.in/sourcemap.v1 v1.0.5 // indirect
 )
