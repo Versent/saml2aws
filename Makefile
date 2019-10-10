@@ -1,27 +1,34 @@
 NAME=saml2aws
 ARCH=$(shell uname -m)
-VERSION=2.14.0
+VERSION=2.17.0
 ITERATION := 1
 
 SOURCE_FILES?=$$(go list ./... | grep -v /vendor/)
 TEST_PATTERN?=.
 TEST_OPTIONS?=
 
-ci: deps test
+BIN_DIR := $(CURDIR)/bin
 
-deps:
-	go get github.com/buildkite/github-release
-	go get -u github.com/golang/dep/cmd/dep
-	go get -u github.com/mitchellh/gox
-	go get -u github.com/alecthomas/gometalinter
-	go get -u github.com/axw/gocov/...
-	go get -u golang.org/x/tools/cmd/cover
-	gometalinter --install
-	dep ensure
+ci: prepare test
 
-compile:
+prepare: prepare.metalinter
+	GOBIN=$(BIN_DIR) go install github.com/buildkite/github-release
+	GOBIN=$(BIN_DIR) go install github.com/mitchellh/gox
+	GOBIN=$(BIN_DIR) go install github.com/axw/gocov/gocov
+	GOBIN=$(BIN_DIR) go install golang.org/x/tools/cmd/cover
+
+# Gometalinter is deprecated and broken dependency so let's use with GO111MODULE=off
+prepare.metalinter:
+	GO111MODULE=off go get -u github.com/alecthomas/gometalinter
+	GO111MODULE=off gometalinter --fast --install
+
+mod:
+	@go mod download
+	@go mod tidy
+
+compile: mod
 	@rm -rf build/
-	@gox -ldflags "-X main.Version=$(VERSION)" \
+	@$(BIN_DIR)/gox -ldflags "-X main.Version=$(VERSION)" \
 	-osarch="darwin/amd64" \
 	-osarch="linux/i386" \
 	-osarch="linux/amd64" \
@@ -32,7 +39,7 @@ compile:
 
 # Run all the linters
 lint:
-	gometalinter --vendor ./...
+	@gometalinter --vendor ./...
 
 # gofmt and goimports all go files
 fmt:
@@ -51,10 +58,10 @@ dist:
 	done
 
 release:
-	@github-release "v$(VERSION)" dist/* --commit "$(git rev-parse HEAD)" --github-repository versent/$(NAME)
+	@$(BIN_DIR)/github-release "v$(VERSION)" dist/* --commit "$(git rev-parse HEAD)" --github-repository versent/$(NAME)
 
 test:
-	@gocov test $(SOURCE_FILES) | gocov report
+	@$(BIN_DIR)/gocov test $(SOURCE_FILES) | $(BIN_DIR)/gocov report
 
 clean:
 	@rm -fr ./build
@@ -71,4 +78,4 @@ packages:
 generate-mocks:
 	mockery -dir pkg/prompter --all
 
-.PHONY: default deps compile lint fmt dist release test clean generate-mocks
+.PHONY: default prepare.metalinter prepare mod compile lint fmt dist release test clean generate-mocks

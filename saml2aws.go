@@ -6,6 +6,7 @@ import (
 
 	"github.com/versent/saml2aws/pkg/cfg"
 	"github.com/versent/saml2aws/pkg/creds"
+	"github.com/versent/saml2aws/pkg/provider/aad"
 	"github.com/versent/saml2aws/pkg/provider/adfs"
 	"github.com/versent/saml2aws/pkg/provider/adfs2"
 	"github.com/versent/saml2aws/pkg/provider/f5apm"
@@ -26,6 +27,7 @@ type ProviderList map[string][]string
 
 // MFAsByProvider a list of providers with their respective supported MFAs
 var MFAsByProvider = ProviderList{
+	"AzureAD":       []string{"Auto", "PhoneAppOTP", "PhoneAppNotification", "OneWaySMS"},
 	"ADFS":          []string{"Auto", "VIP"},
 	"ADFS2":         []string{"Auto", "RSA"}, // nothing automatic about ADFS 2.x
 	"Ping":          []string{"Auto"},        // automatically detects PingID
@@ -84,6 +86,11 @@ type SAMLClient interface {
 // NewSAMLClient create a new SAML client
 func NewSAMLClient(idpAccount *cfg.IDPAccount) (SAMLClient, error) {
 	switch idpAccount.Provider {
+	case "AzureAD":
+		if invalidMFA(idpAccount.Provider, idpAccount.MFA) {
+			return nil, fmt.Errorf("Invalid MFA type: %v for %v provider", idpAccount.MFA, idpAccount.Provider)
+		}
+		return aad.New(idpAccount)
 	case "ADFS":
 		if invalidMFA(idpAccount.Provider, idpAccount.MFA) {
 			return nil, fmt.Errorf("Invalid MFA type: %v for %v provider", idpAccount.MFA, idpAccount.Provider)

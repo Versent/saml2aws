@@ -20,7 +20,7 @@ export SAML2AWS_PROFILE="{{ .ProfileName }}"
 
 const fishTmpl = `set -gx AWS_ACCESS_KEY_ID {{ .AWSAccessKey }}
 set -gx AWS_SECRET_ACCESS_KEY {{ .AWSSecretKey }}
-set -gx AWS_SESSION_TOKEM {{ .AWSSessionToken }}
+set -gx AWS_SESSION_TOKEN {{ .AWSSessionToken }}
 set -gx AWS_SECURITY_TOKEN {{ .AWSSecurityToken }}
 set -gx SAML2AWS_PROFILE {{ .ProfileName }}
 "
