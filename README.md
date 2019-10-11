@@ -46,6 +46,7 @@ The process goes something like this:
   * [Shibboleth](pkg/provider/shibboleth/README.md)
   * [F5APM](pkg/provider/f5apm/README.md)
   * [PSU](pkg/provider/psu/README.md)
+  * OneLogin
 * AWS SAML Provider configured
 
 ## Caveats
@@ -174,7 +175,8 @@ function s2a { eval $( $(which saml2aws) script --shell=bash --profile=$@); }
 If the `exec` sub-command is called, `saml2aws` will execute the command given as an argument:
 By default saml2aws will execute the command with temp credentials generated via `saml2aws login`.
 
-The `--exec-profile` flag allows for a command to execute using an aws profile which may have chained "assume role" actions. (via 'source_profile' in ~/.aws/config) *See section "blah" for scenario where this is useful as well as example below.
+The `--exec-profile` flag allows for a command to execute using an aws profile which may have chained
+"assume role" actions. (via 'source_profile' in ~/.aws/config)
 
 ```
 options:
@@ -358,6 +360,11 @@ x_security_token_expires = 2019-08-19T15:00:56-06:00
 source_profile=saml
 role_arn=arn:aws:iam::123456789012:role/OtherRoleInAnyFederatedAccount # Note the different account number here
 role_session_name=myAccountName
+
+[profile extraRroleIn2ndAwsAccount]
+# this profile uses a _third_ level of role assumption
+source_profile=roleIn2ndAwsAccount
+role_arn=arn:aws:iam::123456789012:role/OtherRoleInAnyFederatedAccount
 ```
 
 Running saml2aws without --exec-profile flag:
@@ -372,14 +379,16 @@ saml2aws exec aws sts get-caller-identity
 ```
 
 Running saml2aws with --exec-profile flag:
+
+When using '--exec-profile' I can assume-role into a different AWS account without re-authenticating. Note that it
+does not re-authenticate since we are already authenticated via the SSO account.
+
 ```
 saml2aws exec --exec-profile roleIn2ndAwsAccount aws sts get-caller-identity
 {
     "UserId": "YOOYOOYOOYOOYOOA:/myAccountName",
     "Account": "123456789012",
-    "Arn": "arn:aws:sts::123456789012:assumed-role/myAccountName"  # When using '--exec-profile' I can assume-role into a                                                                        # different AWS account without re-authenticating. 
-                                                                   # Note that it does not re-authenitcate since we are 
-                                                                   # alredy authenticated via the SSO account
+    "Arn": "arn:aws:sts::123456789012:assumed-role/myAccountName" 
 }
 ```
 
