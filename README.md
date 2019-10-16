@@ -46,6 +46,7 @@ The process goes something like this:
   * [Shibboleth](pkg/provider/shibboleth/README.md)
   * [F5APM](pkg/provider/f5apm/README.md)
   * [PSU](pkg/provider/psu/README.md)
+  * [Akamai](pkg/provider/akamai/README.md)
   * OneLogin
 * AWS SAML Provider configured
 
