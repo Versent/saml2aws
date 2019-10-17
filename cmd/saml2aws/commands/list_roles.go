@@ -52,7 +52,7 @@ func ListRoles(loginFlags *flags.LoginExecFlags) error {
 		os.Exit(1)
 	}
 
-	if !loginFlags.CommonFlags.NoKeychain {
+	if !loginFlags.CommonFlags.DisableKeychain {
 		err = credentials.SaveCredentials(loginDetails.URL, loginDetails.Username, loginDetails.Password)
 		if err != nil {
 			return errors.Wrap(err, "error storing password in keychain")

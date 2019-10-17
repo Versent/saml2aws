@@ -64,7 +64,7 @@ func Configure(configFlags *flags.CommonFlags) error {
 }
 
 func storeCredentials(configFlags *flags.CommonFlags, account *cfg.IDPAccount) error {
-	if configFlags.NoKeychain {
+	if configFlags.DisableKeychain {
 		return nil
 	}
 	if configFlags.Password != "" {
