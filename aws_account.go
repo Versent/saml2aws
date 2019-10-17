@@ -27,6 +27,7 @@ type AWSAccount struct {
 func ParseAWSAccounts(samlAssertion string) ([]*AWSAccount, error) {
         decSamlAssertion, _ := b64.StdEncoding.DecodeString(samlAssertion)
         if strings.Contains(string(decSamlAssertion), "signin.amazonaws.cn") {
+            fmt.Println("trying to login AWS China")
             awsURL = "https://signin.amazonaws.cn/saml"
         }
 
