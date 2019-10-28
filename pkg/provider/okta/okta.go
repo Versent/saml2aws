@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
 	"time"
 
@@ -51,8 +52,9 @@ type Client struct {
 
 // AuthRequest represents an mfa okta request
 type AuthRequest struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
+	Username   string `json:"username"`
+	Password   string `json:"password"`
+	StateToken string `json:"stateToken,omitempty"`
 }
 
 // VerifyRequest represents an mfa verify request
@@ -95,6 +97,9 @@ func (oc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 
 	//authenticate via okta api
 	authReq := AuthRequest{Username: loginDetails.Username, Password: loginDetails.Password}
+	if (loginDetails.StateToken != "") {
+		authReq = AuthRequest{StateToken: loginDetails.StateToken}
+	}
 	authBody := new(bytes.Buffer)
 	err = json.NewEncoder(authBody).Encode(authReq)
 	if err != nil {
@@ -160,7 +165,26 @@ func (oc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 
 	samlAssertion, ok := doc.Find("input[name=\"SAMLResponse\"]").Attr("value")
 	if !ok {
-		return samlAssertion, errors.Wrap(err, "unable to locate saml response")
+		req, err = http.NewRequest("GET", loginDetails.URL, nil)
+		if err != nil {
+			return samlAssertion, errors.Wrap(err, "error building app request")
+		}
+		res, err = oc.client.Do(req)
+		if err != nil {
+			return samlAssertion, errors.Wrap(err, "error retrieving app response")
+		}
+		body, err := ioutil.ReadAll(res.Body)
+		if err != nil {
+			return "", errors.Wrap(err, "error retrieving body from response")
+		}
+		resp = string(body)
+		re := regexp.MustCompile("var stateToken = '(.*)';")
+		match := re.FindStringSubmatch(resp)
+		if len(match) < 1 {
+			return "", errors.Wrap(err, "error retrieving saml response")
+		}
+		loginDetails.StateToken = strings.Replace(match[1], `\x2D`, "-", -1)
+		return oc.Authenticate(loginDetails)
 	}
 
 	logger.Debug("auth complete")
