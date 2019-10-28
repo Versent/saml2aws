@@ -665,7 +665,17 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 	loginValues.Set("ctx", startSAMLResp.SCtx)
 	loginValues.Set("login", loginDetails.Username)
 	loginValues.Set("passwd", loginDetails.Password)
-	passwordLoginRequest, err := http.NewRequest("POST", startSAMLResp.URLPost, strings.NewReader(loginValues.Encode()))
+
+	// Sometimes AAD response may contain "post url" as a relative url
+	// in this case, prepend the url scheme and host, of the URL we requested
+	var urlPost string
+	if strings.HasPrefix(startSAMLResp.URLPost, "/") {
+		urlPost = res.Request.URL.Scheme + "://" + res.Request.URL.Host + startSAMLResp.URLPost
+	} else {
+		urlPost = startSAMLResp.URLPost
+	}
+
+	passwordLoginRequest, err := http.NewRequest("POST", urlPost, strings.NewReader(loginValues.Encode()))
 	if err != nil {
 		return samlAssertion, errors.Wrap(err, "error retrieving login results")
 	}
