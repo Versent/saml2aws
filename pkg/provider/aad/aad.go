@@ -665,7 +665,17 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 	loginValues.Set("ctx", startSAMLResp.SCtx)
 	loginValues.Set("login", loginDetails.Username)
 	loginValues.Set("passwd", loginDetails.Password)
-	passwordLoginRequest, err := http.NewRequest("POST", startSAMLResp.URLPost, strings.NewReader(loginValues.Encode()))
+
+	// Sometimes AAD response may contain "post url" as a relative url
+	// in this case, prepend the url scheme and host, of the URL we requested
+	var urlPost string
+	if strings.HasPrefix(startSAMLResp.URLPost, "/") {
+		urlPost = res.Request.URL.Scheme + "://" + res.Request.URL.Host + startSAMLResp.URLPost
+	} else {
+		urlPost = startSAMLResp.URLPost
+	}
+
+	passwordLoginRequest, err := http.NewRequest("POST", urlPost, strings.NewReader(loginValues.Encode()))
 	if err != nil {
 		return samlAssertion, errors.Wrap(err, "error retrieving login results")
 	}
@@ -697,9 +707,9 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 	if err := json.Unmarshal([]byte(loginPasswordJson), &restartSAMLResp); err != nil {
 		return samlAssertion, errors.Wrap(err, "startSAML response unmarshal error")
 	}
-  if restartSAMLResp.URLGitHubFed != "" {
-			return samlAssertion, errors.Wrap(err, "login failed")
-  }
+	if restartSAMLResp.URLGitHubFed != "" {
+		return samlAssertion, errors.Wrap(err, "login failed")
+	}
 
 	// skip mfa
 	if loginPasswordSkipMfaResp.URLSkipMfaRegistration != "" {
@@ -759,7 +769,7 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		}
 
 		//  mfa end
-    for i:=0;; i++{
+		for i := 0; ; i++ {
 			mfaReq = mfaRequest{
 				AuthMethodID: mfaResp.AuthMethodID,
 				Method:       "EndAuth",
@@ -771,9 +781,9 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 				verifyCode := prompter.StringRequired("Enter verification code")
 				mfaReq.AdditionalAuthData = verifyCode
 			}
-      if mfaReq.AuthMethodID == "PhoneAppNotification" && i==0 {
-        fmt.Println("Phone approval required.")
-      }
+			if mfaReq.AuthMethodID == "PhoneAppNotification" && i == 0 {
+				fmt.Println("Phone approval required.")
+			}
 			mfaReqJson, err := json.Marshal(mfaReq)
 			if err != nil {
 				return samlAssertion, err
