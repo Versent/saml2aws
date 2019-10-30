@@ -176,20 +176,27 @@ func (oc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		body, err := ioutil.ReadAll(res.Body)
 		if err != nil {
 			return "", errors.Wrap(err, "error retrieving body from response")
-		}
-		resp = string(body)
-		re := regexp.MustCompile("var stateToken = '(.*)';")
-		match := re.FindStringSubmatch(resp)
-		if len(match) < 1 {
+		}		
+		stateToken, err := getStateTokenFromOktaPageBody(string(body))
+		if err != nil {
 			return "", errors.Wrap(err, "error retrieving saml response")
 		}
-		loginDetails.StateToken = strings.Replace(match[1], `\x2D`, "-", -1)
+		loginDetails.StateToken = stateToken		
 		return oc.Authenticate(loginDetails)
 	}
 
 	logger.Debug("auth complete")
 
 	return samlAssertion, nil
+}
+
+func getStateTokenFromOktaPageBody(responseBody string) (string, error) {
+	re := regexp.MustCompile("var stateToken = '(.*)';")
+	match := re.FindStringSubmatch(responseBody)
+	if len(match) < 2 {
+		return "", errors.New("cannot find state token")
+	}
+	return strings.Replace(match[1], `\x2D`, "-", -1), nil
 }
 
 func parseMfaIdentifer(json string, arrayPosition int) string {
