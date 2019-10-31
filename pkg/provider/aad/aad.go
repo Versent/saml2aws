@@ -711,16 +711,17 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		return samlAssertion, errors.Wrap(err, "login failed")
 	}
 
-	// skip mfa
+	mfas := loginPasswordResp.ArrUserProofs
+
+	// If there's an explicit option to skip MFA, do so
 	if loginPasswordSkipMfaResp.URLSkipMfaRegistration != "" {
 		res, err = ac.client.Get(loginPasswordSkipMfaResp.URLSkipMfaRegistration)
 		if err != nil {
 			return samlAssertion, errors.Wrap(err, "error retrieving skip mfa results")
 		}
-	} else {
-
-		// start mfa
-		mfas := loginPasswordResp.ArrUserProofs
+	} else if len(mfas) != 0 {
+		// There's no explicit option to skip MFA, and MFA options are available
+		// Start MFA
 		if len(mfas) == 0 {
 			return samlAssertion, errors.Wrap(err, "mfa not found")
 		}
@@ -852,12 +853,39 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 			return samlAssertion, errors.Wrap(err, "ProcessAuth response unmarshal error")
 		}
 
-		// kmsi
+		// After performing MFA we'll always be prompted with KMSI (Keep Me Signed In) page
 		KmsiURL := res.Request.URL.Scheme + "://" + res.Request.URL.Host + processAuthResp.URLPost
 		KmsiValues := url.Values{}
 		KmsiValues.Set("flowToken", processAuthResp.SFT)
 		KmsiValues.Set("ctx", processAuthResp.SCtx)
+		KmsiRequest, err := http.NewRequest("POST", KmsiURL, strings.NewReader(KmsiValues.Encode()))
+		if err != nil {
+			return samlAssertion, errors.Wrap(err, "error retrieving kmsi results")
+		}
+		KmsiRequest.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+		ac.client.DisableFollowRedirect()
+		res, err = ac.client.Do(KmsiRequest)
+		if err != nil {
+			return samlAssertion, errors.Wrap(err, "error retrieving kmsi results")
+		}
+		ac.client.EnableFollowRedirect()
+	} else {
+		// There was no explicit link to skip MFA
+		// and there were no MFA options available for us to process
+		// This can happen if MFA is enabled, but we're accessing from a MFA trusted IP
+		// See https://docs.microsoft.com/en-us/azure/active-directory/authentication/howto-mfa-mfasettings#targetText=MFA%20service%20settings,-Settings%20for%20app&targetText=Service%20settings%20can%20be%20accessed,Additional%20cloud-based%20MFA%20settings.
+		// Proceed with login as normal
+	}
 
+	// If we've been prompted with KMSI despite not going via MFA flow
+	// Azure can do this if MFA is enabled but
+	//  - we're accessing from an MFA whitelisted / trusted IP
+	//  - we've been exempted from a Conditional Access Policy
+	if loginPasswordResp.URLPost == "/kmsi" {
+		KmsiURL := res.Request.URL.Scheme + "://" + res.Request.URL.Host + loginPasswordResp.URLPost
+		KmsiValues := url.Values{}
+		KmsiValues.Set("flowToken", loginPasswordResp.SFT)
+		KmsiValues.Set("ctx", loginPasswordResp.SCtx)
 		KmsiRequest, err := http.NewRequest("POST", KmsiURL, strings.NewReader(KmsiValues.Encode()))
 		if err != nil {
 			return samlAssertion, errors.Wrap(err, "error retrieving kmsi results")
