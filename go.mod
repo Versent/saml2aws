@@ -18,9 +18,9 @@ require (
 	github.com/danieljoos/wincred v1.0.1
 	github.com/dvsekhvalnov/jose2go v0.0.0-20170216131308-f21a8cedbbae // indirect
 	github.com/fatih/color v1.7.0 // indirect
-	github.com/go-ini/ini v1.37.0 // indirect
 	github.com/godbus/dbus v4.1.0+incompatible // indirect
 	github.com/golang/protobuf v1.3.2 // indirect
+	github.com/google/uuid v1.1.1
 	github.com/gsterjov/go-libsecret v0.0.0-20161001094733-a6f4afe4910c // indirect
 	github.com/headzoo/surf v1.0.1-0.20180909134844-a4a8c16c01dc
 	github.com/headzoo/ut v0.0.0-20181013193318-a13b5a7a02ca // indirect
