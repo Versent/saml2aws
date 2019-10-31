@@ -25,22 +25,24 @@ import (
 )
 
 const (
-	IdentifierDuoMfa      = "DUO WEB"
-	IdentifierSmsMfa      = "OKTA SMS"
-	IdentifierPushMfa     = "OKTA PUSH"
-	IdentifierTotpMfa     = "GOOGLE TOKEN:SOFTWARE:TOTP"
-	IdentifierOktaTotpMfa = "OKTA TOKEN:SOFTWARE:TOTP"
+	IdentifierDuoMfa          = "DUO WEB"
+	IdentifierSmsMfa          = "OKTA SMS"
+	IdentifierPushMfa         = "OKTA PUSH"
+	IdentifierTotpMfa         = "GOOGLE TOKEN:SOFTWARE:TOTP"
+	IdentifierOktaTotpMfa     = "OKTA TOKEN:SOFTWARE:TOTP"
+	IdentifierSymantecTotpMfa = "SYMANTEC TOKEN"
 )
 
 var logger = logrus.WithField("provider", "okta")
 
 var (
 	supportedMfaOptions = map[string]string{
-		IdentifierDuoMfa:      "DUO MFA authentication",
-		IdentifierSmsMfa:      "SMS MFA authentication",
-		IdentifierPushMfa:     "PUSH MFA authentication",
-		IdentifierTotpMfa:     "TOTP MFA authentication",
-		IdentifierOktaTotpMfa: "Okta MFA authentication",
+		IdentifierDuoMfa:          "DUO MFA authentication",
+		IdentifierSmsMfa:          "SMS MFA authentication",
+		IdentifierPushMfa:         "PUSH MFA authentication",
+		IdentifierTotpMfa:         "TOTP MFA authentication",
+		IdentifierOktaTotpMfa:     "Okta MFA authentication",
+		IdentifierSymantecTotpMfa: "Symantec VIP MFA authentication",
 	}
 )
 
@@ -271,7 +273,7 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 	resp = string(body)
 
 	switch mfa := mfaIdentifer; mfa {
-	case IdentifierSmsMfa, IdentifierTotpMfa, IdentifierOktaTotpMfa:
+	case IdentifierSmsMfa, IdentifierTotpMfa, IdentifierOktaTotpMfa, IdentifierSymantecTotpMfa:
 		verifyCode := prompter.StringRequired("Enter verification code")
 		tokenReq := VerifyRequest{StateToken: stateToken, PassCode: verifyCode}
 		tokenBody := new(bytes.Buffer)
