@@ -1,7 +1,5 @@
 github.com/99designs/keyring v0.0.0-20190110203331-82da6802f65f h1:WXiWWJrYCaOaYimBAXlRdRJ7qOisrYyMLYnCvvhHVms=
 github.com/99designs/keyring v0.0.0-20190110203331-82da6802f65f/go.mod h1:aKt8W/yd91/xHY6ixZAJZ2vYbhr3pP8DcrvuGSGNPJk=
-github.com/AlecAivazis/survey v1.5.3 h1:z/ZlpM482t9txPJKw6R7zTJeFPVPPbAO3xI2ycQ6cu4=
-github.com/AlecAivazis/survey v1.5.3/go.mod h1:MVECab6WqEH1aXhj8nKIwF7HEAJAj2bhhGiSjNy3wII=
 github.com/Azure/go-ntlmssp v0.0.0-20180416175057-4b934ac9dad3 h1:r8SecdrDTMoF5DXQWYTAGv3Py8EnuxEOah49lc4E29o=
 github.com/Azure/go-ntlmssp v0.0.0-20180416175057-4b934ac9dad3/go.mod h1:chxPXzSsl7ZWRAuOIE23GDNzjWuZquvFlgA8xmpunjU=
 github.com/PuerkitoBio/goquery v1.4.1 h1:smcIRGdYm/w7JSbcdeLHEMzxmsBQvl8lhf0dSw2nzMI=

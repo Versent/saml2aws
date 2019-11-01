@@ -4,7 +4,6 @@ go 1.13
 
 require (
 	github.com/99designs/keyring v0.0.0-20190110203331-82da6802f65f
-	github.com/AlecAivazis/survey v1.5.3
 	github.com/Azure/go-ntlmssp v0.0.0-20180416175057-4b934ac9dad3
 	github.com/PuerkitoBio/goquery v1.4.1
 	github.com/alecthomas/kingpin v2.2.6+incompatible
@@ -44,7 +43,7 @@ require (
 	golang.org/x/net v0.0.0-20190916140828-c8589233b77d
 	golang.org/x/sys v0.0.0-20190919044723-0c1ff786ef13 // indirect
 	golang.org/x/text v0.3.2 // indirect
-	gopkg.in/AlecAivazis/survey.v1 v1.5.3 // indirect
+	gopkg.in/AlecAivazis/survey.v1 v1.5.3
 	gopkg.in/airbrake/gobrake.v2 v2.0.9 // indirect
 	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
 	gopkg.in/gemnasium/logrus-airbrake-hook.v2 v2.1.2 // indirect
