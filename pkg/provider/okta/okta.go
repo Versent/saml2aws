@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
 	"time"
 
@@ -24,22 +25,24 @@ import (
 )
 
 const (
-	IdentifierDuoMfa      = "DUO WEB"
-	IdentifierSmsMfa      = "OKTA SMS"
-	IdentifierPushMfa     = "OKTA PUSH"
-	IdentifierTotpMfa     = "GOOGLE TOKEN:SOFTWARE:TOTP"
-	IdentifierOktaTotpMfa = "OKTA TOKEN:SOFTWARE:TOTP"
+	IdentifierDuoMfa          = "DUO WEB"
+	IdentifierSmsMfa          = "OKTA SMS"
+	IdentifierPushMfa         = "OKTA PUSH"
+	IdentifierTotpMfa         = "GOOGLE TOKEN:SOFTWARE:TOTP"
+	IdentifierOktaTotpMfa     = "OKTA TOKEN:SOFTWARE:TOTP"
+	IdentifierSymantecTotpMfa = "SYMANTEC TOKEN"
 )
 
 var logger = logrus.WithField("provider", "okta")
 
 var (
 	supportedMfaOptions = map[string]string{
-		IdentifierDuoMfa:      "DUO MFA authentication",
-		IdentifierSmsMfa:      "SMS MFA authentication",
-		IdentifierPushMfa:     "PUSH MFA authentication",
-		IdentifierTotpMfa:     "TOTP MFA authentication",
-		IdentifierOktaTotpMfa: "Okta MFA authentication",
+		IdentifierDuoMfa:          "DUO MFA authentication",
+		IdentifierSmsMfa:          "SMS MFA authentication",
+		IdentifierPushMfa:         "PUSH MFA authentication",
+		IdentifierTotpMfa:         "TOTP MFA authentication",
+		IdentifierOktaTotpMfa:     "Okta MFA authentication",
+		IdentifierSymantecTotpMfa: "Symantec VIP MFA authentication",
 	}
 )
 
@@ -51,8 +54,9 @@ type Client struct {
 
 // AuthRequest represents an mfa okta request
 type AuthRequest struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
+	Username   string `json:"username"`
+	Password   string `json:"password"`
+	StateToken string `json:"stateToken,omitempty"`
 }
 
 // VerifyRequest represents an mfa verify request
@@ -95,6 +99,9 @@ func (oc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 
 	//authenticate via okta api
 	authReq := AuthRequest{Username: loginDetails.Username, Password: loginDetails.Password}
+	if (loginDetails.StateToken != "") {
+		authReq = AuthRequest{StateToken: loginDetails.StateToken}
+	}
 	authBody := new(bytes.Buffer)
 	err = json.NewEncoder(authBody).Encode(authReq)
 	if err != nil {
@@ -160,12 +167,38 @@ func (oc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 
 	samlAssertion, ok := doc.Find("input[name=\"SAMLResponse\"]").Attr("value")
 	if !ok {
-		return samlAssertion, errors.Wrap(err, "unable to locate saml response")
+		req, err = http.NewRequest("GET", loginDetails.URL, nil)
+		if err != nil {
+			return samlAssertion, errors.Wrap(err, "error building app request")
+		}
+		res, err = oc.client.Do(req)
+		if err != nil {
+			return samlAssertion, errors.Wrap(err, "error retrieving app response")
+		}
+		body, err := ioutil.ReadAll(res.Body)
+		if err != nil {
+			return "", errors.Wrap(err, "error retrieving body from response")
+		}		
+		stateToken, err := getStateTokenFromOktaPageBody(string(body))
+		if err != nil {
+			return "", errors.Wrap(err, "error retrieving saml response")
+		}
+		loginDetails.StateToken = stateToken		
+		return oc.Authenticate(loginDetails)
 	}
 
 	logger.Debug("auth complete")
 
 	return samlAssertion, nil
+}
+
+func getStateTokenFromOktaPageBody(responseBody string) (string, error) {
+	re := regexp.MustCompile("var stateToken = '(.*)';")
+	match := re.FindStringSubmatch(responseBody)
+	if len(match) < 2 {
+		return "", errors.New("cannot find state token")
+	}
+	return strings.Replace(match[1], `\x2D`, "-", -1), nil
 }
 
 func parseMfaIdentifer(json string, arrayPosition int) string {
@@ -240,7 +273,7 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 	resp = string(body)
 
 	switch mfa := mfaIdentifer; mfa {
-	case IdentifierSmsMfa, IdentifierTotpMfa, IdentifierOktaTotpMfa:
+	case IdentifierSmsMfa, IdentifierTotpMfa, IdentifierOktaTotpMfa, IdentifierSymantecTotpMfa:
 		verifyCode := prompter.StringRequired("Enter verification code")
 		tokenReq := VerifyRequest{StateToken: stateToken, PassCode: verifyCode}
 		tokenBody := new(bytes.Buffer)

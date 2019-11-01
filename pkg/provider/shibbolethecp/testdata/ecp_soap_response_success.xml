@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<soap11:Envelope xmlns:soap11="http://schemas.xmlsoap.org/soap/envelope/">
+  <soap11:Header>
+    <ecp:Response xmlns:ecp="urn:oasis:names:tc:SAML:2.0:profiles:SSO:ecp" AssertionConsumerServiceURL="https://signin.aws.amazon.com/saml" soap11:actor="http://schemas.xmlsoap.org/soap/actor/next" soap11:mustUnderstand="1"/>
+  </soap11:Header>
+  <soap11:Body>
+    <saml2p:Response xmlns:saml2p="urn:oasis:names:tc:SAML:2.0:protocol" xmlns:xsd="http://www.w3.org/2001/XMLSchema" Destination="https://signin.aws.amazon.com/saml" ID="_97d546a4d62e9e15de832793371005c9" InResponseTo="bace9862-4d5d-4bde-b262-ab562a17932d" IssueInstant="2019-05-29T20:24:58.011Z" Version="2.0">
+      <saml2:Issuer xmlns:saml2="urn:oasis:names:tc:SAML:2.0:assertion">urn:mace:incommon:example.com</saml2:Issuer>
+      <ds:Signature xmlns:ds="http://www.w3.org/2000/09/xmldsig#">
+        <ds:SignedInfo>
+          <ds:CanonicalizationMethod Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/>
+          <ds:SignatureMethod Algorithm="http://www.w3.org/2001/04/xmldsig-more#rsa-sha256"/>
+          <ds:Reference URI="#_97d546a4d62e9e15de832793371005c9">
+            <ds:Transforms>
+              <ds:Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature"/>
+              <ds:Transform Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#">
+                <ec:InclusiveNamespaces xmlns:ec="http://www.w3.org/2001/10/xml-exc-c14n#" PrefixList="xsd"/>
+              </ds:Transform>
+            </ds:Transforms>
+            <ds:DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha256"/>
+            <ds:DigestValue></ds:DigestValue>
+          </ds:Reference>
+        </ds:SignedInfo>
+        <ds:SignatureValue></ds:SignatureValue>
+        <ds:KeyInfo>
+          <ds:X509Data>
+            <ds:X509Certificate></ds:X509Certificate>
+          </ds:X509Data>
+        </ds:KeyInfo>
+      </ds:Signature>
+      <saml2p:Status>
+        <saml2p:StatusCode Value="urn:oasis:names:tc:SAML:2.0:status:Success"/>
+      </saml2p:Status>
+      <saml2:Assertion xmlns:saml2="urn:oasis:names:tc:SAML:2.0:assertion" xmlns:xsd="http://www.w3.org/2001/XMLSchema" ID="_78325721ca36923ae880ada8de570686" IssueInstant="2019-05-29T20:24:58.011Z" Version="2.0">
+        <saml2:Issuer>urn:mace:incommon:example.com</saml2:Issuer>
+        <ds:Signature xmlns:ds="http://www.w3.org/2000/09/xmldsig#">
+          <ds:SignedInfo>
+            <ds:CanonicalizationMethod Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/>
+            <ds:SignatureMethod Algorithm="http://www.w3.org/2001/04/xmldsig-more#rsa-sha256"/>
+            <ds:Reference URI="#_78325721ca36923ae880ada8de570686">
+              <ds:Transforms>
+                <ds:Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature"/>
+                <ds:Transform Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#">
+                  <ec:InclusiveNamespaces xmlns:ec="http://www.w3.org/2001/10/xml-exc-c14n#" PrefixList="xsd"/>
+                </ds:Transform>
+              </ds:Transforms>
+              <ds:DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha256"/>
+              <ds:DigestValue></ds:DigestValue>
+            </ds:Reference>
+          </ds:SignedInfo>
+          <ds:SignatureValue></ds:SignatureValue>
+          <ds:KeyInfo>
+            <ds:X509Data>
+              <ds:X509Certificate></ds:X509Certificate>
+            </ds:X509Data>
+          </ds:KeyInfo>
+        </ds:Signature>
+        <saml2:Subject>
+          <saml2:NameID Format="urn:oasis:names:tc:SAML:2.0:nameid-format:transient" NameQualifier="urn:mace:incommon:example.com" SPNameQualifier="urn:amazon:webservices"></saml2:NameID>
+          <saml2:SubjectConfirmation Method="urn:oasis:names:tc:SAML:2.0:cm:bearer">
+            <saml2:SubjectConfirmationData Address="104.39.182.31" InResponseTo="bace9862-4d5d-4bde-b262-ab562a17932d" NotOnOrAfter="2019-05-29T20:29:58.028Z" Recipient="https://signin.aws.amazon.com/saml"/>
+          </saml2:SubjectConfirmation>
+        </saml2:Subject>
+        <saml2:Conditions NotBefore="2019-05-29T20:24:58.011Z" NotOnOrAfter="2019-05-29T20:29:58.011Z">
+          <saml2:AudienceRestriction>
+            <saml2:Audience>urn:amazon:webservices</saml2:Audience>
+          </saml2:AudienceRestriction>
+        </saml2:Conditions>
+        <saml2:AuthnStatement AuthnInstant="2019-05-29T20:24:57.882Z" SessionIndex="_795b27bb3a9cb8ba16d41bbdb8070460">
+          <saml2:SubjectLocality Address="1.2.3.4"/>
+          <saml2:AuthnContext>
+            <saml2:AuthnContextClassRef>urn:oasis:names:tc:SAML:2.0:ac:classes:PasswordProtectedTransport</saml2:AuthnContextClassRef>
+          </saml2:AuthnContext>
+        </saml2:AuthnStatement>
+        <saml2:AttributeStatement>
+          <saml2:Attribute FriendlyName="eduPersonPrincipalName" Name="urn:oid:1.3.6.1.4.1.5923.1.1.1.6" NameFormat="urn:oasis:names:tc:SAML:2.0:attrname-format:uri">
+            <saml2:AttributeValue>user@example.com</saml2:AttributeValue>
+          </saml2:Attribute>
+          <saml2:Attribute FriendlyName="RoleEntitlement" Name="https://aws.amazon.com/SAML/Attributes/Role" NameFormat="urn:oasis:names:tc:SAML:2.0:attrname-format:uri">
+            <saml2:AttributeValue xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="xsd:string">arn:aws:iam::123456789003:saml-provider/idp.example.com,arn:aws:iam::123456789003:role/administrator</saml2:AttributeValue>
+          </saml2:Attribute>
+          <saml2:Attribute FriendlyName="RoleSessionName" Name="https://aws.amazon.com/SAML/Attributes/RoleSessionName" NameFormat="urn:oasis:names:tc:SAML:2.0:attrname-format:uri">
+            <saml2:AttributeValue xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="xsd:string">user@example.com</saml2:AttributeValue>
+          </saml2:Attribute>
+        </saml2:AttributeStatement>
+      </saml2:Assertion>
+    </saml2p:Response>
+  </soap11:Body>
+</soap11:Envelope>
