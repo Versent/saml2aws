@@ -7,12 +7,15 @@ import (
 	"net/url"
 
 	"fmt"
+        "strings"
+        b64 "encoding/base64"
+
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/pkg/errors"
 )
 
-const awsURL = "https://signin.aws.amazon.com/saml"
+var awsURL = "https://signin.aws.amazon.com/saml"
 
 // AWSAccount holds the AWS account name and roles
 type AWSAccount struct {
@@ -22,6 +25,12 @@ type AWSAccount struct {
 
 // ParseAWSAccounts extract the aws accounts from the saml assertion
 func ParseAWSAccounts(samlAssertion string) ([]*AWSAccount, error) {
+        decSamlAssertion, _ := b64.StdEncoding.DecodeString(samlAssertion)
+        if strings.Contains(string(decSamlAssertion), "signin.amazonaws.cn") {
+            fmt.Println("trying to login AWS China")
+            awsURL = "https://signin.amazonaws.cn/saml"
+        }
+
 
 	res, err := http.PostForm(awsURL, url.Values{"SAMLResponse": {samlAssertion}})
 	if err != nil {

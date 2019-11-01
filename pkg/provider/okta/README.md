@@ -12,8 +12,4 @@ The path segments `/home/amazon_aws` in the above URL may vary.
 
 ## Features
 
-* Supports MFA (Okta Push, Okta TOTP, Duo, and Google Authenticator), when configured at *organization level*.
-
-## Limitations
-
-* Does **not** support application-level MFA, per [issue #118](https://github.com/Versent/saml2aws/issues/118#issuecomment-355688008)
+* Supports MFA (Okta Push, Okta TOTP, Duo, and Google Authenticator), when configured at *organization* or *application* level.
