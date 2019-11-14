@@ -25,6 +25,7 @@ type CommonFlags struct {
 	Profile              string
 	Subdomain            string
 	ResourceID           string
+	DisableKeychain      bool
 }
 
 // LoginExecFlags flags for the Login / Exec commands
@@ -32,6 +33,7 @@ type LoginExecFlags struct {
 	CommonFlags  *CommonFlags
 	Force        bool
 	DuoMFAOption string
+	ExecProfile  string
 }
 
 // ApplyFlagOverrides overrides IDPAccount with command line settings

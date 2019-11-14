@@ -1,6 +1,7 @@
 # saml2aws [![Build Status](https://travis-ci.org/Versent/saml2aws.svg?branch=master)](https://travis-ci.org/Versent/saml2aws) [![Build status - Windows](https://ci.appveyor.com/api/projects/status/ptpi18kci16o4i82/branch/master?svg=true)](https://ci.appveyor.com/project/davidobrien1985/saml2aws/branch/master)
 
-CLI tool which enables you to login and retrieve [AWS](https://aws.amazon.com/) temporary credentials using SAML with [ADFS](https://msdn.microsoft.com/en-us/library/bb897402.aspx) or [PingFederate](https://www.pingidentity.com/en/products/pingfederate.html) Identity Providers.
+CLI tool which enables you to login and retrieve [AWS](https://aws.amazon.com/) temporary credentials using 
+with [ADFS](https://msdn.microsoft.com/en-us/library/bb897402.aspx) or [PingFederate](https://www.pingidentity.com/en/products/pingfederate.html) Identity Providers.
 
 This is based on python code from [
 How to Implement a General Solution for Federated API/CLI Access Using SAML 2.0](https://blogs.aws.amazon.com/security/post/TxU0AVUS9J00FP/How-to-Implement-a-General-Solution-for-Federated-API-CLI-Access-Using-SAML-2-0).
@@ -27,6 +28,9 @@ The process goes something like this:
     - [`saml2aws script`](#saml2aws-script)
     - [Configuring IDP Accounts](#configuring-idp-accounts)
 - [Example](#example)
+- [Advanced Configuration](#advanced-configuration)
+    - [Dev Account Setup](#dev-account-setup)
+    - [Test Account Setup](#test-account-setup)
 - [Building](#building)
 - [Environment vars](#environment-vars)
 - [Provider Specific Documentation](#provider-specific-documentation)
@@ -42,6 +46,8 @@ The process goes something like this:
   * [Shibboleth](pkg/provider/shibboleth/README.md)
   * [F5APM](pkg/provider/f5apm/README.md)
   * [PSU](pkg/provider/psu/README.md)
+  * [Akamai](pkg/provider/akamai/README.md)
+  * OneLogin
 * AWS SAML Provider configured
 
 ## Caveats
@@ -114,6 +120,7 @@ Flags:
                                SAML2AWS_AWS_URN)
       --duo-mfa-option         The MFA option you want to use to authenticate (env: SAML_DUO_MFA_OPTION)
       --skip-prompt            Skip prompting for parameters during login.
+      --exec-profile           Execute the given command utilizing a specific profile from your ~/.aws/config file
       --session-duration=SESSION-DURATION
                                The duration of your AWS Session. (env:
                                SAML2AWS_SESSION_DURATION)
@@ -164,6 +171,18 @@ bash:
 function s2a { eval $( $(which saml2aws) script --shell=bash --profile=$@); }
 ```
 
+### `saml2aws exec`
+
+If the `exec` sub-command is called, `saml2aws` will execute the command given as an argument:
+By default saml2aws will execute the command with temp credentials generated via `saml2aws login`.
+
+The `--exec-profile` flag allows for a command to execute using an aws profile which may have chained
+"assume role" actions. (via 'source_profile' in ~/.aws/config)
+
+```
+options:
+--exec-profile           Execute the given command utilizing a specific profile from your ~/.aws/config file
+```
 
 ### Configuring IDP Accounts
 
@@ -215,7 +234,6 @@ saml2aws configure -a wolfeidau --idp-provider KeyCloak --username mark@wolfe.id
   --url https://keycloak.wolfe.id.au/auth/realms/master/protocol/saml/clients/amazon-aws --skip-prompt
 ```
 
-
 Then your ready to use saml2aws.
 
 ## Example
@@ -262,12 +280,172 @@ Note that it will expire at 2016-09-19 15:59:49 +1000 AEST
 To use this credential, call the AWS CLI with the --profile option (e.g. aws --profile saml ec2 describe-instances --region us-east-1).
 ```
 
+## Advanced Configuration
+
+Configuring multiple accounts with custom role and profile in `~/.aws/config` with goal being isolation between infra code when deploying to these environments. This setup assumes you're using separate roles and probably AWS accounts for `dev` and `test` and is designed to help operations staff avoid accidentally deploying to the wrong AWS account in complex environments. Note that this method configures SAML authentication to each AWS account directly (in this case different AWS accounts). In the example below, separate authentication values are configured for AWS accounts 'profile=customer-dev/awsAccount=was 121234567890' and 'profile=customer-test/awsAccount=121234567891'
+
+### Dev Account Setup
+
+To setup the dev account run the following and enter URL, username and password, and assign a standard role to be automatically selected on login.
+
+```
+saml2aws configure -a customer-dev --role=arn:aws:iam::121234567890:role/customer-admin-role -p customer-dev
+```
+
+This will result in the following configuration in `~/.saml2aws`.
+
+```
+[customer-dev]
+url                     = https://id.customer.cloud
+username                = mark@wolfe.id.au
+provider                = Ping
+mfa                     = Auto
+skip_verify             = false
+timeout                 = 0
+aws_urn                 = urn:amazon:webservices
+aws_session_duration    = 28800
+aws_profile             = customer-dev
+role_arn                = arn:aws:iam::121234567890:role/customer-admin-role
+```
+
+To use this you will need to export `AWS_DEFAULT_PROFILE=customer-dev` environment variable to target `dev`.
+
+### Test Account Setup
+
+To setup the test account run the following and enter URL, username and password.
+
+```
+saml2aws configure -a customer-test --role=arn:aws:iam::121234567891:role/customer-admin-role -p customer-test
+```
+
+This results in the following configuration in `~/.saml2aws`.
+
+```
+[customer-test]
+url                     = https://id.customer.cloud
+username                = mark@wolfe.id.au
+provider                = Ping
+mfa                     = Auto
+skip_verify             = false
+timeout                 = 0
+aws_urn                 = urn:amazon:webservices
+aws_session_duration    = 28800
+aws_profile             = customer-test
+role_arn                = arn:aws:iam::121234567891:role/customer-admin-role
+```
+
+To use this you will need to export `AWS_DEFAULT_PROFILE=customer-test` environment variable to target `test`.
+
+## Advanced Configuration (Multiple AWS account access but SAML authenticate against a single 'SSO' AWS account)
+
+Example:
+(Authenticate to my 'SSO' AWS account. With this setup, there is no need to authenticate again. We can now rely on IAM to assume role cross account)
+
+~/.aws/credentials: #(these are generated by `saml2aws login`. Sets up SAML authentication into my AWS 'SSO' account)
+```
+[saml]
+aws_access_key_id        = AAAAAAAAAAAAAAAAB
+aws_secret_access_key    = duqhdZPRjEdZPRjE=dZPRjEhKjfB
+aws_session_token        = #REMOVED#
+aws_security_token       = #REMOVED#
+x_principal_arn          = arn:aws:sts::000000000123:assumed-role/myInitialAccount
+x_security_token_expires = 2019-08-19T15:00:56-06:00
+```
+
+(Use AWS profiles to assume an aws role cross-account)
+(Note that the "source_profile" is set to SAML which is my SSO AWS account since it is already authenticated)
+
+~/.aws/config:
+```
+[profile roleIn2ndAwsAccount]
+source_profile=saml
+role_arn=arn:aws:iam::123456789012:role/OtherRoleInAnyFederatedAccount # Note the different account number here
+role_session_name=myAccountName
+
+[profile extraRroleIn2ndAwsAccount]
+# this profile uses a _third_ level of role assumption
+source_profile=roleIn2ndAwsAccount
+role_arn=arn:aws:iam::123456789012:role/OtherRoleInAnyFederatedAccount
+```
+
+Running saml2aws without --exec-profile flag:
+```
+saml2aws exec aws sts get-caller-identity
+{
+    "UserId": "AROAYAROAYAROAYOO:myInitialAccount",
+    "Account": "000000000123",
+    "Arn": "arn:aws:sts::000000000123:assumed-role/myInitialAccount"  # This shows my 'SSO' account (SAML profile)
+}
+
+```
+
+Running saml2aws with --exec-profile flag:
+
+When using '--exec-profile' I can assume-role into a different AWS account without re-authenticating. Note that it
+does not re-authenticate since we are already authenticated via the SSO account.
+
+```
+saml2aws exec --exec-profile roleIn2ndAwsAccount aws sts get-caller-identity
+{
+    "UserId": "YOOYOOYOOYOOYOOA:/myAccountName",
+    "Account": "123456789012",
+    "Arn": "arn:aws:sts::123456789012:assumed-role/myAccountName" 
+}
+```
+
+As an example
+
+```
+saml2aws login
+
+aws s3 ls --profile saml
+
+An error occurred (AccessDenied) when calling the ListBuckets operation: Access Denied
+# This is denied in this example because there are no S3 buckets in the 'SSO' AWS account
+
+saml2aws exec --exec-profile roleIn2ndAwsAccount aws s3 ls  # Runs given CMD with environment configured from --exec-profile role
+
+# If we check env variables we see that our environment is configured with temporary credentials for our 'assumed role'
+env | grep AWS
+AWS_SESSION_TTL=12h
+AWS_FEDERATION_TOKEN_TTL=12h
+AWS_ASSUME_ROLE_TTL=1h
+AWS_ACCESS_KEY_ID=AAAAAAAASORTENED
+AWS_SECRET_ACCESS_KEY=secretShortened+6jJ5SMqsM5CkYi3Gw7
+AWS_SESSION_TOKEN=ShortenedTokenXXX=
+AWS_SECURITY_TOKEN=ShortenedSecurityTokenXXX=
+
+# If we desire to execute multiple commands utilizing our assumed profile, we can obtain a new shell with Env variables configured for access
+
+saml2aws exec --exec-profile roleIn2ndAwsAccount $SHELL  # Get a new shell with AWS env vars configured for 'assumed role' account access
+
+# We are now able to execute AWS cli commands with our assume role permissions
+
+# Note that we do not need a --profile flag because our environment variables were set up for this access when we obtained a new shell with the --exec-profile flag
+
+aws s3 ls  
+2019-07-30 01:32:59 264998d7606497040-sampleBucket
+
+aws iam list-groups
+{
+    "Groups": [
+        {
+            "Path": "/",
+            "GroupName": "MyGroup",
+            "GroupId": "AGAGTENTENTENGOCQFK",
+            "Arn": "arn:aws:iam::123456789012:group/MyGroup",
+            "CreateDate": "2019-05-13T16:12:19Z"
+            ]
+        }
+}
+```
+
 ## Building
 
 To build this software on osx clone to the repo to `$GOPATH/src/github.com/versent/saml2aws` and ensure you have `$GOPATH/bin` in your `$PATH`.
 
 ```
-make deps
+make mod
 ```
 
 Install the binary to `$GOPATH/bin`.
@@ -343,3 +521,4 @@ DUMP_CONTENT=true saml2aws login --verbose
 # License
 
 This code is Copyright (c) 2018 [Versent](http://versent.com.au) and released under the MIT license. All rights not explicitly granted in the MIT license are reserved. See the included LICENSE.md file for more details.
+
