@@ -78,17 +78,17 @@ func Exec(execFlags *flags.LoginExecFlags, cmdline []string) error {
 // assumeRoleWithProfile uses an AWS profile (via ~/.aws/config) and performs (multiple levels of) role assumption
 // This is extremely useful in the case of a central "authentication account" which then requires secondary, and
 // often tertiary, role assumptions to acquire credentials for the target role.
-func assumeRoleWithProfile(targetProfile string, sessionDuration int) (*awsconfig.AWSCredentials, error)  {
+func assumeRoleWithProfile(targetProfile string, sessionDuration int) (*awsconfig.AWSCredentials, error) {
 	// AWS session config with verbose errors on chained credential errors
 	config := *aws.NewConfig().WithCredentialsChainVerboseErrors(true)
-	duration, _  := time.ParseDuration(strconv.Itoa(sessionDuration) + "s")
+	duration, _ := time.ParseDuration(strconv.Itoa(sessionDuration) + "s")
 
 	// a session forcing usage of the aws config file, sets the target profile which will be found in the config
 	sess := session.Must(session.NewSessionWithOptions(session.Options{
-		Config:            	config,
-		Profile:           	targetProfile,
-		SharedConfigState: 	session.SharedConfigEnable,
-		AssumeRoleDuration:   duration,
+		Config:             config,
+		Profile:            targetProfile,
+		SharedConfigState:  session.SharedConfigEnable,
+		AssumeRoleDuration: duration,
 	}))
 
 	// use an STS client to perform the multiple role assumptions
@@ -104,9 +104,9 @@ func assumeRoleWithProfile(targetProfile string, sessionDuration int) (*awsconfi
 		return nil, err
 	}
 	return &awsconfig.AWSCredentials{
-		AWSAccessKey:     creds.AccessKeyID,
-		AWSSecretKey:     creds.SecretAccessKey,
-		AWSSessionToken:  creds.SessionToken,
+		AWSAccessKey:    creds.AccessKeyID,
+		AWSSecretKey:    creds.SecretAccessKey,
+		AWSSessionToken: creds.SessionToken,
 	}, nil
 }
 
