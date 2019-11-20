@@ -81,7 +81,6 @@ func Exec(execFlags *flags.LoginExecFlags, cmdline []string) error {
 func assumeRoleWithProfile(targetProfile string, sessionDuration int) (*awsconfig.AWSCredentials, error)  {
 	// AWS session config with verbose errors on chained credential errors
 	config := *aws.NewConfig().WithCredentialsChainVerboseErrors(true)
-	print(strconv.Itoa(sessionDuration))
 	duration, _  := time.ParseDuration(strconv.Itoa(sessionDuration) + "s")
 
 	// a session forcing usage of the aws config file, sets the target profile which will be found in the config
