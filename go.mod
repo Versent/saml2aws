@@ -9,6 +9,7 @@ require (
 	github.com/alecthomas/kingpin v2.2.6+incompatible
 	github.com/alecthomas/template v0.0.0-20160405071501-a0175ee3bccc // indirect
 	github.com/alecthomas/units v0.0.0-20190910110746-680d30ca3117 // indirect
+	github.com/alsmola/go-u2fhost v0.0.0-20191210232419-159bc53e01f1
 	github.com/andybalholm/cascadia v1.0.0 // indirect
 	github.com/aulanov/go.dbus v0.0.0-20150729231527-25c3068a42a0 // indirect
 	github.com/aws/aws-sdk-go v1.23.15
@@ -23,8 +24,10 @@ require (
 	github.com/gsterjov/go-libsecret v0.0.0-20161001094733-a6f4afe4910c // indirect
 	github.com/headzoo/surf v1.0.1-0.20180909134844-a4a8c16c01dc
 	github.com/headzoo/ut v0.0.0-20181013193318-a13b5a7a02ca // indirect
+	github.com/karalabe/hid v1.0.0 // indirect
 	github.com/keybase/go-keychain v0.0.0-20181011010623-f1daa725cce4 // indirect
 	github.com/kr/pretty v0.1.0 // indirect
+	github.com/marshallbrekka/go-u2fhost v0.0.0-20191015170021-b674c46d0251 // indirect
 	github.com/mattn/go-colorable v0.0.9 // indirect
 	github.com/mattn/go-isatty v0.0.3
 	github.com/mgutz/ansi v0.0.0-20170206155736-9520e82c474b // indirect

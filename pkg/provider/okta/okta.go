@@ -16,6 +16,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/versent/saml2aws/pkg/prompter"
 
+	"encoding/json"
 	"github.com/PuerkitoBio/goquery"
 	"github.com/pkg/errors"
 	"github.com/tidwall/gjson"
@@ -23,8 +24,6 @@ import (
 	"github.com/versent/saml2aws/pkg/creds"
 	"github.com/versent/saml2aws/pkg/page"
 	"github.com/versent/saml2aws/pkg/provider"
-
-	"encoding/json"
 )
 
 const (
@@ -34,6 +33,7 @@ const (
 	IdentifierTotpMfa         = "GOOGLE TOKEN:SOFTWARE:TOTP"
 	IdentifierOktaTotpMfa     = "OKTA TOKEN:SOFTWARE:TOTP"
 	IdentifierSymantecTotpMfa = "SYMANTEC TOKEN"
+	IdentifierFIDOWebAuthn    = "FIDO WEBAUTHN"
 )
 
 var logger = logrus.WithField("provider", "okta")
@@ -46,6 +46,7 @@ var (
 		IdentifierTotpMfa:         "TOTP MFA authentication",
 		IdentifierOktaTotpMfa:     "Okta MFA authentication",
 		IdentifierSymantecTotpMfa: "Symantec VIP MFA authentication",
+		IdentifierFIDOWebAuthn:    "FIDO WebAuthn MFA authentication",
 	}
 )
 
@@ -288,15 +289,14 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 		}
 	}
 
-	if oc.mfa != "AUTO" {
-		for _, val := range mfaOptions {
+	if strings.ToUpper(oc.mfa) != "AUTO" {
+		for idx, val := range mfaOptions {
 			if strings.HasPrefix(val, oc.mfa) {
-				mfaOptions = []string{val}
+				mfaOption = idx
 				break
 			}
 		}
-	}
-	if len(mfaOptions) > 1 {
+	} else if len(mfaOptions) > 1 {
 		mfaOption = prompter.Choose("Select which MFA option to use", mfaOptions)
 	}
 
@@ -658,6 +658,47 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 			return "", errors.Wrap(err, "error retrieving body from response")
 		}
 
+		return gjson.GetBytes(body, "sessionToken").String(), nil
+
+	case IdentifierFIDOWebAuthn:
+		nonce := gjson.Get(resp, "_embedded.factor._embedded.challenge.challenge").String()
+		credentialID := gjson.Get(resp, "_embedded.factor.profile.credentialId").String()
+		version := gjson.Get(resp, "_embedded.factor.profile.version").String()
+		appID := oktaOrgHost
+		webauthnCallback := gjson.Get(resp, "_links.next.href").String()
+
+		fidoClient, err := NewFidoClient(nonce,
+			appID,
+			version,
+			credentialID,
+			stateToken)
+		if err != nil {
+			return "", err
+		}
+
+		signedAssertion, err := fidoClient.ChallengeU2f()
+		if err != nil {
+			return "", err
+		}
+
+		payload, err := json.Marshal(signedAssertion)
+		if err != nil {
+			return "", err
+		}
+		req, err = http.NewRequest("POST", webauthnCallback, strings.NewReader(string(payload)))
+		if err != nil {
+			return "", errors.Wrap(err, "error building authentication request")
+		}
+		req.Header.Add("Accept", "application/json")
+		req.Header.Add("Content-Type", "application/json")
+		res, err = oc.client.Do(req)
+		if err != nil {
+			return "", errors.Wrap(err, "error retrieving verify response")
+		}
+		body, err = ioutil.ReadAll(res.Body)
+		if err != nil {
+			return "", errors.Wrap(err, "error retrieving body from response")
+		}
 		return gjson.GetBytes(body, "sessionToken").String(), nil
 	}
 
