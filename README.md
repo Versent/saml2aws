@@ -23,6 +23,7 @@ The process goes something like this:
 - [Install](#install)
     - [OSX](#osx)
     - [Windows](#windows)
+    - [Linux](#linux)
 - [Dependency Setup](#dependency-setup)
 - [Usage](#usage)
     - [`saml2aws script`](#saml2aws-script)
@@ -76,6 +77,20 @@ If you're on Windows you can install saml2aws using chocolatey!
 choco install saml2aws
 saml2aws --version
 ```
+
+### Linux
+
+While brew is available for Linux you can also run the following without using a package manager.
+
+```
+$ CURRENT_VERSION=2.20.0
+$ wget https://github.com/Versent/saml2aws/releases/download/v${CURRENT_VERSION}/saml2aws_${CURRENT_VERSION}_linux_amd64.tar.gz
+$ tar -xzvf saml2aws_${CURRENT_VERSION}_linux_amd64.tar.gz -C ~/.local/bin
+$ chmod u+x ~/.local/bin/saml2aws
+```
+**Note**: You will need to logout of your current user session or force a bash reload for `saml2aws` to be useable after following the above steps.
+
+e.g. `exec -l bash`
 
 ## Dependency Setup
 

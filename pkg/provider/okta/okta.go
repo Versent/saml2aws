@@ -183,25 +183,6 @@ func (oc *Client) follow(ctx context.Context, req *http.Request, loginDetails *c
 			}
 			logger.WithField("type", "saml-response").WithField("saml-response", string(decodedSamlResponse)).Debug("doc detect")
 			return samlResponse, nil
-		} else {
-			req, err = http.NewRequest("GET", loginDetails.URL, nil)
-			if err != nil {
-				return samlResponse, errors.Wrap(err, "error building app request")
-			}
-			res, err = oc.client.Do(req)
-			if err != nil {
-				return samlResponse, errors.Wrap(err, "error retrieving app response")
-			}
-			body, err := ioutil.ReadAll(res.Body)
-			if err != nil {
-				return "", errors.Wrap(err, "error retrieving body from response")
-			}
-			stateToken, err := getStateTokenFromOktaPageBody(string(body))
-			if err != nil {
-				return "", errors.Wrap(err, "error retrieving saml response")
-			}
-			loginDetails.StateToken = stateToken
-			return oc.Authenticate(loginDetails)
 		}
 	} else if docIsFormSamlRequest(doc) {
 		logger.WithField("type", "saml-request").Debug("doc detect")
@@ -212,6 +193,25 @@ func (oc *Client) follow(ctx context.Context, req *http.Request, loginDetails *c
 	} else if docIsFormSamlResponse(doc) {
 		logger.WithField("type", "saml-response").Debug("doc detect")
 		handler = oc.handleFormRedirect
+	} else {
+		req, err = http.NewRequest("GET", loginDetails.URL, nil)
+		if err != nil {
+			return "", errors.Wrap(err, "error building app request")
+		}
+		res, err = oc.client.Do(req)
+		if err != nil {
+			return "", errors.Wrap(err, "error retrieving app response")
+		}
+		body, err := ioutil.ReadAll(res.Body)
+		if err != nil {
+			return "", errors.Wrap(err, "error retrieving body from response")
+		}
+		stateToken, err := getStateTokenFromOktaPageBody(string(body))
+		if err != nil {
+			return "", errors.Wrap(err, "error retrieving saml response")
+		}
+		loginDetails.StateToken = stateToken
+		return oc.Authenticate(loginDetails)
 	}
 
 	if handler == nil {
