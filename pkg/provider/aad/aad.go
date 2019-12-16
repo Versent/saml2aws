@@ -692,10 +692,9 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		if err != nil {
 			return samlAssertion, errors.Wrap(err, "error retrieving login reprocess results")
 		}
+		resBody, _ = ioutil.ReadAll(res.Body)
+		resBodyStr = string(resBody)
 	}
-
-	resBody, _ = ioutil.ReadAll(res.Body)
-	resBodyStr = string(resBody)
 
 	// data is embeded javascript object
 	// <script><![CDATA[  $Config=......; ]]>
@@ -707,6 +706,7 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 	}
 	var loginPasswordResp passwordLoginResponse
 	var loginPasswordSkipMfaResp SkipMfaResponse
+
 	if err := json.Unmarshal([]byte(loginPasswordJson), &loginPasswordResp); err != nil {
 		return samlAssertion, errors.Wrap(err, "loginPassword response unmarshal error")
 	}
