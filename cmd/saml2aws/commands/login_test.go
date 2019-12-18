@@ -5,6 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/versent/saml2aws"
+	"github.com/versent/saml2aws/pkg/awsconfig"
 	"github.com/versent/saml2aws/pkg/cfg"
 	"github.com/versent/saml2aws/pkg/creds"
 	"github.com/versent/saml2aws/pkg/flags"
@@ -28,7 +29,7 @@ func TestResolveLoginDetailsWithFlags(t *testing.T) {
 }
 
 func TestResolveRoleSingleEntry(t *testing.T) {
-
+	awsConfig := &awsconfig.AWSConfig{}
 	adminRole := &saml2aws.AWSRole{
 		Name:         "admin",
 		RoleARN:      "arn:aws:iam::456456456456:saml-provider/example-idp,arn:aws:iam::456456456456:role/admin",
@@ -39,7 +40,7 @@ func TestResolveRoleSingleEntry(t *testing.T) {
 		adminRole,
 	}
 
-	got, err := resolveRole(awsRoles, "", cfg.NewIDPAccount())
+	got, err := resolveRole(awsRoles, "", cfg.NewIDPAccount(), awsConfig)
 	assert.Empty(t, err)
-	assert.Equal(t, got, adminRole)
+	assert.Equal(t, adminRole, got)
 }

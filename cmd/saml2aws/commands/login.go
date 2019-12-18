@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"os"
+	"strconv"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -28,11 +29,19 @@ func Login(loginFlags *flags.LoginExecFlags) error {
 		return errors.Wrap(err, "error building login details")
 	}
 
+	sharedConfig := awsconfig.NewSharedConfig(account.Profile)
 	sharedCreds := awsconfig.NewSharedCredentials(account.Profile)
 
-	logger.Debug("check if Creds Exist")
+
+	logger.Debug("check if Config Exist")
+	awsConfig, err := sharedConfig.Load()
+	if err != nil {
+		logger.Info(errors.Wrap(err, "error loading aws config"))
+		awsConfig = &awsconfig.AWSConfig{}
+	}
 
 	// this checks if the credentials file has been created yet
+	logger.Debug("check if Creds Exist")
 	exist, err := sharedCreds.CredsExists()
 	if err != nil {
 		return errors.Wrap(err, "error loading credentials")
@@ -86,14 +95,14 @@ func Login(loginFlags *flags.LoginExecFlags) error {
 		}
 	}
 
-	role, err := selectAwsRole(samlAssertion, account)
+	role, err := selectAwsRole(samlAssertion, account, awsConfig)
 	if err != nil {
 		return errors.Wrap(err, "Failed to assume role, please check whether you are permitted to assume the given role for the AWS service")
 	}
 
 	fmt.Println("Selected role:", role.RoleARN)
 
-	awsCreds, err := loginToStsUsingRole(account, role, samlAssertion)
+	awsCreds, err := loginToStsUsingRole(account, awsConfig, role, samlAssertion)
 	if err != nil {
 		return errors.Wrap(err, "error logging into aws role using saml assertion")
 	}
@@ -168,7 +177,7 @@ func resolveLoginDetails(account *cfg.IDPAccount, loginFlags *flags.LoginExecFla
 	return loginDetails, nil
 }
 
-func selectAwsRole(samlAssertion string, account *cfg.IDPAccount) (*saml2aws.AWSRole, error) {
+func selectAwsRole(samlAssertion string, account *cfg.IDPAccount, config *awsconfig.AWSConfig) (*saml2aws.AWSRole, error) {
 	data, err := base64.StdEncoding.DecodeString(samlAssertion)
 	if err != nil {
 		return nil, errors.Wrap(err, "error decoding saml assertion")
@@ -190,15 +199,18 @@ func selectAwsRole(samlAssertion string, account *cfg.IDPAccount) (*saml2aws.AWS
 		return nil, errors.Wrap(err, "error parsing aws roles")
 	}
 
-	return resolveRole(awsRoles, samlAssertion, account)
+	return resolveRole(awsRoles, samlAssertion, account, config)
 }
 
-func resolveRole(awsRoles []*saml2aws.AWSRole, samlAssertion string, account *cfg.IDPAccount) (*saml2aws.AWSRole, error) {
+func resolveRole(awsRoles []*saml2aws.AWSRole, samlAssertion string, account *cfg.IDPAccount, config *awsconfig.AWSConfig) (*saml2aws.AWSRole, error) {
 	var role = new(saml2aws.AWSRole)
 
 	if len(awsRoles) == 1 {
 		if account.RoleARN != "" {
 			return saml2aws.LocateRole(awsRoles, account.RoleARN)
+		}
+		if config.RoleARN != "" {
+			return saml2aws.LocateRole(awsRoles, config.RoleARN)
 		}
 		return awsRoles[0], nil
 	} else if len(awsRoles) == 0 {
@@ -218,6 +230,9 @@ func resolveRole(awsRoles []*saml2aws.AWSRole, samlAssertion string, account *cf
 	if account.RoleARN != "" {
 		return saml2aws.LocateRole(awsRoles, account.RoleARN)
 	}
+	if config.RoleARN != "" {
+		return saml2aws.LocateRole(awsRoles, config.RoleARN)
+	}
 
 	for {
 		role, err = saml2aws.PromptForAWSRoleSelection(awsAccounts)
@@ -230,7 +245,7 @@ func resolveRole(awsRoles []*saml2aws.AWSRole, samlAssertion string, account *cf
 	return role, nil
 }
 
-func loginToStsUsingRole(account *cfg.IDPAccount, role *saml2aws.AWSRole, samlAssertion string) (*awsconfig.AWSCredentials, error) {
+func loginToStsUsingRole(account *cfg.IDPAccount, config *awsconfig.AWSConfig, role *saml2aws.AWSRole, samlAssertion string) (*awsconfig.AWSCredentials, error) {
 
 	sess, err := session.NewSession()
 	if err != nil {
@@ -239,11 +254,16 @@ func loginToStsUsingRole(account *cfg.IDPAccount, role *saml2aws.AWSRole, samlAs
 
 	svc := sts.New(sess)
 
+	sessionDuration := int64(account.SessionDuration)
+	if config.SessionDuration != "" {
+		sessionDuration, _ = strconv.ParseInt(config.SessionDuration, 10, 64)
+	}
+
 	params := &sts.AssumeRoleWithSAMLInput{
 		PrincipalArn:    aws.String(role.PrincipalARN), // Required
 		RoleArn:         aws.String(role.RoleARN),      // Required
 		SAMLAssertion:   aws.String(samlAssertion),     // Required
-		DurationSeconds: aws.Int64(int64(account.SessionDuration)),
+		DurationSeconds: aws.Int64(sessionDuration),
 	}
 
 	fmt.Println("Requesting AWS credentials using SAML assertion")
