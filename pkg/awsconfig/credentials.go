@@ -17,8 +17,11 @@ import (
 )
 
 var (
-	// ErrCredentialsHomeNotFound returned when a user home directory can't be located.
-	ErrCredentialsHomeNotFound = errors.New("user home directory not found")
+	// ErrHomeNotFound returned when a user home directory can't be located.
+	ErrHomeNotFound = errors.New("user home directory not found")
+
+	// ErrConfigNotFound returned when the required aws config don't exist.
+	ErrConfigNotFound = errors.New("aws config not found")
 
 	// ErrCredentialsNotFound returned when the required aws credentials don't exist.
 	ErrCredentialsNotFound = errors.New("aws credentials not found")
@@ -77,12 +80,12 @@ func (p *CredentialsProvider) Save(awsCreds *AWSCredentials) error {
 	err = p.ensureConfigExists()
 	if err != nil {
 		if os.IsNotExist(err) {
-			return createAndSaveProfile(filename, p.Profile, awsCreds)
+			return createAndSaveCreds(filename, p.Profile, awsCreds)
 		}
 		return errors.Wrap(err, "unable to load file")
 	}
 
-	return saveProfile(filename, p.Profile, awsCreds)
+	return saveCreds(filename, p.Profile, awsCreds)
 }
 
 // Load load the aws credentials file
@@ -159,7 +162,7 @@ func (p *CredentialsProvider) ensureConfigExists() error {
 
 func (p *CredentialsProvider) resolveFilename() (string, error) {
 	if p.Filename == "" {
-		filename, err := locateConfigFile()
+		filename, err := locateCredentialsFile()
 		if err != nil {
 			return "", err
 		}
@@ -170,8 +173,7 @@ func (p *CredentialsProvider) resolveFilename() (string, error) {
 	return p.Filename, nil
 }
 
-func locateConfigFile() (string, error) {
-
+func locateCredentialsFile() (string, error) {
 	filename := os.Getenv("AWS_SHARED_CREDENTIALS_FILE")
 
 	if filename != "" {
@@ -185,7 +187,7 @@ func locateConfigFile() (string, error) {
 	} else {
 		name, err = homedir.Expand("~/.aws/credentials")
 		if err != nil {
-			return "", ErrCredentialsHomeNotFound
+			return "", ErrHomeNotFound
 		}
 	}
 	logger.WithField("name", name).Debug("Expand")
@@ -215,7 +217,7 @@ func resolveSymlink(filename string) (string, error) {
 	return sympath, nil
 }
 
-func createAndSaveProfile(filename, profile string, awsCreds *AWSCredentials) error {
+func createAndSaveCreds(filename, profile string, awsCreds *AWSCredentials) error {
 
 	dirPath := filepath.Dir(filename)
 
@@ -229,10 +231,10 @@ func createAndSaveProfile(filename, profile string, awsCreds *AWSCredentials) er
 		return errors.Wrapf(err, "unable to create configuration")
 	}
 
-	return saveProfile(filename, profile, awsCreds)
+	return saveCreds(filename, profile, awsCreds)
 }
 
-func saveProfile(filename, profile string, awsCreds *AWSCredentials) error {
+func saveCreds(filename, profile string, awsCreds *AWSCredentials) error {
 	config, err := ini.Load(filename)
 	if err != nil {
 		return err

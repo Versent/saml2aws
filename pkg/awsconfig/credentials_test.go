@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestUpdateSamlConfig(t *testing.T) {
+func TestUpdateSamlCredentials(t *testing.T) {
 	os.Remove(".credentials")
 
 	logrus.SetLevel(logrus.DebugLevel)
