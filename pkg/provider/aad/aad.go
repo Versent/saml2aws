@@ -1,7 +1,6 @@
 package aad
 
 import (
-	"bufio"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
@@ -645,14 +644,13 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 
 	// data is embeded javascript object
 	// <script><![CDATA[  $Config=......; ]]>
-	scanner := bufio.NewScanner(res.Body)
+	resBody, _ := ioutil.ReadAll(res.Body)
+	resBodyStr := string(resBody)
 	var startSAMLJson string
-	for scanner.Scan() {
-		scanLine := strings.TrimSpace(scanner.Text())
-		if strings.Contains(scanLine, "$Config") {
-			startSAMLJson = scanLine[strings.Index(scanLine, "$Config=")+8 : strings.LastIndex(scanLine, ";")]
-			break
-		}
+	if strings.Contains(resBodyStr, "$Config") {
+		startIndex := strings.Index(resBodyStr, "$Config=") + 8
+		endIndex := startIndex + strings.Index(resBodyStr[startIndex:], ";")
+		startSAMLJson = resBodyStr[startIndex:endIndex]
 	}
 	var startSAMLResp startSAMLResponse
 	if err := json.Unmarshal([]byte(startSAMLJson), &startSAMLResp); err != nil {
@@ -676,6 +674,7 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 	}
 
 	passwordLoginRequest, err := http.NewRequest("POST", urlPost, strings.NewReader(loginValues.Encode()))
+
 	if err != nil {
 		return samlAssertion, errors.Wrap(err, "error retrieving login results")
 	}
@@ -684,19 +683,30 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 	if err != nil {
 		return samlAssertion, errors.Wrap(err, "error retrieving login results")
 	}
+	resBody, _ = ioutil.ReadAll(res.Body)
+	resBodyStr = string(resBody)
+
+	// require reprocess
+	if strings.Contains(resBodyStr, "<form") {
+		res, err = ac.reProcess(resBodyStr)
+		if err != nil {
+			return samlAssertion, errors.Wrap(err, "error retrieving login reprocess results")
+		}
+		resBody, _ = ioutil.ReadAll(res.Body)
+		resBodyStr = string(resBody)
+	}
+
 	// data is embeded javascript object
 	// <script><![CDATA[  $Config=......; ]]>
-	scanner = bufio.NewScanner(res.Body)
 	var loginPasswordJson string
-	for scanner.Scan() {
-		scanLine := strings.TrimSpace(scanner.Text())
-		if strings.Contains(scanLine, "$Config") {
-			loginPasswordJson = scanLine[strings.Index(scanLine, "$Config=")+8 : strings.LastIndex(scanLine, ";")]
-			break
-		}
+	if strings.Contains(resBodyStr, "$Config") {
+		startIndex := strings.Index(resBodyStr, "$Config=") + 8
+		endIndex := startIndex + strings.Index(resBodyStr[startIndex:], ";")
+		loginPasswordJson = resBodyStr[startIndex:endIndex]
 	}
 	var loginPasswordResp passwordLoginResponse
 	var loginPasswordSkipMfaResp SkipMfaResponse
+
 	if err := json.Unmarshal([]byte(loginPasswordJson), &loginPasswordResp); err != nil {
 		return samlAssertion, errors.Wrap(err, "loginPassword response unmarshal error")
 	}
@@ -706,9 +716,6 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 	var restartSAMLResp startSAMLResponse
 	if err := json.Unmarshal([]byte(loginPasswordJson), &restartSAMLResp); err != nil {
 		return samlAssertion, errors.Wrap(err, "startSAML response unmarshal error")
-	}
-	if restartSAMLResp.URLGitHubFed != "" {
-		return samlAssertion, errors.Wrap(err, "login failed")
 	}
 
 	mfas := loginPasswordResp.ArrUserProofs
@@ -839,14 +846,14 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		}
 		// data is embeded javascript object
 		// <script><![CDATA[  $Config=......; ]]>
-		scanner = bufio.NewScanner(res.Body)
+		resBody, _ = ioutil.ReadAll(res.Body)
+		resBodyStr = string(resBody)
+
 		var ProcessAuthJson string
-		for scanner.Scan() {
-			scanLine := strings.TrimSpace(scanner.Text())
-			if strings.Contains(scanLine, "$Config") {
-				ProcessAuthJson = scanLine[strings.Index(scanLine, "$Config=")+8 : strings.LastIndex(scanLine, ";")]
-				break
-			}
+		if strings.Contains(resBodyStr, "$Config") {
+			startIndex := strings.Index(resBodyStr, "$Config=") + 8
+			endIndex := startIndex + strings.Index(resBodyStr[startIndex:], ";")
+			ProcessAuthJson = resBodyStr[startIndex:endIndex]
 		}
 		var processAuthResp processAuthResponse
 		if err := json.Unmarshal([]byte(ProcessAuthJson), &processAuthResp); err != nil {
@@ -858,6 +865,7 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		KmsiValues := url.Values{}
 		KmsiValues.Set("flowToken", processAuthResp.SFT)
 		KmsiValues.Set("ctx", processAuthResp.SCtx)
+		KmsiValues.Set("LoginOptions", "1")
 		KmsiRequest, err := http.NewRequest("POST", KmsiURL, strings.NewReader(KmsiValues.Encode()))
 		if err != nil {
 			return samlAssertion, errors.Wrap(err, "error retrieving kmsi results")
@@ -886,6 +894,7 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		KmsiValues := url.Values{}
 		KmsiValues.Set("flowToken", loginPasswordResp.SFT)
 		KmsiValues.Set("ctx", loginPasswordResp.SCtx)
+		KmsiValues.Set("LoginOptions", "1")
 		KmsiRequest, err := http.NewRequest("POST", KmsiURL, strings.NewReader(KmsiValues.Encode()))
 		if err != nil {
 			return samlAssertion, errors.Wrap(err, "error retrieving kmsi results")
@@ -981,11 +990,11 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 
 	// if mfa skipped then get $Config and urlSkipMfaRegistration
 	// get urlSkipMfaRegistraition to return saml assertion
-	resBody, err := ioutil.ReadAll(res.Body)
+	resBody, err = ioutil.ReadAll(res.Body)
 	if err != nil {
 		return samlAssertion, errors.Wrap(err, "error oidc login response read")
 	}
-	resBodyStr := string(resBody)
+	resBodyStr = string(resBody)
 	if strings.Contains(resBodyStr, "urlSkipMfaRegistration") {
 		var samlAssertionSkipMfaResp SkipMfaResponse
 		var skipMfaJson string
@@ -1029,8 +1038,69 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 			}
 		}
 	})
-	if samlAssertion == "" {
-		return samlAssertion, fmt.Errorf("failed get SAMLAssersion")
+	if samlAssertion != "" {
+		return samlAssertion, nil
 	}
-	return samlAssertion, nil
+	res, err = ac.reProcess(resBodyStr)
+	if err != nil {
+		return samlAssertion, errors.Wrap(err, "failed to saml request reprocess")
+	}
+	resBody, _ = ioutil.ReadAll(res.Body)
+	resBodyStr = string(resBody)
+	doc, err = goquery.NewDocumentFromReader(strings.NewReader(resBodyStr))
+	doc.Find("input").Each(func(i int, s *goquery.Selection) {
+		attrName, ok := s.Attr("name")
+		if !ok {
+			return
+		}
+		if attrName == "SAMLResponse" {
+			samlAssertion, ok = s.Attr("value")
+			if !ok {
+				return
+			}
+		}
+	})
+	if samlAssertion != "" {
+		return samlAssertion, nil
+	}
+
+	return samlAssertion, fmt.Errorf("failed get SAMLAssersion")
+}
+
+func (ac *Client) reProcess(resBodyStr string) (*http.Response, error) {
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(resBodyStr))
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to build document from response")
+	}
+
+	var action, ctx, flowToken string
+	doc.Find("form").Each(func(i int, s *goquery.Selection) {
+		action, _ = s.Attr("action")
+	})
+	doc.Find("input").Each(func(i int, s *goquery.Selection) {
+		attrName, ok := s.Attr("name")
+		if !ok {
+			return
+		}
+		if attrName == "ctx" {
+			ctx, _ = s.Attr("value")
+		}
+		if attrName == "flowtoken" {
+			flowToken, _ = s.Attr("value")
+		}
+	})
+
+	reprocessValues := url.Values{}
+	reprocessValues.Set("ctx", ctx)
+	reprocessValues.Set("flowtoken", flowToken)
+	reprocessRequest, err := http.NewRequest("post", action, strings.NewReader(reprocessValues.Encode()))
+	if err != nil {
+		return nil, errors.Wrap(err, "error reprocess create httpRequest")
+	}
+	reprocessRequest.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	res, err := ac.client.Do(reprocessRequest)
+	if err != nil {
+		return res, errors.Wrap(err, "error reprocess results")
+	}
+	return res, nil
 }
