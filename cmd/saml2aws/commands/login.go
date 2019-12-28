@@ -153,6 +153,16 @@ func resolveLoginDetails(account *cfg.IDPAccount, loginFlags *flags.LoginExecFla
 		loginDetails.Password = loginFlags.CommonFlags.Password
 	}
 
+	// if you supply a cleint_id in a flag it takes precedence
+	if loginFlags.CommonFlags.ClientID != "" {
+		loginDetails.ClientID = loginFlags.CommonFlags.ClientID
+	}
+
+	// if you supply a client_secret in a flag it takes precedence
+	if loginFlags.CommonFlags.ClientSecret != "" {
+		loginDetails.ClientSecret = loginFlags.CommonFlags.ClientSecret
+	}
+
 	// fmt.Printf("loginDetails %+v\n", loginDetails)
 
 	// if skip prompt was passed just pass back the flag values
