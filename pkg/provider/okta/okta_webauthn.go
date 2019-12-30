@@ -16,15 +16,17 @@ var (
 	errNoDeviceFound = fmt.Errorf("no U2F devices found. device might not be plugged in")
 )
 
+// FidoClient represents a challenge and the device used to respond
 type FidoClient struct {
 	ChallengeNonce string
-	AppId          string
+	AppID          string
 	Version        string
 	Device         u2fhost.Device
 	KeyHandle      string
 	StateToken     string
 }
 
+// SignedAssertion is passed back to Okta as response
 type SignedAssertion struct {
 	StateToken        string `json:"stateToken"`
 	ClientData        string `json:"clientData"`
@@ -32,13 +34,24 @@ type SignedAssertion struct {
 	AuthenticatorData string `json:"authenticatorData"`
 }
 
-func NewFidoClient(challengeNonce, appId, version, keyHandle, stateToken string) (FidoClient, error) {
+// DeviceFinder is used to mock out finding devices
+type DeviceFinder interface {
+	findDevice() (u2fhost.Device, error)
+}
+
+// U2FDevice is used to support mocking this device with mockery https://github.com/vektra/mockery/issues/210#issuecomment-485026348
+type U2FDevice interface {
+	u2fhost.Device
+}
+
+// NewFidoClient returns a new initialized FIDO1-based WebAuthnClient, representing a single device
+func NewFidoClient(challengeNonce, appID, version, keyHandle, stateToken string, deviceFinder DeviceFinder) (FidoClient, error) {
 	var device u2fhost.Device
 	var err error
 
 	retryCount := 0
 	for retryCount < MaxOpenRetries {
-		device, err = findDevice()
+		device, err = deviceFinder.findDevice()
 		if err != nil {
 			if err == errNoDeviceFound {
 				return FidoClient{}, err
@@ -52,7 +65,7 @@ func NewFidoClient(challengeNonce, appId, version, keyHandle, stateToken string)
 		return FidoClient{
 			Device:         device,
 			ChallengeNonce: challengeNonce,
-			AppId:          appId,
+			AppID:          appID,
 			Version:        version,
 			KeyHandle:      keyHandle,
 			StateToken:     stateToken,
@@ -62,14 +75,15 @@ func NewFidoClient(challengeNonce, appId, version, keyHandle, stateToken string)
 	return FidoClient{}, fmt.Errorf("failed to create client: %s. exceeded max retries of %d", err, MaxOpenRetries)
 }
 
-func (d *FidoClient) ChallengeU2f() (*SignedAssertion, error) {
+// ChallengeU2F takes a FidoClient and returns a signed assertion to send to Okta
+func (d *FidoClient) ChallengeU2F() (*SignedAssertion, error) {
 	if d.Device == nil {
 		return nil, errors.New("No Device Found")
 	}
 	request := &u2fhost.AuthenticateRequest{
 		Challenge: d.ChallengeNonce,
-		Facet:     "https://" + d.AppId,
-		AppId:     d.AppId,
+		Facet:     "https://" + d.AppID,
+		AppId:     d.AppID,
 		KeyHandle: d.KeyHandle,
 		WebAuthn:  true,
 	}
@@ -117,7 +131,10 @@ func (d *FidoClient) ChallengeU2f() (*SignedAssertion, error) {
 	return responsePayload, nil
 }
 
-func findDevice() (u2fhost.Device, error) {
+// U2FDeviceFinder returns a U2F device
+type U2FDeviceFinder struct{}
+
+func (*U2FDeviceFinder) findDevice() (u2fhost.Device, error) {
 	var err error
 
 	allDevices := u2fhost.Devices()

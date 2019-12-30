@@ -671,12 +671,13 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 			appID,
 			version,
 			credentialID,
-			stateToken)
+			stateToken,
+			new(U2FDeviceFinder))
 		if err != nil {
 			return "", err
 		}
 
-		signedAssertion, err := fidoClient.ChallengeU2f()
+		signedAssertion, err := fidoClient.ChallengeU2F()
 		if err != nil {
 			return "", err
 		}
