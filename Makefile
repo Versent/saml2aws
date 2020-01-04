@@ -77,5 +77,6 @@ packages:
 
 generate-mocks:
 	mockery -dir pkg/prompter --all
+	mockery -dir pkg/provider/okta -name U2FDevice
 
 .PHONY: default prepare.metalinter prepare mod compile lint fmt dist release test clean generate-mocks
