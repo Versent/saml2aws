@@ -63,6 +63,8 @@ func (kc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 	}
 
 	if containsTotpForm(doc) {
+		logger.WithField("provider", "keycloak").Debug("Found OTP token field")
+
 		totpSubmitURL, err := extractSubmitURL(doc)
 		if err != nil {
 			return "", errors.Wrap(err, "unable to locate IDP totp form submit URL")
@@ -193,7 +195,15 @@ func extractSubmitURL(doc *goquery.Document) (string, error) {
 }
 
 func containsTotpForm(doc *goquery.Document) bool {
+	// search totp field at Keycloak < 8.0.1
 	totpIndex := doc.Find("input#totp").Index()
+
+	if totpIndex != -1 {
+		return true
+	}
+
+	// search otp field at Keycloak >= 8.0.1
+	totpIndex = doc.Find("input#otp").Index()
 
 	if totpIndex != -1 {
 		return true
@@ -225,12 +235,16 @@ func updateKeyCloakFormData(authForm url.Values, s *goquery.Selection, user *cre
 
 func updateOTPFormData(otpForm url.Values, s *goquery.Selection, token string) {
 	name, ok := s.Attr("name")
-	//	log.Printf("name = %s ok = %v", name, ok)
+	// log.Printf("name = %s ok = %v", name, ok)
 	if !ok {
 		return
 	}
+
 	lname := strings.ToLower(name)
+	// search otp field at Keycloak >= 8.0.1
 	if strings.Contains(lname, "totp") {
+		otpForm.Add(name, token)
+	} else if strings.Contains(lname, "otp") {
 		otpForm.Add(name, token)
 	}
 
