@@ -6,16 +6,12 @@ require (
 	github.com/99designs/keyring v0.0.0-20190110203331-82da6802f65f
 	github.com/Azure/go-ntlmssp v0.0.0-20180416175057-4b934ac9dad3
 	github.com/PuerkitoBio/goquery v1.4.1
-	github.com/Versent/saml2aws v2.17.0+incompatible
 	github.com/alecthomas/kingpin v2.2.6+incompatible
 	github.com/alecthomas/template v0.0.0-20160405071501-a0175ee3bccc // indirect
 	github.com/alecthomas/units v0.0.0-20190910110746-680d30ca3117 // indirect
-	github.com/alsmola/go-u2fhost v0.0.0-20191210232419-159bc53e01f1
-	github.com/alsmola/saml2aws v2.17.0+incompatible
 	github.com/andybalholm/cascadia v1.0.0 // indirect
 	github.com/aulanov/go.dbus v0.0.0-20150729231527-25c3068a42a0 // indirect
 	github.com/aws/aws-sdk-go v1.23.15
-	github.com/axw/gocov v1.0.0 // indirect
 	github.com/beevik/etree v1.0.1
 	github.com/briandowns/spinner v0.0.0-20170614154858-48dbb65d7bd5
 	github.com/danieljoos/wincred v1.0.1
@@ -30,7 +26,7 @@ require (
 	github.com/karalabe/hid v1.0.0 // indirect
 	github.com/keybase/go-keychain v0.0.0-20181011010623-f1daa725cce4 // indirect
 	github.com/kr/pretty v0.1.0 // indirect
-	github.com/marshallbrekka/go-u2fhost v0.0.0-20191015170021-b674c46d0251 // indirect
+	github.com/marshallbrekka/go-u2fhost v0.0.0-20200107013215-ad5fdc1986ac
 	github.com/mattn/go-colorable v0.0.9 // indirect
 	github.com/mattn/go-isatty v0.0.3
 	github.com/mgutz/ansi v0.0.0-20170206155736-9520e82c474b // indirect
@@ -45,7 +41,6 @@ require (
 	github.com/stretchr/testify v1.4.0
 	github.com/tidwall/gjson v1.1.1
 	github.com/tidwall/match v1.0.0 // indirect
-	github.com/vektra/mockery v0.0.0-20181123154057-e78b021dcbb5 // indirect
 	golang.org/x/crypto v0.0.0-20190911031432-227b76d455e7 // indirect
 	golang.org/x/net v0.0.0-20190916140828-c8589233b77d
 	golang.org/x/sys v0.0.0-20190919044723-0c1ff786ef13 // indirect
