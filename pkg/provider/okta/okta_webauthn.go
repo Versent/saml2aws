@@ -3,7 +3,7 @@ package okta
 import (
 	"errors"
 	"fmt"
-	u2fhost "github.com/alsmola/go-u2fhost"
+	u2fhost "github.com/marshallbrekka/go-u2fhost"
 	"time"
 )
 

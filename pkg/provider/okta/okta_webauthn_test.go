@@ -1,7 +1,7 @@
 package okta
 
 import (
-	u2fhost "github.com/alsmola/go-u2fhost"
+	u2fhost "github.com/marshallbrekka/go-u2fhost"
 	"github.com/stretchr/testify/assert"
 	"github.com/versent/saml2aws/mocks"
 	"testing"
