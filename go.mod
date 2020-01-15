@@ -4,6 +4,7 @@ go 1.13
 
 require (
 	github.com/99designs/keyring v0.0.0-20190110203331-82da6802f65f
+	github.com/AlecAivazis/survey/v2 v2.0.5
 	github.com/Azure/go-ntlmssp v0.0.0-20180416175057-4b934ac9dad3
 	github.com/PuerkitoBio/goquery v1.4.1
 	github.com/alecthomas/kingpin v2.2.6+incompatible
@@ -27,9 +28,7 @@ require (
 	github.com/keybase/go-keychain v0.0.0-20181011010623-f1daa725cce4 // indirect
 	github.com/kr/pretty v0.1.0 // indirect
 	github.com/marshallbrekka/go-u2fhost v0.0.0-20200107013215-ad5fdc1986ac
-	github.com/mattn/go-colorable v0.0.9 // indirect
-	github.com/mattn/go-isatty v0.0.3
-	github.com/mgutz/ansi v0.0.0-20170206155736-9520e82c474b // indirect
+	github.com/mattn/go-isatty v0.0.8
 	github.com/mitchellh/go-homedir v1.0.0
 	github.com/onsi/ginkgo v1.10.1 // indirect
 	github.com/onsi/gomega v1.7.0 // indirect
@@ -45,7 +44,6 @@ require (
 	golang.org/x/net v0.0.0-20190916140828-c8589233b77d
 	golang.org/x/sys v0.0.0-20190919044723-0c1ff786ef13 // indirect
 	golang.org/x/text v0.3.2 // indirect
-	gopkg.in/AlecAivazis/survey.v1 v1.5.3
 	gopkg.in/airbrake/gobrake.v2 v2.0.9 // indirect
 	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
 	gopkg.in/gemnasium/logrus-airbrake-hook.v2 v2.1.2 // indirect
