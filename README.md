@@ -91,6 +91,14 @@ $ chmod u+x ~/.local/bin/saml2aws
 
 e.g. `exec -l bash`
 
+#### [Void Linux](https://voidlinux.org/)
+
+If you are on Void Linux you can use xbps to install the saml2aws package!
+
+```
+xbps-install saml2aws
+```
+
 ## Dependency Setup
 
 Install the AWS CLI [see](https://docs.aws.amazon.com/cli/latest/userguide/installing.html), in our case we are using [homebrew](http://brew.sh/) on OSX.
