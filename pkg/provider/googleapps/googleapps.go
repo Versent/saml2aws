@@ -2,6 +2,7 @@ package googleapps
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -126,11 +127,11 @@ func (kc *Client) loadFirstPage(loginDetails *creds.LoginDetails) (string, url.V
 	}
 
 	postForm := url.Values{
-		"bgresponse":      []string{"js_disabled"},
-		"checkConnection": []string{""},
-		"checkedDomains":  []string{"youtube"},
-		"continue":        []string{authForm.Get("continue")},
-		"gxf":             []string{authForm.Get("gxf")},
+		"bgresponse":               []string{"js_disabled"},
+		"checkConnection":          []string{""},
+		"checkedDomains":           []string{"youtube"},
+		"continue":                 []string{authForm.Get("continue")},
+		"gxf":                      []string{authForm.Get("gxf")},
 		"identifier-captcha-input": []string{""},
 		"identifiertoken":          []string{""},
 		"identifiertoken_audio":    []string{""},
@@ -247,6 +248,24 @@ func (kc *Client) loadChallengePage(submitURL string, referer string, authForm u
 
 			return kc.loadResponsePage(u.String(), submitURL, responseForm)
 
+		case strings.Contains(secondActionURL, "challenge/sk/"): // handle u2f challenge
+			facet := u.Scheme + "://" + u.Host
+			challengeNonce := responseForm.Get("id-challenge")
+			appId, data := extractKeyHandles(doc, challengeNonce)
+			u2fClient, err := NewU2FClient(challengeNonce, appId, facet, data[0], &U2FDeviceFinder{})
+			if err != nil {
+				return nil, errors.Wrap(err, "Failed to prompt for second factor.")
+			}
+
+			response, err := u2fClient.ChallengeU2F()
+			if err != nil {
+				return nil, errors.Wrap(err, "Second factor failed.")
+			}
+
+			responseForm.Set("id-assertion", response)
+			responseForm.Set("TrustDevice", "on")
+
+			return kc.loadResponsePage(u.String(), submitURL, responseForm)
 		case strings.Contains(secondActionURL, "challenge/az/"): // handle phone challenge
 
 			dataAttrs := extractDataAttributes(doc, "div[data-context]", []string{"data-context", "data-gapi-url", "data-tx-id", "data-api-key", "data-tx-lifetime"})
@@ -483,4 +502,86 @@ func extractDataAttributes(doc *goquery.Document, query string, attrsToSelect []
 	})
 
 	return dataAttrs
+}
+
+func extractKeyHandles(doc *goquery.Document, challengeTxt string) (string, []string) {
+	appId := ""
+	keyHandles := []string{}
+	result := map[string]interface{}{}
+	doc.Find("div[jsname=C0oDBd]").Each(func(_ int, sel *goquery.Selection) {
+		val, ok := sel.Attr("data-challenge-ui")
+		if ok {
+			firstIdx := strings.Index(val, "{")
+			lastIdx := strings.LastIndex(val, "}")
+			obj := []byte(val[firstIdx : lastIdx+1])
+			json.Unmarshal(obj, &result)
+
+			// Key handles
+			for _, val := range result {
+				list, ok := val.([]interface{})
+				if !ok {
+					continue
+				}
+				tmpId, stringList := filterKeyHandleList(list, challengeTxt)
+				if tmpId != "" {
+					appId = tmpId
+				}
+				if len(stringList) != 0 {
+					keyHandles = append(keyHandles, stringList...)
+				}
+			}
+		}
+	})
+	return appId, keyHandles
+}
+
+func filterKeyHandleList(list []interface{}, challengeTxt string) (string, []string) {
+	appId := ""
+	newList := []string{}
+	for _, entry := range list {
+		if entry == nil {
+			continue
+		}
+		moreList, ok := entry.([]interface{})
+		if ok {
+			id, l := filterKeyHandleList(moreList, challengeTxt)
+			if id != "" {
+				appId = id
+			}
+			newList = append(newList, l...)
+			continue
+		}
+		str, ok := entry.(string)
+		if !ok {
+			continue
+		}
+		if appId == "" {
+			appId = isAppId(str)
+		}
+		if isKeyHandle(str, challengeTxt) {
+			newList = append(newList, str)
+		}
+	}
+	return appId, newList
+}
+
+func isKeyHandle(key, challengeTxt string) bool {
+	_, err := base64.StdEncoding.DecodeString(key)
+	if err != nil {
+		return false
+	}
+	return key != challengeTxt
+}
+
+func isAppId(val string) string {
+	obj := map[string]interface{}{}
+	err := json.Unmarshal([]byte(val), &obj)
+	if err != nil {
+		return ""
+	}
+	appId, ok := obj["appid"].(string)
+	if !ok {
+		return ""
+	}
+	return appId
 }
