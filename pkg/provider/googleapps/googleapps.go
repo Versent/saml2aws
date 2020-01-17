@@ -61,7 +61,7 @@ func (kc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 	authForm.Set("Passwd", loginDetails.Password)
 	authForm.Set("rawidentifier", loginDetails.Username)
 
-	responseDoc, err := kc.loadChallengePage(passwordURL+"?hl=en&loc=US", authURL, authForm)
+	responseDoc, err := kc.loadChallengePage(passwordURL+"?hl=en&loc=US", authURL, authForm, loginDetails)
 	if err != nil {
 		return "", errors.Wrap(err, "error loading challenge page")
 	}
@@ -88,7 +88,7 @@ func (kc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		captchaForm.Set("Passwd", loginDetails.Password)
 		captchaForm.Set("logincaptcha", captcha)
 
-		responseDoc, err = kc.loadChallengePage(captchaURL+"?hl=en&loc=US", captchaURL, captchaForm)
+		responseDoc, err = kc.loadChallengePage(captchaURL+"?hl=en&loc=US", captchaURL, captchaForm, loginDetails)
 		if err != nil {
 			return "", errors.Wrap(err, "error loading challenge page")
 		}
@@ -183,7 +183,7 @@ func (kc *Client) loadLoginPage(submitURL string, referer string, authForm url.V
 	return loginURL, loginForm, err
 }
 
-func (kc *Client) loadChallengePage(submitURL string, referer string, authForm url.Values) (*goquery.Document, error) {
+func (kc *Client) loadChallengePage(submitURL string, referer string, authForm url.Values, loginDetails *creds.LoginDetails) (*goquery.Document, error) {
 
 	req, err := http.NewRequest("POST", submitURL, strings.NewReader(authForm.Encode()))
 	if err != nil {
@@ -233,7 +233,10 @@ func (kc *Client) loadChallengePage(submitURL string, referer string, authForm u
 		switch {
 		case strings.Contains(secondActionURL, "challenge/totp/"): // handle TOTP challenge
 
-			var token = prompter.RequestSecurityCode("000000")
+			var token = loginDetails.MFAToken
+			if token == "" {
+				token = prompter.RequestSecurityCode("000000")
+			}
 
 			responseForm.Set("Pin", token)
 			responseForm.Set("TrustDevice", "on") // Don't ask again on this computer
@@ -300,7 +303,7 @@ func (kc *Client) loadChallengePage(submitURL string, referer string, authForm u
 
 		u.Path = skipActionURL
 
-		return kc.loadAlternateChallengePage(u.String(), submitURL, skipResponseForm)
+		return kc.loadAlternateChallengePage(u.String(), submitURL, skipResponseForm, loginDetails)
 
 	}
 
@@ -308,7 +311,7 @@ func (kc *Client) loadChallengePage(submitURL string, referer string, authForm u
 
 }
 
-func (kc *Client) loadAlternateChallengePage(submitURL string, referer string, authForm url.Values) (*goquery.Document, error) {
+func (kc *Client) loadAlternateChallengePage(submitURL string, referer string, authForm url.Values, loginDetails *creds.LoginDetails) (*goquery.Document, error) {
 
 	req, err := http.NewRequest("POST", submitURL, strings.NewReader(authForm.Encode()))
 	if err != nil {
@@ -362,7 +365,7 @@ func (kc *Client) loadAlternateChallengePage(submitURL string, referer string, a
 	u, _ := url.Parse(submitURL)
 	u.Path = newActionURL
 
-	return kc.loadChallengePage(u.String(), submitURL, responseForm)
+	return kc.loadChallengePage(u.String(), submitURL, responseForm, loginDetails)
 }
 
 func (kc *Client) postJSON(submitURL string, values map[string]string, referer string) (*http.Response, error) {
