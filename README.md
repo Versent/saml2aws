@@ -46,7 +46,6 @@ The process goes something like this:
   * [Google Apps](pkg/provider/googleapps/README.md)
   * [Shibboleth](pkg/provider/shibboleth/README.md)
   * [F5APM](pkg/provider/f5apm/README.md)
-  * [PSU](pkg/provider/psu/README.md)
   * [Akamai](pkg/provider/akamai/README.md)
   * OneLogin
 * AWS SAML Provider configured
@@ -91,6 +90,14 @@ $ chmod u+x ~/.local/bin/saml2aws
 **Note**: You will need to logout of your current user session or force a bash reload for `saml2aws` to be useable after following the above steps.
 
 e.g. `exec -l bash`
+
+#### [Void Linux](https://voidlinux.org/)
+
+If you are on Void Linux you can use xbps to install the saml2aws package!
+
+```
+xbps-install saml2aws
+```
 
 ## Dependency Setup
 

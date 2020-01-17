@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	survey "gopkg.in/AlecAivazis/survey.v1"
+	survey "github.com/AlecAivazis/survey/v2"
 )
 
 // CliPrompter used to prompt for cli input
@@ -22,7 +22,7 @@ func (cli *CliPrompter) RequestSecurityCode(pattern string) string {
 	prompt := &survey.Input{
 		Message: fmt.Sprintf("Security Token [%s]", pattern),
 	}
-	survey.AskOne(prompt, &token, survey.Required)
+	survey.AskOne(prompt, &token, survey.WithValidator(survey.Required))
 	return token
 }
 
@@ -34,7 +34,7 @@ func (cli *CliPrompter) ChooseWithDefault(pr string, defaultValue string, option
 		Options: options,
 		Default: defaultValue,
 	}
-	survey.AskOne(prompt, &selected, survey.Required)
+	survey.AskOne(prompt, &selected, survey.WithValidator(survey.Required))
 
 	// return the selected element index
 	for i, option := range options {
@@ -52,7 +52,7 @@ func (cli *CliPrompter) Choose(pr string, options []string) int {
 		Message: pr,
 		Options: options,
 	}
-	survey.AskOne(prompt, &selected, survey.Required)
+	survey.AskOne(prompt, &selected, survey.WithValidator(survey.Required))
 
 	// return the selected element index
 	for i, option := range options {
@@ -70,7 +70,7 @@ func (cli *CliPrompter) String(pr string, defaultValue string) string {
 		Message: pr,
 		Default: defaultValue,
 	}
-	survey.AskOne(prompt, &val, nil)
+	survey.AskOne(prompt, &val)
 	return val
 }
 
@@ -80,7 +80,7 @@ func (cli *CliPrompter) StringRequired(pr string) string {
 	prompt := &survey.Input{
 		Message: pr,
 	}
-	survey.AskOne(prompt, &val, survey.Required)
+	survey.AskOne(prompt, &val, survey.WithValidator(survey.Required))
 	return val
 }
 
@@ -90,6 +90,6 @@ func (cli *CliPrompter) Password(pr string) string {
 	prompt := &survey.Password{
 		Message: pr,
 	}
-	survey.AskOne(prompt, &val, nil)
+	survey.AskOne(prompt, &val)
 	return val
 }
