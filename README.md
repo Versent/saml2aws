@@ -46,7 +46,6 @@ The process goes something like this:
   * [Google Apps](pkg/provider/googleapps/README.md)
   * [Shibboleth](pkg/provider/shibboleth/README.md)
   * [F5APM](pkg/provider/f5apm/README.md)
-  * [PSU](pkg/provider/psu/README.md)
   * [Akamai](pkg/provider/akamai/README.md)
   * OneLogin
 * AWS SAML Provider configured
