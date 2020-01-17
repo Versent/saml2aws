@@ -1,37 +1,37 @@
 package okta
 
 import (
-	"testing"
 	"errors"
 	"github.com/stretchr/testify/assert"
+	"testing"
 )
 
 type stateTokenTests struct {
-	title string
-	body string
+	title      string
+	body       string
 	stateToken string
-	err error
+	err        error
 }
 
 func TestGetStateTokenFromOktaPageBody(t *testing.T) {
 	tests := []stateTokenTests{
 		{
-			title: "State token in body gets returned",
-			body: "someJavascriptCode();\nvar stateToken = '123456789';\nsomeOtherJavaScriptCode();",
+			title:      "State token in body gets returned",
+			body:       "someJavascriptCode();\nvar stateToken = '123456789';\nsomeOtherJavaScriptCode();",
 			stateToken: "123456789",
-			err: nil,
+			err:        nil,
 		},
 		{
-			title: "State token not in body casues error",
-			body: "someJavascriptCode();\nsomeOtherJavaScriptCode();",
+			title:      "State token not in body casues error",
+			body:       "someJavascriptCode();\nsomeOtherJavaScriptCode();",
 			stateToken: "",
-			err: errors.New("cannot find state token"),
+			err:        errors.New("cannot find state token"),
 		},
 		{
-			title: "State token with hypen handled correctly",
-			body: "someJavascriptCode();\nvar stateToken = '12345\x2D6789';\nsomeOtherJavaScriptCode();",
+			title:      "State token with hypen handled correctly",
+			body:       "someJavascriptCode();\nvar stateToken = '12345\x2D6789';\nsomeOtherJavaScriptCode();",
 			stateToken: "12345-6789",
-			err: nil,
+			err:        nil,
 		},
 	}
 	for _, test := range tests {
@@ -42,7 +42,7 @@ func TestGetStateTokenFromOktaPageBody(t *testing.T) {
 				assert.NotNil(t, err)
 				assert.Equal(t, test.err.Error(), err.Error())
 			}
-			
+
 		})
 	}
 }

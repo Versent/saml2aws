@@ -2,12 +2,12 @@ package pingone
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"time"
-	"encoding/base64"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/pkg/errors"

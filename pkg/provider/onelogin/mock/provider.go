@@ -14,14 +14,6 @@ func New(t *testing.T, requests []ExpectedRequest) *httptest.Server {
 
 // ExpectedRequest represents a request that the mock identity provider expects and its predefined response.
 type ExpectedRequest struct {
-	reqBody    []byte
-	reqHeaders http.Header
-	reqMethod  string
-	reqPath    string
-
-	resBody    []byte
-	resHeaders http.Header
-	resStatus  int
 }
 
 func mockHandler(t *testing.T, requests []ExpectedRequest) http.Handler {

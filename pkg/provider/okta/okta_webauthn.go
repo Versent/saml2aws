@@ -3,8 +3,9 @@ package okta
 import (
 	"errors"
 	"fmt"
-	u2fhost "github.com/marshallbrekka/go-u2fhost"
 	"time"
+
+	u2fhost "github.com/marshallbrekka/go-u2fhost"
 )
 
 const (
@@ -93,7 +94,10 @@ func (d *FidoClient) ChallengeU2F() (*SignedAssertion, error) {
 	interval := time.NewTicker(time.Millisecond * 250)
 	var responsePayload *SignedAssertion
 
-	d.Device.Open()
+	err := d.Device.Open()
+	if err != nil {
+		return nil, errors.New("opening Device failed")
+	}
 
 	defer func() {
 		d.Device.Close()
@@ -128,7 +132,6 @@ func (d *FidoClient) ChallengeU2F() (*SignedAssertion, error) {
 		}
 	}
 
-	return responsePayload, nil
 }
 
 // U2FDeviceFinder returns a U2F device

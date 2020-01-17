@@ -3,11 +3,11 @@ package googleapps
 import (
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"time"
 
 	u2fhost "github.com/marshallbrekka/go-u2fhost"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -84,10 +84,12 @@ func (d *U2FClient) ChallengeU2F() (string, error) {
 	timeout := time.After(time.Second * 25)
 	interval := time.NewTicker(time.Millisecond * 250)
 
-	d.Device.Open()
-	defer func() {
-		d.Device.Close()
-	}()
+	err := d.Device.Open()
+	if err != nil {
+		return "", errors.Wrap(err, "failed to open u2f device")
+	}
+
+	defer d.Device.Close()
 
 	defer interval.Stop()
 	for {

@@ -76,6 +76,9 @@ func (jc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 
 	// Grab the web response that has the xsrf in it
 	xsrfBody, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return samlAssertion, errors.Wrap(err, "error reading body of XSRF response")
+	}
 
 	// Unmarshall the answer and store the token
 	var x = new(XSRF)
@@ -147,6 +150,9 @@ func (jc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 	if res.StatusCode == 200 {
 		// Grab the body from the response that has the redirect in it.
 		reDirBody, err := ioutil.ReadAll(res.Body)
+		if err != nil {
+			return samlAssertion, errors.Wrap(err, "Error reading body")
+		}
 
 		// Unmarshall the body to get the redirect address
 		var jcrd = new(JCRedirect)

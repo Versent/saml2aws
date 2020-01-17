@@ -13,14 +13,11 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
 	"github.com/versent/saml2aws/pkg/cfg"
 	"github.com/versent/saml2aws/pkg/creds"
 	"github.com/versent/saml2aws/pkg/prompter"
 	"github.com/versent/saml2aws/pkg/provider"
 )
-
-var logger = logrus.WithField("provider", "aad")
 
 // Client wrapper around AzureAD enabling authentication and retrieval of assertions
 type Client struct {
@@ -764,7 +761,7 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		if err != nil {
 			return samlAssertion, errors.Wrap(err, "error retrieving begin mfa")
 		}
-		mfaBeginJson := make([]byte, res.ContentLength, res.ContentLength)
+		mfaBeginJson := make([]byte, res.ContentLength)
 		if n, err := res.Body.Read(mfaBeginJson); err != nil && err != io.EOF || n != int(res.ContentLength) {
 			return samlAssertion, errors.Wrap(err, "mfa BeginAuth response error")
 		}
@@ -805,7 +802,7 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 			if err != nil {
 				return samlAssertion, errors.Wrap(err, "error retrieving begin mfa")
 			}
-			mfaJson := make([]byte, res.ContentLength, res.ContentLength)
+			mfaJson := make([]byte, res.ContentLength)
 			if n, err := res.Body.Read(mfaJson); err != nil && err != io.EOF || n != int(res.ContentLength) {
 				return samlAssertion, errors.Wrap(err, "mfa EndAuth response error")
 			}
@@ -982,6 +979,9 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 	}
 
 	req, err = http.NewRequest("GET", SAMLRequestURL, nil)
+	if err != nil {
+		return samlAssertion, errors.Wrap(err, "error building get request")
+	}
 
 	res, err = ac.client.Do(req)
 	if err != nil {
@@ -1048,6 +1048,9 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 	resBody, _ = ioutil.ReadAll(res.Body)
 	resBodyStr = string(resBody)
 	doc, err = goquery.NewDocumentFromReader(strings.NewReader(resBodyStr))
+	if err != nil {
+		return samlAssertion, errors.Wrap(err, "failed to build document from result body")
+	}
 	doc.Find("input").Each(func(i int, s *goquery.Selection) {
 		attrName, ok := s.Attr("name")
 		if !ok {
@@ -1064,7 +1067,7 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		return samlAssertion, nil
 	}
 
-	return samlAssertion, fmt.Errorf("failed get SAMLAssersion")
+	return samlAssertion, errors.New("failed get SAMLAssersion")
 }
 
 func (ac *Client) reProcess(resBodyStr string) (*http.Response, error) {
