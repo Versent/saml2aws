@@ -37,7 +37,7 @@ var MFAsByProvider = ProviderList{
 	"Okta":          []string{"Auto", "PUSH", "DUO", "SMS", "TOTP", "OKTA", "FIDO"}, // automatically detects DUO, SMS, ToTP, and FIDO
 	"OneLogin":      []string{"Auto", "OLP", "SMS", "TOTP"},                         // automatically detects OneLogin Protect, SMS and ToTP
 	"KeyCloak":      []string{"Auto"},                                               // automatically detects ToTP
-	"GoogleApps":    []string{"Auto"},                                               // automatically detects ToTP
+	"GoogleApps":    []string{"Auto", "Alt"},                                               // automatically detects ToTP, force alternative if needed
 	"Shibboleth":    []string{"Auto"},
 	"F5APM":         []string{"Auto"},
 	"Akamai":        []string{"Auto", "DUO", "SMS", "EMAIL", "TOTP"},

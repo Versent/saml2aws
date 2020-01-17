@@ -85,7 +85,7 @@ func TestChallengePage(t *testing.T) {
 	loginDetails := &creds.LoginDetails{URL: ts.URL, Username: "test", Password: "test123"}
 	authForm := url.Values{}
 
-	challengeDoc, err := kc.loadChallengePage(ts.URL, "https://accounts.google.com/signin/challenge/sl/password", authForm, loginDetails)
+	challengeDoc, err := kc.loadChallengePage(ts.URL, "https://accounts.google.com/signin/challenge/sl/password", authForm, loginDetails, "")
 	require.Nil(t, err)
 	require.NotNil(t, challengeDoc)
 }
