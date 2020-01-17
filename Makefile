@@ -1,6 +1,6 @@
 NAME=saml2aws
 ARCH=$(shell uname -m)
-VERSION=2.19.0
+VERSION=2.21.0
 ITERATION := 1
 
 SOURCE_FILES?=$$(go list ./... | grep -v /vendor/)
@@ -77,5 +77,6 @@ packages:
 
 generate-mocks:
 	mockery -dir pkg/prompter --all
+	mockery -dir pkg/provider/okta -name U2FDevice
 
 .PHONY: default prepare.metalinter prepare mod compile lint fmt dist release test clean generate-mocks

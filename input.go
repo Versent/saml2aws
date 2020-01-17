@@ -68,14 +68,18 @@ func PromptForLoginDetails(loginDetails *creds.LoginDetails, provider string) er
 	}
 	fmt.Println("")
 	if provider == "OneLogin" {
-		if enteredClientID := prompter.Password("Client ID"); enteredClientID != "" {
-			loginDetails.ClientID = enteredClientID
+		if loginDetails.ClientID == "" {
+			if enteredClientID := prompter.Password("Client ID"); enteredClientID != "" {
+				loginDetails.ClientID = enteredClientID
+			}
+			fmt.Println("")
 		}
-		fmt.Println("")
-		if enteredCientSecret := prompter.Password("Client Secret"); enteredCientSecret != "" {
-			loginDetails.ClientSecret = enteredCientSecret
+		if loginDetails.ClientSecret == "" {
+			if enteredCientSecret := prompter.Password("Client Secret"); enteredCientSecret != "" {
+				loginDetails.ClientSecret = enteredCientSecret
+			}
+			fmt.Println("")
 		}
-		fmt.Println("")
 	}
 
 	return nil
