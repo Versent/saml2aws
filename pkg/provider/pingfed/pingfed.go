@@ -2,12 +2,12 @@ package pingfed
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"time"
-	"encoding/base64"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/pkg/errors"
@@ -72,7 +72,7 @@ func (ac *Client) follow(ctx context.Context, req *http.Request) (string, error)
 	}
 
 	var handler func(context.Context, *goquery.Document) (context.Context, *http.Request, error)
-	
+
 	if docIsFormRedirectToAWS(doc) {
 		logger.WithField("type", "saml-response-to-aws").Debug("doc detect")
 		if samlResponse, ok := extractSAMLResponse(doc); ok {

@@ -17,6 +17,7 @@ import (
 	"github.com/versent/saml2aws/pkg/prompter"
 
 	"encoding/json"
+
 	"github.com/PuerkitoBio/goquery"
 	"github.com/pkg/errors"
 	"github.com/tidwall/gjson"
@@ -342,7 +343,10 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 		verifyCode := prompter.StringRequired("Enter verification code")
 		tokenReq := VerifyRequest{StateToken: stateToken, PassCode: verifyCode}
 		tokenBody := new(bytes.Buffer)
-		json.NewEncoder(tokenBody).Encode(tokenReq)
+		err = json.NewEncoder(tokenBody).Encode(tokenReq)
+		if err != nil {
+			return "", errors.Wrap(err, "error encoding token data")
+		}
 
 		req, err = http.NewRequest("POST", oktaVerify, tokenBody)
 		if err != nil {
@@ -628,7 +632,7 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 
 		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 
-		res, err = oc.client.Do(req)
+		_, err = oc.client.Do(req) // TODO: check result
 		if err != nil {
 			return "", errors.Wrap(err, "error retrieving verify response")
 		}
@@ -637,7 +641,10 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 
 		verifyReq = VerifyRequest{StateToken: stateToken}
 		verifyBody = new(bytes.Buffer)
-		json.NewEncoder(verifyBody).Encode(verifyReq)
+		err = json.NewEncoder(verifyBody).Encode(verifyReq)
+		if err != nil {
+			return "", errors.Wrap(err, "error encoding verify request")
+		}
 
 		req, err = http.NewRequest("POST", oktaVerify, verifyBody)
 		if err != nil {

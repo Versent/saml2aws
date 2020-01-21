@@ -2,6 +2,7 @@ package keycloak
 
 import (
 	"bytes"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -10,16 +11,11 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
 	"github.com/versent/saml2aws/pkg/cfg"
 	"github.com/versent/saml2aws/pkg/creds"
 	"github.com/versent/saml2aws/pkg/prompter"
 	"github.com/versent/saml2aws/pkg/provider"
-
-	"fmt"
 )
-
-var logger = logrus.WithField("provider", "keycloak")
 
 // Client wrapper around KeyCloak.
 type Client struct {
@@ -195,11 +191,7 @@ func extractSubmitURL(doc *goquery.Document) (string, error) {
 func containsTotpForm(doc *goquery.Document) bool {
 	totpIndex := doc.Find("input#totp").Index()
 
-	if totpIndex != -1 {
-		return true
-	}
-
-	return false
+	return totpIndex != -1
 }
 
 func updateKeyCloakFormData(authForm url.Values, s *goquery.Selection, user *creds.LoginDetails) {

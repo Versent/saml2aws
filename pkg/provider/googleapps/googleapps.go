@@ -82,6 +82,9 @@ func (kc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		captcha := prompter.String("Captcha", "")
 
 		captchaForm, captchaURL, err := extractInputsByFormID(responseDoc, "gaia_loginform")
+		if err != nil {
+			return "", errors.Wrap(err, "error extracting captcha")
+		}
 
 		logger.Debugf("captchaURL: %s", captchaURL)
 

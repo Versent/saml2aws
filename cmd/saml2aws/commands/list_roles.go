@@ -89,7 +89,7 @@ func ListRoles(loginFlags *flags.LoginExecFlags) error {
 func listRoles(awsRoles []*saml2aws.AWSRole, samlAssertion string, loginFlags *flags.LoginExecFlags) error {
 	awsAccounts, err := saml2aws.ParseAWSAccounts(samlAssertion)
 	if err != nil {
-		errors.Wrap(err, "error parsing aws role accounts")
+		return errors.Wrap(err, "error parsing aws role accounts")
 	}
 
 	saml2aws.AssignPrincipals(awsRoles, awsAccounts)
