@@ -1,7 +1,6 @@
 package credentials
 
 import (
-	"fmt"
 	"path"
 
 	"github.com/versent/saml2aws/pkg/creds"
@@ -10,7 +9,7 @@ import (
 // LookupCredentials lookup an existing set of credentials and validate it.
 func LookupCredentials(loginDetails *creds.LoginDetails, provider string) error {
 
-	username, password, err := CurrentHelper.Get(fmt.Sprintf("%s", loginDetails.URL))
+	username, password, err := CurrentHelper.Get(loginDetails.URL)
 	if err != nil {
 		return err
 	}
@@ -33,7 +32,7 @@ func LookupCredentials(loginDetails *creds.LoginDetails, provider string) error 
 func SaveCredentials(url, username, password string) error {
 
 	creds := &Credentials{
-		ServerURL: fmt.Sprintf("%s", url),
+		ServerURL: url,
 		Username:  username,
 		Secret:    password,
 	}
