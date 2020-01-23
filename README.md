@@ -135,7 +135,7 @@ Flags:
       --password=PASSWORD      The password used to login. (env:
                                SAML2AWS_PASSWORD)
       --mfa-token=MFA-TOKEN    The current MFA token (supported in Keycloak,
-                               ADFS). (env: SAML2AWS_MFA_TOKEN)
+                               ADFS, GoogleApps). (env: SAML2AWS_MFA_TOKEN)
       --role=ROLE              The ARN of the role to assume. (env:
                                SAML2AWS_ROLE)
       --aws-urn=AWS-URN        The URN used by SAML when you login. (env:
