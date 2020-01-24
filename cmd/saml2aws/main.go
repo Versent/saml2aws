@@ -100,6 +100,7 @@ func main() {
 	consoleFlags := new(flags.LoginExecFlags)
 	consoleFlags.CommonFlags = commonFlags
 	cmdConsole.Flag("profile", "The AWS profile to save the temporary credentials. (env: SAML2AWS_PROFILE)").Envar("SAML2AWS_PROFILE").Short('p').StringVar(&commonFlags.Profile)
+	cmdConsole.Flag("force", "Refresh credentials even if not expired.").BoolVar(&consoleFlags.Force)
 
 	// `list` command and settings
 	cmdListRoles := app.Command("list-roles", "List available role ARNs.")
