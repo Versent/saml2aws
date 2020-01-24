@@ -95,6 +95,12 @@ func main() {
 	cmdExec.Flag("exec-profile", "The AWS profile to utilize for command execution. Useful to allow the aws cli to perform secondary role assumption. (env: SAML2AWS_EXEC_PROFILE)").Envar("SAML2AWS_EXEC_PROFILE").StringVar(&execFlags.ExecProfile)
 	cmdLine := buildCmdList(cmdExec.Arg("command", "The command to execute."))
 
+	// `console` command and settings
+	cmdConsole := app.Command("console", "Console will open the aws console after logging in.")
+	consoleFlags := new(flags.LoginExecFlags)
+	consoleFlags.CommonFlags = commonFlags
+	cmdConsole.Flag("profile", "The AWS profile to save the temporary credentials. (env: SAML2AWS_PROFILE)").Envar("SAML2AWS_PROFILE").Short('p').StringVar(&commonFlags.Profile)
+
 	// `list` command and settings
 	cmdListRoles := app.Command("list-roles", "List available role ARNs.")
 	listRolesFlags := new(flags.LoginExecFlags)
@@ -140,6 +146,8 @@ func main() {
 		err = commands.Login(loginFlags)
 	case cmdExec.FullCommand():
 		err = commands.Exec(execFlags, *cmdLine)
+	case cmdConsole.FullCommand():
+		err = commands.Console(consoleFlags)
 	case cmdListRoles.FullCommand():
 		err = commands.ListRoles(listRolesFlags)
 	case cmdConfigure.FullCommand():
