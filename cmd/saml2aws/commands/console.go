@@ -3,6 +3,7 @@ package commands
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/versent/saml2aws/pkg/cfg"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -12,6 +13,10 @@ import (
 	"github.com/skratchdot/open-golang/open"
 	"github.com/versent/saml2aws/pkg/awsconfig"
 	"github.com/versent/saml2aws/pkg/flags"
+)
+
+const (
+	federationURL = "https://signin.aws.amazon.com/federation"
 )
 
 // Exec execute the supplied command after seeding the environment
@@ -36,22 +41,10 @@ func Console(consoleFlags *flags.LoginExecFlags) error {
 		return nil
 	}
 
-	awsCreds, err := sharedCreds.Load()
+	awsCreds, err := loadOrLogin(account, sharedCreds, consoleFlags)
 	if err != nil {
-		return errors.Wrap(err, "error loading credentials")
-	}
-
-	if awsCreds.Expires.Sub(time.Now()) < 0 {
-		return errors.New("error aws credentials have expired")
-	}
-
-	ok, err := checkToken(account.Profile)
-	if err != nil {
-		return errors.Wrap(err, "error validating token")
-	}
-
-	if !ok {
-		err = Login(consoleFlags)
+		return errors.Wrap(err,
+			fmt.Sprintf("error loading credentials for profile: %s", consoleFlags.ExecProfile))
 	}
 	if err != nil {
 		return errors.Wrap(err, "error logging in")
@@ -66,9 +59,53 @@ func Console(consoleFlags *flags.LoginExecFlags) error {
 		}
 	}
 
-	fmt.Printf("Opening console for profile %s ...\n", account.Profile)
-
+	fmt.Printf("Presenting credentials for %s to %s\n", account.Profile, federationURL)
 	return federatedLogin(awsCreds, consoleFlags)
+}
+
+func loadOrLogin(account *cfg.IDPAccount, sharedCreds *awsconfig.CredentialsProvider, execFlags *flags.LoginExecFlags) (*awsconfig.AWSCredentials, error) {
+
+	var err error
+
+	if execFlags.Force {
+		fmt.Println("force login requested")
+		return loginRefreshCredentials(sharedCreds, execFlags)
+	}
+
+	awsCreds, err := sharedCreds.Load()
+	if err != nil {
+		if err != awsconfig.ErrCredentialsNotFound {
+			return nil, errors.Wrap(err, "failed to load credentials")
+		}
+		fmt.Println("credentials not found triggering login")
+		return loginRefreshCredentials(sharedCreds, execFlags)
+	}
+
+	if awsCreds.Expires.Sub(time.Now()) < 0 {
+		fmt.Println("expired credentials triggering login")
+		return loginRefreshCredentials(sharedCreds, execFlags)
+	}
+
+	ok, err := checkToken(account.Profile)
+	if err != nil {
+		return nil, errors.Wrap(err, "error validating token")
+	}
+
+	if !ok {
+		fmt.Println("aws rejected credentials triggering login")
+		return loginRefreshCredentials(sharedCreds, execFlags)
+	}
+
+	return awsCreds, nil
+}
+
+func loginRefreshCredentials(sharedCreds *awsconfig.CredentialsProvider, execFlags *flags.LoginExecFlags) (*awsconfig.AWSCredentials, error) {
+	err := Login(execFlags)
+	if err != nil {
+		return nil, errors.Wrap(err, "error logging in")
+	}
+
+	return sharedCreds.Load()
 }
 
 func federatedLogin(creds *awsconfig.AWSCredentials, consoleFlags *flags.LoginExecFlags) error {
@@ -81,7 +118,7 @@ func federatedLogin(creds *awsconfig.AWSCredentials, consoleFlags *flags.LoginEx
 		return err
 	}
 
-	req, err := http.NewRequest("GET", "https://signin.aws.amazon.com/federation", nil)
+	req, err := http.NewRequest("GET", federationURL, nil)
 	if err != nil {
 		return err
 	}
@@ -119,7 +156,8 @@ func federatedLogin(creds *awsconfig.AWSCredentials, consoleFlags *flags.LoginEx
 	destination := "https://console.aws.amazon.com/"
 
 	loginURL := fmt.Sprintf(
-		"https://signin.aws.amazon.com/federation?Action=login&Issuer=aws-okta&Destination=%s&SigninToken=%s",
+		"%s?Action=login&Issuer=aws-okta&Destination=%s&SigninToken=%s",
+		federationURL,
 		url.QueryEscape(destination),
 		url.QueryEscape(signinToken),
 	)
