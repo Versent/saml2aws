@@ -11,14 +11,11 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
 	"github.com/versent/saml2aws/pkg/cfg"
 	"github.com/versent/saml2aws/pkg/creds"
 	"github.com/versent/saml2aws/pkg/prompter"
 	"github.com/versent/saml2aws/pkg/provider"
 )
-
-var logger = logrus.WithField("provider", "adfs")
 
 // Client wrapper around ADFS enabling authentication and retrieval of assertions
 type Client struct {
@@ -69,7 +66,7 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 
 	doc, err := ac.get(adfsURL)
 	if err != nil {
-		return "", err
+		return "", errors.Wrap(err, "failed to get adfs page")
 	}
 
 	authForm := url.Values{}
@@ -91,6 +88,9 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 	}
 
 	doc, err = ac.submit(authSubmitURL, authForm)
+	if err != nil {
+		return samlAssertion, errors.Wrap(err, "failed to submit adfs auth form")
+	}
 
 	for {
 		responseType, samlAssertion, err := checkResponse(doc)

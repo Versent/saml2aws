@@ -10,14 +10,9 @@ import (
 	"testing"
 
 	"github.com/PuerkitoBio/goquery"
-
 	"github.com/stretchr/testify/require"
 	"github.com/versent/saml2aws/pkg/cfg"
 	"github.com/versent/saml2aws/pkg/creds"
-)
-
-const (
-	exampleLoginURL = "https://id.example.com"
 )
 
 func TestClient_getLoginForm(t *testing.T) {

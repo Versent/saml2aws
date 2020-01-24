@@ -1,16 +1,16 @@
 package okta
 
 import (
+	"testing"
+
 	u2fhost "github.com/marshallbrekka/go-u2fhost"
 	"github.com/stretchr/testify/assert"
 	"github.com/versent/saml2aws/mocks"
-	"testing"
 )
 
 type fidoClientTests struct {
-	title  string
-	client FidoClient
-	err    error
+	title string
+	err   error
 }
 
 type MockDeviceFinder struct {

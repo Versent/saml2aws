@@ -2,6 +2,7 @@ package keycloak
 
 import (
 	"bytes"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -10,16 +11,11 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
 	"github.com/versent/saml2aws/pkg/cfg"
 	"github.com/versent/saml2aws/pkg/creds"
 	"github.com/versent/saml2aws/pkg/prompter"
 	"github.com/versent/saml2aws/pkg/provider"
-
-	"fmt"
 )
-
-var logger = logrus.WithField("provider", "keycloak")
 
 // Client wrapper around KeyCloak.
 type Client struct {
@@ -193,7 +189,15 @@ func extractSubmitURL(doc *goquery.Document) (string, error) {
 }
 
 func containsTotpForm(doc *goquery.Document) bool {
+	// search totp field at Keycloak < 8.0.1
 	totpIndex := doc.Find("input#totp").Index()
+
+	if totpIndex != -1 {
+		return true
+	}
+
+	// search otp field at Keycloak >= 8.0.1
+	totpIndex = doc.Find("input#otp").Index()
 
 	if totpIndex != -1 {
 		return true
@@ -225,12 +229,16 @@ func updateKeyCloakFormData(authForm url.Values, s *goquery.Selection, user *cre
 
 func updateOTPFormData(otpForm url.Values, s *goquery.Selection, token string) {
 	name, ok := s.Attr("name")
-	//	log.Printf("name = %s ok = %v", name, ok)
+	// log.Printf("name = %s ok = %v", name, ok)
 	if !ok {
 		return
 	}
+
 	lname := strings.ToLower(name)
+	// search otp field at Keycloak >= 8.0.1
 	if strings.Contains(lname, "totp") {
+		otpForm.Add(name, token)
+	} else if strings.Contains(lname, "otp") {
 		otpForm.Add(name, token)
 	}
 

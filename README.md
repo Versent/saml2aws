@@ -82,7 +82,7 @@ saml2aws --version
 While brew is available for Linux you can also run the following without using a package manager.
 
 ```
-$ CURRENT_VERSION=2.20.0
+$ CURRENT_VERSION=2.22.0
 $ wget https://github.com/Versent/saml2aws/releases/download/v${CURRENT_VERSION}/saml2aws_${CURRENT_VERSION}_linux_amd64.tar.gz
 $ tar -xzvf saml2aws_${CURRENT_VERSION}_linux_amd64.tar.gz -C ~/.local/bin
 $ chmod u+x ~/.local/bin/saml2aws
@@ -115,37 +115,25 @@ usage: saml2aws [<flags>] <command> [<args> ...]
 A command line tool to help with SAML access to the AWS token service.
 
 Flags:
-      --help                   Show context-sensitive help (also try --help-long
-                               and --help-man).
+      --help                   Show context-sensitive help (also try --help-long and --help-man).
       --version                Show application version.
       --verbose                Enable verbose logging
-  -i, --provider=PROVIDER      This flag is obsolete. See:
-                               https://github.com/Versent/saml2aws#configuring-idp-accounts
-  -a, --idp-account="default"  The name of the configured IDP account. (env:
-                               SAML2AWS_IDP_ACCOUNT)
+  -i, --provider=PROVIDER      This flag is obsolete. See: https://github.com/Versent/saml2aws#configuring-idp-accounts
+  -a, --idp-account="default"  The name of the configured IDP account. (env: SAML2AWS_IDP_ACCOUNT)
       --idp-provider=IDP-PROVIDER
-                               The configured IDP provider. (env:
-                               SAML2AWS_IDP_PROVIDER)
+                               The configured IDP provider. (env: SAML2AWS_IDP_PROVIDER)
       --mfa=MFA                The name of the mfa. (env: SAML2AWS_MFA)
-  -s, --skip-verify            Skip verification of server certificate.
-      --url=URL                The URL of the SAML IDP server used to login.
-                               (env: SAML2AWS_URL)
-      --username=USERNAME      The username used to login. (env:
-                               SAML2AWS_USERNAME)
-      --password=PASSWORD      The password used to login. (env:
-                               SAML2AWS_PASSWORD)
-      --mfa-token=MFA-TOKEN    The current MFA token (supported in Keycloak,
-                               ADFS). (env: SAML2AWS_MFA_TOKEN)
-      --role=ROLE              The ARN of the role to assume. (env:
-                               SAML2AWS_ROLE)
-      --aws-urn=AWS-URN        The URN used by SAML when you login. (env:
-                               SAML2AWS_AWS_URN)
-      --duo-mfa-option         The MFA option you want to use to authenticate (env: SAML_DUO_MFA_OPTION)
+  -s, --skip-verify            Skip verification of server certificate. (env: SAML2AWS_SKIP_VERIFY)
+      --url=URL                The URL of the SAML IDP server used to login. (env: SAML2AWS_URL)
+      --username=USERNAME      The username used to login. (env: SAML2AWS_USERNAME)
+      --password=PASSWORD      The password used to login. (env: SAML2AWS_PASSWORD)
+      --mfa-token=MFA-TOKEN    The current MFA token (supported in Keycloak, ADFS, GoogleApps). (env: SAML2AWS_MFA_TOKEN)
+      --role=ROLE              The ARN of the role to assume. (env: SAML2AWS_ROLE)
+      --aws-urn=AWS-URN        The URN used by SAML when you login. (env: SAML2AWS_AWS_URN)
       --skip-prompt            Skip prompting for parameters during login.
-      --exec-profile           Execute the given command utilizing a specific profile from your ~/.aws/config file
       --session-duration=SESSION-DURATION
-                               The duration of your AWS Session. (env:
-                               SAML2AWS_SESSION_DURATION)
+                               The duration of your AWS Session. (env: SAML2AWS_SESSION_DURATION)
+      --disable-keychain       Do not use keychain at all.
 
 Commands:
   help [<command>...]
@@ -160,11 +148,15 @@ Commands:
   exec [<flags>] [<command>...]
     Exec the supplied command with env vars from STS token.
 
+  console [<flags>]
+    Console will open the aws console after logging in.
+
   list-roles
     List available role ARNs.
 
   script [<flags>]
     Emit a script that will export environment variables.
+
 ```
 
 
