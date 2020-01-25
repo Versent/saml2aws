@@ -2,6 +2,7 @@ package shell
 
 import (
 	"fmt"
+	"time"
 	"github.com/versent/saml2aws/pkg/awsconfig"
 	"github.com/versent/saml2aws/pkg/cfg"
 	"github.com/versent/saml2aws/pkg/flags"
@@ -16,6 +17,7 @@ func BuildEnvVars(awsCreds *awsconfig.AWSCredentials, account *cfg.IDPAccount, e
 		fmt.Sprintf("EC2_SECURITY_TOKEN=%s", awsCreds.AWSSecurityToken),
 		fmt.Sprintf("AWS_ACCESS_KEY_ID=%s", awsCreds.AWSAccessKey),
 		fmt.Sprintf("AWS_SECRET_ACCESS_KEY=%s", awsCreds.AWSSecretKey),
+		fmt.Sprintf("AWS_CREDENTIAL_EXPIRATION=%s", awsCreds.Expires.Format(time.RFC3339)),
 	}
 
 	if execFlags.ExecProfile == "" {

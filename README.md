@@ -168,6 +168,7 @@ export AWS_ACCESS_KEY_ID="ASIAI....UOCA"
 export AWS_SECRET_ACCESS_KEY="DuH...G1d"
 export AWS_SESSION_TOKEN="AQ...1BQ=="
 export AWS_SECURITY_TOKEN="AQ...1BQ=="
+export AWS_CREDENTIAL_EXPIRATION="2016-09-04T38:27:00Z00:00"
 SAML2AWS_PROFILE=saml
 ```
 
@@ -428,6 +429,7 @@ AWS_ACCESS_KEY_ID=AAAAAAAASORTENED
 AWS_SECRET_ACCESS_KEY=secretShortened+6jJ5SMqsM5CkYi3Gw7
 AWS_SESSION_TOKEN=ShortenedTokenXXX=
 AWS_SECURITY_TOKEN=ShortenedSecurityTokenXXX=
+AWS_CREDENTIAL_EXPIRATION=2016-09-04T38:27:00Z00:00
 
 # If we desire to execute multiple commands utilizing our assumed profile, we can obtain a new shell with Env variables configured for access
 
@@ -485,6 +487,7 @@ The exec sub command will export the following environment variables.
 * EC2_SECURITY_TOKEN
 * AWS_PROFILE
 * AWS_DEFAULT_PROFILE
+* AWS_CREDENTIAL_EXPIRATION
 
 Note: That profile environment variables enable you to use `exec` with a script or command which requires an explicit profile.
 
