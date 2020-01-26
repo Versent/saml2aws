@@ -16,6 +16,7 @@ export AWS_SECRET_ACCESS_KEY="{{ .AWSSecretKey }}"
 export AWS_SESSION_TOKEN="{{ .AWSSessionToken }}"
 export AWS_SECURITY_TOKEN="{{ .AWSSecurityToken }}"
 export SAML2AWS_PROFILE="{{ .ProfileName }}"
+export AWS_CREDENTIAL_EXPIRATION="{{ .Expires.Format "2006-01-02T15:04:05Z07:00" }}"
 `
 
 const fishTmpl = `set -gx AWS_ACCESS_KEY_ID {{ .AWSAccessKey }}
@@ -23,6 +24,7 @@ set -gx AWS_SECRET_ACCESS_KEY {{ .AWSSecretKey }}
 set -gx AWS_SESSION_TOKEN {{ .AWSSessionToken }}
 set -gx AWS_SECURITY_TOKEN {{ .AWSSecurityToken }}
 set -gx SAML2AWS_PROFILE {{ .ProfileName }}
+set -gx AWS_CREDENTIAL_EXPIRATION={{ .Expires "2006-01-02T15:04:05Z07:00" }}
 "
 `
 
@@ -31,6 +33,7 @@ $env:AWS_SECRET_ACCESS_KEY='{{ .AWSSecretKey }}'
 $env:AWS_SESSION_TOKEN='{{ .AWSSessionToken }}'
 $env:AWS_SECURITY_TOKEN='{{ .AWSSecurityToken }}'
 $env:SAML2AWS_PROFILE='{{ .ProfileName }}'
+$env:AWS_CREDENTIAL_EXPIRATION='{{ .Expires "2006-01-02T15:04:05Z07:00" }}'
 `
 
 // Script will emit a bash script that will export environment variables
