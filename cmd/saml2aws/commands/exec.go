@@ -103,10 +103,16 @@ func assumeRoleWithProfile(targetProfile string, sessionDuration int) (*awsconfi
 	if err != nil {
 		return nil, err
 	}
+	expiredAt, err := sess.Config.Credentials.ExpiresAt()
+	if err != nil {
+		return nil, err
+	}
+
 	return &awsconfig.AWSCredentials{
 		AWSAccessKey:    creds.AccessKeyID,
 		AWSSecretKey:    creds.SecretAccessKey,
 		AWSSessionToken: creds.SessionToken,
+		Expires:         expiredAt,
 	}, nil
 }
 
