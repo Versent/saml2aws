@@ -30,6 +30,7 @@ const (
 	SAML_RESPONSE
 	MFA_PROMPT
 	AZURE_MFA_WAIT
+	AZURE_MFA_SERVER_WAIT
 )
 
 // New create a new ADFS client
@@ -112,6 +113,8 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 				return samlAssertion, errors.Wrap(err, "error retrieving mfa form results")
 			}
 			mfaToken = ""
+		case AZURE_MFA_SERVER_WAIT:
+			fallthrough
 		case AZURE_MFA_WAIT:
 			azureForm := url.Values{}
 			doc.Find("input").Each(func(i int, s *goquery.Selection) {
@@ -128,6 +131,12 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 			doc, err = ac.submit(authSubmitURL, azureForm)
 			if err != nil {
 				return samlAssertion, errors.Wrap(err, "error retrieving mfa form results")
+			}
+			if responseType == AZURE_MFA_SERVER_WAIT {
+				sel := doc.Find("label#errorText")
+				if sel.Index() != -1 {
+					return samlAssertion, errors.New(sel.Text())
+				}
 			}
 		case UNKNOWN:
 			return samlAssertion, errors.New("unable to classify response from auth server")
@@ -191,11 +200,13 @@ func checkResponse(doc *goquery.Document) (AuthResponseType, string, error) {
 		}
 		if name == "AuthMethod" {
 			val, _ := s.Attr("value")
-			if val == "VIPAuthenticationProviderWindowsAccountName" {
+			switch val {
+			case "VIPAuthenticationProviderWindowsAccountName":
 				responseType = MFA_PROMPT
-			}
-			if val == "AzureMfaAuthentication" {
+			case "AzureMfaAuthentication":
 				responseType = AZURE_MFA_WAIT
+			case "AzureMfaServerAuthentication":
+				responseType = AZURE_MFA_SERVER_WAIT
 			}
 		}
 		if name == "VerificationCode" {
