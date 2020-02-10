@@ -3,6 +3,7 @@ package shell
 import (
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/versent/saml2aws/pkg/awsconfig"
 	"github.com/versent/saml2aws/pkg/cfg"
@@ -18,6 +19,7 @@ func TestBuildEnvVars(t *testing.T) {
 		AWSSecretKey:     "345",
 		AWSSecurityToken: "567",
 		AWSSessionToken:  "567",
+		Expires:          time.Date(2016, 9, 4, 14, 27, 0, 0, time.UTC),
 	}
 
 	tests := []struct {
@@ -34,6 +36,7 @@ func TestBuildEnvVars(t *testing.T) {
 				"EC2_SECURITY_TOKEN=567",
 				"AWS_ACCESS_KEY_ID=123",
 				"AWS_SECRET_ACCESS_KEY=345",
+				"AWS_CREDENTIAL_EXPIRATION=2016-09-04T14:27:00Z",
 				"AWS_PROFILE=saml",
 				"AWS_DEFAULT_PROFILE=saml",
 			},
@@ -49,6 +52,7 @@ func TestBuildEnvVars(t *testing.T) {
 				"EC2_SECURITY_TOKEN=567",
 				"AWS_ACCESS_KEY_ID=123",
 				"AWS_SECRET_ACCESS_KEY=345",
+				"AWS_CREDENTIAL_EXPIRATION=2016-09-04T14:27:00Z",
 			},
 		},
 	}

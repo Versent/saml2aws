@@ -120,7 +120,7 @@ Flags:
       --verbose                Enable verbose logging
   -i, --provider=PROVIDER      This flag is obsolete. See: https://github.com/Versent/saml2aws#configuring-idp-accounts
   -a, --idp-account="default"  The name of the configured IDP account. (env: SAML2AWS_IDP_ACCOUNT)
-      --idp-provider=IDP-PROVIDER
+      --idp-provider=IDP-PROVIDER  
                                The configured IDP provider. (env: SAML2AWS_IDP_PROVIDER)
       --mfa=MFA                The name of the mfa. (env: SAML2AWS_MFA)
   -s, --skip-verify            Skip verification of server certificate. (env: SAML2AWS_SKIP_VERIFY)
@@ -131,7 +131,7 @@ Flags:
       --role=ROLE              The ARN of the role to assume. (env: SAML2AWS_ROLE)
       --aws-urn=AWS-URN        The URN used by SAML when you login. (env: SAML2AWS_AWS_URN)
       --skip-prompt            Skip prompting for parameters during login.
-      --session-duration=SESSION-DURATION
+      --session-duration=SESSION-DURATION  
                                The duration of your AWS Session. (env: SAML2AWS_SESSION_DURATION)
       --disable-keychain       Do not use keychain at all.
 
@@ -139,23 +139,54 @@ Commands:
   help [<command>...]
     Show help.
 
+
   configure [<flags>]
     Configure a new IDP account.
+
+        --app-id=APP-ID            OneLogin app id required for SAML assertion. (env: ONELOGIN_APP_ID)
+        --client-id=CLIENT-ID      OneLogin client id, used to generate API access token. (env: ONELOGIN_CLIENT_ID)
+        --client-secret=CLIENT-SECRET  
+                                   OneLogin client secret, used to generate API access token. (env: ONELOGIN_CLIENT_SECRET)
+        --subdomain=SUBDOMAIN      OneLogin subdomain of your company account. (env: ONELOGIN_SUBDOMAIN)
+    -p, --profile=PROFILE          The AWS profile to save the temporary credentials. (env: SAML2AWS_PROFILE)
+        --resource-id=RESOURCE-ID  F5APM SAML resource ID of your company account. (env: SAML2AWS_F5APM_RESOURCE_ID)
+        --config=CONFIG            Path/filename of saml2aws config file (env: SAML2AWS_CONFIGFILE)
 
   login [<flags>]
     Login to a SAML 2.0 IDP and convert the SAML assertion to an STS token.
 
+    -p, --profile=PROFILE      The AWS profile to save the temporary credentials. (env: SAML2AWS_PROFILE)
+        --duo-mfa-option=DUO-MFA-OPTION  
+                               The MFA option you want to use to authenticate with
+        --client-id=CLIENT-ID  OneLogin client id, used to generate API access token. (env: ONELOGIN_CLIENT_ID)
+        --client-secret=CLIENT-SECRET  
+                               OneLogin client secret, used to generate API access token. (env: ONELOGIN_CLIENT_SECRET)
+        --force                Refresh credentials even if not expired.
+
   exec [<flags>] [<command>...]
     Exec the supplied command with env vars from STS token.
+
+    -p, --profile=PROFILE  The AWS profile to save the temporary credentials. (env: SAML2AWS_PROFILE)
+        --exec-profile=EXEC-PROFILE  
+                           The AWS profile to utilize for command execution. Useful to allow the aws cli to perform secondary role assumption. (env:
+                           SAML2AWS_EXEC_PROFILE)
 
   console [<flags>]
     Console will open the aws console after logging in.
 
+    -p, --profile=PROFILE  The AWS profile to save the temporary credentials. (env: SAML2AWS_PROFILE)
+        --force            Refresh credentials even if not expired.
+
   list-roles
     List available role ARNs.
 
+
   script [<flags>]
     Emit a script that will export environment variables.
+
+    -p, --profile=PROFILE  The AWS profile to save the temporary credentials. (env: SAML2AWS_PROFILE)
+        --shell=bash       Type of shell environment. Options include: bash, powershell, fish
+
 
 ```
 
@@ -168,6 +199,7 @@ export AWS_ACCESS_KEY_ID="ASIAI....UOCA"
 export AWS_SECRET_ACCESS_KEY="DuH...G1d"
 export AWS_SESSION_TOKEN="AQ...1BQ=="
 export AWS_SECURITY_TOKEN="AQ...1BQ=="
+export AWS_CREDENTIAL_EXPIRATION="2016-09-04T38:27:00Z00:00"
 SAML2AWS_PROFILE=saml
 ```
 
@@ -428,6 +460,7 @@ AWS_ACCESS_KEY_ID=AAAAAAAASORTENED
 AWS_SECRET_ACCESS_KEY=secretShortened+6jJ5SMqsM5CkYi3Gw7
 AWS_SESSION_TOKEN=ShortenedTokenXXX=
 AWS_SECURITY_TOKEN=ShortenedSecurityTokenXXX=
+AWS_CREDENTIAL_EXPIRATION=2016-09-04T38:27:00Z00:00
 
 # If we desire to execute multiple commands utilizing our assumed profile, we can obtain a new shell with Env variables configured for access
 
@@ -485,6 +518,7 @@ The exec sub command will export the following environment variables.
 * EC2_SECURITY_TOKEN
 * AWS_PROFILE
 * AWS_DEFAULT_PROFILE
+* AWS_CREDENTIAL_EXPIRATION
 
 Note: That profile environment variables enable you to use `exec` with a script or command which requires an explicit profile.
 

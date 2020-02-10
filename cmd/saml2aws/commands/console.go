@@ -3,7 +3,6 @@ package commands
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/versent/saml2aws/pkg/cfg"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -12,11 +11,13 @@ import (
 	"github.com/pkg/errors"
 	"github.com/skratchdot/open-golang/open"
 	"github.com/versent/saml2aws/pkg/awsconfig"
+	"github.com/versent/saml2aws/pkg/cfg"
 	"github.com/versent/saml2aws/pkg/flags"
 )
 
 const (
 	federationURL = "https://signin.aws.amazon.com/federation"
+	issuer        = "saml2aws"
 )
 
 // Exec execute the supplied command after seeding the environment
@@ -156,8 +157,9 @@ func federatedLogin(creds *awsconfig.AWSCredentials, consoleFlags *flags.LoginEx
 	destination := "https://console.aws.amazon.com/"
 
 	loginURL := fmt.Sprintf(
-		"%s?Action=login&Issuer=aws-okta&Destination=%s&SigninToken=%s",
+		"%s?Action=login&Issuer=%s&Destination=%s&SigninToken=%s",
 		federationURL,
+		issuer,
 		url.QueryEscape(destination),
 		url.QueryEscape(signinToken),
 	)
