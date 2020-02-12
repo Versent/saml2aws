@@ -20,8 +20,6 @@ install:
 
     $env:Path += ";`"$env:GOPATH\bin`";c:\go\bin;"
 
-    go get github.com/Masterminds/glide
-
     write-output $env:PATH
 
     go version
