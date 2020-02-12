@@ -49,6 +49,7 @@ func ListRoles(loginFlags *flags.LoginExecFlags) error {
 	if samlAssertion == "" {
 		fmt.Println("Response did not contain a valid SAML assertion")
 		fmt.Println("Please check your username and password is correct")
+		fmt.Println("To see the output follow the instructions in https://github.com/Versent/saml2aws#debugging-issues-with-idps")
 		os.Exit(1)
 	}
 
