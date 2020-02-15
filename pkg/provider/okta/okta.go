@@ -397,7 +397,7 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 			switch gjson.Get(string(body), "factorResult").String() {
 
 			case "WAITING":
-				time.Sleep(1000)
+				time.Sleep(3 * time.Second)
 				fmt.Printf(".")
 				logger.Debug("Waiting for user to authorize login")
 
