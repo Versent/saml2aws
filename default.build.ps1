@@ -5,7 +5,7 @@ $version = ${env:APPVEYOR_REPO_TAG_NAME}.Split('v')[1]
 
 task 'Compile Go libraries...' {
   $ErrorActionPreference = 'Continue'
-  go get -u github.com/golang/dep/cmd/dep 2> $null
+  go install github.com/golang/dep/cmd/dep 2> $null
   c:\gopath\bin\dep ensure 2> $null
   $ErrorActionPreference = 'Stop'
   go build -o "bin/${env:appName}.exe" -ldflags "-X main.Version=${version}" "./cmd/$env:appName"
