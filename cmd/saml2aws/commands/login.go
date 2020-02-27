@@ -10,6 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/sts"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+
 	"github.com/versent/saml2aws"
 	"github.com/versent/saml2aws/helper/credentials"
 	"github.com/versent/saml2aws/pkg/awsconfig"
@@ -43,7 +44,9 @@ func Login(loginFlags *flags.LoginExecFlags) error {
 	}
 
 	if !sharedCreds.Expired() && !loginFlags.Force {
-		fmt.Println("credentials are not expired skipping")
+		if !loginFlags.Quiet {
+			fmt.Println("credentials are not expired skipping")
+		}
 		return nil
 	}
 
