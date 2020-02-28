@@ -2,12 +2,10 @@ package saml2aws
 
 import (
 	"bytes"
-	b64 "encoding/base64"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"strings"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/pkg/errors"
