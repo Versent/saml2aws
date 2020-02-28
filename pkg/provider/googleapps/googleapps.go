@@ -51,7 +51,7 @@ func (kc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 
 	authForm.Set("Email", loginDetails.Username)
 
-	passwordURL, _, err := kc.loadLoginPage(authURL+"?hl=en&loc=US", loginDetails.URL+"&hl=en&loc=US", authForm)
+	passwordURL, passwordForm, err := kc.loadLoginPage(authURL+"?hl=en&loc=US", loginDetails.URL+"&hl=en&loc=US", authForm)
 	if err != nil {
 		return "", errors.Wrap(err, "error loading login page")
 	}
@@ -59,9 +59,22 @@ func (kc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 	logger.Debugf("loginURL: %s", passwordURL)
 
 	authForm.Set("Passwd", loginDetails.Password)
-	authForm.Set("rawidentifier", loginDetails.Username)
 
-	responseDoc, err := kc.loadChallengePage(passwordURL+"?hl=en&loc=US", authURL, authForm, loginDetails)
+	referingURL := passwordURL
+
+	if _, rawIdPresent := passwordForm["rawidentifier"]; rawIdPresent {
+		authForm.Set("rawidentifier", loginDetails.Username)
+		referingURL = authURL
+	}
+
+	if v, tlPresent := passwordForm["TL"]; tlPresent {
+		authForm.Set("TL", v[0])
+	}
+	if v, gxfPresent := passwordForm["gxf"]; gxfPresent {
+		authForm.Set("gxf", v[0])
+	}
+
+	responseDoc, err := kc.loadChallengePage(passwordURL+"?hl=en&loc=US", referingURL, authForm, loginDetails)
 	if err != nil {
 		return "", errors.Wrap(err, "error loading challenge page")
 	}
@@ -204,22 +217,25 @@ func (kc *Client) loadFirstPage(loginDetails *creds.LoginDetails) (string, url.V
 	} else {
 		// Login page v2
 		postForm = url.Values{
-			"challengeId":     []string{authForm.Get("challengeId")},
-			"challengeType":   []string{authForm.Get("challengeType")},
+			"challengeId":     []string{"1"},
+			"challengeType":   []string{"1"},
 			"continue":        []string{authForm.Get("continue")},
-			"scc":             []string{authForm.Get("scc")},
-			"sarp":            []string{authForm.Get("sarp")},
-			"checkeddomains":  []string{authForm.Get("checkeddomains")},
-			"checkConnection": []string{authForm.Get("checkConnection")},
-			"pstMessage":      []string{authForm.Get("pstMessage")},
+			"scc":             []string{"1"},
+			"sarp":            []string{"1"},
+			"checkeddomains":  []string{"youtube"},
+			"checkConnection": []string{"youtube:930:1"},
+			"pstMessage":      []string{"1"},
 			"oauth":           []string{authForm.Get("oauth")},
 			"flowName":        []string{authForm.Get("flowName")},
-			"faa":             []string{authForm.Get("faa")},
-			"TL":              []string{authForm.Get("TL")},
-			"gxf":             []string{authForm.Get("gxf")},
+			"faa":             []string{"1"},
 			"Email":           []string{""},
 			"Passwd":          []string{""},
-			"TrustDevice":     []string{"off"},
+			"TrustDevice":     []string{"on"},
+		}
+		for _, k := range []string{"TL", "gxf"} {
+			if v, ok := authForm[k]; ok {
+				postForm.Set(k, v[0])
+			}
 		}
 	}
 
