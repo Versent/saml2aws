@@ -23,7 +23,7 @@ var logger = logrus.WithField("provider", "googleapps")
 // Client wrapper around Google Apps.
 type Client struct {
 	client *provider.HTTPClient
-	mfa string
+	mfa    string
 }
 
 // New create a new Google Apps Client
@@ -38,7 +38,7 @@ func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 
 	return &Client{
 		client: client,
-		mfa: idpAccount.MFA,
+		mfa:    idpAccount.MFA,
 	}, nil
 }
 
