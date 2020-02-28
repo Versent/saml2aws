@@ -396,15 +396,25 @@ func (kc *Client) loadChallengePage(submitURL string, referer string, authForm u
 			}
 			facet := facetComponents.Scheme + "://" + facetComponents.Host
 			challengeNonce := responseForm.Get("id-challenge")
-			appId, data := extractKeyHandles(doc, challengeNonce)
-			u2fClient, err := NewU2FClient(challengeNonce, appId, facet, data[0], &U2FDeviceFinder{})
+			appID, data := extractKeyHandles(doc, challengeNonce)
+			u2fClient, err := NewU2FClient(challengeNonce, appID, facet, data[0], &U2FDeviceFinder{})
 			if err != nil {
 				return nil, errors.Wrap(err, "Failed to prompt for second factor.")
 			}
 
 			response, err := u2fClient.ChallengeU2F()
 			if err != nil {
-				return nil, errors.Wrap(err, "Second factor failed.")
+				errors.Wrap(err, "Second factor failed.")
+				skipResponseForm, skipActionURL, err := extractInputsByFormQuery(doc, `[action$="skip"]`)
+				if err != nil {
+					return nil, errors.Wrap(err, "unable to extract skip form")
+				}
+
+				if skipActionURL == "" {
+					return nil, errors.Errorf("unsupported second factor: %s", secondActionURL)
+				}
+
+				return kc.loadAlternateChallengePage(skipActionURL, submitURL, skipResponseForm, loginDetails)
 			}
 
 			responseForm.Set("id-assertion", response)
@@ -517,10 +527,7 @@ func (kc *Client) loadAlternateChallengePage(submitURL string, referer string, a
 		return nil, errors.Wrap(err, "unable to extract challenge form")
 	}
 
-	u, _ := url.Parse(submitURL)
-	u.Path = newActionURL
-
-	return kc.loadChallengePage(u.String(), submitURL, responseForm, loginDetails)
+	return kc.loadChallengePage(newActionURL, submitURL, responseForm, loginDetails)
 }
 
 func (kc *Client) postJSON(submitURL string, values map[string]string, referer string) (*http.Response, error) {
