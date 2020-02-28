@@ -216,7 +216,17 @@ func resolveRole(awsRoles []*saml2aws.AWSRole, samlAssertion string, account *cf
 		return nil, errors.New("no roles available")
 	}
 
-	awsAccounts, err := saml2aws.ParseAWSAccounts(samlAssertion)
+	samlAssertionData, err := base64.StdEncoding.DecodeString(samlAssertion)
+	if err != nil {
+		return nil, errors.Wrap(err, "error decoding saml assertion")
+	}
+
+	aud, err := saml2aws.ExtractAudienceURL(samlAssertionData)
+	if err != nil {
+		return nil, errors.Wrap(err, "error parsing destination url")
+	}
+
+	awsAccounts, err := saml2aws.ParseAWSAccounts(aud, samlAssertion)
 	if err != nil {
 		return nil, errors.Wrap(err, "error parsing aws role accounts")
 	}
@@ -243,7 +253,9 @@ func resolveRole(awsRoles []*saml2aws.AWSRole, samlAssertion string, account *cf
 
 func loginToStsUsingRole(account *cfg.IDPAccount, role *saml2aws.AWSRole, samlAssertion string) (*awsconfig.AWSCredentials, error) {
 
-	sess, err := session.NewSession()
+	sess, err := session.NewSession(&aws.Config{
+		Region: &account.Region,
+	})
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create session")
 	}
@@ -271,6 +283,7 @@ func loginToStsUsingRole(account *cfg.IDPAccount, role *saml2aws.AWSRole, samlAs
 		AWSSecurityToken: aws.StringValue(resp.Credentials.SessionToken),
 		PrincipalARN:     aws.StringValue(resp.AssumedRoleUser.Arn),
 		Expires:          resp.Credentials.Expiration.Local(),
+		Region:           aws.StringValue(&account.Region),
 	}, nil
 }
 

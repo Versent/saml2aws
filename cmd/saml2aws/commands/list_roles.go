@@ -88,7 +88,17 @@ func ListRoles(loginFlags *flags.LoginExecFlags) error {
 }
 
 func listRoles(awsRoles []*saml2aws.AWSRole, samlAssertion string, loginFlags *flags.LoginExecFlags) error {
-	awsAccounts, err := saml2aws.ParseAWSAccounts(samlAssertion)
+	samlAssertionData, err := base64.StdEncoding.DecodeString(samlAssertion)
+	if err != nil {
+		return errors.Wrap(err, "error decoding saml assertion")
+	}
+
+	aud, err := saml2aws.ExtractAudienceURL(samlAssertionData)
+	if err != nil {
+		return errors.Wrap(err, "error parsing destination url")
+	}
+
+	awsAccounts, err := saml2aws.ParseAWSAccounts(aud, samlAssertion)
 	if err != nil {
 		return errors.Wrap(err, "error parsing aws role accounts")
 	}

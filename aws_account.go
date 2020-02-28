@@ -13,8 +13,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-var awsURL = "https://signin.aws.amazon.com/saml"
-
 // AWSAccount holds the AWS account name and roles
 type AWSAccount struct {
 	Name  string
@@ -22,14 +20,8 @@ type AWSAccount struct {
 }
 
 // ParseAWSAccounts extract the aws accounts from the saml assertion
-func ParseAWSAccounts(samlAssertion string) ([]*AWSAccount, error) {
-	decSamlAssertion, _ := b64.StdEncoding.DecodeString(samlAssertion)
-	if strings.Contains(string(decSamlAssertion), "signin.amazonaws.cn") {
-		fmt.Println("trying to login AWS China")
-		awsURL = "https://signin.amazonaws.cn/saml"
-	}
-
-	res, err := http.PostForm(awsURL, url.Values{"SAMLResponse": {samlAssertion}})
+func ParseAWSAccounts(audience string, samlAssertion string) ([]*AWSAccount, error) {
+	res, err := http.PostForm(audience, url.Values{"SAMLResponse": {samlAssertion}})
 	if err != nil {
 		return nil, errors.Wrap(err, "error retrieving AWS login form")
 	}

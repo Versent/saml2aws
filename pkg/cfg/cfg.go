@@ -43,6 +43,7 @@ type IDPAccount struct {
 	ResourceID           string `ini:"resource_id"` // used by F5APM
 	Subdomain            string `ini:"subdomain"`   // used by OneLogin
 	RoleARN              string `ini:"role_arn"`
+	Region               string `ini:"region"`
 }
 
 func (ia IDPAccount) String() string {
@@ -70,7 +71,8 @@ func (ia IDPAccount) String() string {
   SessionDuration: %d
   Profile: %s
   RoleARN: %s
-}`, appID, policyID, ia.URL, ia.Username, ia.Provider, ia.MFA, ia.SkipVerify, ia.AmazonWebservicesURN, ia.SessionDuration, ia.Profile, ia.RoleARN)
+  Region: %s
+}`, appID, policyID, ia.URL, ia.Username, ia.Provider, ia.MFA, ia.SkipVerify, ia.AmazonWebservicesURN, ia.SessionDuration, ia.Profile, ia.RoleARN, ia.Region)
 }
 
 // Validate validate the required / expected fields are set
