@@ -31,6 +31,12 @@ func TestExtractInputsByFormQuery(t *testing.T) {
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(html))
 	require.Nil(t, err)
 
+	doc.Url = &url.URL{
+		Scheme: "https",
+		Host: "google.com",
+		Path: "foobar",
+	}
+
 	form, actionURL, err := extractInputsByFormQuery(doc, "#dev")
 	require.Nil(t, err)
 	require.Equal(t, "http://example.com/test", actionURL)

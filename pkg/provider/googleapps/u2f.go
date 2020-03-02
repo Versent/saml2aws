@@ -84,11 +84,6 @@ func (d *U2FClient) ChallengeU2F() (string, error) {
 	timeout := time.After(time.Second * 25)
 	interval := time.NewTicker(time.Millisecond * 250)
 
-	err := d.Device.Open()
-	if err != nil {
-		return "", errors.Wrap(err, "failed to open u2f device")
-	}
-
 	defer d.Device.Close()
 
 	defer interval.Stop()
