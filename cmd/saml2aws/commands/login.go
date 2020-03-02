@@ -4,8 +4,10 @@ import (
 	"encoding/base64"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sts"
 	"github.com/pkg/errors"
@@ -242,12 +244,14 @@ func resolveRole(awsRoles []*saml2aws.AWSRole, samlAssertion string, account *cf
 }
 
 func loginToStsUsingRole(account *cfg.IDPAccount, role *saml2aws.AWSRole, samlAssertion string) (*awsconfig.AWSCredentials, error) {
-
 	sess, err := session.NewSession()
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create session")
 	}
 
+	if strings.HasPrefix(role.RoleARN, "arn:aws-us-gov") {
+		sess.Config.WithRegion(endpoints.UsGovEast1RegionID)
+	}
 	svc := sts.New(sess)
 
 	params := &sts.AssumeRoleWithSAMLInput{
