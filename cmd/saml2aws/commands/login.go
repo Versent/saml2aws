@@ -10,7 +10,6 @@ import (
 	"github.com/aws/aws-sdk-go/service/sts"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-
 	"github.com/versent/saml2aws"
 	"github.com/versent/saml2aws/helper/credentials"
 	"github.com/versent/saml2aws/pkg/awsconfig"
@@ -68,8 +67,9 @@ func Login(loginFlags *flags.LoginExecFlags) error {
 		return errors.Wrap(err, "error building IdP client")
 	}
 
-	fmt.Printf("Authenticating as %s ...\n", loginDetails.Username)
-
+	if !loginFlags.Quiet {
+		fmt.Printf("Authenticating as %s ...\n", loginDetails.Username)
+	}
 	samlAssertion, err := provider.Authenticate(loginDetails)
 	if err != nil {
 		return errors.Wrap(err, "error authenticating to IdP")
@@ -133,8 +133,9 @@ func resolveLoginDetails(account *cfg.IDPAccount, loginFlags *flags.LoginExecFla
 
 	loginDetails := &creds.LoginDetails{URL: account.URL, Username: account.Username, MFAToken: loginFlags.CommonFlags.MFAToken, DuoMFAOption: loginFlags.DuoMFAOption}
 
-	fmt.Printf("Using IDP Account %s to access %s %s\n", loginFlags.CommonFlags.IdpAccount, account.Provider, account.URL)
-
+	if !loginFlags.Quiet {
+		fmt.Printf("Using IDP Account %s to access %s %s\n", loginFlags.CommonFlags.IdpAccount, account.Provider, account.URL)
+	}
 	var err error
 	if !loginFlags.CommonFlags.DisableKeychain {
 		err = credentials.LookupCredentials(loginDetails, account.Provider)
