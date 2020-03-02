@@ -101,7 +101,7 @@ func PromptForAWSRoleSelection(accounts []*AWSAccount) (*AWSRole, error) {
 
 	sort.Strings(roleOptions)
 
-	selectedRole, err := prompter.ChooseWithDefault("Please choose the role", "", roleOptions)
+	selectedRole, err := prompter.ChooseWithDefault("Please choose the role", roleOptions[0], roleOptions)
 	if err != nil {
 		return nil, errors.Wrap(err, "Role selection failed")
 	}
