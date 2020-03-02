@@ -95,14 +95,15 @@ func Login(loginFlags *flags.LoginExecFlags) error {
 		return errors.Wrap(err, "Failed to assume role, please check whether you are permitted to assume the given role for the AWS service")
 	}
 
-	fmt.Println("Selected role:", role.RoleARN)
-
-	awsCreds, err := loginToStsUsingRole(account, role, samlAssertion)
+	if !loginFlags.Quiet {
+		fmt.Println("Selected role:", role.RoleARN)
+	}
+	awsCreds, err := loginToStsUsingRole(account, role, samlAssertion, loginFlags.Quiet)
 	if err != nil {
 		return errors.Wrap(err, "error logging into aws role using saml assertion")
 	}
 
-	return saveCredentials(awsCreds, sharedCreds)
+	return saveCredentials(awsCreds, sharedCreds, loginFlags.Quiet)
 }
 
 func buildIdpAccount(loginFlags *flags.LoginExecFlags) (*cfg.IDPAccount, error) {
@@ -245,7 +246,7 @@ func resolveRole(awsRoles []*saml2aws.AWSRole, samlAssertion string, account *cf
 	return role, nil
 }
 
-func loginToStsUsingRole(account *cfg.IDPAccount, role *saml2aws.AWSRole, samlAssertion string) (*awsconfig.AWSCredentials, error) {
+func loginToStsUsingRole(account *cfg.IDPAccount, role *saml2aws.AWSRole, samlAssertion string, loginQuiet bool) (*awsconfig.AWSCredentials, error) {
 
 	sess, err := session.NewSession()
 	if err != nil {
@@ -261,8 +262,9 @@ func loginToStsUsingRole(account *cfg.IDPAccount, role *saml2aws.AWSRole, samlAs
 		DurationSeconds: aws.Int64(int64(account.SessionDuration)),
 	}
 
-	fmt.Println("Requesting AWS credentials using SAML assertion")
-
+	if !loginQuiet {
+		fmt.Println("Requesting AWS credentials using SAML assertion")
+	}
 	resp, err := svc.AssumeRoleWithSAML(params)
 	if err != nil {
 		return nil, errors.Wrap(err, "error retrieving STS credentials using SAML")
@@ -278,17 +280,17 @@ func loginToStsUsingRole(account *cfg.IDPAccount, role *saml2aws.AWSRole, samlAs
 	}, nil
 }
 
-func saveCredentials(awsCreds *awsconfig.AWSCredentials, sharedCreds *awsconfig.CredentialsProvider) error {
+func saveCredentials(awsCreds *awsconfig.AWSCredentials, sharedCreds *awsconfig.CredentialsProvider, loginQuiet bool) error {
 	err := sharedCreds.Save(awsCreds)
 	if err != nil {
 		return errors.Wrap(err, "error saving credentials")
 	}
-
-	fmt.Println("Logged in as:", awsCreds.PrincipalARN)
-	fmt.Println("")
-	fmt.Println("Your new access key pair has been stored in the AWS configuration")
-	fmt.Printf("Note that it will expire at %v\n", awsCreds.Expires)
-	fmt.Println("To use this credential, call the AWS CLI with the --profile option (e.g. aws --profile", sharedCreds.Profile, "ec2 describe-instances).")
-
+	if !loginQuiet {
+		fmt.Println("Logged in as:", awsCreds.PrincipalARN)
+		fmt.Println("")
+		fmt.Println("Your new access key pair has been stored in the AWS configuration")
+		fmt.Printf("Note that it will expire at %v\n", awsCreds.Expires)
+		fmt.Println("To use this credential, call the AWS CLI with the --profile option (e.g. aws --profile", sharedCreds.Profile, "ec2 describe-instances).")
+	}
 	return nil
 }
