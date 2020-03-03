@@ -231,6 +231,7 @@ func (kc *Client) loadFirstPage(loginDetails *creds.LoginDetails) (string, url.V
 			"Email":           []string{""},
 			"Passwd":          []string{""},
 			"TrustDevice":     []string{"on"},
+			"bgresponse":      []string{"js_disabled"},
 		}
 		for _, k := range []string{"TL", "gxf"} {
 			if v, ok := authForm[k]; ok {
