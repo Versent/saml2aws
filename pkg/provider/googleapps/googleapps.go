@@ -405,16 +405,7 @@ func (kc *Client) loadChallengePage(submitURL string, referer string, authForm u
 			response, err := u2fClient.ChallengeU2F()
 			if err != nil {
 				errors.Wrap(err, "Second factor failed.")
-				skipResponseForm, skipActionURL, err := extractInputsByFormQuery(doc, `[action$="skip"]`)
-				if err != nil {
-					return nil, errors.Wrap(err, "unable to extract skip form")
-				}
-
-				if skipActionURL == "" {
-					return nil, errors.Errorf("unsupported second factor: %s", secondActionURL)
-				}
-
-				return kc.loadAlternateChallengePage(skipActionURL, submitURL, skipResponseForm, loginDetails)
+				return kc.skipChallengePage(doc, submitURL, secondActionURL, loginDetails)
 			}
 
 			responseForm.Set("id-assertion", response)
@@ -453,21 +444,26 @@ func (kc *Client) loadChallengePage(submitURL string, referer string, authForm u
 			return kc.loadResponsePage(secondActionURL, submitURL, responseForm)
 		}
 
-		skipResponseForm, skipActionURL, err := extractInputsByFormQuery(doc, `[action$="skip"]`)
-		if err != nil {
-			return nil, errors.Wrap(err, "unable to extract skip form")
-		}
-
-		if skipActionURL == "" {
-			return nil, errors.Errorf("unsupported second factor: %s", secondActionURL)
-		}
-
-		return kc.loadAlternateChallengePage(skipActionURL, submitURL, skipResponseForm, loginDetails)
+		return kc.skipChallengePage(doc, submitURL, secondActionURL, loginDetails)
 
 	}
 
 	return doc, nil
 
+}
+
+func (kc *Client) skipChallengePage(doc *goquery.Document, submitURL string, secondActionURL string, loginDetails *creds.LoginDetails) (*goquery.Document, error) {
+
+	skipResponseForm, skipActionURL, err := extractInputsByFormQuery(doc, `[action$="skip"]`)
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to extract skip form")
+	}
+
+	if skipActionURL == "" {
+		return nil, errors.Errorf("unsupported second factor: %s", secondActionURL)
+	}
+
+	return kc.loadAlternateChallengePage(skipActionURL, submitURL, skipResponseForm, loginDetails)
 }
 
 func (kc *Client) loadAlternateChallengePage(submitURL string, referer string, authForm url.Values, loginDetails *creds.LoginDetails) (*goquery.Document, error) {
