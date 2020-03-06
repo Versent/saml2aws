@@ -1,0 +1,148 @@
+
+<script>
+
+    function submitForm()
+    {
+        // Get some values from elements on the page:
+        var form = document.getElementById('IDPLogin');
+        var url = form.action;
+
+        setGlobalMessage("Authenticating using Radius...");
+
+        // Send the data using post
+        var posting = $.post( url, $("#IDPLogin" ).serialize());
+
+        // Put the results in a div
+        posting.done(function( data )
+        {
+            setGlobalMessage("");
+            $('#theNidpContent').html(data);
+        });
+
+        posting.fail(function()
+        {
+            setGlobalMessage("Login failed, please try again.");
+        });
+    }
+
+    $( "#loginButton2" ).click(function()
+    {
+        submitForm();
+    });
+
+    $( "#loginButton2" ).keyup(function(event)
+    {
+        if (isEnterKey(event) || isSpaceKey(event))
+        {
+            submitForm();
+        }
+    });
+
+    $("#Ecom_User_ID").keyup(function(event)
+    {
+        if (isEnterKey(event))
+        {
+            if (document.IDPLogin.Ecom_User_ID.value)
+            {
+                $("#loginButton2").click();
+                return false;
+            }
+        }
+        return true;
+    });
+
+    $("#Ecom_Token").keyup(function(event)
+    {
+        if (isEnterKey(event))
+        {
+            if (document.IDPLogin.Ecom_Token.value)
+            {
+                $("#loginButton2").click();
+                return false;
+            }
+        }
+        return true;
+    });
+
+
+
+    function onLoadFocus()
+    {
+        var userNameControl = document.getElementById('Ecom_User_ID');
+        var passwordControl = document.getElementById('Ecom_Password');
+        var tokenControl = document.getElementById('Ecom_Token');
+        if (userNameControl)
+        {
+            if (!userNameControl.value)
+            {
+                userNameControl.focus();
+                return;
+            }
+        }
+        if (passwordControl)
+        {
+            if (!passwordControl.value)
+            {
+                passwordControl.focus();
+                return;
+            }
+        }
+        if (tokenControl)
+        {
+            if (!tokenControl.value)
+            {
+                tokenControl.focus();
+                return;
+            }
+        }
+        // There is not an EXISTING and NON_EMPTY control, so
+        // set focus to the first EXISTING control in tab order.
+        if (userNameControl)
+        {
+            userNameControl.focus();
+            return;
+        }
+        if (passwordControl)
+        {
+            passwordControl.focus();
+            return;
+        }
+        if (tokenControl)
+        {
+            tokenControl.focus();
+            return;
+        }
+    }
+
+    $(document).ready(function(){
+        onLoadFocus();
+    });
+
+</script>
+
+<form name="IDPLogin" id="IDPLogin" enctype="application/x-www-form-urlencoded" method="POST" action="https://login.authbridge.somegroup.com/nidp/app/login?sid=11&sid=11" AUTOCOMPLETE="off">
+    <input type="hidden" name="option" value="credential">
+
+    <div id="radiusEditBoxes" class="content login-page" style="margin: 25px; display: block;">
+
+        <div class="signin-div">
+            <!--<div class="input-signin-username"><input type="text" id="Ecom_User_ID" name="Ecom_User_ID" value="" placeholder="Username" tabindex="1"></div>-->
+            <div class="input-signin-username"><input type="text" id="Ecom_User_ID" name="Ecom_User_ID" value="" placeholder="salaryid" tabindex="1" ></div>
+        </div>
+
+
+
+        <div class="signin-div">
+            <div class="input-signin-password"><input type="password" id="Ecom_Token" name="Ecom_Token" placeholder="PIN + Token" tabindex="2"></div>
+        </div>
+
+        <div class="closure-but signin-div">
+            <span class="nam-signin-but action-but" name="loginButton2" id="loginButton2" tabindex="3">Sign in</span>
+        </div>
+        <div class="signin-div">
+            <span class="nam-signin-username" name="changeRadius" id="changeRadius" tabindex="3">Your current radius provider is set to WBC. To change your radius provider click <a href="https://service.authbridge.somegroup.com/IDMProv/requestForm.do?uid=cn%3DCyberArk%20Radius%20selector%2Ccn%3DRequestDefs%2Ccn%3DAppConfig%2Ccn%3DUserApplication%2Ccn%3Ddriverset%2Cou%3Didm%2Co%3Dsystem&aqua=true&idmdash=true&recipient=&jsa=%7B%22submit%22%3A%22submitThenOpener(3000)%22%2C%22cancel%22%3A%22window.close()%22%7D">here</a></span>
+        </div>
+
+    </div>
+</form>
+
