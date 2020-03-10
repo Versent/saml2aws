@@ -25,7 +25,7 @@ type Client struct {
 // New creates a new external client
 func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 	tr := provider.NewDefaultTransport(idpAccount.SkipVerify)
-	client, err := provider.NewHTTPClient(tr)
+	client, err := provider.NewHTTPClient(tr, provider.BuildHttpClientOpts(idpAccount))
 	if err != nil {
 		return nil, errors.Wrap(err, "Error building HTTP client")
 	}
@@ -87,6 +87,26 @@ func (nc *Client) follow(req *http.Request, loginDetails *creds.LoginDetails) (s
 		return "", fmt.Errorf("unknown document type")
 	}
 }
+
+//func (nc *Client) Do(req *http.Request) (*http.Response, error) {
+//	var resp *http.Response
+//	err := retry.Do(
+//		func() error {
+//			clientResp, err := nc.client.Do(req)
+//			if err != nil {
+//				return err
+//			}
+//			resp = clientResp
+//			return nil
+//		},
+//		retry.Attempts(5),
+//		retry.OnRetry(
+//			func(n uint, err error) {
+//				fmt.Printf("Retrying http call #%d: %s\n", n, err)
+//			}),
+//	)
+//	return resp, err
+//}
 
 func isSAMLResponse(doc *goquery.Document) bool {
 	return doc.Find("input[name=\"SAMLResponse\"]").Size() == 1

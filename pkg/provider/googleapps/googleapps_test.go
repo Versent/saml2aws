@@ -33,8 +33,8 @@ func TestExtractInputsByFormQuery(t *testing.T) {
 
 	doc.Url = &url.URL{
 		Scheme: "https",
-		Host: "google.com",
-		Path: "foobar",
+		Host:   "google.com",
+		Path:   "foobar",
 	}
 
 	form, actionURL, err := extractInputsByFormQuery(doc, "#dev")
@@ -87,7 +87,8 @@ func TestChallengePage(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	kc := Client{client: &provider.HTTPClient{Client: http.Client{}}}
+	opts := &provider.HTTPClientOptions{1, 0}
+	kc := Client{client: &provider.HTTPClient{Client: http.Client{}, Options: opts}}
 	loginDetails := &creds.LoginDetails{URL: ts.URL, Username: "test", Password: "test123"}
 	authForm := url.Values{}
 
