@@ -486,7 +486,28 @@ aws iam list-groups
         }
 }
 ```
+## Advanced Configuration - additional parameters
+There are few additional parameters allowing to customise saml2aws configuration.
+Use following parameters in `~/.saml2aws` file:
+- `http_attempts_count` - configures the number of attempts to send http requests in order to authorise with saml provider. Defaults to 1
+- `http_retry_delay` - configures the duration (in seconds) of timeout between attempts to send http requests to saml provider. Defaults to 1
 
+Example: typical configuration with such parameters would look like follows:
+```
+[default]
+url                     = https://id.customer.cloud
+username                = user@versent.com.au
+provider                = Ping
+mfa                     = Auto
+skip_verify             = false
+timeout                 = 0
+aws_urn                 = urn:amazon:webservices
+aws_session_duration    = 28800
+aws_profile             = customer-dev
+role_arn                = arn:aws:iam::121234567890:role/customer-admin-role
+http_attempts_count     = 3
+http_retry_delay        = 1
+```
 ## Building
 
 To build this software on osx clone to the repo to `$GOPATH/src/github.com/versent/saml2aws` and ensure you have `$GOPATH/bin` in your `$PATH`.
