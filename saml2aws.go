@@ -2,6 +2,7 @@ package saml2aws
 
 import (
 	"fmt"
+	"github.com/versent/saml2aws/pkg/provider/netiq"
 	"sort"
 
 	"github.com/versent/saml2aws/pkg/cfg"
@@ -42,6 +43,7 @@ var MFAsByProvider = ProviderList{
 	"F5APM":         []string{"Auto"},
 	"Akamai":        []string{"Auto", "DUO", "SMS", "EMAIL", "TOTP"},
 	"ShibbolethECP": []string{"auto", "phone", "push", "passcode"},
+	"NetIQ":         []string{"Auto"},
 }
 
 // Names get a list of provider names
@@ -159,6 +161,8 @@ func NewSAMLClient(idpAccount *cfg.IDPAccount) (SAMLClient, error) {
 		return akamai.New(idpAccount)
 	case "Shell":
 		return shell.New(idpAccount)
+	case "NetIQ":
+		return netiq.New(idpAccount)
 	default:
 		return nil, fmt.Errorf("Invalid provider: %v", idpAccount.Provider)
 	}
