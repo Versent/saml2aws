@@ -36,7 +36,7 @@ var MFAsByProvider = ProviderList{
 	"PingOne":       []string{"Auto"},        // automatically detects PingID
 	"JumpCloud":     []string{"Auto"},
 	"Okta":          []string{"Auto", "PUSH", "DUO", "SMS", "TOTP", "OKTA", "FIDO"}, // automatically detects DUO, SMS, ToTP, and FIDO
-	"OneLogin":      []string{"Auto", "OLP", "SMS", "TOTP"},                         // automatically detects OneLogin Protect, SMS and ToTP
+	"OneLogin":      []string{"Auto", "OLP", "SMS", "TOTP","YUBIKEY"},               // automatically detects OneLogin Protect, SMS and ToTP
 	"KeyCloak":      []string{"Auto"},                                               // automatically detects ToTP
 	"GoogleApps":    []string{"Auto"},                                               // automatically detects ToTP
 	"Shibboleth":    []string{"Auto"},

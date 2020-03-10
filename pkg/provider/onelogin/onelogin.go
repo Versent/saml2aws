@@ -24,6 +24,7 @@ const (
 	IdentifierOneLoginProtectMfa = "OneLogin Protect"
 	IdentifierSmsMfa             = "OneLogin SMS"
 	IdentifierTotpMfa            = "Google Authenticator"
+	IdentifierYubiKey            = "Yubico YubiKey"
 
 	MessageMFARequired = "MFA is required for this user"
 	MessageSuccess     = "Success"
@@ -41,6 +42,7 @@ var (
 		IdentifierOneLoginProtectMfa: "OLP",
 		IdentifierSmsMfa:             "SMS",
 		IdentifierTotpMfa:            "TOTP",
+		IdentifierYubiKey:            "YUBIKEY",
 	}
 )
 
@@ -240,8 +242,12 @@ func verifyMFA(oc *Client, oauthToken, appID, resp string) (string, error) {
 		return "", errors.New("unsupported mfa provider")
 	}
 
-	// TOTP MFA doesn't need additional request (e.g. to send SMS or a push notification etc) since the user can generate the code using their MFA app of choice.
-	if mfaIdentifer != IdentifierTotpMfa {
+	switch mfaIdentifer {
+	// These MFA options doesn't need additional request (e.g. to send SMS or a push notification etc) since the user can generate the code using their MFA app of choice.
+	case IdentifierTotpMfa, IdentifierYubiKey: 
+		break
+	
+	default:
 		var verifyBody bytes.Buffer
 		err := json.NewEncoder(&verifyBody).Encode(VerifyRequest{AppID: appID, DeviceID: mfaDeviceID, StateToken: stateToken})
 		if err != nil {
@@ -272,7 +278,7 @@ func verifyMFA(oc *Client, oauthToken, appID, resp string) (string, error) {
 	}
 
 	switch mfaIdentifer {
-	case IdentifierSmsMfa, IdentifierTotpMfa:
+	case IdentifierSmsMfa, IdentifierTotpMfa, IdentifierYubiKey:
 		verifyCode := prompter.StringRequired("Enter verification code")
 		var verifyBody bytes.Buffer
 		json.NewEncoder(&verifyBody).Encode(VerifyRequest{AppID: appID, DeviceID: mfaDeviceID, StateToken: stateToken, OTPToken: verifyCode})
