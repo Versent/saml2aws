@@ -48,6 +48,7 @@ The process goes something like this:
   * [F5APM](pkg/provider/f5apm/README.md)
   * [Akamai](pkg/provider/akamai/README.md)
   * OneLogin
+  * NetIQ
 * AWS SAML Provider configured
 
 ## Caveats
