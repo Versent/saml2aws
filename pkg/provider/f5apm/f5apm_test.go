@@ -28,7 +28,7 @@ func TestClient_getLoginForm(t *testing.T) {
 
 	jar, err := cookiejar.New(nil)
 	require.Nil(t, err)
-	opts := &provider.HTTPClientOptions{1, 0}
+	opts := &provider.HTTPClientOptions{IsWithRetries: false}
 	ac := Client{client: &provider.HTTPClient{Client: http.Client{Jar: jar}, Options: opts}}
 	t.Log(ac)
 	loginDetails := &creds.LoginDetails{URL: ts.URL, Username: "groundcontrol", Password: "majortom"}
@@ -53,7 +53,7 @@ func TestClient_postLoginForm_user_pass(t *testing.T) {
 
 	jar, err := cookiejar.New(nil)
 	require.Nil(t, err)
-	opts := &provider.HTTPClientOptions{1, 0}
+	opts := &provider.HTTPClientOptions{IsWithRetries: false}
 	ac := Client{client: &provider.HTTPClient{Client: http.Client{Jar: jar}, Options: opts}}
 	t.Log(ac)
 	loginDetails := &creds.LoginDetails{URL: ts.URL, Username: "groundcontrol", Password: "majortom"}

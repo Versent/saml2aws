@@ -87,7 +87,7 @@ func TestChallengePage(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	opts := &provider.HTTPClientOptions{1, 0}
+	opts := &provider.HTTPClientOptions{IsWithRetries: false}
 	kc := Client{client: &provider.HTTPClient{Client: http.Client{}, Options: opts}}
 	loginDetails := &creds.LoginDetails{URL: ts.URL, Username: "test", Password: "test123"}
 	authForm := url.Values{}

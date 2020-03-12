@@ -31,7 +31,7 @@ func TestClient_getLoginForm(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	opts := &provider.HTTPClientOptions{1, 0}
+	opts := &provider.HTTPClientOptions{IsWithRetries: false}
 	kc := Client{client: &provider.HTTPClient{Client: http.Client{}, Options: opts}}
 	loginDetails := &creds.LoginDetails{URL: ts.URL, Username: "test", Password: "test123"}
 
@@ -61,7 +61,7 @@ func TestClient_postLoginForm(t *testing.T) {
 		"login":    []string{"Log in"},
 	}
 
-	opts := &provider.HTTPClientOptions{1, 0}
+	opts := &provider.HTTPClientOptions{IsWithRetries: false}
 	kc := Client{client: &provider.HTTPClient{Client: http.Client{}, Options: opts}}
 
 	content, err := kc.postLoginForm(ts.URL, loginForm)
@@ -88,7 +88,7 @@ func TestClient_postTotpForm(t *testing.T) {
 	pr.Mock.On("RequestSecurityCode", "000000").Return("123456")
 
 	mfaToken := ""
-	opts := &provider.HTTPClientOptions{1, 0}
+	opts := &provider.HTTPClientOptions{IsWithRetries: false}
 	kc := Client{client: &provider.HTTPClient{Client: http.Client{}, Options: opts}}
 
 	kc.postTotpForm(ts.URL, mfaToken, doc)
@@ -113,7 +113,7 @@ func TestClient_postTotpFormWithProvidedMFAToken(t *testing.T) {
 	prompter.SetPrompter(pr)
 
 	mfaToken := "123456"
-	opts := &provider.HTTPClientOptions{1, 0}
+	opts := &provider.HTTPClientOptions{IsWithRetries: false}
 	kc := Client{client: &provider.HTTPClient{Client: http.Client{}, Options: opts}}
 
 	kc.postTotpForm(ts.URL, mfaToken, doc)

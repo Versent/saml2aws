@@ -35,6 +35,7 @@ const (
 )
 
 type HTTPClientOptions struct {
+	IsWithRetries bool //http retry feature switch
 	AttemptsCount uint
 	RetryDelay    time.Duration
 }
@@ -58,15 +59,15 @@ func NewDefaultTransport(skipVerify bool) *http.Transport {
 
 func BuildHttpClientOpts(account *cfg.IDPAccount) *HTTPClientOptions {
 	opts := &HTTPClientOptions{}
-	atmt, err := strconv.ParseUint(account.HttpAttemptsCount, 10, 0)
-	if err != nil {
-		opts.AttemptsCount = DefaultAttemptsCount
-	} else {
+	atmt, atmtErr := strconv.ParseUint(account.HttpAttemptsCount, 10, 0)
+	if opts.IsWithRetries = atmtErr == nil; opts.IsWithRetries {
 		opts.AttemptsCount = uint(atmt)
+	} else {
+		opts.AttemptsCount = DefaultAttemptsCount
 	}
 
-	delay, err := strconv.ParseUint(account.HttpRetryDelay, 10, 0)
-	if err != nil {
+	delay, delayErr := strconv.ParseUint(account.HttpRetryDelay, 10, 0)
+	if delayErr != nil {
 		opts.RetryDelay = DefaultRetryDelay
 	} else {
 		opts.RetryDelay = time.Duration(delay) * time.Second
@@ -114,7 +115,15 @@ func (hc *HTTPClient) Do(req *http.Request) (*http.Response, error) {
 
 	req.Header.Set("User-Agent", fmt.Sprintf("saml2aws/1.0 (%s %s) Versent", runtime.GOOS, runtime.GOARCH))
 
-	resp, err := hc.doWithRetry(req)
+	var resp *http.Response
+	var err error
+
+	if hc.Options.IsWithRetries {
+		resp, err = hc.doWithRetry(req)
+	} else {
+		hc.logHTTPRequest(req)
+		resp, err = hc.Client.Do(req)
+	}
 	if err != nil {
 		return resp, err
 	}

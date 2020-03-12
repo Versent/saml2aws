@@ -15,7 +15,7 @@ func TestClientDoGetOK(t *testing.T) {
 	defer ts.Close()
 
 	rt := NewDefaultTransport(false)
-	opts := &HTTPClientOptions{1, 0}
+	opts := &HTTPClientOptions{IsWithRetries: false}
 	hc, err := NewHTTPClient(rt, opts)
 	require.Nil(t, err)
 
@@ -39,7 +39,7 @@ func TestClientDisableRedirect(t *testing.T) {
 
 	rt := NewDefaultTransport(false)
 
-	opts := &HTTPClientOptions{1, 0}
+	opts := &HTTPClientOptions{IsWithRetries: false}
 	hc, err := NewHTTPClient(rt, opts)
 	require.Nil(t, err)
 
@@ -60,7 +60,7 @@ func TestClientDoResponseCheck(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	opts := &HTTPClientOptions{1, 0}
+	opts := &HTTPClientOptions{IsWithRetries: false}
 	hc := &HTTPClient{Client: http.Client{}, Options: opts}
 
 	hc.CheckResponseStatus = SuccessOrRedirectResponseValidator
