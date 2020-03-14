@@ -355,7 +355,10 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 	case IdentifierYubiMfa:
 		return gjson.Get(resp, "sessionToken").String(), nil
 	case IdentifierSmsMfa, IdentifierTotpMfa, IdentifierOktaTotpMfa, IdentifierSymantecTotpMfa:
-		verifyCode := prompter.StringRequired("Enter verification code")
+		var verifyCode = loginDetails.MFAToken
+		if verifyCode == "" {
+			verifyCode = prompter.StringRequired("Enter verification code")
+		}
 		tokenReq := VerifyRequest{StateToken: stateToken, PassCode: verifyCode}
 		tokenBody := new(bytes.Buffer)
 		err = json.NewEncoder(tokenBody).Encode(tokenReq)
