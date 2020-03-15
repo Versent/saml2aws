@@ -11,6 +11,7 @@ import (
 	"github.com/versent/saml2aws/pkg/provider/adfs"
 	"github.com/versent/saml2aws/pkg/provider/adfs2"
 	"github.com/versent/saml2aws/pkg/provider/akamai"
+	"github.com/versent/saml2aws/pkg/provider/duo"
 	"github.com/versent/saml2aws/pkg/provider/f5apm"
 	"github.com/versent/saml2aws/pkg/provider/googleapps"
 	"github.com/versent/saml2aws/pkg/provider/jumpcloud"
@@ -32,8 +33,9 @@ var MFAsByProvider = ProviderList{
 	"AzureAD":       []string{"Auto", "PhoneAppOTP", "PhoneAppNotification", "OneWaySMS"},
 	"ADFS":          []string{"Auto", "VIP", "Azure"},
 	"ADFS2":         []string{"Auto", "RSA"}, // nothing automatic about ADFS 2.x
-	"Ping":          []string{"Auto"},        // automatically detects PingID
-	"PingOne":       []string{"Auto"},        // automatically detects PingID
+	"Duo":           []string{"Auto", "Duo Push", "Phone Call", "Passcode"},
+	"Ping":          []string{"Auto"}, // automatically detects PingID
+	"PingOne":       []string{"Auto"}, // automatically detects PingID
 	"JumpCloud":     []string{"Auto"},
 	"Okta":          []string{"Auto", "PUSH", "DUO", "SMS", "TOTP", "OKTA", "FIDO"}, // automatically detects DUO, SMS, ToTP, and FIDO
 	"OneLogin":      []string{"Auto", "OLP", "SMS", "TOTP"},                         // automatically detects OneLogin Protect, SMS and ToTP
@@ -104,6 +106,11 @@ func NewSAMLClient(idpAccount *cfg.IDPAccount) (SAMLClient, error) {
 			return nil, fmt.Errorf("Invalid MFA type: %v for %v provider", idpAccount.MFA, idpAccount.Provider)
 		}
 		return adfs2.New(idpAccount)
+	case "Duo":
+		if invalidMFA(idpAccount.Provider, idpAccount.MFA) {
+			return nil, fmt.Errorf("Invalid MFA type: %v for %v provider", idpAccount.MFA, idpAccount.Provider)
+		}
+		return duo.New(idpAccount)
 	case "Ping":
 		if invalidMFA(idpAccount.Provider, idpAccount.MFA) {
 			return nil, fmt.Errorf("Invalid MFA type: %v for %v provider", idpAccount.MFA, idpAccount.Provider)
