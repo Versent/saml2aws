@@ -178,6 +178,7 @@ func (kc *Client) postLoginForm(loginDetails *creds.LoginDetails, doc *goquery.D
 
 	redirect, err := getRedirectLocationFromRequest(kc.client, req)
 	if err != nil {
+		fmt.Printf("Failed to authenticate to Duo\n")
 		return nil, nil, errors.Wrap(err, "failed to retrieve login form sumbission redirect")
 	}
 
@@ -427,8 +428,19 @@ func containsDuoIFrame(doc *goquery.Document) bool {
 	return false
 }
 
-func getDocumentFromRequest(client *provider.HTTPClient, req *http.Request) (*goquery.Document, error) {
+func doRequest(client *provider.HTTPClient, req *http.Request) (*http.Response, error) {
 	res, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	} else if res.StatusCode < 200 || res.StatusCode >= 400 {
+		return nil, errors.Errorf("error performing request, status code: %i", res.StatusCode)
+	}
+
+	return res, nil
+}
+
+func getDocumentFromRequest(client *provider.HTTPClient, req *http.Request) (*goquery.Document, error) {
+	res, err := doRequest(client, req)
 	if err != nil {
 		return nil, errors.Wrap(err, "error performing request")
 	}
@@ -442,7 +454,7 @@ func getDocumentFromURL(client *provider.HTTPClient, url string) (*goquery.Docum
 		return nil, errors.Wrap(err, "error creating request")
 	}
 
-	res, err := client.Do(req)
+	res, err := doRequest(client, req)
 	if err != nil {
 		return nil, errors.Wrap(err, "error performing request")
 	}
@@ -451,7 +463,7 @@ func getDocumentFromURL(client *provider.HTTPClient, url string) (*goquery.Docum
 }
 
 func getJSONFromRequest(client *provider.HTTPClient, req *http.Request, v duoResponse) error {
-	res, err := client.Do(req)
+	res, err := doRequest(client, req)
 	if err != nil {
 		return errors.Wrap(err, "error performing request")
 	}
@@ -468,7 +480,7 @@ func getJSONFromRequest(client *provider.HTTPClient, req *http.Request, v duoRes
 
 func getRedirectLocationFromRequest(client *provider.HTTPClient, req *http.Request) (*url.URL, error) {
 	client.DisableFollowRedirect()
-	res, err := client.Do(req)
+	res, err := doRequest(client, req)
 	if err != nil {
 		return nil, errors.Wrap(err, "error performing request")
 	}
@@ -484,7 +496,7 @@ func getRedirectLocationFromURL(client *provider.HTTPClient, url string) (*url.U
 	}
 
 	client.DisableFollowRedirect()
-	res, err := client.Do(req)
+	res, err := doRequest(client, req)
 	if err != nil {
 		return nil, errors.Wrap(err, "error performing request")
 	}
