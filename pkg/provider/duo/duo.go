@@ -16,13 +16,48 @@ import (
 	"github.com/versent/saml2aws/pkg/provider"
 )
 
-// Client wrapper around KeyCloak.
+// Client wrapper around the Duo Access Gateway.
 type Client struct {
 	client *provider.HTTPClient
 	mfa    string
 }
 
-// New create a new KeyCloakClient
+type duoResponse interface {
+	GetStat() string
+}
+
+type baseDuoResponse struct {
+	Stat string `json:"stat"`
+}
+
+type duoResultResponse struct {
+	Response struct {
+		Cookie string `json:"cookie"`
+	} `json:"response"`
+
+	baseDuoResponse
+}
+
+type duoStatusResponse struct {
+	Response struct {
+		Result     string `json:"result"`
+		ResultURL  string `json:"result_url"`
+		Status     string `json:"status"`
+		StatusCode string `json:"status_code"`
+	} `json:"response"`
+
+	baseDuoResponse
+}
+
+type duoSubmitionResponse struct {
+	Response struct {
+		TxtID string `json:"txid"`
+	} `json:"response"`
+
+	baseDuoResponse
+}
+
+// New create a new DuoClient
 func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 
 	tr := provider.NewDefaultTransport(idpAccount.SkipVerify)
@@ -38,7 +73,7 @@ func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 	}, nil
 }
 
-// Authenticate logs into KeyCloak and returns a SAML response
+// Authenticate logs into Duo Access Gateway and returns a SAML response
 func (kc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error) {
 
 	doc, loginURL, err := kc.getLoginForm(loginDetails.URL)
@@ -48,23 +83,23 @@ func (kc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 
 	doc, homepageURL, err := kc.postLoginForm(loginDetails, doc, loginURL)
 	if err != nil {
-		return "", errors.Wrap(err, "error submitting login form")
+		return "", errors.Wrap(err, "error submitting login form to idp")
 	}
 
-	if containsTotpForm(doc) {
+	if containsDuoIFrame(doc) {
 		apiURL, sid, err := kc.postMfaInitForm(loginDetails, doc, homepageURL)
 		if err != nil {
-			return "", errors.Wrap(err, "error posting totp form")
+			return "", errors.Wrap(err, "error initializing mfa form")
 		}
 
 		token, err := kc.postPromptForm(loginDetails, apiURL, sid)
 		if err != nil {
-			return "", errors.Wrap(err, "error posting totp form")
+			return "", errors.Wrap(err, "error submitting mfa prompt")
 		}
 
 		doc, err = kc.postMfaFinishForm(token, homepageURL, doc)
 		if err != nil {
-			return "", errors.Wrap(err, "error posting totp form")
+			return "", errors.Wrap(err, "error finalizing mfa form")
 		}
 	}
 
@@ -75,7 +110,9 @@ func (kc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		if !ok {
 			return
 		}
-		if name == "SAMLResponse" {
+
+		lname := strings.ToLower(name)
+		if lname == "samlresponse" {
 			val, ok := s.Attr("value")
 			if !ok {
 				log.Fatalf("unable to locate saml assertion value")
@@ -93,36 +130,14 @@ func (kc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 
 func (kc *Client) getLoginForm(target string) (*goquery.Document, *url.URL, error) {
 
-	req, err := http.NewRequest("GET", target, nil)
+	redirect, err := getRedirectLocationFromURL(kc.client, target)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "error building initial request")
+		return nil, nil, errors.Wrap(err, "failed to retrieve login form redirect")
 	}
 
-	kc.client.DisableFollowRedirect()
-	res, err := kc.client.Do(req)
+	doc, err := getDocumentFromURL(kc.client, redirect.String())
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "error performing initial request")
-	}
-	kc.client.EnableFollowRedirect()
-
-	redirect, err := res.Location()
-	if err != nil {
-		return nil, nil, errors.Wrap(err, "no login redirect in initial request")
-	}
-
-	req, err = http.NewRequest("GET", redirect.String(), nil)
-	if err != nil {
-		return nil, nil, errors.Wrap(err, "error building login redirect request")
-	}
-
-	res, err = kc.client.Do(req)
-	if err != nil {
-		return nil, nil, errors.Wrap(err, "error performing login redirect request")
-	}
-
-	doc, err := goquery.NewDocumentFromResponse(res)
-	if err != nil {
-		return nil, nil, errors.Wrap(err, "failed to build document from response")
+		return nil, nil, errors.Wrap(err, "failed to retrive login form")
 	}
 
 	return doc, redirect, nil
@@ -136,41 +151,39 @@ func (kc *Client) postLoginForm(loginDetails *creds.LoginDetails, doc *goquery.D
 
 	authForm := url.Values{}
 	doc.Find("input").Each(func(i int, s *goquery.Selection) {
-		updateKeyCloakFormData(authForm, s, loginDetails)
+		name, ok := s.Attr("name")
+		if !ok {
+			return
+		}
+
+		if name == "username" {
+			authForm.Add(name, loginDetails.Username)
+		} else if name == "password" {
+			authForm.Add(name, loginDetails.Password)
+		} else {
+			val, ok := s.Attr("value")
+			if !ok {
+				authForm.Set(name, "")
+			}
+			authForm.Add(name, val)
+		}
 	})
 
 	req, err := http.NewRequest("POST", target.String(), strings.NewReader(authForm.Encode()))
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "error building authentication request")
+		return nil, nil, errors.Wrap(err, "error creating authentication request")
 	}
 
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 
-	kc.client.DisableFollowRedirect()
-	res, err := kc.client.Do(req)
+	redirect, err := getRedirectLocationFromRequest(kc.client, req)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "error retrieving login form")
-	}
-	kc.client.EnableFollowRedirect()
-
-	redirect, err := res.Location()
-	if err != nil {
-		return nil, nil, errors.Wrap(err, "no login redirect in initial request")
+		return nil, nil, errors.Wrap(err, "failed to retrieve login form sumbission redirect")
 	}
 
-	req, err = http.NewRequest("GET", redirect.String(), nil)
+	doc, err = getDocumentFromURL(kc.client, redirect.String())
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "error building login redirect request")
-	}
-
-	res, err = kc.client.Do(req)
-	if err != nil {
-		return nil, nil, errors.Wrap(err, "error performing login redirect request")
-	}
-
-	doc, err = goquery.NewDocumentFromResponse(res)
-	if err != nil {
-		return nil, nil, errors.Wrap(err, "failed to build document from response")
+		return nil, nil, errors.Wrap(err, "failed to retrieve multi-factor prompt wrapper")
 	}
 
 	return doc, redirect, nil
@@ -194,7 +207,7 @@ func (kc *Client) postMfaInitForm(loginDetails *creds.LoginDetails, doc *goquery
 	reqURL := apiURL + "/frame/web/v1/auth"
 	req, err := http.NewRequest("POST", reqURL, strings.NewReader(authForm.Encode()))
 	if err != nil {
-		return "", "", errors.Wrap(err, "error building MFA request")
+		return "", "", errors.Wrap(err, "error creating multi-factor init request")
 	}
 
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
@@ -205,16 +218,9 @@ func (kc *Client) postMfaInitForm(loginDetails *creds.LoginDetails, doc *goquery
 	query.Add("v", "2.6")
 	req.URL.RawQuery = query.Encode()
 
-	kc.client.DisableFollowRedirect()
-	res, err := kc.client.Do(req)
+	redirect, err := getRedirectLocationFromRequest(kc.client, req)
 	if err != nil {
-		return "", "", errors.Wrap(err, "error retrieving content")
-	}
-	kc.client.EnableFollowRedirect()
-
-	redirect, err := res.Location()
-	if err != nil {
-		return "", "", errors.Wrap(err, "no login redirect in initial request")
+		return "", "", errors.Wrap(err, "failed to retrieve multi-factory init redirect")
 	}
 
 	return apiURL, redirect.Query().Get("sid"), nil
@@ -224,21 +230,16 @@ func (kc *Client) postPromptForm(loginDetails *creds.LoginDetails, apiURL string
 	reqURL := apiURL + "/frame/prompt"
 	req, err := http.NewRequest("GET", reqURL, nil)
 	if err != nil {
-		return "", errors.Wrap(err, "error building MFA request")
+		return "", errors.Wrap(err, "error creating multi-factor prompt form request")
 	}
 
 	query := req.URL.Query()
 	query.Add("sid", sid)
 	req.URL.RawQuery = query.Encode()
 
-	res, err := kc.client.Do(req)
+	doc, err := getDocumentFromRequest(kc.client, req)
 	if err != nil {
-		return "", errors.Wrap(err, "error retrieving content")
-	}
-
-	doc, err := goquery.NewDocumentFromResponse(res)
-	if err != nil {
-		return "", errors.Wrap(err, "failed to build document from response")
+		return "", errors.Wrap(err, "failed to retrieve multi-factor prompt form")
 	}
 
 	authForm := url.Values{}
@@ -311,58 +312,67 @@ func (kc *Client) postPromptForm(loginDetails *creds.LoginDetails, apiURL string
 
 	req, err = http.NewRequest("POST", reqURL, strings.NewReader(authForm.Encode()))
 	if err != nil {
-		return "", errors.Wrap(err, "error building MFA request")
+		return "", errors.Wrap(err, "error creating multi-factor form submission request")
 	}
 
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 
-	res, err = kc.client.Do(req)
+	var submitResp duoSubmitionResponse
+	err = getJSONFromRequest(kc.client, req, &submitResp)
 	if err != nil {
-		return "", errors.Wrap(err, "error retrieving content")
+		return "", errors.Wrap(err, "failed to submit multi-factor form")
 	}
-
-	var data map[string]interface{}
-	json.NewDecoder(res.Body).Decode(&data)
 
 	authForm = url.Values{}
 	authForm.Add("sid", sid)
-	authForm.Add("txid", data["response"].(map[string]interface{})["txid"].(string))
+	authForm.Add("txid", submitResp.Response.TxtID)
 
-	for i := 0; i < 2; i++ {
+	var statusResp duoStatusResponse
+	for i := 0; i < 3; i++ {
 		reqURL = apiURL + "/frame/status"
 		req, err = http.NewRequest("POST", reqURL, strings.NewReader(authForm.Encode()))
 		if err != nil {
-			return "", errors.Wrap(err, "error building MFA request")
+			return "", errors.Wrap(err, "error creating multi-factor status request")
 		}
 
 		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 
-		res, err = kc.client.Do(req)
+		err = getJSONFromRequest(kc.client, req, &statusResp)
 		if err != nil {
-			return "", errors.Wrap(err, "error retrieving content")
+			return "", errors.Wrap(err, "failed to retrieve multi-factor status")
+		}
+
+		if statusResp.Response.Status != "" {
+			fmt.Printf("%s\n", statusResp.Response.Status)
+		}
+
+		if statusResp.Response.StatusCode != "pushed" {
+			break
 		}
 	}
 
-	json.NewDecoder(res.Body).Decode(&data)
+	if statusResp.Response.Result != "SUCCESS" {
+		return "", errors.Errorf("multi-factor authentication failed: %s", statusResp.Response.StatusCode)
+	}
 
 	authForm = url.Values{}
 	authForm.Add("sid", sid)
 
-	reqURL = apiURL + data["response"].(map[string]interface{})["result_url"].(string)
+	reqURL = apiURL + statusResp.Response.ResultURL
 	req, err = http.NewRequest("POST", reqURL, strings.NewReader(authForm.Encode()))
 	if err != nil {
-		return "", errors.Wrap(err, "error building MFA request")
+		return "", errors.Wrap(err, "error creating multi-factor result request")
 	}
 
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 
-	res, err = kc.client.Do(req)
+	var resultResp duoResultResponse
+	err = getJSONFromRequest(kc.client, req, &resultResp)
 	if err != nil {
-		return "", errors.Wrap(err, "error retrieving content")
+		return "", errors.Wrap(err, "failed to retrieve multi-factor result")
 	}
 
-	json.NewDecoder(res.Body).Decode(&data)
-	return data["response"].(map[string]interface{})["cookie"].(string), nil
+	return resultResp.Response.Cookie, nil
 }
 
 func (kc *Client) postMfaFinishForm(cookie string, target *url.URL, doc *goquery.Document) (*goquery.Document, error) {
@@ -395,12 +405,7 @@ func (kc *Client) postMfaFinishForm(cookie string, target *url.URL, doc *goquery
 
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 
-	res, err := kc.client.Do(req)
-	if err != nil {
-		return nil, errors.Wrap(err, "error performing login redirect request")
-	}
-
-	doc, err = goquery.NewDocumentFromResponse(res)
+	doc, err = getDocumentFromRequest(kc.client, req)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build document from response")
 	}
@@ -408,70 +413,82 @@ func (kc *Client) postMfaFinishForm(cookie string, target *url.URL, doc *goquery
 	return doc, nil
 }
 
-func extractSubmitURL(doc *goquery.Document) (string, error) {
-
-	var submitURL string
-
-	doc.Find("form").Each(func(i int, s *goquery.Selection) {
-		action, ok := s.Attr("action")
-		if !ok {
-			return
-		}
-		submitURL = action
-	})
-
-	if submitURL == "" {
-		return "", fmt.Errorf("unable to locate form submit URL")
-	}
-
-	return submitURL, nil
+func (resp *baseDuoResponse) GetStat() string {
+	return resp.Stat
 }
 
-func containsTotpForm(doc *goquery.Document) bool {
-	// search totp field at Keycloak < 8.0.1
-	totpIndex := doc.Find("iframe#duo_iframe").Index()
+func containsDuoIFrame(doc *goquery.Document) bool {
+	iframeIndex := doc.Find("iframe#duo_iframe").Index()
 
-	if totpIndex != -1 {
+	if iframeIndex != -1 {
 		return true
 	}
 
 	return false
 }
 
-func updateKeyCloakFormData(authForm url.Values, s *goquery.Selection, user *creds.LoginDetails) {
-	name, ok := s.Attr("name")
-	// log.Printf("name = %s ok = %v", name, ok)
-	if !ok {
-		return
+func getDocumentFromRequest(client *provider.HTTPClient, req *http.Request) (*goquery.Document, error) {
+	res, err := client.Do(req)
+	if err != nil {
+		return nil, errors.Wrap(err, "error performing request")
 	}
-	lname := strings.ToLower(name)
-	if strings.Contains(lname, "username") {
-		authForm.Add(name, user.Username)
-	} else if strings.Contains(lname, "password") {
-		authForm.Add(name, user.Password)
-	} else {
-		// pass through any hidden fields
-		val, ok := s.Attr("value")
-		if !ok {
-			return
-		}
-		authForm.Add(name, val)
-	}
+
+	return goquery.NewDocumentFromResponse(res)
 }
 
-func updateOTPFormData(otpForm url.Values, s *goquery.Selection, token string) {
-	name, ok := s.Attr("name")
-	// log.Printf("name = %s ok = %v", name, ok)
-	if !ok {
-		return
+func getDocumentFromURL(client *provider.HTTPClient, url string) (*goquery.Document, error) {
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "error creating request")
 	}
 
-	lname := strings.ToLower(name)
-	// search otp field at Keycloak >= 8.0.1
-	if strings.Contains(lname, "totp") {
-		otpForm.Add(name, token)
-	} else if strings.Contains(lname, "otp") {
-		otpForm.Add(name, token)
+	res, err := client.Do(req)
+	if err != nil {
+		return nil, errors.Wrap(err, "error performing request")
 	}
 
+	return goquery.NewDocumentFromResponse(res)
+}
+
+func getJSONFromRequest(client *provider.HTTPClient, req *http.Request, v duoResponse) error {
+	res, err := client.Do(req)
+	if err != nil {
+		return errors.Wrap(err, "error performing request")
+	}
+
+	err = json.NewDecoder(res.Body).Decode(v)
+	if err != nil {
+		return errors.Wrap(err, "failed to process response as JSON")
+	} else if v.GetStat() != "OK" {
+		return errors.Errorf("request returned error status: %s", v.GetStat())
+	}
+
+	return nil
+}
+
+func getRedirectLocationFromRequest(client *provider.HTTPClient, req *http.Request) (*url.URL, error) {
+	client.DisableFollowRedirect()
+	res, err := client.Do(req)
+	if err != nil {
+		return nil, errors.Wrap(err, "error performing request")
+	}
+	client.EnableFollowRedirect()
+
+	return res.Location()
+}
+
+func getRedirectLocationFromURL(client *provider.HTTPClient, url string) (*url.URL, error) {
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "error creating request")
+	}
+
+	client.DisableFollowRedirect()
+	res, err := client.Do(req)
+	if err != nil {
+		return nil, errors.Wrap(err, "error performing request")
+	}
+	client.EnableFollowRedirect()
+
+	return res.Location()
 }
