@@ -1,7 +1,7 @@
 package commands
 
 import (
-	"encoding/base64"
+	b64 "encoding/base64"
 	"fmt"
 	"os"
 
@@ -60,7 +60,7 @@ func ListRoles(loginFlags *flags.LoginExecFlags) error {
 		}
 	}
 
-	data, err := base64.StdEncoding.DecodeString(samlAssertion)
+	data, err := b64.StdEncoding.DecodeString(samlAssertion)
 	if err != nil {
 		return errors.Wrap(err, "error decoding saml assertion")
 	}
@@ -97,7 +97,17 @@ func listRoles(awsRoles []*saml2aws.AWSRole, samlAssertion string, loginFlags *f
 		return errors.New("no roles available")
 	}
 
-	awsAccounts, err := saml2aws.ParseAWSAccounts(samlAssertion)
+	samlAssertionData, err := b64.StdEncoding.DecodeString(samlAssertion)
+	if err != nil {
+		return errors.Wrap(err, "error decoding saml assertion")
+	}
+
+	aud, err := saml2aws.ExtractAudienceURL(samlAssertionData)
+	if err != nil {
+		return errors.Wrap(err, "error parsing destination url")
+	}
+
+	awsAccounts, err := saml2aws.ParseAWSAccounts(aud, samlAssertion)
 	if err != nil {
 		return errors.Wrap(err, "error parsing aws role accounts")
 	}

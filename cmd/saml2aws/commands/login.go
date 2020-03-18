@@ -1,7 +1,7 @@
 package commands
 
 import (
-	"encoding/base64"
+	b64 "encoding/base64"
 	"fmt"
 	"os"
 
@@ -180,7 +180,7 @@ func resolveLoginDetails(account *cfg.IDPAccount, loginFlags *flags.LoginExecFla
 }
 
 func selectAwsRole(samlAssertion string, account *cfg.IDPAccount) (*saml2aws.AWSRole, error) {
-	data, err := base64.StdEncoding.DecodeString(samlAssertion)
+	data, err := b64.StdEncoding.DecodeString(samlAssertion)
 	if err != nil {
 		return nil, errors.Wrap(err, "error decoding saml assertion")
 	}
@@ -216,7 +216,17 @@ func resolveRole(awsRoles []*saml2aws.AWSRole, samlAssertion string, account *cf
 		return nil, errors.New("no roles available")
 	}
 
-	awsAccounts, err := saml2aws.ParseAWSAccounts(samlAssertion)
+	samlAssertionData, err := b64.StdEncoding.DecodeString(samlAssertion)
+	if err != nil {
+		return nil, errors.Wrap(err, "error decoding saml assertion")
+	}
+
+	aud, err := saml2aws.ExtractAudienceURL(samlAssertionData)
+	if err != nil {
+		return nil, errors.Wrap(err, "error parsing destination url")
+	}
+
+	awsAccounts, err := saml2aws.ParseAWSAccounts(aud, samlAssertion)
 	if err != nil {
 		return nil, errors.Wrap(err, "error parsing aws role accounts")
 	}
@@ -243,7 +253,9 @@ func resolveRole(awsRoles []*saml2aws.AWSRole, samlAssertion string, account *cf
 
 func loginToStsUsingRole(account *cfg.IDPAccount, role *saml2aws.AWSRole, samlAssertion string) (*awsconfig.AWSCredentials, error) {
 
-	sess, err := session.NewSession()
+	sess, err := session.NewSession(&aws.Config{
+		Region: &account.Region,
+	})
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create session")
 	}

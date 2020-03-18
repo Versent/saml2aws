@@ -12,6 +12,7 @@ const (
 	attributeStatementTag = "AttributeStatement"
 	attributeTag          = "Attribute"
 	attributeValueTag     = "AttributeValue"
+	audienceTag           = "Audience"
 )
 
 //ErrMissingElement is the error type that indicates an element and/or attribute is
@@ -69,6 +70,23 @@ func ExtractSessionDuration(data []byte) (int64, error) {
 	}
 
 	return 0, nil
+}
+
+// ExtractDestinationURL will find the Destination URL to POST the SAML assertion to.
+// This is necessary to support AWS instances with custom endpoints such as GovCloud and AWS China without requiring
+// hardcoded endpoints on the saml2aws side.
+func ExtractAudienceURL(data []byte) (string, error) {
+	doc := etree.NewDocument()
+	if err := doc.ReadFromBytes(data); err != nil {
+		return "", err
+	}
+
+	audienceElement := doc.FindElement(".//Audience")
+	if audienceElement == nil {
+		return "", ErrMissingElement{Tag: audienceTag}
+	}
+
+	return audienceElement.Text(), nil
 }
 
 // ExtractAwsRoles given an assertion document extract the aws roles
