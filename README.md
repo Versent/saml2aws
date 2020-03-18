@@ -82,7 +82,7 @@ saml2aws --version
 While brew is available for Linux you can also run the following without using a package manager.
 
 ```
-$ CURRENT_VERSION=2.22.0
+$ CURRENT_VERSION=2.24.0
 $ wget https://github.com/Versent/saml2aws/releases/download/v${CURRENT_VERSION}/saml2aws_${CURRENT_VERSION}_linux_amd64.tar.gz
 $ tar -xzvf saml2aws_${CURRENT_VERSION}_linux_amd64.tar.gz -C ~/.local/bin
 $ chmod u+x ~/.local/bin/saml2aws
