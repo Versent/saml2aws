@@ -1,6 +1,6 @@
 language: go
 go:
-    - "1.13"
+    - "1.14"
 
 go_import_path: github.com/versent/saml2aws
 

@@ -35,6 +35,7 @@ const (
 	IdentifierOktaTotpMfa     = "OKTA TOKEN:SOFTWARE:TOTP"
 	IdentifierSymantecTotpMfa = "SYMANTEC TOKEN"
 	IdentifierFIDOWebAuthn    = "FIDO WEBAUTHN"
+	IdentifierYubiMfa         = "YUBICO TOKEN:HARDWARE"
 )
 
 var logger = logrus.WithField("provider", "okta")
@@ -48,6 +49,7 @@ var (
 		IdentifierOktaTotpMfa:     "Okta MFA authentication",
 		IdentifierSymantecTotpMfa: "Symantec VIP MFA authentication",
 		IdentifierFIDOWebAuthn:    "FIDO WebAuthn MFA authentication",
+		IdentifierYubiMfa:         "YUBICO TOKEN:HARDWARE",
 	}
 )
 
@@ -314,6 +316,17 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 	// get signature & callback
 	verifyReq := VerifyRequest{StateToken: stateToken}
 	verifyBody := new(bytes.Buffer)
+
+	// Login flow is different for YubiKeys ( of course )
+	// https://developer.okta.com/docs/reference/api/factors/#request-example-for-verify-yubikey-factor
+	// verifyBody needs to be a json document with the OTP from the yubikey in it.
+	// yay
+	switch mfa := mfaIdentifer; mfa {
+	case IdentifierYubiMfa:
+		verifyCode := prompter.Password("Press the button on your yubikey")
+		verifyReq.PassCode = verifyCode
+	}
+
 	err := json.NewEncoder(verifyBody).Encode(verifyReq)
 	if err != nil {
 		return "", errors.Wrap(err, "error encoding verifyReq")
@@ -339,6 +352,8 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 	resp = string(body)
 
 	switch mfa := mfaIdentifer; mfa {
+	case IdentifierYubiMfa:
+		return gjson.Get(resp, "sessionToken").String(), nil
 	case IdentifierSmsMfa, IdentifierTotpMfa, IdentifierOktaTotpMfa, IdentifierSymantecTotpMfa:
 		var verifyCode = loginDetails.MFAToken
 		if verifyCode == "" {
