@@ -88,6 +88,15 @@ func ListRoles(loginFlags *flags.LoginExecFlags) error {
 }
 
 func listRoles(awsRoles []*saml2aws.AWSRole, samlAssertion string, loginFlags *flags.LoginExecFlags) error {
+	if len(awsRoles) == 1 {
+		fmt.Println("")
+		fmt.Println("Only one role to assume. Will be automatically assumed on login")
+		fmt.Println(awsRoles[0].RoleARN)
+		return nil
+	} else if len(awsRoles) == 0 {
+		return errors.New("no roles available")
+	}
+
 	awsAccounts, err := saml2aws.ParseAWSAccounts(samlAssertion)
 	if err != nil {
 		return errors.Wrap(err, "error parsing aws role accounts")
