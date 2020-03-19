@@ -2,11 +2,13 @@ package googleapps
 
 import (
 	"bytes"
-	"encoding/base64"
+	b64 "encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
@@ -108,9 +110,10 @@ func (kc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 			return "", errors.Wrap(err, "error generating captcha image URL")
 		}
 
-		fmt.Println("Open this link in a browser:\n", captchaPictureURL)
-
-		captcha := prompter.String("Captcha", "")
+		captcha, err := kc.tryDisplayCaptcha(captchaPictureURL)
+		if err != nil {
+			return "", err
+		}
 
 		captchaForm, captchaURL, err := extractInputsByFormID(responseDoc, "gaia_loginform", "challenge")
 		if err != nil {
@@ -155,6 +158,42 @@ func (kc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 	}
 
 	return samlAssertion, nil
+}
+
+func (kc *Client) tryDisplayCaptcha(captchaPictureURL string) (string, error) {
+	// TODO: check for user flag for easy captcha presentation
+
+	if os.Getenv("TERM_PROGRAM") == "iTerm.app" {
+		// Use iTerm to show the image if available
+		return kc.iTermCaptchaPrompt(captchaPictureURL)
+	} else {
+		return simpleCaptchaPrompt(captchaPictureURL), nil
+	}
+}
+
+func (kc *Client) iTermCaptchaPrompt(captchaPictureURL string) (string, error) {
+	fmt.Printf("Detected iTerm, displaying URL: %s\n", captchaPictureURL)
+	imgResp, err := kc.client.Get(captchaPictureURL)
+	if err != nil {
+		return "", errors.Wrap(err, "unable to fetch captcha image")
+	}
+	var buf bytes.Buffer
+	b64Encoder := b64.NewEncoder(b64.StdEncoding, &buf)
+	_, _ = io.Copy(b64Encoder, imgResp.Body)
+	_ = b64Encoder.Close()
+
+	if os.Getenv("TERM") == "screen" {
+		fmt.Println("Detected tmux, using specific workaround...")
+		fmt.Printf("\033Ptmux;\033\033]1337;File=width=40;preserveAspectRatio=1;inline=1;:%s\a\033\\\n", buf.String())
+	} else {
+		fmt.Printf("\033]1337;File=width=40;preserveAspectRatio=1;inline=1;:%s\a\n", buf.String())
+	}
+	return prompter.String("Captcha", ""), nil
+}
+
+func simpleCaptchaPrompt(captchaPictureURL string) string {
+	fmt.Println("Open this link in a browser:\n", captchaPictureURL)
+	return prompter.String("Captcha", "")
 }
 
 func (kc *Client) loadFirstPage(loginDetails *creds.LoginDetails) (string, url.Values, error) {
@@ -357,15 +396,16 @@ func (kc *Client) loadChallengePage(submitURL string, referer string, authForm u
 			}
 			facet := facetComponents.Scheme + "://" + facetComponents.Host
 			challengeNonce := responseForm.Get("id-challenge")
-			appId, data := extractKeyHandles(doc, challengeNonce)
-			u2fClient, err := NewU2FClient(challengeNonce, appId, facet, data[0], &U2FDeviceFinder{})
+			appID, data := extractKeyHandles(doc, challengeNonce)
+			u2fClient, err := NewU2FClient(challengeNonce, appID, facet, data[0], &U2FDeviceFinder{})
 			if err != nil {
 				return nil, errors.Wrap(err, "Failed to prompt for second factor.")
 			}
 
 			response, err := u2fClient.ChallengeU2F()
 			if err != nil {
-				return nil, errors.Wrap(err, "Second factor failed.")
+				errors.Wrap(err, "Second factor failed.")
+				return kc.skipChallengePage(doc, submitURL, secondActionURL, loginDetails)
 			}
 
 			responseForm.Set("id-assertion", response)
@@ -393,23 +433,37 @@ func (kc *Client) loadChallengePage(submitURL string, referer string, authForm u
 			responseForm.Set("TrustDevice", "on") // Don't ask again on this computer
 
 			return kc.loadResponsePage(secondActionURL, submitURL, responseForm)
+
+		case strings.Contains(secondActionURL, "challenge/skotp/"): // handle one-time HOTP challenge
+			fmt.Println("Get a one-time code by visiting https://g.co/sc on another device where you can use your security key")
+			var token = prompter.RequestSecurityCode("000 000")
+
+			responseForm.Set("Pin", token)
+			responseForm.Set("TrustDevice", "on") // Don't ask again on this computer
+
+			return kc.loadResponsePage(secondActionURL, submitURL, responseForm)
 		}
 
-		skipResponseForm, skipActionURL, err := extractInputsByFormQuery(doc, `[action$="skip"]`)
-		if err != nil {
-			return nil, errors.Wrap(err, "unable to extract skip form")
-		}
-
-		if skipActionURL == "" {
-			return nil, errors.Errorf("unsupported second factor: %s", secondActionURL)
-		}
-
-		return kc.loadAlternateChallengePage(skipActionURL, submitURL, skipResponseForm, loginDetails)
+		return kc.skipChallengePage(doc, submitURL, secondActionURL, loginDetails)
 
 	}
 
 	return doc, nil
 
+}
+
+func (kc *Client) skipChallengePage(doc *goquery.Document, submitURL string, secondActionURL string, loginDetails *creds.LoginDetails) (*goquery.Document, error) {
+
+	skipResponseForm, skipActionURL, err := extractInputsByFormQuery(doc, `[action$="skip"]`)
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to extract skip form")
+	}
+
+	if skipActionURL == "" {
+		return nil, errors.Errorf("unsupported second factor: %s", secondActionURL)
+	}
+
+	return kc.loadAlternateChallengePage(skipActionURL, submitURL, skipResponseForm, loginDetails)
 }
 
 func (kc *Client) loadAlternateChallengePage(submitURL string, referer string, authForm url.Values, loginDetails *creds.LoginDetails) (*goquery.Document, error) {
@@ -449,7 +503,8 @@ func (kc *Client) loadAlternateChallengePage(submitURL string, referer string, a
 
 		if strings.Contains(action, "challenge/totp/") ||
 			strings.Contains(action, "challenge/ipp/") ||
-			strings.Contains(action, "challenge/az/") {
+			strings.Contains(action, "challenge/az/") ||
+			strings.Contains(action, "challenge/skotp/") {
 
 			challengeEntry, _ = s.Attr("data-challengeentry")
 			return false
@@ -468,10 +523,7 @@ func (kc *Client) loadAlternateChallengePage(submitURL string, referer string, a
 		return nil, errors.Wrap(err, "unable to extract challenge form")
 	}
 
-	u, _ := url.Parse(submitURL)
-	u.Path = newActionURL
-
-	return kc.loadChallengePage(u.String(), submitURL, responseForm, loginDetails)
+	return kc.loadChallengePage(newActionURL, submitURL, responseForm, loginDetails)
 }
 
 func (kc *Client) postJSON(submitURL string, values map[string]string, referer string) (*http.Response, error) {
@@ -707,7 +759,7 @@ func generateFullURLIfRelative(destination, currentPageURL string) (string, erro
 }
 
 func isKeyHandle(key, challengeTxt string) bool {
-	_, err := base64.StdEncoding.DecodeString(key)
+	_, err := b64.StdEncoding.DecodeString(key)
 	if err != nil {
 		return false
 	}
