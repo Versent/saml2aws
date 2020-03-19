@@ -135,7 +135,7 @@ Flags:
       --session-duration=SESSION-DURATION
                                The duration of your AWS Session. (env: SAML2AWS_SESSION_DURATION)
       --disable-keychain       Do not use keychain at all.
-  -r, --region="us-east-1"     AWS region to use for API requests, e.g. us-east-1, us-gov-west-1, cn-north-1 (env: SAML2AWS_REGION)
+  -r, --region=REGION          AWS region to use for API requests, e.g. us-east-1, us-gov-west-1, cn-north-1 (env: SAML2AWS_REGION)
 
 Commands:
   help [<command>...]
