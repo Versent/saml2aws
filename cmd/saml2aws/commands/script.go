@@ -24,8 +24,7 @@ set -gx AWS_SECRET_ACCESS_KEY {{ .AWSSecretKey }}
 set -gx AWS_SESSION_TOKEN {{ .AWSSessionToken }}
 set -gx AWS_SECURITY_TOKEN {{ .AWSSecurityToken }}
 set -gx SAML2AWS_PROFILE {{ .ProfileName }}
-set -gx AWS_CREDENTIAL_EXPIRATION={{ .Expires "2006-01-02T15:04:05Z07:00" }}
-"
+set -gx AWS_CREDENTIAL_EXPIRATION '{{ .Expires.Format "2006-01-02T15:04:05Z07:00" }}'
 `
 
 const powershellTmpl = `$env:AWS_ACCESS_KEY_ID='{{ .AWSAccessKey }}'
