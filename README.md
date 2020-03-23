@@ -48,6 +48,7 @@ The process goes something like this:
   * [F5APM](pkg/provider/f5apm/README.md)
   * [Akamai](pkg/provider/akamai/README.md)
   * OneLogin
+  * NetIQ
 * AWS SAML Provider configured
 
 ## Caveats
@@ -82,7 +83,7 @@ saml2aws --version
 While brew is available for Linux you can also run the following without using a package manager.
 
 ```
-$ CURRENT_VERSION=2.22.0
+$ CURRENT_VERSION=2.25.0
 $ wget https://github.com/Versent/saml2aws/releases/download/v${CURRENT_VERSION}/saml2aws_${CURRENT_VERSION}_linux_amd64.tar.gz
 $ tar -xzvf saml2aws_${CURRENT_VERSION}_linux_amd64.tar.gz -C ~/.local/bin
 $ chmod u+x ~/.local/bin/saml2aws
@@ -486,7 +487,28 @@ aws iam list-groups
         }
 }
 ```
+## Advanced Configuration - additional parameters
+There are few additional parameters allowing to customise saml2aws configuration.
+Use following parameters in `~/.saml2aws` file:
+- `http_attempts_count` - configures the number of attempts to send http requests in order to authorise with saml provider. Defaults to 1
+- `http_retry_delay` - configures the duration (in seconds) of timeout between attempts to send http requests to saml provider. Defaults to 1
 
+Example: typical configuration with such parameters would look like follows:
+```
+[default]
+url                     = https://id.customer.cloud
+username                = user@versent.com.au
+provider                = Ping
+mfa                     = Auto
+skip_verify             = false
+timeout                 = 0
+aws_urn                 = urn:amazon:webservices
+aws_session_duration    = 28800
+aws_profile             = customer-dev
+role_arn                = arn:aws:iam::121234567890:role/customer-admin-role
+http_attempts_count     = 3
+http_retry_delay        = 1
+```
 ## Building
 
 To build this software on osx clone to the repo to `$GOPATH/src/github.com/versent/saml2aws` and ensure you have `$GOPATH/bin` in your `$PATH`.

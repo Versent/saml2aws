@@ -79,7 +79,7 @@ type VerifyRequest struct {
 // New creates a new OneLogin client.
 func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 	tr := provider.NewDefaultTransport(idpAccount.SkipVerify)
-	client, err := provider.NewHTTPClient(tr)
+	client, err := provider.NewHTTPClient(tr, provider.BuildHttpClientOpts(idpAccount))
 	if err != nil {
 		return nil, errors.Wrap(err, "error building http client")
 	}
