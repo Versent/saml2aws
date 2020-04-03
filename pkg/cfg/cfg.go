@@ -43,6 +43,8 @@ type IDPAccount struct {
 	ResourceID           string `ini:"resource_id"` // used by F5APM
 	Subdomain            string `ini:"subdomain"`   // used by OneLogin
 	RoleARN              string `ini:"role_arn"`
+	HttpAttemptsCount    string `ini:"http_attempts_count"`
+	HttpRetryDelay       string `ini:"http_retry_delay"`
 }
 
 func (ia IDPAccount) String() string {

@@ -34,7 +34,7 @@ type Client struct {
 func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 
 	tr := provider.NewDefaultTransport(idpAccount.SkipVerify)
-	client, err := provider.NewHTTPClient(tr)
+	client, err := provider.NewHTTPClient(tr, provider.BuildHttpClientOpts(idpAccount))
 	if err != nil {
 		return nil, errors.Wrap(err, "Error building HTTP client")
 	}
