@@ -29,6 +29,11 @@ func ParseAWSAccounts(samlAssertion string) ([]*AWSAccount, error) {
 		awsURL = "https://signin.amazonaws.cn/saml"
 	}
 
+	if strings.Contains(string(decSamlAssertion), "signin.amazonaws-us-gov.com") {
+		fmt.Println("trying to login AWS GovCloud")
+		awsURL = "https://signin.amazonaws-us-gov.com/saml"
+	}
+
 	res, err := http.PostForm(awsURL, url.Values{"SAMLResponse": {samlAssertion}})
 	if err != nil {
 		return nil, errors.Wrap(err, "error retrieving AWS login form")
