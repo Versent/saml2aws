@@ -36,6 +36,11 @@ type LoginExecFlags struct {
 	ExecProfile  string
 }
 
+type ConsoleFlags struct {
+	LoginExecFlags *LoginExecFlags
+	Link           bool
+}
+
 // ApplyFlagOverrides overrides IDPAccount with command line settings
 func ApplyFlagOverrides(commonFlags *CommonFlags, account *cfg.IDPAccount) {
 	if commonFlags.AppID != "" {
