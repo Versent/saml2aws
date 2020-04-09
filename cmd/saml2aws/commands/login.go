@@ -103,7 +103,7 @@ func Login(loginFlags *flags.LoginExecFlags) error {
 }
 
 func buildIdpAccount(loginFlags *flags.LoginExecFlags) (*cfg.IDPAccount, error) {
-	cfgm, err := cfg.NewConfigManager(cfg.DefaultConfigPath)
+	cfgm, err := cfg.NewConfigManager(loginFlags.CommonFlags.ConfigFile)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to load configuration")
 	}
