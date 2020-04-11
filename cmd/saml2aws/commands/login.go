@@ -221,7 +221,7 @@ func resolveRole(awsRoles []*saml2aws.AWSRole, samlAssertion string, account *cf
 		return nil, errors.Wrap(err, "error decoding saml assertion")
 	}
 
-	aud, err := saml2aws.ExtractAudienceURL(samlAssertionData)
+	aud, err := saml2aws.ExtractDestinationURL(samlAssertionData)
 	if err != nil {
 		return nil, errors.Wrap(err, "error parsing destination url")
 	}
