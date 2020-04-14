@@ -281,7 +281,7 @@ saml2aws configure -a wolfeidau --idp-provider KeyCloak --username mark@wolfe.id
   --url https://keycloak.wolfe.id.au/auth/realms/master/protocol/saml/clients/amazon-aws --skip-prompt
 ```
 
-Then your ready to use saml2aws.
+Then you're ready to use saml2aws.
 
 ## Example
 
@@ -436,7 +436,7 @@ saml2aws exec --exec-profile roleIn2ndAwsAccount aws sts get-caller-identity
 {
     "UserId": "YOOYOOYOOYOOYOOA:/myAccountName",
     "Account": "123456789012",
-    "Arn": "arn:aws:sts::123456789012:assumed-role/myAccountName" 
+    "Arn": "arn:aws:sts::123456789012:assumed-role/myAccountName"
 }
 ```
 
