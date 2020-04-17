@@ -26,6 +26,7 @@ type CommonFlags struct {
 	Subdomain            string
 	ResourceID           string
 	DisableKeychain      bool
+	Region               string
 }
 
 // LoginExecFlags flags for the Login / Exec commands
@@ -88,5 +89,8 @@ func ApplyFlagOverrides(commonFlags *CommonFlags, account *cfg.IDPAccount) {
 	}
 	if commonFlags.ResourceID != "" {
 		account.ResourceID = commonFlags.ResourceID
+	}
+	if commonFlags.Region != "" {
+		account.Region = commonFlags.Region
 	}
 }
