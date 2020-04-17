@@ -98,11 +98,13 @@ func main() {
 
 	// `console` command and settings
 	cmdConsole := app.Command("console", "Console will open the aws console after logging in.")
-	consoleFlags := new(flags.LoginExecFlags)
-	consoleFlags.CommonFlags = commonFlags
-	cmdConsole.Flag("exec-profile", "The AWS profile to utilize for console execution. (env: SAML2AWS_EXEC_PROFILE)").Envar("SAML2AWS_EXEC_PROFILE").StringVar(&consoleFlags.ExecProfile)
+	consoleFlags := new(flags.ConsoleFlags)
+	consoleFlags.LoginExecFlags = execFlags
+	consoleFlags.LoginExecFlags.CommonFlags = commonFlags
+	cmdConsole.Flag("exec-profile", "The AWS profile to utilize for console execution. (env: SAML2AWS_EXEC_PROFILE)").Envar("SAML2AWS_EXEC_PROFILE").StringVar(&consoleFlags.LoginExecFlags.ExecProfile)
 	cmdConsole.Flag("profile", "The AWS profile to save the temporary credentials. (env: SAML2AWS_PROFILE)").Envar("SAML2AWS_PROFILE").Short('p').StringVar(&commonFlags.Profile)
-	cmdConsole.Flag("force", "Refresh credentials even if not expired.").BoolVar(&consoleFlags.Force)
+	cmdConsole.Flag("force", "Refresh credentials even if not expired.").BoolVar(&consoleFlags.LoginExecFlags.Force)
+	cmdConsole.Flag("link", "Present link to AWS console instead of opening browser").BoolVar(&consoleFlags.Link)
 
 	// `list` command and settings
 	cmdListRoles := app.Command("list-roles", "List available role ARNs.")
