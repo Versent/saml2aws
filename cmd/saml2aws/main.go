@@ -65,6 +65,7 @@ func main() {
 	app.Flag("skip-prompt", "Skip prompting for parameters during login.").BoolVar(&commonFlags.SkipPrompt)
 	app.Flag("session-duration", "The duration of your AWS Session. (env: SAML2AWS_SESSION_DURATION)").Envar("SAML2AWS_SESSION_DURATION").IntVar(&commonFlags.SessionDuration)
 	app.Flag("disable-keychain", "Do not use keychain at all.").Envar("SAML2AWS_DISABLE_KEYCHAIN").BoolVar(&commonFlags.DisableKeychain)
+	app.Flag("region", "AWS region to use for API requests, e.g. us-east-1, us-gov-west-1, cn-north-1 (env: SAML2AWS_REGION)").Envar("SAML2AWS_REGION").Short('r').StringVar(&commonFlags.Region)
 
 	// `configure` command and settings
 	cmdConfigure := app.Command("configure", "Configure a new IDP account.")
@@ -97,11 +98,13 @@ func main() {
 
 	// `console` command and settings
 	cmdConsole := app.Command("console", "Console will open the aws console after logging in.")
-	consoleFlags := new(flags.LoginExecFlags)
-	consoleFlags.CommonFlags = commonFlags
-	cmdConsole.Flag("exec-profile", "The AWS profile to utilize for console execution. (env: SAML2AWS_EXEC_PROFILE)").Envar("SAML2AWS_EXEC_PROFILE").StringVar(&consoleFlags.ExecProfile)
+	consoleFlags := new(flags.ConsoleFlags)
+	consoleFlags.LoginExecFlags = execFlags
+	consoleFlags.LoginExecFlags.CommonFlags = commonFlags
+	cmdConsole.Flag("exec-profile", "The AWS profile to utilize for console execution. (env: SAML2AWS_EXEC_PROFILE)").Envar("SAML2AWS_EXEC_PROFILE").StringVar(&consoleFlags.LoginExecFlags.ExecProfile)
 	cmdConsole.Flag("profile", "The AWS profile to save the temporary credentials. (env: SAML2AWS_PROFILE)").Envar("SAML2AWS_PROFILE").Short('p').StringVar(&commonFlags.Profile)
-	cmdConsole.Flag("force", "Refresh credentials even if not expired.").BoolVar(&consoleFlags.Force)
+	cmdConsole.Flag("force", "Refresh credentials even if not expired.").BoolVar(&consoleFlags.LoginExecFlags.Force)
+	cmdConsole.Flag("link", "Present link to AWS console instead of opening browser").BoolVar(&consoleFlags.Link)
 
 	// `list` command and settings
 	cmdListRoles := app.Command("list-roles", "List available role ARNs.")

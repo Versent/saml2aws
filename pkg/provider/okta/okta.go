@@ -269,7 +269,17 @@ func docIsFormResume(doc *goquery.Document) bool {
 }
 
 func docIsFormRedirectToAWS(doc *goquery.Document) bool {
-	return doc.Find("form[action=\"https://signin.aws.amazon.com/saml\"]").Size() == 1
+	urls := []string{"form[action=\"https://signin.aws.amazon.com/saml\"]",
+			 "form[action=\"https://signin.amazonaws-us-gov.com/saml\"]",
+			 "form[action=\"https://signin.amazonaws.cn/saml\"]",
+		    };
+
+	for  _, value := range urls {
+		if (doc.Find(value).Size() > 0) {
+			return true
+		}
+	}
+	return false
 }
 
 func extractSAMLResponse(doc *goquery.Document) (v string, ok bool) {
