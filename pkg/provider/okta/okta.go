@@ -304,7 +304,7 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 
 	if strings.ToUpper(oc.mfa) != "AUTO" {
 		for idx, val := range mfaOptions {
-			if strings.HasPrefix(val, oc.mfa) {
+			if strings.HasPrefix(strings.ToUpper(val), oc.mfa) {
 				mfaOption = idx
 				break
 			}
