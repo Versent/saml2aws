@@ -34,6 +34,7 @@ type AWSCredentials struct {
 	AWSSecurityToken string    `ini:"aws_security_token"`
 	PrincipalARN     string    `ini:"x_principal_arn"`
 	Expires          time.Time `ini:"x_security_token_expires"`
+	Region           string    `ini:"region"`
 }
 
 // CredentialsProvider loads aws credentials file
