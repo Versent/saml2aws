@@ -149,6 +149,8 @@ func (jc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 			if err != nil {
 				return samlAssertion, errors.Wrap(err, "error verifying MFA")
 			}
+		} else {
+			return samlAssertion, errors.New("failed to authenticate")
 		}
 	}
 
