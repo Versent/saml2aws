@@ -228,6 +228,15 @@ func verifyMfa(jc *Client, jumpcloudOrgHost string, loginDetails *creds.LoginDet
 		} else if mfaDisplayNum == 0 && mfaConfiguredSupported != 1 {
 			return nil, errors.New("unsupported mfa provider")
 		}
+	} else if len(mfaOptions) > 1 {
+		mfaNames := make([]string, 0)
+		for _, m := range mfaOptions {
+			mfaNames = append(mfaNames, m.UserMfaOption)
+		}
+		mfaUserOptionInt := prompter.Choose("Select which MFA option to use", mfaNames)
+		mfaUserOption = mfaOptions[mfaUserOptionInt].UserMfaOption
+	} else {
+		mfaUserOption = mfaOptions[0].UserMfaOption
 	}
 
 	if _, ok := supportedMfaOptions[mfaUserOption]; !ok {
