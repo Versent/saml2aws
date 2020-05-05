@@ -1,4 +1,3 @@
-image: WMF 5
 skip_non_tags: true
 clone_folder: c:\gopath\src\github.com\versent\saml2aws
 environment:
@@ -7,6 +6,7 @@ environment:
     secure: 3kWTz99Qj+ipyaR73CxcJeGRRbmk84MF2ERDu6MyY10cjHAi6s3AVZ2Ccoa+Ioyt
   appName: saml2aws
 install:
+- set PATH=C:\msys64\mingw64\bin;%PATH%
 - ps: >-
     $VerbosePreference = 'Continue'
 
@@ -30,6 +30,7 @@ install:
 
     Install-Module InvokeBuild -Force
 build_script:
+- cmd: go mod download
 - ps: >-
     Invoke-Build
 test_script:
