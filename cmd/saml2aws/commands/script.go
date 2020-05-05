@@ -65,7 +65,7 @@ func Script(execFlags *flags.LoginExecFlags, shell string) error {
 		return errors.New("error aws credentials have expired")
 	}
 
-	// annoymous struct to pass to template
+	// anonymous struct to pass to template
 	data := struct {
 		ProfileName string
 		*awsconfig.AWSCredentials
