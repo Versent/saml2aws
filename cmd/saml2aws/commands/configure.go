@@ -1,7 +1,7 @@
 package commands
 
 import (
-	"fmt"
+	"log"
 	"os"
 	"path"
 
@@ -55,10 +55,10 @@ func Configure(configFlags *flags.CommonFlags) error {
 		return errors.Wrap(err, "failed to save configuration")
 	}
 
-	fmt.Println("")
-	fmt.Println(account)
-	fmt.Println("")
-	fmt.Printf("Configuration saved for IDP account: %s\n", idpAccountName)
+	log.Println("")
+	log.Println(account)
+	log.Println("")
+	log.Printf("Configuration saved for IDP account: %s", idpAccountName)
 
 	return nil
 }
@@ -79,16 +79,16 @@ func storeCredentials(configFlags *flags.CommonFlags, account *cfg.IDPAccount) e
 					return errors.Wrap(err, "error storing password in keychain")
 				}
 			} else {
-				fmt.Println("Passwords did not match")
+				log.Println("Passwords did not match")
 				os.Exit(1)
 			}
 		} else {
-			fmt.Println("No password supplied")
+			log.Println("No password supplied")
 		}
 	}
 	if account.Provider == onelogin.ProviderName {
 		if configFlags.ClientID == "" || configFlags.ClientSecret == "" {
-			fmt.Println("OneLogin provider requires --client_id and --client_secret flags to be set.")
+			log.Println("OneLogin provider requires --client_id and --client_secret flags to be set.")
 			os.Exit(1)
 		}
 		if err := credentials.SaveCredentials(path.Join(account.URL, OneLoginOAuthPath), configFlags.ClientID, configFlags.ClientSecret); err != nil {

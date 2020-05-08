@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"html"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/url"
 	"strings"
@@ -273,7 +274,7 @@ func verifyMfa(oc *Client, akamaiOrgHost string, loginDetails *creds.LoginDetail
 
 	mfaConfigData := gjson.GetBytes(body, "mfa.config.options")
 	if mfaConfigData.Index == 0 {
-		fmt.Println("Mfa Config option not found")
+		log.Println("Mfa Config option not found")
 		return errors.Wrap(err, "Mfa not configured ")
 	}
 
@@ -564,7 +565,7 @@ func verifyMfa(oc *Client, akamaiOrgHost string, loginDetails *creds.LoginDetail
 		duoTxResult := gjson.Get(resp, "response.result").String()
 		duoResultURL := gjson.Get(resp, "response.result_url").String()
 
-		fmt.Println(gjson.Get(resp, "response.status").String())
+		log.Println(gjson.Get(resp, "response.status").String())
 
 		if duoTxResult != "SUCCESS" {
 			//poll as this is likely a push request
@@ -593,7 +594,7 @@ func verifyMfa(oc *Client, akamaiOrgHost string, loginDetails *creds.LoginDetail
 				duoTxResult = gjson.Get(resp, "response.result").String()
 				duoResultURL = gjson.Get(resp, "response.result_url").String()
 
-				fmt.Println(gjson.Get(resp, "response.status").String())
+				log.Println(gjson.Get(resp, "response.status").String())
 
 				if duoTxResult == "FAILURE" {
 					return errors.Wrap(err, "failed to authenticate device")

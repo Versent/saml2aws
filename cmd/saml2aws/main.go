@@ -2,9 +2,10 @@ package main
 
 import (
 	"crypto/tls"
-	"fmt"
+	"log"
 	"net/http"
 	"os"
+	"runtime"
 
 	"github.com/alecthomas/kingpin"
 	"github.com/sirupsen/logrus"
@@ -42,6 +43,17 @@ func buildCmdList(s kingpin.Settings) (target *[]string) {
 }
 
 func main() {
+
+	log.SetOutput(os.Stderr)
+	log.SetFlags(0)
+	logrus.SetOutput(os.Stderr)
+
+	// the following avoids issues with powershell, and shells in windows reporting a program errors
+	// because it has written to stderr
+	if runtime.GOOS == "windows" {
+		log.SetOutput(os.Stdout)
+		logrus.SetOutput(os.Stdout)
+	}
 
 	app := kingpin.New("saml2aws", "A command line tool to help with SAML access to the AWS token service.")
 	app.Version(Version)
@@ -127,7 +139,7 @@ func main() {
 
 	// will leave this here for a while during upgrade process
 	if *provider != "" {
-		fmt.Println("The --provider flag has been replaced with a new configure command. See https://github.com/Versent/saml2aws#adding-idp-accounts")
+		log.Println("The --provider flag has been replaced with a new configure command. See https://github.com/Versent/saml2aws#adding-idp-accounts")
 		os.Exit(1)
 	}
 
@@ -160,7 +172,7 @@ func main() {
 	}
 
 	if err != nil {
-		fmt.Printf(errtpl, err)
+		log.Printf(errtpl, err)
 		os.Exit(1)
 	}
 }
