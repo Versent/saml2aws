@@ -124,7 +124,7 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 			if sel.Index() != -1 {
 				if instructions != sel.Text() {
 					instructions = sel.Text()
-					fmt.Println(instructions)
+					log.Println(instructions)
 				}
 			}
 			time.Sleep(1 * time.Second)

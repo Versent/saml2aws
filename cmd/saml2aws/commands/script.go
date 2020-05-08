@@ -1,7 +1,7 @@
 package commands
 
 import (
-	"fmt"
+	"log"
 	"os"
 	"text/template"
 	"time"
@@ -52,7 +52,7 @@ func Script(execFlags *flags.LoginExecFlags, shell string) error {
 		return errors.Wrap(err, "error loading credentials")
 	}
 	if !exist {
-		fmt.Println("unable to load credentials, login required to create them")
+		log.Println("unable to load credentials, login required to create them")
 		return nil
 	}
 
@@ -99,6 +99,6 @@ func buildTmpl(shell string, data interface{}) error {
 	if err != nil {
 		return err
 	}
-
+	// this is still written to stdout as per convention
 	return t.Execute(os.Stdout, data)
 }

@@ -15,10 +15,8 @@ require (
 	github.com/avast/retry-go v2.6.0+incompatible
 	github.com/aws/aws-sdk-go v1.23.15
 	github.com/beevik/etree v1.0.1
-	github.com/briandowns/spinner v0.0.0-20170614154858-48dbb65d7bd5
 	github.com/danieljoos/wincred v1.0.1
 	github.com/dvsekhvalnov/jose2go v0.0.0-20170216131308-f21a8cedbbae // indirect
-	github.com/fatih/color v1.7.0 // indirect
 	github.com/godbus/dbus v4.1.0+incompatible // indirect
 	github.com/golang/protobuf v1.3.2 // indirect
 	github.com/google/uuid v1.1.1
@@ -27,7 +25,6 @@ require (
 	github.com/keybase/go-keychain v0.0.0-20181011010623-f1daa725cce4 // indirect
 	github.com/kr/pretty v0.1.0 // indirect
 	github.com/marshallbrekka/go-u2fhost v0.0.0-20200107013215-ad5fdc1986ac
-	github.com/mattn/go-isatty v0.0.8
 	github.com/mitchellh/go-homedir v1.0.0
 	github.com/onsi/ginkgo v1.10.1 // indirect
 	github.com/onsi/gomega v1.7.0 // indirect

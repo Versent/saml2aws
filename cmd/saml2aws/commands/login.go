@@ -2,7 +2,7 @@ package commands
 
 import (
 	b64 "encoding/base64"
-	"fmt"
+	"log"
 	"os"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -38,18 +38,18 @@ func Login(loginFlags *flags.LoginExecFlags) error {
 		return errors.Wrap(err, "error loading credentials")
 	}
 	if !exist {
-		fmt.Println("unable to load credentials, login required to create them")
+		log.Println("unable to load credentials, login required to create them")
 		return nil
 	}
 
 	if !sharedCreds.Expired() && !loginFlags.Force {
-		fmt.Println("credentials are not expired skipping")
+		log.Println("credentials are not expired skipping")
 		return nil
 	}
 
 	loginDetails, err := resolveLoginDetails(account, loginFlags)
 	if err != nil {
-		fmt.Printf("%+v\n", err)
+		log.Printf("%+v", err)
 		os.Exit(1)
 	}
 
@@ -65,7 +65,7 @@ func Login(loginFlags *flags.LoginExecFlags) error {
 		return errors.Wrap(err, "error building IdP client")
 	}
 
-	fmt.Printf("Authenticating as %s ...\n", loginDetails.Username)
+	log.Printf("Authenticating as %s ...", loginDetails.Username)
 
 	samlAssertion, err := provider.Authenticate(loginDetails)
 	if err != nil {
@@ -74,9 +74,9 @@ func Login(loginFlags *flags.LoginExecFlags) error {
 	}
 
 	if samlAssertion == "" {
-		fmt.Println("Response did not contain a valid SAML assertion")
-		fmt.Println("Please check your username and password is correct")
-		fmt.Println("To see the output follow the instructions in https://github.com/Versent/saml2aws#debugging-issues-with-idps")
+		log.Println("Response did not contain a valid SAML assertion")
+		log.Println("Please check your username and password is correct")
+		log.Println("To see the output follow the instructions in https://github.com/Versent/saml2aws#debugging-issues-with-idps")
 		os.Exit(1)
 	}
 
@@ -92,7 +92,7 @@ func Login(loginFlags *flags.LoginExecFlags) error {
 		return errors.Wrap(err, "Failed to assume role, please check whether you are permitted to assume the given role for the AWS service")
 	}
 
-	fmt.Println("Selected role:", role.RoleARN)
+	log.Println("Selected role:", role.RoleARN)
 
 	awsCreds, err := loginToStsUsingRole(account, role, samlAssertion)
 	if err != nil {
@@ -126,11 +126,11 @@ func buildIdpAccount(loginFlags *flags.LoginExecFlags) (*cfg.IDPAccount, error) 
 
 func resolveLoginDetails(account *cfg.IDPAccount, loginFlags *flags.LoginExecFlags) (*creds.LoginDetails, error) {
 
-	// fmt.Printf("loginFlags %+v\n", loginFlags)
+	// log.Printf("loginFlags %+v", loginFlags)
 
 	loginDetails := &creds.LoginDetails{URL: account.URL, Username: account.Username, MFAToken: loginFlags.CommonFlags.MFAToken, DuoMFAOption: loginFlags.DuoMFAOption}
 
-	fmt.Printf("Using IDP Account %s to access %s %s\n", loginFlags.CommonFlags.IdpAccount, account.Provider, account.URL)
+	log.Printf("Using IDP Account %s to access %s %s", loginFlags.CommonFlags.IdpAccount, account.Provider, account.URL)
 
 	var err error
 	if !loginFlags.CommonFlags.DisableKeychain {
@@ -142,7 +142,7 @@ func resolveLoginDetails(account *cfg.IDPAccount, loginFlags *flags.LoginExecFla
 		}
 	}
 
-	// fmt.Printf("%s %s\n", savedUsername, savedPassword)
+	// log.Printf("%s %s", savedUsername, savedPassword)
 
 	// if you supply a username in a flag it takes precedence
 	if loginFlags.CommonFlags.Username != "" {
@@ -164,7 +164,7 @@ func resolveLoginDetails(account *cfg.IDPAccount, loginFlags *flags.LoginExecFla
 		loginDetails.ClientSecret = loginFlags.CommonFlags.ClientSecret
 	}
 
-	// fmt.Printf("loginDetails %+v\n", loginDetails)
+	// log.Printf("loginDetails %+v", loginDetails)
 
 	// if skip prompt was passed just pass back the flag values
 	if loginFlags.CommonFlags.SkipPrompt {
@@ -191,8 +191,8 @@ func selectAwsRole(samlAssertion string, account *cfg.IDPAccount) (*saml2aws.AWS
 	}
 
 	if len(roles) == 0 {
-		fmt.Println("No roles to assume")
-		fmt.Println("Please check you are permitted to assume roles for the AWS service")
+		log.Println("No roles to assume")
+		log.Println("Please check you are permitted to assume roles for the AWS service")
 		os.Exit(1)
 	}
 
@@ -245,7 +245,7 @@ func resolveRole(awsRoles []*saml2aws.AWSRole, samlAssertion string, account *cf
 		if err == nil {
 			break
 		}
-		fmt.Println("error selecting role, try again")
+		log.Println("error selecting role, try again")
 	}
 
 	return role, nil
@@ -269,7 +269,7 @@ func loginToStsUsingRole(account *cfg.IDPAccount, role *saml2aws.AWSRole, samlAs
 		DurationSeconds: aws.Int64(int64(account.SessionDuration)),
 	}
 
-	fmt.Println("Requesting AWS credentials using SAML assertion")
+	log.Println("Requesting AWS credentials using SAML assertion")
 
 	resp, err := svc.AssumeRoleWithSAML(params)
 	if err != nil {
@@ -293,11 +293,11 @@ func saveCredentials(awsCreds *awsconfig.AWSCredentials, sharedCreds *awsconfig.
 		return errors.Wrap(err, "error saving credentials")
 	}
 
-	fmt.Println("Logged in as:", awsCreds.PrincipalARN)
-	fmt.Println("")
-	fmt.Println("Your new access key pair has been stored in the AWS configuration")
-	fmt.Printf("Note that it will expire at %v\n", awsCreds.Expires)
-	fmt.Println("To use this credential, call the AWS CLI with the --profile option (e.g. aws --profile", sharedCreds.Profile, "ec2 describe-instances).")
+	log.Println("Logged in as:", awsCreds.PrincipalARN)
+	log.Println("")
+	log.Println("Your new access key pair has been stored in the AWS configuration")
+	log.Printf("Note that it will expire at %v", awsCreds.Expires)
+	log.Println("To use this credential, call the AWS CLI with the --profile option (e.g. aws --profile", sharedCreds.Profile, "ec2 describe-instances).")
 
 	return nil
 }
