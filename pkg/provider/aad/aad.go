@@ -699,7 +699,7 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 	var loginPasswordJson string
 	if strings.Contains(resBodyStr, "$Config") {
 		startIndex := strings.Index(resBodyStr, "$Config=") + 8
-		endIndex := startIndex + strings.Index(resBodyStr[startIndex:], ";")
+		endIndex := startIndex + strings.Index(resBodyStr[startIndex:], "\n") - 1
 		loginPasswordJson = resBodyStr[startIndex:endIndex]
 	}
 	var loginPasswordResp passwordLoginResponse
