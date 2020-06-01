@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/url"
 	"strings"
@@ -787,7 +788,7 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 				mfaReq.AdditionalAuthData = verifyCode
 			}
 			if mfaReq.AuthMethodID == "PhoneAppNotification" && i == 0 {
-				fmt.Println("Phone approval required.")
+				log.Println("Phone approval required.")
 			}
 			mfaReqJson, err := json.Marshal(mfaReq)
 			if err != nil {

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"html"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -270,12 +271,12 @@ func docIsFormResume(doc *goquery.Document) bool {
 
 func docIsFormRedirectToAWS(doc *goquery.Document) bool {
 	urls := []string{"form[action=\"https://signin.aws.amazon.com/saml\"]",
-			 "form[action=\"https://signin.amazonaws-us-gov.com/saml\"]",
-			 "form[action=\"https://signin.amazonaws.cn/saml\"]",
-		    };
+		"form[action=\"https://signin.amazonaws-us-gov.com/saml\"]",
+		"form[action=\"https://signin.amazonaws.cn/saml\"]",
+	}
 
-	for  _, value := range urls {
-		if (doc.Find(value).Size() > 0) {
+	for _, value := range urls {
+		if doc.Find(value).Size() > 0 {
 			return true
 		}
 	}
@@ -582,7 +583,7 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 		duoTxResult := gjson.Get(resp, "response.result").String()
 		duoResultURL := gjson.Get(resp, "response.result_url").String()
 
-		fmt.Println(gjson.Get(resp, "response.status").String())
+		log.Println(gjson.Get(resp, "response.status").String())
 
 		if duoTxResult != "SUCCESS" {
 			//poll as this is likely a push request
@@ -611,7 +612,7 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 				duoTxResult = gjson.Get(resp, "response.result").String()
 				duoResultURL = gjson.Get(resp, "response.result_url").String()
 
-				fmt.Println(gjson.Get(resp, "response.status").String())
+				log.Println(gjson.Get(resp, "response.status").String())
 
 				if duoTxResult == "FAILURE" {
 					return "", errors.Wrap(err, "failed to authenticate device")
