@@ -98,7 +98,7 @@ func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 
 	return &Client{
 		client:       client,
-		mfa:          idpAccount.MFA,
+		mfa:          strings.ToUpper(idpAccount.MFA),
 		destinations: destinations,
 	}, nil
 }
@@ -308,7 +308,7 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 		}
 	}
 
-	if strings.ToUpper(oc.mfa) != "AUTO" {
+	if oc.mfa != "AUTO" {
 		for idx, val := range mfaOptions {
 			if strings.HasPrefix(strings.ToUpper(val), oc.mfa) {
 				mfaOption = idx
