@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/versent/saml2aws/pkg/cfg"
+	"github.com/versent/saml2aws/v2/pkg/cfg"
 )
 
 func TestOverrideAllFlags(t *testing.T) {

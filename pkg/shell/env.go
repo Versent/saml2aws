@@ -2,10 +2,10 @@ package shell
 
 import (
 	"fmt"
+	"github.com/versent/saml2aws/v2/pkg/awsconfig"
+	"github.com/versent/saml2aws/v2/pkg/cfg"
+	"github.com/versent/saml2aws/v2/pkg/flags"
 	"time"
-	"github.com/versent/saml2aws/pkg/awsconfig"
-	"github.com/versent/saml2aws/pkg/cfg"
-	"github.com/versent/saml2aws/pkg/flags"
 )
 
 // BuildEnvVars build an array of env vars in the format required for exec

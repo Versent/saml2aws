@@ -5,7 +5,7 @@ import (
 
 	"github.com/99designs/keyring"
 	"github.com/sirupsen/logrus"
-	"github.com/versent/saml2aws/helper/credentials"
+	"github.com/versent/saml2aws/v2/helper/credentials"
 )
 
 var logger = logrus.WithField("helper", "linuxkeyring")
