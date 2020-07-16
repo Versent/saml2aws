@@ -30,22 +30,23 @@ const (
 
 // IDPAccount saml IDP account
 type IDPAccount struct {
-	AppID                string `ini:"app_id"` // used by OneLogin and AzureAD
-	URL                  string `ini:"url"`
-	Username             string `ini:"username"`
-	Provider             string `ini:"provider"`
-	MFA                  string `ini:"mfa"`
-	SkipVerify           bool   `ini:"skip_verify"`
-	Timeout              int    `ini:"timeout"`
-	AmazonWebservicesURN string `ini:"aws_urn"`
-	SessionDuration      int    `ini:"aws_session_duration"`
-	Profile              string `ini:"aws_profile"`
-	ResourceID           string `ini:"resource_id"` // used by F5APM
-	Subdomain            string `ini:"subdomain"`   // used by OneLogin
-	RoleARN              string `ini:"role_arn"`
-	Region               string `ini:"region"`
-	HttpAttemptsCount    string `ini:"http_attempts_count"`
-	HttpRetryDelay       string `ini:"http_retry_delay"`
+	AppID                string   `ini:"app_id"` // used by OneLogin and AzureAD
+	URL                  string   `ini:"url"`
+	Username             string   `ini:"username"`
+	Provider             string   `ini:"provider"`
+	MFA                  string   `ini:"mfa"`
+	SkipVerify           bool     `ini:"skip_verify"`
+	Timeout              int      `ini:"timeout"`
+	AmazonWebservicesURN string   `ini:"aws_urn"`
+	SessionDuration      int      `ini:"aws_session_duration"`
+	Profile              string   `ini:"aws_profile"`
+	ResourceID           string   `ini:"resource_id"` // used by F5APM
+	Subdomain            string   `ini:"subdomain"`   // used by OneLogin
+	RoleARN              string   `ini:"role_arn"`
+	Region               string   `ini:"region"`
+	HttpAttemptsCount    string   `ini:"http_attempts_count"`
+	HttpRetryDelay       string   `ini:"http_retry_delay"`
+	SigninURLS           []string `ini:"aws_signin_urls"`
 }
 
 func (ia IDPAccount) String() string {
