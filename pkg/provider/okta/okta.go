@@ -582,6 +582,7 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 
 		duoTxResult := gjson.Get(resp, "response.result").String()
 		duoResultURL := gjson.Get(resp, "response.result_url").String()
+		duoSID = gjson.Get(resp, "response.sid").String()
 
 		log.Println(gjson.Get(resp, "response.status").String())
 
@@ -611,6 +612,7 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 
 				duoTxResult = gjson.Get(resp, "response.result").String()
 				duoResultURL = gjson.Get(resp, "response.result_url").String()
+				duoSID = gjson.Get(resp, "response.sid").String()
 
 				log.Println(gjson.Get(resp, "response.status").String())
 
@@ -625,6 +627,10 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 		}
 
 		duoRequestURL := fmt.Sprintf("https://%s%s", duoHost, duoResultURL)
+
+		duoForm = url.Values{}
+		duoForm.Add("sid", duoSID)
+
 		req, err = http.NewRequest("POST", duoRequestURL, strings.NewReader(duoForm.Encode()))
 		if err != nil {
 			return "", errors.Wrap(err, "error constructing request object to result url")
