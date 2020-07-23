@@ -40,6 +40,7 @@ The process goes something like this:
 
 * One of the supported Identity Providers
   * ADFS (2.x or 3.x)
+  * [AzureAD](doc/provider/aad/README.md)
   * PingFederate + PingId
   * [Okta](pkg/provider/okta/README.md)
   * KeyCloak + (TOTP)
