@@ -551,7 +551,7 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 		duoTxStat := gjson.Get(resp, "stat").String()
 		duoTxID := gjson.Get(resp, "response.txid").String()
 		if duoTxStat != "OK" {
-			return "", errors.Wrap(err, "error authenticating mfa device")
+			return "", errors.New("error authenticating mfa device")
 		}
 
 		// get duo cookie
@@ -649,9 +649,16 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 		}
 
 		resp := string(body)
+
+		duoTxStat = gjson.Get(resp, "stat").String()
+		if duoTxStat != "OK" {
+			message := gjson.Get(resp, "message").String()
+			return "", errors.New(fmt.Sprintf("duoResultSubmit: %s %s", duoTxStat, message))
+		}
+
 		duoTxCookie := gjson.Get(resp, "response.cookie").String()
 		if duoTxCookie == "" {
-			return "", errors.Wrap(err, "duoResultSubmit: Unable to get response.cookie")
+			return "", errors.New("duoResultSubmit: Unable to get response.cookie")
 		}
 
 		// callback to okta with cookie
