@@ -201,7 +201,7 @@ func checkResponse(doc *goquery.Document) (AuthResponseType, string, error) {
 		if name == "AuthMethod" {
 			val, _ := s.Attr("value")
 			switch val {
-			case "VIPAuthenticationProviderWindowsAccountName":
+			case "VIPAuthenticationProviderWindowsAccountName", "VIPAuthenticationProviderUPN":
 				responseType = MFA_PROMPT
 			case "AzureMfaAuthentication":
 				responseType = AZURE_MFA_WAIT
