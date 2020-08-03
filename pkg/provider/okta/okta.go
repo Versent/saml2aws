@@ -653,7 +653,7 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 		duoTxStat = gjson.Get(resp, "stat").String()
 		if duoTxStat != "OK" {
 			message := gjson.Get(resp, "message").String()
-			return "", errors.New(fmt.Sprintf("duoResultSubmit: %s %s", duoTxStat, message))
+			return "", fmt.Errorf("duoResultSubmit: %s %s", duoTxStat, message)
 		}
 
 		duoTxCookie := gjson.Get(resp, "response.cookie").String()
