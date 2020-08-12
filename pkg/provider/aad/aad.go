@@ -1,6 +1,7 @@
 package aad
 
 import (
+	"bytes"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
@@ -846,6 +847,8 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		// <script><![CDATA[  $Config=......; ]]>
 		resBody, _ = ioutil.ReadAll(res.Body)
 		resBodyStr = string(resBody)
+		// reset res.Body so it can be read again later if required
+		res.Body = ioutil.NopCloser(bytes.NewBuffer(resBody))
 
 		// After performing MFA we may be prompted with KMSI (Keep Me Signed In) page
 		// Ref: https://docs.microsoft.com/ja-jp/azure/active-directory/fundamentals/keep-me-signed-in
