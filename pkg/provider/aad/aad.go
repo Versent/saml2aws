@@ -847,34 +847,35 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		resBody, _ = ioutil.ReadAll(res.Body)
 		resBodyStr = string(resBody)
 
-		var ProcessAuthJson string
+		// After performing MFA we may be prompted with KMSI (Keep Me Signed In) page
+		// Ref: https://docs.microsoft.com/ja-jp/azure/active-directory/fundamentals/keep-me-signed-in
 		if strings.Contains(resBodyStr, "$Config") {
 			startIndex := strings.Index(resBodyStr, "$Config=") + 8
 			endIndex := startIndex + strings.Index(resBodyStr[startIndex:], ";")
-			ProcessAuthJson = resBodyStr[startIndex:endIndex]
-		}
-		var processAuthResp processAuthResponse
-		if err := json.Unmarshal([]byte(ProcessAuthJson), &processAuthResp); err != nil {
-			return samlAssertion, errors.Wrap(err, "ProcessAuth response unmarshal error")
-		}
+			ProcessAuthJson := resBodyStr[startIndex:endIndex]
 
-		// After performing MFA we'll always be prompted with KMSI (Keep Me Signed In) page
-		KmsiURL := res.Request.URL.Scheme + "://" + res.Request.URL.Host + processAuthResp.URLPost
-		KmsiValues := url.Values{}
-		KmsiValues.Set("flowToken", processAuthResp.SFT)
-		KmsiValues.Set("ctx", processAuthResp.SCtx)
-		KmsiValues.Set("LoginOptions", "1")
-		KmsiRequest, err := http.NewRequest("POST", KmsiURL, strings.NewReader(KmsiValues.Encode()))
-		if err != nil {
-			return samlAssertion, errors.Wrap(err, "error retrieving kmsi results")
+			var processAuthResp processAuthResponse
+			if err := json.Unmarshal([]byte(ProcessAuthJson), &processAuthResp); err != nil {
+				return samlAssertion, errors.Wrap(err, "ProcessAuth response unmarshal error")
+			}
+
+			KmsiURL := res.Request.URL.Scheme + "://" + res.Request.URL.Host + processAuthResp.URLPost
+			KmsiValues := url.Values{}
+			KmsiValues.Set("flowToken", processAuthResp.SFT)
+			KmsiValues.Set("ctx", processAuthResp.SCtx)
+			KmsiValues.Set("LoginOptions", "1")
+			KmsiRequest, err := http.NewRequest("POST", KmsiURL, strings.NewReader(KmsiValues.Encode()))
+			if err != nil {
+				return samlAssertion, errors.Wrap(err, "error retrieving kmsi results")
+			}
+			KmsiRequest.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+			ac.client.DisableFollowRedirect()
+			res, err = ac.client.Do(KmsiRequest)
+			if err != nil {
+				return samlAssertion, errors.Wrap(err, "error retrieving kmsi results")
+			}
+			ac.client.EnableFollowRedirect()
 		}
-		KmsiRequest.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-		ac.client.DisableFollowRedirect()
-		res, err = ac.client.Do(KmsiRequest)
-		if err != nil {
-			return samlAssertion, errors.Wrap(err, "error retrieving kmsi results")
-		}
-		ac.client.EnableFollowRedirect()
 	} else {
 		// There was no explicit link to skip MFA
 		// and there were no MFA options available for us to process

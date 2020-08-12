@@ -38,6 +38,7 @@ func TestClient_getLoginForm(t *testing.T) {
 		"UserName":   []string{"test"},
 		"Password":   []string{"test123"},
 		"AuthMethod": []string{"FormsAuthentication"},
+		"Kmsi":       []string{"true"},
 	}, authForm)
 }
 
