@@ -480,8 +480,6 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 
 		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 
-		//submitReq := req
-
 		res, err = oc.client.Do(req)
 		if err != nil {
 			return "", errors.Wrap(err, "error retrieving verify response")
