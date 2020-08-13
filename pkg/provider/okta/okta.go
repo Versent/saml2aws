@@ -1003,11 +1003,11 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 			}
 			defer res.Body.Close()
 
-		}
+			doc, err = goquery.NewDocumentFromResponse(res)
+			if err != nil {
+				return "", errors.Wrap(err, "error parsing document")
+			}
 
-		doc, err = goquery.NewDocumentFromResponse(res)
-		if err != nil {
-			return "", errors.Wrap(err, "error parsing document")
 		}
 
 		duoSID, ok := doc.Find("input[name=\"sid\"]").Attr("value")
