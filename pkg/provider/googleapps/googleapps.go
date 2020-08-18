@@ -153,6 +153,20 @@ func (kc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		}
 	}
 
+	tfaWithDisabledBeingRequested := responseDoc.Find("form[data-unavailable]")
+	if tfaWithDisabledBeingRequested != nil && tfaWithDisabledBeingRequested.Length() > 0 {
+		logger.Debug("select challenges")
+		challengeForm, challengeURL, err := extractInputsByFormQuery(responseDoc, "[data-challengeentry]")
+		if err != nil {
+			return "", errors.Wrap(err, "error parsing select challenges page")
+		}
+
+		responseDoc, err = kc.loadChallengePage(challengeURL+"?hl=en&loc=US", challengeURL, challengeForm, loginDetails)
+		if err != nil {
+			return "", errors.Wrap(err, "error loading challenge page")
+		}
+	}
+
 	samlAssertion := mustFindInputByName(responseDoc, "SAMLResponse")
 	if samlAssertion == "" {
 		return "", errors.New("page is missing saml assertion")
