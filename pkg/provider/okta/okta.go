@@ -582,7 +582,10 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 
 		duoTxResult := gjson.Get(resp, "response.result").String()
 		duoResultURL := gjson.Get(resp, "response.result_url").String()
-		duoSID = gjson.Get(resp, "response.sid").String()
+		newSID := gjson.Get(resp, "response.sid").String()
+		if newSID != "" {
+			duoSID = newSID
+		}
 
 		log.Println(gjson.Get(resp, "response.status").String())
 
@@ -612,7 +615,10 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 
 				duoTxResult = gjson.Get(resp, "response.result").String()
 				duoResultURL = gjson.Get(resp, "response.result_url").String()
-				duoSID = gjson.Get(resp, "response.sid").String()
+				newSID = gjson.Get(resp, "response.sid").String()
+				if newSID != "" {
+					duoSID = newSID
+				}
 
 				log.Println(gjson.Get(resp, "response.status").String())
 
