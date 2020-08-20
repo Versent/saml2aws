@@ -101,6 +101,15 @@ func (kc *Client) getLoginForm(loginDetails *creds.LoginDetails) (string, url.Va
 		return "", nil, errors.Wrap(err, "failed to build document from response")
 	}
 
+	if res.StatusCode == http.StatusUnauthorized {
+		authSubmitURL, err := extractSubmitURL(doc)
+		if err != nil {
+			return "", nil, errors.Wrap(err, "unable to locate IDP authentication form submit URL")
+		}
+		loginDetails.URL = authSubmitURL
+		return kc.getLoginForm(loginDetails)
+	}
+
 	authForm := url.Values{}
 
 	doc.Find("input").Each(func(i int, s *goquery.Selection) {

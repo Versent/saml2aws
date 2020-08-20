@@ -45,6 +45,41 @@ func TestClient_getLoginForm(t *testing.T) {
 	}, authForm)
 }
 
+func TestClient_getLoginFormRedirect(t *testing.T) {
+
+	redirectData, err := ioutil.ReadFile("example/redirect.html")
+	require.Nil(t, err)
+
+	data, err := ioutil.ReadFile("example/loginpage.html")
+	require.Nil(t, err)
+
+	count := 0
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if count > 0 {
+			w.Write(data)
+		} else {
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Write(bytes.Replace(redirectData, []byte(exampleLoginURL), []byte("http://" + r.Host), 1))
+		}
+		count += 1
+	}))
+	defer ts.Close()
+
+	opts := &provider.HTTPClientOptions{IsWithRetries: false}
+	kc := Client{client: &provider.HTTPClient{Client: http.Client{}, Options: opts}}
+	loginDetails := &creds.LoginDetails{URL: ts.URL, Username: "test", Password: "test123"}
+
+	submitURL, authForm, err := kc.getLoginForm(loginDetails)
+	require.Nil(t, err)
+	require.Equal(t, 2, count)
+	require.Equal(t, exampleLoginURL, submitURL)
+	require.Equal(t, url.Values{
+		"username": []string{"test"},
+		"password": []string{"test123"},
+		"login":    []string{"Log in"},
+	}, authForm)
+}
+
 func TestClient_postLoginForm(t *testing.T) {
 
 	data, err := ioutil.ReadFile("example/mfapage.html")
