@@ -59,7 +59,7 @@ func TestClient_getLoginFormRedirect(t *testing.T) {
 			w.Write(data)
 		} else {
 			w.WriteHeader(http.StatusUnauthorized)
-			w.Write(bytes.Replace(redirectData, []byte(exampleLoginURL), []byte("http://" + r.Host), 1))
+			w.Write(bytes.Replace(redirectData, []byte(exampleLoginURL), []byte("http://"+r.Host), 1))
 		}
 		count += 1
 	}))
