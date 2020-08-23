@@ -15,10 +15,10 @@ import (
 	"github.com/PuerkitoBio/goquery"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"github.com/versent/saml2aws/pkg/cfg"
-	"github.com/versent/saml2aws/pkg/creds"
-	"github.com/versent/saml2aws/pkg/prompter"
-	"github.com/versent/saml2aws/pkg/provider"
+	"github.com/versent/saml2aws/v2/pkg/cfg"
+	"github.com/versent/saml2aws/v2/pkg/creds"
+	"github.com/versent/saml2aws/v2/pkg/prompter"
+	"github.com/versent/saml2aws/v2/pkg/provider"
 )
 
 var logger = logrus.WithField("provider", "googleapps")
@@ -391,9 +391,7 @@ func (kc *Client) loadChallengePage(submitURL string, referer string, authForm u
 		case strings.Contains(secondActionURL, "challenge/sk/"): // handle u2f challenge
 			facetComponents, err := url.Parse(secondActionURL)
 			if err != nil {
-				if err != nil {
-					return nil, errors.Wrap(err, "unable to parse action URL for U2F challenge")
-				}
+				return nil, errors.Wrap(err, "unable to parse action URL for U2F challenge")
 			}
 			facet := facetComponents.Scheme + "://" + facetComponents.Host
 			challengeNonce := responseForm.Get("id-challenge")
@@ -696,7 +694,6 @@ func extractKeyHandles(doc *goquery.Document, challengeTxt string) (string, []st
 			lastIdx := strings.LastIndex(val, "}")
 			obj := []byte(val[firstIdx : lastIdx+1])
 			json.Unmarshal(obj, &result)
-
 			// Key handles
 			for _, val := range result {
 				list, ok := val.([]interface{})
