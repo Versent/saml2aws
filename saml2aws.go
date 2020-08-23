@@ -2,8 +2,9 @@ package saml2aws
 
 import (
 	"fmt"
-	"github.com/versent/saml2aws/pkg/provider/netiq"
 	"sort"
+
+	"github.com/versent/saml2aws/pkg/provider/netiq"
 
 	"github.com/versent/saml2aws/pkg/cfg"
 	"github.com/versent/saml2aws/pkg/creds"
@@ -34,7 +35,7 @@ var MFAsByProvider = ProviderList{
 	"ADFS2":         []string{"Auto", "RSA"}, // nothing automatic about ADFS 2.x
 	"Ping":          []string{"Auto"},        // automatically detects PingID
 	"PingOne":       []string{"Auto"},        // automatically detects PingID
-	"JumpCloud":     []string{"Auto"},
+	"JumpCloud":     []string{"Auto", "DUO", "TOTP"},
 	"Okta":          []string{"Auto", "PUSH", "DUO", "SMS", "TOTP", "OKTA", "FIDO", "YUBICO TOKEN:HARDWARE"}, // automatically detects DUO, SMS, ToTP, and FIDO
 	"OneLogin":      []string{"Auto", "OLP", "SMS", "TOTP", "YUBIKEY"},                                       // automatically detects OneLogin Protect, SMS and ToTP
 	"KeyCloak":      []string{"Auto"},                                                                        // automatically detects ToTP
