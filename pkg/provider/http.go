@@ -13,9 +13,9 @@ import (
 	"github.com/avast/retry-go"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"github.com/versent/saml2aws/pkg/cfg"
-	"github.com/versent/saml2aws/pkg/cookiejar"
-	"github.com/versent/saml2aws/pkg/dump"
+	"github.com/versent/saml2aws/v2/pkg/cfg"
+	"github.com/versent/saml2aws/v2/pkg/cookiejar"
+	"github.com/versent/saml2aws/v2/pkg/dump"
 	"golang.org/x/net/publicsuffix"
 )
 
