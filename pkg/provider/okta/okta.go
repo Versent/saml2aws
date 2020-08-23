@@ -551,7 +551,7 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 		duoTxStat := gjson.Get(resp, "stat").String()
 		duoTxID := gjson.Get(resp, "response.txid").String()
 		if duoTxStat != "OK" {
-			return "", errors.Wrap(err, "error authenticating mfa device")
+			return "", errors.New("error authenticating mfa device")
 		}
 
 		// get duo cookie
@@ -582,6 +582,10 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 
 		duoTxResult := gjson.Get(resp, "response.result").String()
 		duoResultURL := gjson.Get(resp, "response.result_url").String()
+		newSID := gjson.Get(resp, "response.sid").String()
+		if newSID != "" {
+			duoSID = newSID
+		}
 
 		log.Println(gjson.Get(resp, "response.status").String())
 
@@ -611,6 +615,10 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 
 				duoTxResult = gjson.Get(resp, "response.result").String()
 				duoResultURL = gjson.Get(resp, "response.result_url").String()
+				newSID = gjson.Get(resp, "response.sid").String()
+				if newSID != "" {
+					duoSID = newSID
+				}
 
 				log.Println(gjson.Get(resp, "response.status").String())
 
@@ -625,6 +633,10 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 		}
 
 		duoRequestURL := fmt.Sprintf("https://%s%s", duoHost, duoResultURL)
+
+		duoForm = url.Values{}
+		duoForm.Add("sid", duoSID)
+
 		req, err = http.NewRequest("POST", duoRequestURL, strings.NewReader(duoForm.Encode()))
 		if err != nil {
 			return "", errors.Wrap(err, "error constructing request object to result url")
@@ -643,9 +655,16 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 		}
 
 		resp := string(body)
+
+		duoTxStat = gjson.Get(resp, "stat").String()
+		if duoTxStat != "OK" {
+			message := gjson.Get(resp, "message").String()
+			return "", fmt.Errorf("duoResultSubmit: %s %s", duoTxStat, message)
+		}
+
 		duoTxCookie := gjson.Get(resp, "response.cookie").String()
 		if duoTxCookie == "" {
-			return "", errors.Wrap(err, "duoResultSubmit: Unable to get response.cookie")
+			return "", errors.New("duoResultSubmit: Unable to get response.cookie")
 		}
 
 		// callback to okta with cookie
