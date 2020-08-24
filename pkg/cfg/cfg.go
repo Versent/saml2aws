@@ -30,7 +30,6 @@ const (
 
 // IDPAccount saml IDP account
 type IDPAccount struct {
-	AppID                string `ini:"app_id"` // used by OneLogin and AzureAD
 	URL                  string `ini:"url"`
 	Username             string `ini:"username"`
 	Provider             string `ini:"provider"`
@@ -40,8 +39,6 @@ type IDPAccount struct {
 	AmazonWebservicesURN string `ini:"aws_urn"`
 	SessionDuration      int    `ini:"aws_session_duration"`
 	Profile              string `ini:"aws_profile"`
-	ResourceID           string `ini:"resource_id"` // used by F5APM
-	Subdomain            string `ini:"subdomain"`   // used by OneLogin
 	RoleARN              string `ini:"role_arn"`
 	Region               string `ini:"region"`
 	HttpAttemptsCount    string `ini:"http_attempts_count"`
@@ -51,17 +48,6 @@ type IDPAccount struct {
 func (ia IDPAccount) String() string {
 	var appID string
 	var policyID string
-	switch ia.Provider {
-	case "OneLogin":
-		appID = fmt.Sprintf(`
-  AppID: %s
-  Subdomain: %s`, ia.AppID, ia.Subdomain)
-	case "F5APM":
-		policyID = fmt.Sprintf("\n  ResourceID: %s", ia.ResourceID)
-	case "AzureAD":
-		appID = fmt.Sprintf(`
-  AppID: %s`, ia.AppID)
-	}
 
 	return fmt.Sprintf(`account {%s%s
   URL: %s
@@ -79,24 +65,6 @@ func (ia IDPAccount) String() string {
 
 // Validate validate the required / expected fields are set
 func (ia *IDPAccount) Validate() error {
-	switch ia.Provider {
-	case "OneLogin":
-		if ia.AppID == "" {
-			return errors.New("app ID empty in idp account")
-		}
-		if ia.Subdomain == "" {
-			return errors.New("subdomain empty in idp account")
-		}
-	case "F5APM":
-		if ia.ResourceID == "" {
-			return errors.New("Resource ID empty in idp account")
-		}
-	case "AzureAD":
-		if ia.AppID == "" {
-			return errors.New("app ID empty in idp account")
-		}
-	}
-
 	if ia.URL == "" {
 		return errors.New("URL empty in idp account")
 	}
