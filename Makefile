@@ -1,4 +1,4 @@
-NAME=saml2aws
+NAME=gossamer3
 ARCH=$(shell uname -m)
 VERSION=2.27.0
 ITERATION := 1
@@ -46,7 +46,7 @@ fmt:
 	find . -name '*.go' -not -wholename './vendor/*' | while read -r file; do gofmt -w -s "$$file"; goimports -w "$$file"; done
 
 install:
-	go install ./cmd/saml2aws
+	go install ./cmd/gossamer3
 
 dist:
 	$(eval FILES := $(shell ls build))
@@ -58,7 +58,7 @@ dist:
 	done
 
 release:
-	@$(BIN_DIR)/github-release "v$(VERSION)" dist/* --commit "$(git rev-parse HEAD)" --github-repository versent/$(NAME)
+	@$(BIN_DIR)/github-release "v$(VERSION)" dist/* --commit "$(git rev-parse HEAD)" --github-repository GESkunkworks/$(NAME)
 
 test:
 	@$(BIN_DIR)/gocov test $(SOURCE_FILES) | $(BIN_DIR)/gocov report
@@ -69,7 +69,7 @@ clean:
 packages:
 	rm -rf package && mkdir package
 	rm -rf stage && mkdir -p stage/usr/bin
-	cp build/saml2aws_*_linux_amd64/saml2aws stage/usr/bin
+	cp build/gossamer3_*_linux_amd64/gossamer3 stage/usr/bin
 	fpm --name $(NAME) -a x86_64 -t rpm -s dir --version $(VERSION) --iteration $(ITERATION) -C stage -p package/$(NAME)-$(VERSION)_$(ITERATION).rpm usr
 	fpm --name $(NAME) -a x86_64 -t deb -s dir --version $(VERSION) --iteration $(ITERATION) -C stage -p package/$(NAME)-$(VERSION)_$(ITERATION).deb usr
 	shasum -a 512 package/$(NAME)-$(VERSION)_$(ITERATION).rpm > package/$(NAME)-$(VERSION)_$(ITERATION).rpm.sha512

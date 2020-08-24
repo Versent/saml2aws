@@ -3,8 +3,8 @@ package flags
 import (
 	"testing"
 
+	"github.com/GESkunkworks/gossamer3/pkg/cfg"
 	"github.com/stretchr/testify/assert"
-	"github.com/versent/saml2aws/v2/pkg/cfg"
 )
 
 func TestOverrideAllFlags(t *testing.T) {

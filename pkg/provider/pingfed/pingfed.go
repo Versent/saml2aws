@@ -7,17 +7,18 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
+	"github.com/GESkunkworks/gossamer3/pkg/cfg"
+	"github.com/GESkunkworks/gossamer3/pkg/creds"
+	"github.com/GESkunkworks/gossamer3/pkg/page"
+	"github.com/GESkunkworks/gossamer3/pkg/prompter"
+	"github.com/GESkunkworks/gossamer3/pkg/provider"
 	"github.com/PuerkitoBio/goquery"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/tidwall/gjson"
-	"github.com/versent/saml2aws/v2/pkg/cfg"
-	"github.com/versent/saml2aws/v2/pkg/creds"
-	"github.com/versent/saml2aws/v2/pkg/page"
-	"github.com/versent/saml2aws/v2/pkg/prompter"
-	"github.com/versent/saml2aws/v2/pkg/provider"
 )
 
 var logger = logrus.WithField("provider", "pingfed")
@@ -27,6 +28,9 @@ type Client struct {
 	client     *provider.HTTPClient
 	idpAccount *cfg.IDPAccount
 }
+
+var cookies = []*http.Cookie{}
+var resp *http.Response
 
 // New create a new PingFed client
 func New(idpAccount *cfg.IDPAccount) (*Client, error) {
@@ -52,8 +56,8 @@ type ctxKey string
 
 // Authenticate Authenticate to PingFed and return the data from the body of the SAML assertion.
 func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error) {
-	u := fmt.Sprintf("%s/idp/startSSO.ping?PartnerSpId=%s", loginDetails.URL, ac.idpAccount.AmazonWebservicesURN)
-	req, err := http.NewRequest("GET", u, nil)
+	url := fmt.Sprintf("%s/idp/startSSO.ping?PartnerSpId=%s", loginDetails.URL, ac.idpAccount.AmazonWebservicesURN)
+	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return "", errors.Wrap(err, "error building request")
 	}
@@ -63,6 +67,7 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 
 func (ac *Client) follow(ctx context.Context, req *http.Request) (string, error) {
 	res, err := ac.client.Do(req)
+	resp = res
 	if err != nil {
 		return "", errors.Wrap(err, "error following")
 	}
@@ -70,6 +75,10 @@ func (ac *Client) follow(ctx context.Context, req *http.Request) (string, error)
 	if err != nil {
 		return "", errors.Wrap(err, "failed to build document from response")
 	}
+
+	html, _ := doc.Html()
+	logger.Debugf("Headers: %+v", res.Header)
+	logger.Debugf("Body: %+v", html)
 
 	var handler func(context.Context, *goquery.Document) (context.Context, *http.Request, error)
 
@@ -92,12 +101,21 @@ func (ac *Client) follow(ctx context.Context, req *http.Request) (string, error)
 	} else if docIsFormSamlResponse(doc) {
 		logger.WithField("type", "saml-response").Debug("doc detect")
 		handler = ac.handleFormRedirect
+	} else if docIsPreLogin(doc) {
+		logger.WithField("type", "pre-login").Debug("doc detect")
+		handler = ac.handlePreLogin
 	} else if docIsLogin(doc) {
 		logger.WithField("type", "login").Debug("doc detect")
 		handler = ac.handleLogin
+	} else if docIsSiteMinderLogin(doc) {
+		logger.WithField("type", "siteminder-login").Debug("doc detect")
+		handler = ac.handleSiteMinderLogin
 	} else if docIsOTP(doc) {
 		logger.WithField("type", "otp").Debug("doc detect")
 		handler = ac.handleOTP
+	} else if docIsMfaSpinner(doc) {
+		logger.WithField("type", "mfa-spinner").Debug("doc detect")
+		handler = ac.handleMfaSpinner
 	} else if docIsSwipe(doc) {
 		logger.WithField("type", "swipe").Debug("doc detect")
 		handler = ac.handleSwipe
@@ -118,7 +136,46 @@ func (ac *Client) follow(ctx context.Context, req *http.Request) (string, error)
 	if err != nil {
 		return "", err
 	}
+
+	for _, cookie := range res.Cookies() {
+		found := false
+		for i, item := range cookies {
+			if item.Name == cookie.Name {
+				found = true
+				cookies[i] = cookie
+				break
+			}
+		}
+
+		if !found {
+			cookies = append(cookies, cookie)
+		}
+	}
+
+	for _, cookie := range cookies {
+		req.AddCookie(cookie)
+		logger.Debugf("Cookie: %s=%s", cookie.Name, cookie.Value)
+	}
+
 	return ac.follow(ctx, req)
+}
+
+func (ac *Client) handlePreLogin(ctx context.Context, doc *goquery.Document) (context.Context, *http.Request, error) {
+	loginDetails, ok := ctx.Value(ctxKey("login")).(*creds.LoginDetails)
+	if !ok {
+		return ctx, nil, fmt.Errorf("no context value for 'login'")
+	}
+
+	form, err := page.NewFormFromDocument(doc, "form")
+	if err != nil {
+		return ctx, nil, errors.Wrap(err, "error extracting login form")
+	}
+
+	form.Values.Set("subject", loginDetails.Username)
+	form.URL = makeAbsoluteURL(form.URL, loginDetails.URL)
+
+	req, err := form.BuildRequest()
+	return ctx, req, err
 }
 
 func (ac *Client) handleLogin(ctx context.Context, doc *goquery.Document) (context.Context, *http.Request, error) {
@@ -140,6 +197,27 @@ func (ac *Client) handleLogin(ctx context.Context, doc *goquery.Document) (conte
 	return ctx, req, err
 }
 
+func (ac *Client) handleSiteMinderLogin(ctx context.Context, doc *goquery.Document) (context.Context, *http.Request, error) {
+	loginDetails, ok := ctx.Value(ctxKey("login")).(*creds.LoginDetails)
+	if !ok {
+		return ctx, nil, fmt.Errorf("no context value for 'login'")
+	}
+
+	form, err := page.NewFormFromDocument(doc, "form#signon")
+	if err != nil {
+		return ctx, nil, errors.Wrap(err, "error extracting login form")
+	}
+
+	token := prompter.StringRequired("Enter PIN + Token Code / Passcode")
+
+	form.Values.Set("username", loginDetails.Username)
+	form.Values.Set("PASSWORD", token)
+	form.URL = resp.Request.URL.String()
+
+	req, err := form.BuildRequest()
+	return ctx, req, err
+}
+
 func (ac *Client) handleOTP(ctx context.Context, doc *goquery.Document) (context.Context, *http.Request, error) {
 	form, err := page.NewFormFromDocument(doc, "#otp-form")
 	if err != nil {
@@ -148,6 +226,34 @@ func (ac *Client) handleOTP(ctx context.Context, doc *goquery.Document) (context
 
 	token := prompter.StringRequired("Enter passcode")
 	form.Values.Set("otp", token)
+
+	// Add CSRF token from cookie
+	for _, cookie := range cookies {
+		if cookie.Name == ".csrf" {
+			form.Values.Set("csrfToken", cookie.Value)
+			break
+		}
+	}
+
+	req, err := form.BuildRequest()
+	return ctx, req, err
+}
+
+func (ac *Client) handleMfaSpinner(ctx context.Context, doc *goquery.Document) (context.Context, *http.Request, error) {
+	loginDetails, ok := ctx.Value(ctxKey("login")).(*creds.LoginDetails)
+	if !ok {
+		return ctx, nil, fmt.Errorf("no context value for 'login'")
+	}
+
+	form, err := page.NewFormFromDocument(doc, "#loginForm")
+	if err != nil {
+		return ctx, nil, errors.Wrap(err, "error extracting swipe status form")
+	}
+
+	form.URL = makeAbsoluteURL(form.URL, loginDetails.URL)
+
+	time.Sleep(500 * time.Millisecond)
+
 	req, err := form.BuildRequest()
 	return ctx, req, err
 }
@@ -220,8 +326,20 @@ func (ac *Client) handleWebAuthn(ctx context.Context, doc *goquery.Document) (co
 	return ctx, req, err
 }
 
+func docIsPreLogin(doc *goquery.Document) bool {
+	return doc.Has("input[name=\"subject\"]").Size() == 1
+}
+
 func docIsLogin(doc *goquery.Document) bool {
 	return doc.Has("input[name=\"pf.pass\"]").Size() == 1
+}
+
+func docIsSiteMinderLogin(doc *goquery.Document) bool {
+	return doc.Has("div#loginFrm").Size() == 1
+}
+
+func docIsMfaSpinner(doc *goquery.Document) bool {
+	return doc.Has("div#mfa-ui-spinner").Size() == 1
 }
 
 func docIsOTP(doc *goquery.Document) bool {
@@ -253,7 +371,8 @@ func docIsFormResume(doc *goquery.Document) bool {
 }
 
 func docIsFormRedirectToAWS(doc *goquery.Document) bool {
-	return doc.Find("form[action=\"https://signin.aws.amazon.com/saml\"]").Size() == 1
+	return doc.Find("form[action=\"https://signin.aws.amazon.com/saml\"]").Size() == 1 ||
+		doc.Find("form[action=\"https://signin.amazonaws-us-gov.com/saml\"]").Size() == 1
 }
 
 func extractSAMLResponse(doc *goquery.Document) (v string, ok bool) {
@@ -263,7 +382,17 @@ func extractSAMLResponse(doc *goquery.Document) (v string, ok bool) {
 // ensures given url is an absolute URL. if not, it will be combined with the base URL
 func makeAbsoluteURL(v string, base string) string {
 	if u, err := url.ParseRequestURI(v); err == nil && !u.IsAbs() {
-		return fmt.Sprintf("%s%s", base, v)
+		baseUri, err := url.Parse(base)
+		if err != nil {
+			panic(err)
+		}
+
+		if strings.HasPrefix(v, baseUri.Path) {
+			baseUri.Path = v
+			return baseUri.String()
+		} else {
+			return fmt.Sprintf("%s%s", base, v)
+		}
 	}
 	return v
 }

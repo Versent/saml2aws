@@ -26,8 +26,8 @@ import (
 	"bytes"
 	"strings"
 
+	"github.com/GESkunkworks/gossamer3/helper/credentials"
 	winc "github.com/danieljoos/wincred"
-	"github.com/versent/saml2aws/v2/helper/credentials"
 )
 
 // Wincred handles secrets using the Windows credential service.

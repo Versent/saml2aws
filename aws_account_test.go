@@ -1,4 +1,4 @@
-package saml2aws
+package gossamer3
 
 import (
 	"io/ioutil"

@@ -1,14 +1,11 @@
 package flags
 
 import (
-	"github.com/versent/saml2aws/v2/pkg/cfg"
+	"github.com/GESkunkworks/gossamer3/pkg/cfg"
 )
 
-// CommonFlags flags common to all of the `saml2aws` commands (except `help`)
+// CommonFlags flags common to all of the `gossamer3` commands (except `help`)
 type CommonFlags struct {
-	AppID                string
-	ClientID             string
-	ClientSecret         string
 	ConfigFile           string
 	IdpAccount           string
 	IdpProvider          string
@@ -16,25 +13,21 @@ type CommonFlags struct {
 	MFAToken             string
 	URL                  string
 	Username             string
-	Password             string
 	RoleArn              string
 	AmazonWebservicesURN string
 	SessionDuration      int
 	SkipPrompt           bool
 	SkipVerify           bool
 	Profile              string
-	Subdomain            string
-	ResourceID           string
 	DisableKeychain      bool
 	Region               string
 }
 
 // LoginExecFlags flags for the Login / Exec commands
 type LoginExecFlags struct {
-	CommonFlags  *CommonFlags
-	Force        bool
-	DuoMFAOption string
-	ExecProfile  string
+	CommonFlags *CommonFlags
+	Force       bool
+	ExecProfile string
 }
 
 type ConsoleFlags struct {
@@ -44,10 +37,6 @@ type ConsoleFlags struct {
 
 // ApplyFlagOverrides overrides IDPAccount with command line settings
 func ApplyFlagOverrides(commonFlags *CommonFlags, account *cfg.IDPAccount) {
-	if commonFlags.AppID != "" {
-		account.AppID = commonFlags.AppID
-	}
-
 	if commonFlags.URL != "" {
 		account.URL = commonFlags.URL
 	}
@@ -80,15 +69,8 @@ func ApplyFlagOverrides(commonFlags *CommonFlags, account *cfg.IDPAccount) {
 		account.Profile = commonFlags.Profile
 	}
 
-	if commonFlags.Subdomain != "" {
-		account.Subdomain = commonFlags.Subdomain
-	}
-
 	if commonFlags.RoleArn != "" {
 		account.RoleARN = commonFlags.RoleArn
-	}
-	if commonFlags.ResourceID != "" {
-		account.ResourceID = commonFlags.ResourceID
 	}
 	if commonFlags.Region != "" {
 		account.Region = commonFlags.Region

@@ -1,9 +1,7 @@
 package credentials
 
 import (
-	"path"
-
-	"github.com/versent/saml2aws/v2/pkg/creds"
+	"github.com/GESkunkworks/gossamer3/pkg/creds"
 )
 
 // LookupCredentials lookup an existing set of credentials and validate it.
@@ -16,15 +14,6 @@ func LookupCredentials(loginDetails *creds.LoginDetails, provider string) error 
 
 	loginDetails.Username = username
 	loginDetails.Password = password
-
-	if provider == "OneLogin" {
-		id, secret, err := CurrentHelper.Get(path.Join(loginDetails.URL, "/auth/oauth2/v2/token"))
-		if err != nil {
-			return err
-		}
-		loginDetails.ClientID = id
-		loginDetails.ClientSecret = secret
-	}
 	return nil
 }
 

@@ -4,14 +4,10 @@ import "errors"
 
 // LoginDetails used to authenticate
 type LoginDetails struct {
-	ClientID     string // used by OneLogin
-	ClientSecret string // used by OneLogin
-	Username     string
-	Password     string
-	MFAToken     string
-	DuoMFAOption string
-	URL          string
-	StateToken   string // used by Okta
+	Username string
+	Password string
+	MFAToken string
+	URL      string
 }
 
 // Validate validate the login details

@@ -6,9 +6,9 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/GESkunkworks/gossamer3/pkg/provider"
 	"github.com/PuerkitoBio/goquery"
 	"github.com/pkg/errors"
-	"github.com/versent/saml2aws/v2/pkg/provider"
 )
 
 type Form struct {
@@ -52,9 +52,9 @@ func NewFormFromDocument(doc *goquery.Document, formFilter string) (*Form, error
 	}
 
 	attrValue, ok := formSelection.Attr("action")
-	if !ok {
-		return nil, fmt.Errorf("could not extract form action")
-	}
+	//if !ok {
+	//	return nil, fmt.Errorf("could not extract form action")
+	//}
 	form.URL = attrValue
 
 	attrValue, ok = formSelection.Attr("method")

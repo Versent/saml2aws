@@ -1,14 +1,14 @@
-package saml2aws
+package gossamer3
 
 import (
 	"fmt"
 	"log"
 	"sort"
 
+	"github.com/GESkunkworks/gossamer3/pkg/cfg"
+	"github.com/GESkunkworks/gossamer3/pkg/creds"
+	"github.com/GESkunkworks/gossamer3/pkg/prompter"
 	"github.com/pkg/errors"
-	"github.com/versent/saml2aws/v2/pkg/cfg"
-	"github.com/versent/saml2aws/v2/pkg/creds"
-	"github.com/versent/saml2aws/v2/pkg/prompter"
 )
 
 // PromptForConfigurationDetails prompt the user to present their hostname, username and mfa
@@ -41,19 +41,6 @@ func PromptForConfigurationDetails(idpAccount *cfg.IDPAccount) error {
 	idpAccount.URL = prompter.String("URL", idpAccount.URL)
 	idpAccount.Username = prompter.String("Username", idpAccount.Username)
 
-	switch idpAccount.Provider {
-	case "OneLogin":
-		idpAccount.AppID = prompter.String("App ID", idpAccount.AppID)
-		log.Println("")
-		idpAccount.Subdomain = prompter.String("Subdomain", idpAccount.Subdomain)
-		log.Println("")
-	case "F5APM":
-		idpAccount.ResourceID = prompter.String("Resource ID", idpAccount.ResourceID)
-	case "AzureAD":
-		idpAccount.AppID = prompter.String("App ID", idpAccount.AppID)
-		log.Println("")
-	}
-
 	return nil
 }
 
@@ -68,20 +55,6 @@ func PromptForLoginDetails(loginDetails *creds.LoginDetails, provider string) er
 		loginDetails.Password = enteredPassword
 	}
 	log.Println("")
-	if provider == "OneLogin" {
-		if loginDetails.ClientID == "" {
-			if enteredClientID := prompter.Password("Client ID"); enteredClientID != "" {
-				loginDetails.ClientID = enteredClientID
-			}
-			log.Println("")
-		}
-		if loginDetails.ClientSecret == "" {
-			if enteredCientSecret := prompter.Password("Client Secret"); enteredCientSecret != "" {
-				loginDetails.ClientSecret = enteredCientSecret
-			}
-			log.Println("")
-		}
-	}
 
 	return nil
 }

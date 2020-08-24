@@ -2,7 +2,7 @@ language: go
 go:
     - "1.14"
 
-go_import_path: github.com/versent/saml2aws
+go_import_path: github.com/GESkunkworks/gossamer3
 
 install:
     - echo noop

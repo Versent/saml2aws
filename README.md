@@ -1,4 +1,4 @@
-# saml2aws [![Build Status](https://travis-ci.org/Versent/saml2aws.svg?branch=master)](https://travis-ci.org/Versent/saml2aws) [![Build status - Windows](https://ci.appveyor.com/api/projects/status/ptpi18kci16o4i82/branch/master?svg=true)](https://ci.appveyor.com/project/davidobrien1985/saml2aws/branch/master)
+# gossamer3 [![Build Status](https://travis-ci.org/GESkunkworks/gossamer3.svg?branch=master)](https://travis-ci.org/GESkunkworks/gossamer3) [![Build status - Windows](https://ci.appveyor.com/api/projects/status/ptpi18kci16o4i82/branch/master?svg=true)](https://ci.appveyor.com/project/davidobrien1985/gossamer3/branch/master)
 
 CLI tool which enables you to login and retrieve [AWS](https://aws.amazon.com/) temporary credentials using 
 with [ADFS](https://msdn.microsoft.com/en-us/library/bb897402.aspx) or [PingFederate](https://www.pingidentity.com/en/products/pingfederate.html) Identity Providers.
@@ -26,7 +26,7 @@ The process goes something like this:
     - [Linux](#linux)
 - [Dependency Setup](#dependency-setup)
 - [Usage](#usage)
-    - [`saml2aws script`](#saml2aws-script)
+    - [`gossamer3 script`](#gossamer3-script)
     - [Configuring IDP Accounts](#configuring-idp-accounts)
 - [Example](#example)
 - [Advanced Configuration](#advanced-configuration)
@@ -63,20 +63,20 @@ Aside from Okta, most of the providers in this project are using screen scraping
 
 ### OSX
 
-If you're on OSX you can install saml2aws using homebrew!
+If you're on OSX you can install gossamer3 using homebrew!
 
 ```
-brew tap versent/homebrew-taps
-brew install saml2aws
+brew tap geskunkworks/homebrew-taps
+brew install gossamer3
 ```
 
 ### Windows
 
-If you're on Windows you can install saml2aws using chocolatey!
+If you're on Windows you can install gossamer3 using chocolatey!
 
 ```
-choco install saml2aws
-saml2aws --version
+choco install gossamer3
+gossamer3 --version
 ```
 
 ### Linux
@@ -85,20 +85,20 @@ While brew is available for Linux you can also run the following without using a
 
 ```
 $ CURRENT_VERSION=2.26.1
-$ wget https://github.com/Versent/saml2aws/releases/download/v${CURRENT_VERSION}/saml2aws_${CURRENT_VERSION}_linux_amd64.tar.gz
-$ tar -xzvf saml2aws_${CURRENT_VERSION}_linux_amd64.tar.gz -C ~/.local/bin
-$ chmod u+x ~/.local/bin/saml2aws
+$ wget https://github.com/GESkunkworks/gossamer3/releases/download/v${CURRENT_VERSION}/gossamer3_${CURRENT_VERSION}_linux_amd64.tar.gz
+$ tar -xzvf gossamer3_${CURRENT_VERSION}_linux_amd64.tar.gz -C ~/.local/bin
+$ chmod u+x ~/.local/bin/gossamer3
 ```
-**Note**: You will need to logout of your current user session or force a bash reload for `saml2aws` to be useable after following the above steps.
+**Note**: You will need to logout of your current user session or force a bash reload for `gossamer3` to be useable after following the above steps.
 
 e.g. `exec -l bash`
 
 #### [Void Linux](https://voidlinux.org/)
 
-If you are on Void Linux you can use xbps to install the saml2aws package!
+If you are on Void Linux you can use xbps to install the gossamer3 package!
 
 ```
-xbps-install saml2aws
+xbps-install gossamer3
 ```
 
 ## Dependency Setup
@@ -112,7 +112,7 @@ brew install awscli
 ## Usage
 
 ```
-usage: saml2aws [<flags>] <command> [<args> ...]
+usage: gossamer3 [<flags>] <command> [<args> ...]
 
 A command line tool to help with SAML access to the AWS token service.
 
@@ -120,23 +120,23 @@ Flags:
       --help                   Show context-sensitive help (also try --help-long and --help-man).
       --version                Show application version.
       --verbose                Enable verbose logging
-  -i, --provider=PROVIDER      This flag is obsolete. See: https://github.com/Versent/saml2aws#configuring-idp-accounts
-  -a, --idp-account="default"  The name of the configured IDP account. (env: SAML2AWS_IDP_ACCOUNT)
+  -i, --provider=PROVIDER      This flag is obsolete. See: https://github.com/GESkunkworks/gossamer3#configuring-idp-accounts
+  -a, --idp-account="default"  The name of the configured IDP account. (env: GOSSAMER3_IDP_ACCOUNT)
       --idp-provider=IDP-PROVIDER
-                               The configured IDP provider. (env: SAML2AWS_IDP_PROVIDER)
-      --mfa=MFA                The name of the mfa. (env: SAML2AWS_MFA)
-  -s, --skip-verify            Skip verification of server certificate. (env: SAML2AWS_SKIP_VERIFY)
-      --url=URL                The URL of the SAML IDP server used to login. (env: SAML2AWS_URL)
-      --username=USERNAME      The username used to login. (env: SAML2AWS_USERNAME)
-      --password=PASSWORD      The password used to login. (env: SAML2AWS_PASSWORD)
-      --mfa-token=MFA-TOKEN    The current MFA token (supported in Keycloak, ADFS, GoogleApps). (env: SAML2AWS_MFA_TOKEN)
-      --role=ROLE              The ARN of the role to assume. (env: SAML2AWS_ROLE)
-      --aws-urn=AWS-URN        The URN used by SAML when you login. (env: SAML2AWS_AWS_URN)
+                               The configured IDP provider. (env: GOSSAMER3_IDP_PROVIDER)
+      --mfa=MFA                The name of the mfa. (env: GOSSAMER3_MFA)
+  -s, --skip-verify            Skip verification of server certificate. (env: GOSSAMER3_SKIP_VERIFY)
+      --url=URL                The URL of the SAML IDP server used to login. (env: GOSSAMER3_URL)
+      --username=USERNAME      The username used to login. (env: GOSSAMER3_USERNAME)
+      --password=PASSWORD      The password used to login. (env: GOSSAMER3_PASSWORD)
+      --mfa-token=MFA-TOKEN    The current MFA token (supported in Keycloak, ADFS, GoogleApps). (env: GOSSAMER3_MFA_TOKEN)
+      --role=ROLE              The ARN of the role to assume. (env: GOSSAMER3_ROLE)
+      --aws-urn=AWS-URN        The URN used by SAML when you login. (env: GOSSAMER3_AWS_URN)
       --skip-prompt            Skip prompting for parameters during login.
       --session-duration=SESSION-DURATION
-                               The duration of your AWS Session. (env: SAML2AWS_SESSION_DURATION)
+                               The duration of your AWS Session. (env: GOSSAMER3_SESSION_DURATION)
       --disable-keychain       Do not use keychain at all.
-  -r, --region=REGION          AWS region to use for API requests, e.g. us-east-1, us-gov-west-1, cn-north-1 (env: SAML2AWS_REGION)
+  -r, --region=REGION          AWS region to use for API requests, e.g. us-east-1, us-gov-west-1, cn-north-1 (env: GOSSAMER3_REGION)
 
 Commands:
   help [<command>...]
@@ -151,14 +151,14 @@ Commands:
         --client-secret=CLIENT-SECRET
                                    OneLogin client secret, used to generate API access token. (env: ONELOGIN_CLIENT_SECRET)
         --subdomain=SUBDOMAIN      OneLogin subdomain of your company account. (env: ONELOGIN_SUBDOMAIN)
-    -p, --profile=PROFILE          The AWS profile to save the temporary credentials. (env: SAML2AWS_PROFILE)
-        --resource-id=RESOURCE-ID  F5APM SAML resource ID of your company account. (env: SAML2AWS_F5APM_RESOURCE_ID)
-        --config=CONFIG            Path/filename of saml2aws config file (env: SAML2AWS_CONFIGFILE)
+    -p, --profile=PROFILE          The AWS profile to save the temporary credentials. (env: GOSSAMER3_PROFILE)
+        --resource-id=RESOURCE-ID  F5APM SAML resource ID of your company account. (env: GOSSAMER3_F5APM_RESOURCE_ID)
+        --config=CONFIG            Path/filename of gossamer3 config file (env: GOSSAMER3_CONFIGFILE)
 
   login [<flags>]
     Login to a SAML 2.0 IDP and convert the SAML assertion to an STS token.
 
-    -p, --profile=PROFILE      The AWS profile to save the temporary credentials. (env: SAML2AWS_PROFILE)
+    -p, --profile=PROFILE      The AWS profile to save the temporary credentials. (env: GOSSAMER3_PROFILE)
         --duo-mfa-option=DUO-MFA-OPTION
                                The MFA option you want to use to authenticate with
         --client-id=CLIENT-ID  OneLogin client id, used to generate API access token. (env: ONELOGIN_CLIENT_ID)
@@ -169,16 +169,16 @@ Commands:
   exec [<flags>] [<command>...]
     Exec the supplied command with env vars from STS token.
 
-    -p, --profile=PROFILE  The AWS profile to save the temporary credentials. (env: SAML2AWS_PROFILE)
+    -p, --profile=PROFILE  The AWS profile to save the temporary credentials. (env: GOSSAMER3_PROFILE)
         --exec-profile=EXEC-PROFILE
-                           The AWS profile to utilize for command execution. Useful to allow the aws cli to perform secondary role assumption. (env: SAML2AWS_EXEC_PROFILE)
+                           The AWS profile to utilize for command execution. Useful to allow the aws cli to perform secondary role assumption. (env: GOSSAMER3_EXEC_PROFILE)
 
   console [<flags>]
     Console will open the aws console after logging in.
 
         --exec-profile=EXEC-PROFILE
-                           The AWS profile to utilize for console execution. (env: SAML2AWS_EXEC_PROFILE)
-    -p, --profile=PROFILE  The AWS profile to save the temporary credentials. (env: SAML2AWS_PROFILE)
+                           The AWS profile to utilize for console execution. (env: GOSSAMER3_EXEC_PROFILE)
+    -p, --profile=PROFILE  The AWS profile to save the temporary credentials. (env: GOSSAMER3_PROFILE)
         --force            Refresh credentials even if not expired.
 
   list-roles
@@ -188,43 +188,43 @@ Commands:
   script [<flags>]
     Emit a script that will export environment variables.
 
-    -p, --profile=PROFILE  The AWS profile to save the temporary credentials. (env: SAML2AWS_PROFILE)
+    -p, --profile=PROFILE  The AWS profile to save the temporary credentials. (env: GOSSAMER3_PROFILE)
         --shell=bash       Type of shell environment. Options include: bash, powershell, fish
 
 
 ```
 
 
-### `saml2aws script`
+### `gossamer3 script`
 
-If the `script` sub-command is called, `saml2aws` will output the following temporary security credentials:
+If the `script` sub-command is called, `gossamer3` will output the following temporary security credentials:
 ```
 export AWS_ACCESS_KEY_ID="ASIAI....UOCA"
 export AWS_SECRET_ACCESS_KEY="DuH...G1d"
 export AWS_SESSION_TOKEN="AQ...1BQ=="
 export AWS_SECURITY_TOKEN="AQ...1BQ=="
 export AWS_CREDENTIAL_EXPIRATION="2016-09-04T38:27:00Z00:00"
-SAML2AWS_PROFILE=saml
+GOSSAMER3_PROFILE=saml
 ```
 
 Powershell, and fish shells are supported as well.
 
-If you use `eval $(saml2aws script)` frequently, you may want to create a alias for it:
+If you use `eval $(gossamer3 script)` frequently, you may want to create a alias for it:
 
 zsh:
 ```
-alias s2a="function(){eval $( $(command saml2aws) script --shell=bash --profile=$@);}"
+alias s2a="function(){eval $( $(command gossamer3) script --shell=bash --profile=$@);}"
 ```
 
 bash:
 ```
-function s2a { eval $( $(which saml2aws) script --shell=bash --profile=$@); }
+function s2a { eval $( $(which gossamer3) script --shell=bash --profile=$@); }
 ```
 
-### `saml2aws exec`
+### `gossamer3 exec`
 
-If the `exec` sub-command is called, `saml2aws` will execute the command given as an argument:
-By default saml2aws will execute the command with temp credentials generated via `saml2aws login`.
+If the `exec` sub-command is called, `gossamer3` will execute the command given as an argument:
+By default gossamer3 will execute the command with temp credentials generated via `gossamer3 login`.
 
 The `--exec-profile` flag allows for a command to execute using an aws profile which may have chained
 "assume role" actions. (via 'source_profile' in ~/.aws/config)
@@ -238,10 +238,10 @@ options:
 
 This is the *new* way of adding IDP provider accounts, it enables you to have named accounts with whatever settings you like and supports having one *default* account which is used if you omit the account flag. This replaces the --provider flag and old configuration file in 1.x.
 
-To add a default IdP account to saml2aws just run the following command and follow the prompts.
+To add a default IdP account to gossamer3 just run the following command and follow the prompts.
 
 ```
-$ saml2aws configure
+$ gossamer3 configure
 ? Please choose a provider: Ping
 ? AWS Profile myaccount
 
@@ -269,30 +269,30 @@ Configuration saved for IDP account: default
 Then to login using this account.
 
 ```
-saml2aws login
+gossamer3 login
 ```
 
 You can also add named accounts, below is an example where I am setting up an account under the `wolfeidau` alias, again just follow the prompts.
 
 ```
-saml2aws configure -a wolfeidau
+gossamer3 configure -a wolfeidau
 ```
 
 You can also configure the account alias without prompts.
 
 ```
-saml2aws configure -a wolfeidau --idp-provider KeyCloak --username mark@wolfe.id.au -r cn-north-1  \
+gossamer3 configure -a wolfeidau --idp-provider KeyCloak --username mark@wolfe.id.au -r cn-north-1  \
   --url https://keycloak.wolfe.id.au/auth/realms/master/protocol/saml/clients/amazon-aws --skip-prompt
 ```
 
-Then your ready to use saml2aws.
+Then your ready to use gossamer3.
 
 ## Example
 
 Log into a service (without MFA).
 
 ```
-$ saml2aws login
+$ gossamer3 login
 Using IDP Account default to access Ping https://id.example.com
 To use saved password just hit enter.
 Username [mark.wolfe@example.com]:
@@ -312,7 +312,7 @@ To use this credential, call the AWS CLI with the --profile option (e.g. aws --p
 Log into a service (with MFA).
 
 ```
-$ saml2aws login
+$ gossamer3 login
 Using IDP Account default to access Ping https://id.example.com
 To use saved password just hit enter.
 Username [mark.wolfe@example.com]:
@@ -340,10 +340,10 @@ Configuring multiple accounts with custom role and profile in `~/.aws/config` wi
 To setup the dev account run the following and enter URL, username and password, and assign a standard role to be automatically selected on login.
 
 ```
-saml2aws configure -a customer-dev --role=arn:aws:iam::121234567890:role/customer-admin-role -p customer-dev
+gossamer3 configure -a customer-dev --role=arn:aws:iam::121234567890:role/customer-admin-role -p customer-dev
 ```
 
-This will result in the following configuration in `~/.saml2aws`.
+This will result in the following configuration in `~/.gossamer3`.
 
 ```
 [customer-dev]
@@ -367,10 +367,10 @@ To use this you will need to export `AWS_DEFAULT_PROFILE=customer-dev` environme
 To setup the test account run the following and enter URL, username and password.
 
 ```
-saml2aws configure -a customer-test --role=arn:aws:iam::121234567891:role/customer-admin-role -p customer-test
+gossamer3 configure -a customer-test --role=arn:aws:iam::121234567891:role/customer-admin-role -p customer-test
 ```
 
-This results in the following configuration in `~/.saml2aws`.
+This results in the following configuration in `~/.gossamer3`.
 
 ```
 [customer-test]
@@ -394,7 +394,7 @@ To use this you will need to export `AWS_DEFAULT_PROFILE=customer-test` environm
 Example:
 (Authenticate to my 'SSO' AWS account. With this setup, there is no need to authenticate again. We can now rely on IAM to assume role cross account)
 
-~/.aws/credentials: #(these are generated by `saml2aws login`. Sets up SAML authentication into my AWS 'SSO' account)
+~/.aws/credentials: #(these are generated by `gossamer3 login`. Sets up SAML authentication into my AWS 'SSO' account)
 ```
 [saml]
 aws_access_key_id        = AAAAAAAAAAAAAAAAB
@@ -421,9 +421,9 @@ source_profile=roleIn2ndAwsAccount
 role_arn=arn:aws:iam::123456789012:role/OtherRoleInAnyFederatedAccount
 ```
 
-Running saml2aws without --exec-profile flag:
+Running gossamer3 without --exec-profile flag:
 ```
-saml2aws exec aws sts get-caller-identity
+gossamer3 exec aws sts get-caller-identity
 {
     "UserId": "AROAYAROAYAROAYOO:myInitialAccount",
     "Account": "000000000123",
@@ -432,13 +432,13 @@ saml2aws exec aws sts get-caller-identity
 
 ```
 
-Running saml2aws with --exec-profile flag:
+Running gossamer3 with --exec-profile flag:
 
 When using '--exec-profile' I can assume-role into a different AWS account without re-authenticating. Note that it
 does not re-authenticate since we are already authenticated via the SSO account.
 
 ```
-saml2aws exec --exec-profile roleIn2ndAwsAccount aws sts get-caller-identity
+gossamer3 exec --exec-profile roleIn2ndAwsAccount aws sts get-caller-identity
 {
     "UserId": "YOOYOOYOOYOOYOOA:/myAccountName",
     "Account": "123456789012",
@@ -449,14 +449,14 @@ saml2aws exec --exec-profile roleIn2ndAwsAccount aws sts get-caller-identity
 As an example
 
 ```
-saml2aws login
+gossamer3 login
 
 aws s3 ls --profile saml
 
 An error occurred (AccessDenied) when calling the ListBuckets operation: Access Denied
 # This is denied in this example because there are no S3 buckets in the 'SSO' AWS account
 
-saml2aws exec --exec-profile roleIn2ndAwsAccount aws s3 ls  # Runs given CMD with environment configured from --exec-profile role
+gossamer3 exec --exec-profile roleIn2ndAwsAccount aws s3 ls  # Runs given CMD with environment configured from --exec-profile role
 
 # If we check env variables we see that our environment is configured with temporary credentials for our 'assumed role'
 env | grep AWS
@@ -471,7 +471,7 @@ AWS_CREDENTIAL_EXPIRATION=2016-09-04T38:27:00Z00:00
 
 # If we desire to execute multiple commands utilizing our assumed profile, we can obtain a new shell with Env variables configured for access
 
-saml2aws exec --exec-profile roleIn2ndAwsAccount $SHELL  # Get a new shell with AWS env vars configured for 'assumed role' account access
+gossamer3 exec --exec-profile roleIn2ndAwsAccount $SHELL  # Get a new shell with AWS env vars configured for 'assumed role' account access
 
 # We are now able to execute AWS cli commands with our assume role permissions
 
@@ -494,8 +494,8 @@ aws iam list-groups
 }
 ```
 ## Advanced Configuration - additional parameters
-There are few additional parameters allowing to customise saml2aws configuration.
-Use following parameters in `~/.saml2aws` file:
+There are few additional parameters allowing to customise gossamer3 configuration.
+Use following parameters in `~/.gossamer3` file:
 - `http_attempts_count` - configures the number of attempts to send http requests in order to authorise with saml provider. Defaults to 1
 - `http_retry_delay` - configures the duration (in seconds) of timeout between attempts to send http requests to saml provider. Defaults to 1
 - `region` - configures which region endpoints to use, See [Audience](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_providers_create_saml_assertions.html#saml_audience-restriction) and [partition](https://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html#arns-syntax)
@@ -504,7 +504,7 @@ Example: typical configuration with such parameters would look like follows:
 ```
 [default]
 url                     = https://id.customer.cloud
-username                = user@versent.com.au
+username                = user@example.com
 provider                = Ping
 mfa                     = Auto
 skip_verify             = false
@@ -519,7 +519,7 @@ region                  = us-east-1
 ```
 ## Building
 
-To build this software on osx clone to the repo to `$GOPATH/src/github.com/versent/saml2aws` and ensure you have `$GOPATH/bin` in your `$PATH`.
+To build this software on osx clone to the repo to `$GOPATH/src/github.com/GESkunkworks/gossamer3` and ensure you have `$GOPATH/bin` in your `$PATH`.
 
 ```
 make mod
@@ -587,13 +587,13 @@ make release
 There are two levels of debugging, first emits debug information and the URL / Method / Status line of requests.
 
 ```
-saml2aws login --verbose
+gossamer3 login --verbose
 ```
 
 The second emits the content of requests and responses, this includes authentication related information so don't copy and paste it into chat or tickets!
 
 ```
-DUMP_CONTENT=true saml2aws login --verbose
+DUMP_CONTENT=true gossamer3 login --verbose
 ```
 
 # License

@@ -1,4 +1,4 @@
-package saml2aws
+package gossamer3
 
 import (
 	"fmt"
@@ -8,11 +8,11 @@ import (
 )
 
 const (
-	assertionTag          = "Assertion"
-	attributeStatementTag = "AttributeStatement"
-	attributeTag          = "Attribute"
-	attributeValueTag     = "AttributeValue"
-	responseTag           = "Response"
+	assertionTag           = "Assertion"
+	attributeStatementTag  = "AttributeStatement"
+	attributeTag           = "Attribute"
+	attributeValueTag      = "AttributeValue"
+	subjectConfirmationTag = "SubjectConfirmationData"
 )
 
 //ErrMissingElement is the error type that indicates an element and/or attribute is
@@ -74,7 +74,7 @@ func ExtractSessionDuration(data []byte) (int64, error) {
 
 // ExtractDestinationURL will find the Destination URL to POST the SAML assertion to.
 // This is necessary to support AWS instances with custom endpoints such as GovCloud and AWS China without requiring
-// hardcoded endpoints on the saml2aws side.
+// hardcoded endpoints on the gossamer3 side.
 func ExtractDestinationURL(data []byte) (string, error) {
 
 	doc := etree.NewDocument()
@@ -82,14 +82,14 @@ func ExtractDestinationURL(data []byte) (string, error) {
 		return "", err
 	}
 
-	rootElement := doc.Root()
-	if rootElement == nil {
-		return "", ErrMissingElement{Tag: responseTag}
+	dataElement := doc.FindElement(".//" + subjectConfirmationTag)
+	if dataElement == nil {
+		return "", ErrMissingElement{Tag: subjectConfirmationTag}
 	}
 
-	destination := rootElement.SelectAttrValue("Destination","none")
+	destination := dataElement.SelectAttrValue("Recipient", "none")
 	if destination == "none" {
-		return "", ErrMissingElement{Tag: responseTag}
+		return "", ErrMissingElement{Tag: subjectConfirmationTag}
 	}
 
 	return destination, nil
@@ -127,8 +127,8 @@ func ExtractAwsRoles(data []byte) ([]string, error) {
 		if attribute.SelectAttrValue("Name", "") != "https://aws.amazon.com/SAML/Attributes/Role" {
 			continue
 		}
-		atributeValues := attribute.FindElements(childPath(assertionElement.Space, attributeValueTag))
-		for _, attrValue := range atributeValues {
+		attributeValues := attribute.FindElements(childPath(assertionElement.Space, attributeValueTag))
+		for _, attrValue := range attributeValues {
 			awsroles = append(awsroles, attrValue.Text())
 		}
 	}

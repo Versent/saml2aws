@@ -7,11 +7,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const throwAwayConfig = "example/saml2aws.test.ini"
+const throwAwayConfig = "example/gossamer3.test.ini"
 
 func TestNewConfigManagerNew(t *testing.T) {
 
-	cfgm, err := NewConfigManager("example/saml2aws.ini")
+	cfgm, err := NewConfigManager("example/gossamer3.ini")
 	require.Nil(t, err)
 
 	require.NotNil(t, cfgm)
@@ -19,7 +19,7 @@ func TestNewConfigManagerNew(t *testing.T) {
 
 func TestNewConfigManagerLoad(t *testing.T) {
 
-	cfgm, err := NewConfigManager("example/saml2aws.ini")
+	cfgm, err := NewConfigManager("example/gossamer3.ini")
 	require.Nil(t, err)
 
 	require.NotNil(t, cfgm)

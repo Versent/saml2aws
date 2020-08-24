@@ -3,18 +3,18 @@
 <!-- Do not remove this test for UTF-8: if “Ω” doesn’t appear as greek uppercase omega letter enclosed in quotation marks, you should use an editor that supports UTF-8, not this one. -->
 <package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
   <metadata>
-    <id>saml2aws</id>
+    <id>gossamer3</id>
     <version>$version$</version>
-    <packageSourceUrl>https://github.com/Versent/saml2aws</packageSourceUrl>
+    <packageSourceUrl>https://github.com/GESkunkworks/gossamer3</packageSourceUrl>
     <!-- owners is a poor name for maintainers of the package. It sticks around by this name for compatibility reasons. It basically means you. -->
-    <owners>Versent, https://github.com/Versent</owners>
-    <title>saml2aws (Install)</title>
+    <owners>GESkunkworks, https://github.com/GESkunkworks</owners>
+    <title>gossamer3 (Install)</title>
     <authors>Mark Wolfe, https://github.com/wolfeidau</authors>
-    <projectUrl>https://github.com/Versent/saml2aws</projectUrl>
-    <licenseUrl>https://github.com/versent/saml2aws/blob/master/LICENSE.md</licenseUrl>
+    <projectUrl>https://github.com/GESkunkworks/gossamer3</projectUrl>
+    <licenseUrl>https://github.com/GESkunkworks/gossamer3/blob/master/LICENSE.md</licenseUrl>
     <requireLicenseAcceptance>true</requireLicenseAcceptance>
-    <projectSourceUrl>https://github.com/Versent/saml2aws</projectSourceUrl>
-    <tags>saml2aws admin aws saml CLI</tags>
+    <projectSourceUrl>https://github.com/GESkunkworks/gossamer3</projectSourceUrl>
+    <tags>gossamer3 admin aws saml CLI</tags>
     <summary>CLI tool which enables you to login and retrieve AWS temporary credentials using a SAML IDP</summary>
     <description>CLI tool which enables you to login and retrieve Amazon Web Services / AWS temporary credentials using a SAML IDP</description>
   </metadata>

@@ -1,9 +1,9 @@
-package saml2aws
+package gossamer3
 
 import (
 	"testing"
 
-	"github.com/versent/saml2aws/v2/pkg/creds"
+	"github.com/GESkunkworks/gossamer3/pkg/creds"
 )
 
 func TestLoginDetails_Validate(t *testing.T) {

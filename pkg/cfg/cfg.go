@@ -13,8 +13,8 @@ import (
 var ErrIdpAccountNotFound = errors.New("IDP account not found, run configure to set it up")
 
 const (
-	// DefaultConfigPath the default saml2aws configuration path
-	DefaultConfigPath = "~/.saml2aws"
+	// DefaultConfigPath the default gossamer3 configuration path
+	DefaultConfigPath = "~/.gossamer3"
 
 	// DefaultAmazonWebservicesURN URN used when authenticating to aws using SAML
 	// NOTE: This only needs to be changed to log into GovCloud

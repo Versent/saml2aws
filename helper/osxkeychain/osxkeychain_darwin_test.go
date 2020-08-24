@@ -25,7 +25,7 @@ package osxkeychain
 import (
 	"testing"
 
-	"github.com/versent/saml2aws/v2/helper/credentials"
+	"github.com/GESkunkworks/gossamer3/helper/credentials"
 )
 
 func TestOSXKeychainHelper(t *testing.T) {

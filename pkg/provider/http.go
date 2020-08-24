@@ -6,20 +6,19 @@ import (
 	"log"
 	"net"
 	"net/http"
-	"runtime"
 	"strconv"
 	"time"
 
+	"github.com/GESkunkworks/gossamer3/pkg/cfg"
+	"github.com/GESkunkworks/gossamer3/pkg/cookiejar"
+	"github.com/GESkunkworks/gossamer3/pkg/dump"
 	"github.com/avast/retry-go"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"github.com/versent/saml2aws/v2/pkg/cfg"
-	"github.com/versent/saml2aws/v2/pkg/cookiejar"
-	"github.com/versent/saml2aws/v2/pkg/dump"
 	"golang.org/x/net/publicsuffix"
 )
 
-// HTTPClient saml2aws http client which extends the existing client
+// HTTPClient gossamer3 http client which extends the existing client
 type HTTPClient struct {
 	http.Client
 	CheckResponseStatus func(*http.Request, *http.Response) error
@@ -93,7 +92,7 @@ func NewHTTPClient(tr http.RoundTripper, opts *HTTPClientOptions) (*HTTPClient, 
 // Do do the request
 func (hc *HTTPClient) Do(req *http.Request) (*http.Response, error) {
 
-	req.Header.Set("User-Agent", fmt.Sprintf("saml2aws/1.0 (%s %s) Versent", runtime.GOOS, runtime.GOARCH))
+	//req.Header.Set("User-Agent", fmt.Sprintf("gossamer3/1.0 (%s %s)", runtime.GOOS, runtime.GOARCH))
 
 	var resp *http.Response
 	var err error
