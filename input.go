@@ -109,3 +109,17 @@ func PromptForAWSRoleSelection(accounts []*AWSAccount) (*AWSRole, error) {
 
 	return roles[selectedRole], nil
 }
+
+// AllRoles returns an array of all eligible aws roles
+func AllRoles(accounts []*AWSAccount) []*AWSRole {
+
+	roles := []*AWSRole{}
+
+	for _, account := range accounts {
+		for _, role := range account.Roles {
+			roles = append(roles, role)
+		}
+	}
+
+	return roles
+}

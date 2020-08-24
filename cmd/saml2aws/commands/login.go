@@ -4,6 +4,7 @@ import (
 	b64 "encoding/base64"
 	"log"
 	"os"
+	"strconv"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -21,6 +22,7 @@ import (
 // Login login to ADFS
 func Login(loginFlags *flags.LoginExecFlags) error {
 
+	fetchAllCredentials := loginFlags.All
 	logger := logrus.WithField("command", "login")
 
 	account, err := buildIdpAccount(loginFlags)
@@ -42,7 +44,7 @@ func Login(loginFlags *flags.LoginExecFlags) error {
 		return nil
 	}
 
-	if !sharedCreds.Expired() && !loginFlags.Force {
+	if !sharedCreds.Expired() && !loginFlags.Force && !fetchAllCredentials {
 		log.Println("credentials are not expired skipping")
 		return nil
 	}
@@ -87,19 +89,33 @@ func Login(loginFlags *flags.LoginExecFlags) error {
 		}
 	}
 
-	role, err := selectAwsRole(samlAssertion, account)
+	roles, err := selectAwsRole(samlAssertion, account, fetchAllCredentials)
 	if err != nil {
 		return errors.Wrap(err, "Failed to assume role, please check whether you are permitted to assume the given role for the AWS service")
 	}
 
-	log.Println("Selected role:", role.RoleARN)
-
-	awsCreds, err := loginToStsUsingRole(account, role, samlAssertion)
-	if err != nil {
-		return errors.Wrap(err, "error logging into aws role using saml assertion")
+	log.Println("Selected roles: ")
+	for _, role := range roles {
+		log.Print(role.Name + " ")
 	}
+	log.Println("")
 
-	return saveCredentials(awsCreds, sharedCreds)
+	for i, role := range roles {
+		awsCreds, err := loginToStsUsingRole(account, role, samlAssertion)
+		if err != nil {
+			return errors.Wrap(err, "error logging into aws role using saml assertion")
+		}
+
+		if i > 0 {
+			updatedProfile := account.Profile + "_" + strconv.Itoa(i)
+			sharedCreds = awsconfig.NewSharedCredentials(updatedProfile)
+		}
+		err = saveCredentials(awsCreds, sharedCreds)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func buildIdpAccount(loginFlags *flags.LoginExecFlags) (*cfg.IDPAccount, error) {
@@ -179,7 +195,7 @@ func resolveLoginDetails(account *cfg.IDPAccount, loginFlags *flags.LoginExecFla
 	return loginDetails, nil
 }
 
-func selectAwsRole(samlAssertion string, account *cfg.IDPAccount) (*saml2aws.AWSRole, error) {
+func selectAwsRole(samlAssertion string, account *cfg.IDPAccount, all bool) ([]*saml2aws.AWSRole, error) {
 	data, err := b64.StdEncoding.DecodeString(samlAssertion)
 	if err != nil {
 		return nil, errors.Wrap(err, "error decoding saml assertion")
@@ -201,17 +217,18 @@ func selectAwsRole(samlAssertion string, account *cfg.IDPAccount) (*saml2aws.AWS
 		return nil, errors.Wrap(err, "error parsing aws roles")
 	}
 
-	return resolveRole(awsRoles, samlAssertion, account)
+	return resolveRole(awsRoles, samlAssertion, account, all)
 }
 
-func resolveRole(awsRoles []*saml2aws.AWSRole, samlAssertion string, account *cfg.IDPAccount) (*saml2aws.AWSRole, error) {
-	var role = new(saml2aws.AWSRole)
-
+func resolveRole(awsRoles []*saml2aws.AWSRole, samlAssertion string, account *cfg.IDPAccount, all bool) ([]*saml2aws.AWSRole, error) {
+	roles := []*saml2aws.AWSRole{}
 	if len(awsRoles) == 1 {
 		if account.RoleARN != "" {
-			return saml2aws.LocateRole(awsRoles, account.RoleARN)
+			role, err := saml2aws.LocateRole(awsRoles, account.RoleARN)
+			roles = append(roles, role)
+			return roles, err
 		}
-		return awsRoles[0], nil
+		return awsRoles, nil
 	} else if len(awsRoles) == 0 {
 		return nil, errors.New("no roles available")
 	}
@@ -237,18 +254,26 @@ func resolveRole(awsRoles []*saml2aws.AWSRole, samlAssertion string, account *cf
 	saml2aws.AssignPrincipals(awsRoles, awsAccounts)
 
 	if account.RoleARN != "" {
-		return saml2aws.LocateRole(awsRoles, account.RoleARN)
+		role, err := saml2aws.LocateRole(awsRoles, account.RoleARN)
+		roles = append(roles, role)
+		return roles, err
 	}
 
-	for {
-		role, err = saml2aws.PromptForAWSRoleSelection(awsAccounts)
-		if err == nil {
-			break
+	if all == true {
+		roles = saml2aws.AllRoles(awsAccounts)
+		return roles, nil
+	} else {
+		var role = new(saml2aws.AWSRole)
+		for {
+			role, err = saml2aws.PromptForAWSRoleSelection(awsAccounts)
+			if err == nil {
+				break
+			}
+			log.Println("error selecting role, try again")
 		}
-		log.Println("error selecting role, try again")
+		roles = append(roles, role)
+		return roles, nil
 	}
-
-	return role, nil
 }
 
 func loginToStsUsingRole(account *cfg.IDPAccount, role *saml2aws.AWSRole, samlAssertion string) (*awsconfig.AWSCredentials, error) {

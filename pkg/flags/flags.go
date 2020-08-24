@@ -33,6 +33,7 @@ type CommonFlags struct {
 type LoginExecFlags struct {
 	CommonFlags  *CommonFlags
 	Force        bool
+	All          bool
 	DuoMFAOption string
 	ExecProfile  string
 }
