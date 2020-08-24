@@ -11,10 +11,10 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/pkg/errors"
-	"github.com/versent/saml2aws/pkg/cfg"
-	"github.com/versent/saml2aws/pkg/creds"
-	"github.com/versent/saml2aws/pkg/prompter"
-	"github.com/versent/saml2aws/pkg/provider"
+	"github.com/versent/saml2aws/v2/pkg/cfg"
+	"github.com/versent/saml2aws/v2/pkg/creds"
+	"github.com/versent/saml2aws/v2/pkg/prompter"
+	"github.com/versent/saml2aws/v2/pkg/provider"
 )
 
 // Client wrapper around KeyCloak.
@@ -99,6 +99,15 @@ func (kc *Client) getLoginForm(loginDetails *creds.LoginDetails) (string, url.Va
 	doc, err := goquery.NewDocumentFromResponse(res)
 	if err != nil {
 		return "", nil, errors.Wrap(err, "failed to build document from response")
+	}
+
+	if res.StatusCode == http.StatusUnauthorized {
+		authSubmitURL, err := extractSubmitURL(doc)
+		if err != nil {
+			return "", nil, errors.Wrap(err, "unable to locate IDP authentication form submit URL")
+		}
+		loginDetails.URL = authSubmitURL
+		return kc.getLoginForm(loginDetails)
 	}
 
 	authForm := url.Values{}

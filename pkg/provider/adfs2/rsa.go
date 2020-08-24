@@ -10,9 +10,9 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/pkg/errors"
-	"github.com/versent/saml2aws/pkg/creds"
-	"github.com/versent/saml2aws/pkg/dump"
-	"github.com/versent/saml2aws/pkg/prompter"
+	"github.com/versent/saml2aws/v2/pkg/creds"
+	"github.com/versent/saml2aws/v2/pkg/dump"
+	"github.com/versent/saml2aws/v2/pkg/prompter"
 )
 
 // Authenticate authenticate the user using the supplied login details
@@ -29,6 +29,9 @@ func (ac *Client) authenticateRsa(loginDetails *creds.LoginDetails) (string, err
 	}
 
 	passcodeForm, passcodeActionURL, err := extractFormData(doc)
+	if err != nil {
+		return "", errors.Wrap(err, "error extractign login data")
+	}
 
 	/**
 	 * RSAv2 requires an additional POST to establish a context
@@ -119,12 +122,12 @@ func (ac *Client) getLoginForm(loginDetails *creds.LoginDetails) (string, url.Va
 
 	doc, err := goquery.NewDocumentFromResponse(res)
 	authForm, authSubmitURL, err := extractFormData(doc)
-	authForm.Set("UserName", loginDetails.Username)
-	authForm.Set("Password", loginDetails.Password)
-
 	if err != nil {
 		return "", nil, errors.Wrap(err, "error extracting login data")
 	}
+
+	authForm.Set("UserName", loginDetails.Username)
+	authForm.Set("Password", loginDetails.Password)
 
 	return authSubmitURL, authForm, nil
 }

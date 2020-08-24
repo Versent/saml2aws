@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"html"
 	"io/ioutil"
@@ -14,18 +15,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sirupsen/logrus"
-	"github.com/versent/saml2aws/pkg/prompter"
-
-	"encoding/json"
-
 	"github.com/PuerkitoBio/goquery"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 	"github.com/tidwall/gjson"
-	"github.com/versent/saml2aws/pkg/cfg"
-	"github.com/versent/saml2aws/pkg/creds"
-	"github.com/versent/saml2aws/pkg/page"
-	"github.com/versent/saml2aws/pkg/provider"
+	"github.com/versent/saml2aws/v2/pkg/cfg"
+	"github.com/versent/saml2aws/v2/pkg/creds"
+	"github.com/versent/saml2aws/v2/pkg/page"
+	"github.com/versent/saml2aws/v2/pkg/prompter"
+	"github.com/versent/saml2aws/v2/pkg/provider"
 )
 
 const (
@@ -551,7 +549,7 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 		duoTxStat := gjson.Get(resp, "stat").String()
 		duoTxID := gjson.Get(resp, "response.txid").String()
 		if duoTxStat != "OK" {
-			return "", errors.Wrap(err, "error authenticating mfa device")
+			return "", errors.New("error authenticating mfa device")
 		}
 
 		// get duo cookie
@@ -582,6 +580,10 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 
 		duoTxResult := gjson.Get(resp, "response.result").String()
 		duoResultURL := gjson.Get(resp, "response.result_url").String()
+		newSID := gjson.Get(resp, "response.sid").String()
+		if newSID != "" {
+			duoSID = newSID
+		}
 
 		log.Println(gjson.Get(resp, "response.status").String())
 
@@ -611,6 +613,10 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 
 				duoTxResult = gjson.Get(resp, "response.result").String()
 				duoResultURL = gjson.Get(resp, "response.result_url").String()
+				newSID = gjson.Get(resp, "response.sid").String()
+				if newSID != "" {
+					duoSID = newSID
+				}
 
 				log.Println(gjson.Get(resp, "response.status").String())
 
@@ -625,6 +631,10 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 		}
 
 		duoRequestURL := fmt.Sprintf("https://%s%s", duoHost, duoResultURL)
+
+		duoForm = url.Values{}
+		duoForm.Add("sid", duoSID)
+
 		req, err = http.NewRequest("POST", duoRequestURL, strings.NewReader(duoForm.Encode()))
 		if err != nil {
 			return "", errors.Wrap(err, "error constructing request object to result url")
@@ -643,9 +653,16 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 		}
 
 		resp := string(body)
+
+		duoTxStat = gjson.Get(resp, "stat").String()
+		if duoTxStat != "OK" {
+			message := gjson.Get(resp, "message").String()
+			return "", fmt.Errorf("duoResultSubmit: %s %s", duoTxStat, message)
+		}
+
 		duoTxCookie := gjson.Get(resp, "response.cookie").String()
 		if duoTxCookie == "" {
-			return "", errors.Wrap(err, "duoResultSubmit: Unable to get response.cookie")
+			return "", errors.New("duoResultSubmit: Unable to get response.cookie")
 		}
 
 		// callback to okta with cookie
