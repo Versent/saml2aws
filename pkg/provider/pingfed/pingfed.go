@@ -107,6 +107,12 @@ func (ac *Client) follow(ctx context.Context, req *http.Request) (string, error)
 	} else if docIsLogin(doc) {
 		logger.WithField("type", "login").Debug("doc detect")
 		handler = ac.handleLogin
+	} else if docIsToken(doc) {
+		logger.WithField("type", "token").Debug("doc detect")
+		handler = ac.handleToken
+	} else if docIsChallenge(doc) {
+		logger.WithField("type", "confirm-token").Debug("doc detect")
+		handler = ac.handleChallenge
 	} else if docIsSiteMinderLogin(doc) {
 		logger.WithField("type", "siteminder-login").Debug("doc detect")
 		handler = ac.handleSiteMinderLogin
@@ -125,6 +131,11 @@ func (ac *Client) follow(ctx context.Context, req *http.Request) (string, error)
 	} else if docIsWebAuthn(doc) {
 		logger.WithField("type", "webauthn").Debug("doc detect")
 		handler = ac.handleWebAuthn
+	} else if docIsError(doc) {
+		logger.WithField("type", "error").Debug("doc detect")
+		pingError := strings.TrimSpace(doc.Find("div.ping-error").Text())
+		errorDetails := strings.TrimSpace(doc.Find("div#error-details-div").Text())
+		return "", fmt.Errorf("%s\n%s", pingError, errorDetails)
 	}
 	if handler == nil {
 		html, _ := doc.Selection.Html()
@@ -191,6 +202,47 @@ func (ac *Client) handleLogin(ctx context.Context, doc *goquery.Document) (conte
 
 	form.Values.Set("pf.username", loginDetails.Username)
 	form.Values.Set("pf.pass", loginDetails.Password)
+	form.URL = makeAbsoluteURL(form.URL, loginDetails.URL)
+
+	req, err := form.BuildRequest()
+	return ctx, req, err
+}
+
+func (ac *Client) handleToken(ctx context.Context, doc *goquery.Document) (context.Context, *http.Request, error) {
+	loginDetails, ok := ctx.Value(ctxKey("login")).(*creds.LoginDetails)
+	if !ok {
+		return ctx, nil, fmt.Errorf("no context value for 'login'")
+	}
+
+	form, err := page.NewFormFromDocument(doc, "form")
+	if err != nil {
+		return ctx, nil, errors.Wrap(err, "error extracting login form")
+	}
+
+	token := prompter.StringRequired("Enter Token Code")
+
+	form.Values.Set("pf.pass", token)
+	form.URL = makeAbsoluteURL(form.URL, loginDetails.URL)
+
+	req, err := form.BuildRequest()
+	return ctx, req, err
+}
+
+func (ac *Client) handleChallenge(ctx context.Context, doc *goquery.Document) (context.Context, *http.Request, error) {
+	loginDetails, ok := ctx.Value(ctxKey("login")).(*creds.LoginDetails)
+	if !ok {
+		return ctx, nil, fmt.Errorf("no context value for 'login'")
+	}
+
+	form, err := page.NewFormFromDocument(doc, "form")
+	if err != nil {
+		return ctx, nil, errors.Wrap(err, "error extracting login form")
+	}
+
+	token := prompter.StringRequired("Enter Next Token Code")
+
+	form.Values.Set("pf.challengeResponse", token)
+	form.Values.Set("pf.ok", "clicked")
 	form.URL = makeAbsoluteURL(form.URL, loginDetails.URL)
 
 	req, err := form.BuildRequest()
@@ -326,12 +378,26 @@ func (ac *Client) handleWebAuthn(ctx context.Context, doc *goquery.Document) (co
 	return ctx, req, err
 }
 
+func docIsError(doc *goquery.Document) bool {
+	return doc.Has("div.ping-error").Size() == 1 && doc.Has("div#error-details-div").Size() == 1
+}
+
 func docIsPreLogin(doc *goquery.Document) bool {
 	return doc.Has("input[name=\"subject\"]").Size() == 1
 }
 
 func docIsLogin(doc *goquery.Document) bool {
-	return doc.Has("input[name=\"pf.pass\"]").Size() == 1
+	return doc.Has("#login-password-field").Size() == 1 &&
+		doc.Has("input[name=\"pf.pass\"]").Size() == 1
+}
+
+func docIsToken(doc *goquery.Document) bool {
+	return doc.Has("#login-password-field").Size() == 0 &&
+		doc.Has("input[name=\"pf.pass\"]").Size() == 1
+}
+
+func docIsChallenge(doc *goquery.Document) bool {
+	return doc.Has("input[name=\"pf.challengeResponse\"]").Size() == 1
 }
 
 func docIsSiteMinderLogin(doc *goquery.Document) bool {
