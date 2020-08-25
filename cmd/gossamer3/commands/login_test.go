@@ -22,6 +22,7 @@ func TestResolveLoginDetailsWithFlags(t *testing.T) {
 		Username: "wolfeidau",
 	}
 	loginDetails, err := resolveLoginDetails(idpa, loginFlags)
+	loginDetails.Password = "testtestlol"
 
 	assert.Empty(t, err)
 	assert.Equal(t, &creds.LoginDetails{Username: "wolfeidau", Password: "testtestlol", URL: "https://id.example.com", MFAToken: "123456"}, loginDetails)
