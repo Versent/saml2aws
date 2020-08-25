@@ -1,7 +1,7 @@
-# gossamer3 [![Build Status](https://travis-ci.org/GESkunkworks/gossamer3.svg?branch=master)](https://travis-ci.org/GESkunkworks/gossamer3) [![Build status - Windows](https://ci.appveyor.com/api/projects/status/ptpi18kci16o4i82/branch/master?svg=true)](https://ci.appveyor.com/project/davidobrien1985/gossamer3/branch/master)
+# gossamer3 [![Build Status](https://travis-ci.org/GESkunkworks/gossamer3.svg?branch=master)](https://travis-ci.org/GESkunkworks/gossamer3)
 
 CLI tool which enables you to login and retrieve [AWS](https://aws.amazon.com/) temporary credentials using 
-with [ADFS](https://msdn.microsoft.com/en-us/library/bb897402.aspx) or [PingFederate](https://www.pingidentity.com/en/products/pingfederate.html) Identity Providers.
+with [PingFederate](https://www.pingidentity.com/en/products/pingfederate.html) Identity Providers.
 
 This is based on python code from [
 How to Implement a General Solution for Federated API/CLI Access Using SAML 2.0](https://blogs.aws.amazon.com/security/post/TxU0AVUS9J00FP/How-to-Implement-a-General-Solution-for-Federated-API-CLI-Access-Using-SAML-2-0).
@@ -39,17 +39,7 @@ The process goes something like this:
 ## Requirements
 
 * One of the supported Identity Providers
-  * ADFS (2.x or 3.x)
-  * [AzureAD](doc/provider/aad/README.md)
   * PingFederate + PingId
-  * [Okta](pkg/provider/okta/README.md)
-  * KeyCloak + (TOTP)
-  * [Google Apps](pkg/provider/googleapps/README.md)
-  * [Shibboleth](pkg/provider/shibboleth/README.md)
-  * [F5APM](pkg/provider/f5apm/README.md)
-  * [Akamai](pkg/provider/akamai/README.md)
-  * OneLogin
-  * NetIQ
 * AWS SAML Provider configured
 
 ## Caveats
@@ -146,24 +136,13 @@ Commands:
   configure [<flags>]
     Configure a new IDP account.
 
-        --app-id=APP-ID            OneLogin app id required for SAML assertion. (env: ONELOGIN_APP_ID)
-        --client-id=CLIENT-ID      OneLogin client id, used to generate API access token. (env: ONELOGIN_CLIENT_ID)
-        --client-secret=CLIENT-SECRET
-                                   OneLogin client secret, used to generate API access token. (env: ONELOGIN_CLIENT_SECRET)
-        --subdomain=SUBDOMAIN      OneLogin subdomain of your company account. (env: ONELOGIN_SUBDOMAIN)
     -p, --profile=PROFILE          The AWS profile to save the temporary credentials. (env: GOSSAMER3_PROFILE)
-        --resource-id=RESOURCE-ID  F5APM SAML resource ID of your company account. (env: GOSSAMER3_F5APM_RESOURCE_ID)
         --config=CONFIG            Path/filename of gossamer3 config file (env: GOSSAMER3_CONFIGFILE)
 
   login [<flags>]
     Login to a SAML 2.0 IDP and convert the SAML assertion to an STS token.
 
     -p, --profile=PROFILE      The AWS profile to save the temporary credentials. (env: GOSSAMER3_PROFILE)
-        --duo-mfa-option=DUO-MFA-OPTION
-                               The MFA option you want to use to authenticate with
-        --client-id=CLIENT-ID  OneLogin client id, used to generate API access token. (env: ONELOGIN_CLIENT_ID)
-        --client-secret=CLIENT-SECRET
-                               OneLogin client secret, used to generate API access token. (env: ONELOGIN_CLIENT_SECRET)
         --force                Refresh credentials even if not expired.
 
   exec [<flags>] [<command>...]
@@ -551,11 +530,6 @@ The exec sub command will export the following environment variables.
 * AWS_CREDENTIAL_EXPIRATION
 
 Note: That profile environment variables enable you to use `exec` with a script or command which requires an explicit profile.
-
-## Provider Specific Documentation
-
-* [Azure Active Directory](./doc/provider/aad)
-* [JumpCloud](./doc/provider/jumpcloud)
 
 # Dependencies
 
