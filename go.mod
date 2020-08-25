@@ -36,4 +36,5 @@ require (
 	golang.org/x/text v0.3.2 // indirect
 	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
 	gopkg.in/ini.v1 v1.57.0
+	gopkg.in/yaml.v3 v3.0.0-20200615113413-eeeca48fe776
 )

@@ -2,11 +2,13 @@ package cfg
 
 import (
 	"fmt"
+	"io/ioutil"
 	"net/url"
+	"os"
 
 	"github.com/mitchellh/go-homedir"
 	"github.com/pkg/errors"
-	ini "gopkg.in/ini.v1"
+	yaml "gopkg.in/yaml.v3"
 )
 
 // ErrIdpAccountNotFound returned if the idp account is not found in the configuration file
@@ -14,7 +16,7 @@ var ErrIdpAccountNotFound = errors.New("IDP account not found, run configure to 
 
 const (
 	// DefaultConfigPath the default gossamer3 configuration path
-	DefaultConfigPath = "~/.gossamer3"
+	DefaultConfigPath = "~/.gossamer3.yaml"
 
 	// DefaultAmazonWebservicesURN URN used when authenticating to aws using SAML
 	// NOTE: This only needs to be changed to log into GovCloud
@@ -26,27 +28,32 @@ const (
 
 	// DefaultProfile this is the default profile name used to save the credentials in the aws cli
 	DefaultProfile = "saml"
+
+	// DefaultName defaults to default for UX yo
+	DefaultName = "default"
 )
 
 // IDPAccount saml IDP account
 type IDPAccount struct {
-	URL                  string `ini:"url"`
-	Username             string `ini:"username"`
-	Provider             string `ini:"provider"`
-	MFA                  string `ini:"mfa"`
-	SkipVerify           bool   `ini:"skip_verify"`
-	Timeout              int    `ini:"timeout"`
-	AmazonWebservicesURN string `ini:"aws_urn"`
-	SessionDuration      int    `ini:"aws_session_duration"`
-	Profile              string `ini:"aws_profile"`
-	RoleARN              string `ini:"role_arn"`
-	Region               string `ini:"region"`
-	HttpAttemptsCount    string `ini:"http_attempts_count"`
-	HttpRetryDelay       string `ini:"http_retry_delay"`
+	Name                 string `yaml:"name"`
+	URL                  string `yaml:"url"`
+	Username             string `yaml:"username"`
+	Provider             string `yaml:"provider"`
+	MFA                  string `yaml:"mfa"`
+	SkipVerify           bool   `yaml:"skip_verify"`
+	Timeout              int    `yaml:"timeout"`
+	AmazonWebservicesURN string `yaml:"aws_urn"`
+	SessionDuration      int    `yaml:"aws_session_duration"`
+	Profile              string `yaml:"aws_profile"`
+	RoleARN              string `yaml:"role_arn"`
+	Region               string `yaml:"region"`
+	HttpAttemptsCount    string `yaml:"http_attempts_count"`
+	HttpRetryDelay       string `yaml:"http_retry_delay"`
 }
 
 func (ia IDPAccount) String() string {
 	return fmt.Sprintf(`account {
+  Name: %s
   URL: %s
   Username: %s
   Provider: %s
@@ -57,7 +64,7 @@ func (ia IDPAccount) String() string {
   Profile: %s
   RoleARN: %s
   Region: %s
-}`, ia.URL, ia.Username, ia.Provider, ia.MFA, ia.SkipVerify, ia.AmazonWebservicesURN, ia.SessionDuration, ia.Profile, ia.RoleARN, ia.Region)
+}`, ia.Name, ia.URL, ia.Username, ia.Provider, ia.MFA, ia.SkipVerify, ia.AmazonWebservicesURN, ia.SessionDuration, ia.Profile, ia.RoleARN, ia.Region)
 }
 
 // Validate validate the required / expected fields are set
@@ -92,6 +99,7 @@ func NewIDPAccount() *IDPAccount {
 		AmazonWebservicesURN: DefaultAmazonWebservicesURN,
 		SessionDuration:      DefaultSessionDuration,
 		Profile:              DefaultProfile,
+		Name:                 DefaultName,
 	}
 }
 
@@ -122,39 +130,37 @@ func (cm *ConfigManager) SaveIDPAccount(idpAccountName string, account *IDPAccou
 		return errors.Wrap(err, "Account validation failed")
 	}
 
-	cfg, err := ini.LoadSources(ini.LoadOptions{Loose: true}, cm.configPath)
+	providers, err := cm.loadIDPAccounts()
 	if err != nil {
-		return errors.Wrap(err, "Unable to load configuration file")
+		return errors.Wrap(err, "Unable to read providers config")
 	}
 
-	newSec, err := cfg.NewSection(idpAccountName)
+	// Add new IDP to Providers
+	providers = overwriteAccount(*account, providers)
+
+	bs, err := yaml.Marshal(providers)
 	if err != nil {
-		return errors.Wrap(err, "Unable to build a new section in configuration file")
+		return errors.Wrap(err, "Unable to marshal providers json")
 	}
 
-	err = newSec.ReflectFrom(account)
-	if err != nil {
-		return errors.Wrap(err, "Unable to save account to configuration file")
+	// Write the file
+	if err := ioutil.WriteFile(cm.configPath, bs, 0666); err != nil {
+		return errors.Wrap(err, "Failed to save configurations file")
 	}
 
-	err = cfg.SaveTo(cm.configPath)
-	if err != nil {
-		return errors.Wrap(err, "Failed to save configuration file")
-	}
 	return nil
 }
 
 // LoadIDPAccount load the idp account and default to an empty one if it doesn't exist
 func (cm *ConfigManager) LoadIDPAccount(idpAccountName string) (*IDPAccount, error) {
-
-	cfg, err := ini.LoadSources(ini.LoadOptions{Loose: true}, cm.configPath)
+	providers, err := cm.loadIDPAccounts()
 	if err != nil {
-		return nil, errors.Wrap(err, "Unable to load configuration file")
+		return nil, errors.Wrap(err, "Unable to read idp account")
 	}
 
 	// attempt to map a specific idp account by name
 	// this will return an empty account if one is not found by the given name
-	account, err := readAccount(idpAccountName, cfg)
+	account, err := readAccount(idpAccountName, providers)
 	if err != nil {
 		return nil, errors.Wrap(err, "Unable to read idp account")
 	}
@@ -162,16 +168,49 @@ func (cm *ConfigManager) LoadIDPAccount(idpAccountName string) (*IDPAccount, err
 	return account, nil
 }
 
-func readAccount(idpAccountName string, cfg *ini.File) (*IDPAccount, error) {
-
-	account := NewIDPAccount()
-
-	sec := cfg.Section(idpAccountName)
-
-	err := sec.MapTo(account)
-	if err != nil {
-		return nil, errors.Wrap(err, "Unable to map account")
+func (cm *ConfigManager) loadIDPAccounts() ([]IDPAccount, error) {
+	_, err := os.Stat(cm.configPath)
+	if os.IsNotExist(err) {
+		// File does not exist
+		return []IDPAccount{}, nil
 	}
 
-	return account, nil
+	bs, err := ioutil.ReadFile(cm.configPath)
+	if err != nil {
+		return nil, errors.Wrap(err, "Unable to load configurations file")
+	}
+
+	var providers []IDPAccount
+	if err := yaml.Unmarshal(bs, &providers); err != nil {
+		return nil, errors.Wrap(err, "Unable to read idp accounts from config")
+	}
+
+	return providers, nil
+}
+
+func readAccount(idpAccountName string, providers []IDPAccount) (*IDPAccount, error) {
+	for _, provider := range providers {
+		if provider.Name == idpAccountName {
+			return &provider, nil
+		}
+	}
+
+	return NewIDPAccount(), nil
+}
+
+func overwriteAccount(newAccount IDPAccount, providers []IDPAccount) []IDPAccount {
+	var found = false
+	for i, provider := range providers {
+		if provider.Name == newAccount.Name {
+			providers[i] = newAccount
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		providers = append(providers, newAccount)
+	}
+
+	return providers
 }
