@@ -46,10 +46,7 @@ type IDPAccount struct {
 }
 
 func (ia IDPAccount) String() string {
-	var appID string
-	var policyID string
-
-	return fmt.Sprintf(`account {%s%s
+	return fmt.Sprintf(`account {
   URL: %s
   Username: %s
   Provider: %s
@@ -60,7 +57,7 @@ func (ia IDPAccount) String() string {
   Profile: %s
   RoleARN: %s
   Region: %s
-}`, appID, policyID, ia.URL, ia.Username, ia.Provider, ia.MFA, ia.SkipVerify, ia.AmazonWebservicesURN, ia.SessionDuration, ia.Profile, ia.RoleARN, ia.Region)
+}`, ia.URL, ia.Username, ia.Provider, ia.MFA, ia.SkipVerify, ia.AmazonWebservicesURN, ia.SessionDuration, ia.Profile, ia.RoleARN, ia.Region)
 }
 
 // Validate validate the required / expected fields are set
