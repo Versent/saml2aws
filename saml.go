@@ -136,6 +136,42 @@ func ExtractAwsRoles(data []byte) ([]string, error) {
 	return awsroles, nil
 }
 
+// ExtractRoleSessionName given an assertion document extract the role session name
+func ExtractRoleSessionName(data []byte) (string, error) {
+
+	doc := etree.NewDocument()
+	if err := doc.ReadFromBytes(data); err != nil {
+		return "", err
+	}
+
+	assertionElement := doc.FindElement(".//Assertion")
+	if assertionElement == nil {
+		return "", ErrMissingAssertion
+	}
+
+	// log.Printf("tag: %s", assertionElement.Tag)
+
+	//Get the actual assertion attributes
+	attributeStatement := assertionElement.FindElement(childPath(assertionElement.Space, attributeStatementTag))
+	if attributeStatement == nil {
+		return "", ErrMissingElement{Tag: attributeStatementTag}
+	}
+
+	attributes := attributeStatement.FindElements(childPath(assertionElement.Space, attributeTag))
+
+	for _, attribute := range attributes {
+		if attribute.SelectAttrValue("Name", "") != "https://aws.amazon.com/SAML/Attributes/RoleSessionName" {
+			continue
+		}
+		attributeValues := attribute.FindElements(childPath(assertionElement.Space, attributeValueTag))
+		for _, attrValue := range attributeValues {
+			return attrValue.Text(), nil
+		}
+	}
+
+	return "", nil
+}
+
 func childPath(space, tag string) string {
 	if space == "" {
 		return "./" + tag

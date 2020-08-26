@@ -91,6 +91,13 @@ func main() {
 	cmdLogin.Flag("profile", "The AWS profile to save the temporary credentials. (env: GOSSAMER3_PROFILE)").Short('p').Envar("GOSSAMER3_PROFILE").StringVar(&commonFlags.Profile)
 	cmdLogin.Flag("force", "Refresh credentials even if not expired.").BoolVar(&loginFlags.Force)
 
+	// `bulk-login` command and settings
+	cmdBulkLogin := app.Command("bulk-login", "Bulk login to a SAML 2.0 IDP and convert the SAML assertion to an STS token.")
+	bulkLoginFlags := new(flags.LoginExecFlags)
+	bulkLoginFlags.CommonFlags = commonFlags
+	cmdBulkLogin.Flag("role-config", "Bulk role configuration file").Required().Short('c').StringVar(&bulkLoginFlags.BulkLoginConfig)
+	cmdBulkLogin.Flag("force", "Refresh credentials even if not expired.").BoolVar(&loginFlags.Force)
+
 	// `exec` command and settings
 	cmdExec := app.Command("exec", "Exec the supplied command with env vars from STS token.")
 	execFlags := new(flags.LoginExecFlags)
@@ -152,6 +159,8 @@ func main() {
 		err = commands.Script(scriptFlags, shell)
 	case cmdLogin.FullCommand():
 		err = commands.Login(loginFlags)
+	case cmdBulkLogin.FullCommand():
+		err = commands.BulkLogin(bulkLoginFlags)
 	case cmdExec.FullCommand():
 		err = commands.Exec(execFlags, *cmdLine)
 	case cmdConsole.FullCommand():

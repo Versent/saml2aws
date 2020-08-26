@@ -25,9 +25,10 @@ type CommonFlags struct {
 
 // LoginExecFlags flags for the Login / Exec commands
 type LoginExecFlags struct {
-	CommonFlags *CommonFlags
-	Force       bool
-	ExecProfile string
+	CommonFlags     *CommonFlags
+	Force           bool
+	ExecProfile     string
+	BulkLoginConfig string
 }
 
 type ConsoleFlags struct {
