@@ -24,6 +24,12 @@ var (
 	logger = logrus.WithField("pkg", "awsconfig")
 )
 
+type CredentialsResponse struct {
+	Credentials *AWSCredentials
+	Profile     string
+	Error       error
+}
+
 // AWSCredentials represents the set of attributes used to authenticate to AWS with a short lived session
 type AWSCredentials struct {
 	AWSAccessKey     string    `ini:"aws_access_key_id"`
