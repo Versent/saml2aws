@@ -24,60 +24,83 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// PrimaryRoleInput is the input to assume a primary role into secondary roles
 type PrimaryRoleInput struct {
 	RoleConfig    cfg.RoleConfig
 	Account       *cfg.IDPAccount
 	Role          *g3.AWSRole
 	SAMLAssertion string
-	channel       chan PrimaryRoleOutput
-	wg            *sync.WaitGroup
+
+	channel chan PrimaryRoleOutput
+	wg      *sync.WaitGroup
 }
 
+// SecondaryRoleInput is the input to assume a secondary role based on a primary role
 type SecondaryRoleInput struct {
 	PrimaryCredentials *awsconfig.AWSCredentials
 	RoleAssumption     cfg.RoleAssumption
-	channel            chan SecondaryRoleOutput
-	wg                 *sync.WaitGroup
+	PrimaryInput       *PrimaryRoleInput
+
+	channel chan SecondaryRoleOutput
+	wg      *sync.WaitGroup
 }
 
+// PrimaryRoleOutput is the output of assuming the primary role
 type PrimaryRoleOutput struct {
-	Input              PrimaryRoleInput
+	Input              *PrimaryRoleInput
 	PrimaryCredentials *awsconfig.AWSCredentials
 	Output             []SecondaryRoleOutput
-	Err                error
+
+	err error
 }
 
+// SecondaryRoleOutput is the output of a secondary role assumption
 type SecondaryRoleOutput struct {
-	Input       SecondaryRoleInput
+	Input       *SecondaryRoleInput
 	Credentials *awsconfig.AWSCredentials
-	Err         error
+
+	err error
 }
 
-func assume1(input PrimaryRoleInput, account *cfg.IDPAccount, roleSessionName string) {
+// Assume assumes a primary role, returning the credentials to assume secondary role if needed
+func (input *PrimaryRoleInput) Assume(roleSessionName string) {
+	l := logrus.WithFields(logrus.Fields{
+		"Role":         input.Role.RoleARN,
+		"SamlProvider": input.Role.PrincipalARN,
+	})
+
+	if input.RoleConfig.Profile != "" {
+		l = l.WithField("Profile", input.RoleConfig.Profile)
+	}
+
 	creds, err := loginToStsUsingRole(input.Account, input.Role, input.SAMLAssertion)
 	if err != nil {
-		logrus.Error(err)
+		l.Errorf(err.Error())
+
 		input.channel <- PrimaryRoleOutput{
 			Input: input,
-			Err:   err,
+			err:   err,
 		}
 		input.wg.Done()
 		return
 	}
 
+	l.Infof("Parent assumed")
+
 	c := make(chan SecondaryRoleOutput, len(input.RoleConfig.AssumeRoles))
 	wg := &sync.WaitGroup{}
 
 	for _, item := range input.RoleConfig.AssumeRoles {
-		input := SecondaryRoleInput{
+		secondaryInput := SecondaryRoleInput{
 			PrimaryCredentials: creds,
 			RoleAssumption:     item,
+			PrimaryInput:       input,
 			wg:                 wg,
 			channel:            c,
 		}
 
 		wg.Add(1)
-		go assume2(account, input, roleSessionName)
+		go secondaryInput.Assume(roleSessionName)
 	}
 
 	done := make(chan bool, 1)
@@ -89,8 +112,6 @@ func assume1(input PrimaryRoleInput, account *cfg.IDPAccount, roleSessionName st
 
 	select {
 	case <-done:
-		logrus.Info("Done with parent assumptions")
-
 		output := PrimaryRoleOutput{
 			Input:              input,
 			PrimaryCredentials: creds,
@@ -99,9 +120,8 @@ func assume1(input PrimaryRoleInput, account *cfg.IDPAccount, roleSessionName st
 		close(c)
 
 		for item := range c {
-			if item.Err != nil {
-				output.Err = errors.Wrap(item.Err, "")
-				logrus.Error(item.Err.Error())
+			if item.err != nil {
+				output.err = errors.Wrap(item.err, "")
 			} else {
 				output.Output = append(output.Output, item)
 			}
@@ -115,13 +135,32 @@ func assume1(input PrimaryRoleInput, account *cfg.IDPAccount, roleSessionName st
 	}
 }
 
-func assume2(account *cfg.IDPAccount, input SecondaryRoleInput, roleSessionName string) {
-	creds, err := assumeRole(account, input.PrimaryCredentials, input.RoleAssumption.RoleArn, roleSessionName)
+// Assume assumes a secondary role using the PrimaryRoleInput parent object
+func (input *SecondaryRoleInput) Assume(roleSessionName string) {
+	if input.RoleAssumption.Profile == "" {
+		arnParts := strings.Split(input.RoleAssumption.RoleArn, ":")
+		input.RoleAssumption.Profile = fmt.Sprintf("%s/%s", arnParts[4], strings.TrimPrefix(arnParts[5], "role/"))
+	}
 
+	creds, err := assumeRole(input.PrimaryInput.Account, input.PrimaryCredentials, input.RoleAssumption.RoleArn, roleSessionName)
 	output := SecondaryRoleOutput{
 		Input:       input,
 		Credentials: creds,
-		Err:         err,
+		err:         err,
+	}
+
+	if err != nil {
+		logrus.WithFields(logrus.Fields{
+			"Profile":     input.RoleAssumption.Profile,
+			"Role":        input.RoleAssumption.RoleArn,
+			"PrimaryRole": input.PrimaryInput.Role.RoleARN,
+		}).Error(err.Error())
+	} else {
+		logrus.WithFields(logrus.Fields{
+			"Profile":     input.RoleAssumption.Profile,
+			"Role":        input.RoleAssumption.RoleArn,
+			"PrimaryRole": input.PrimaryInput.Role.RoleARN,
+		}).Infof("Successfully assumed role")
 	}
 
 	input.channel <- output
@@ -220,9 +259,10 @@ func BulkLogin(loginFlags *flags.LoginExecFlags) error {
 	for _, item := range roleConfig.Roles {
 		primaryRole, err := getPrimaryRole(samlAssertion, account, item.PrimaryRoleArn)
 		if err != nil {
-			return errors.Wrap(err, "Failed to assume role, please check whether you are permitted to assume the given role for the AWS service")
+			err := errors.Wrap(err, "Failed to assume parent role, please check whether you are permitted to assume the given role for the AWS service")
+			logrus.Errorf(err.Error())
+			continue
 		}
-		log.Println("Selected role:", primaryRole.RoleARN)
 
 		// TODO: Check if creds are not expired
 		logrus.Debugf("Logging into %s using SAML", primaryRole.RoleARN)
@@ -238,7 +278,7 @@ func BulkLogin(loginFlags *flags.LoginExecFlags) error {
 		wg.Add(1)
 
 		// Perform role assumption
-		go assume1(input, account, roleSessionName)
+		go input.Assume(roleSessionName)
 	}
 
 	// Wait for all the wait groups to finish
@@ -249,7 +289,6 @@ func BulkLogin(loginFlags *flags.LoginExecFlags) error {
 
 	select {
 	case <-done:
-		logrus.Info("Done with child assumptions")
 		close(ch)
 
 		// Save credentials
@@ -263,13 +302,7 @@ func BulkLogin(loginFlags *flags.LoginExecFlags) error {
 
 			// Handle secondary
 			for _, childCreds := range creds.Output {
-				profile := childCreds.Input.RoleAssumption.Profile
-				if profile == "" {
-					arnParts := strings.Split(childCreds.Input.RoleAssumption.RoleArn, ":")
-					profile = fmt.Sprintf("%s/%s", arnParts[4], strings.TrimPrefix(arnParts[5], "role/"))
-				}
-
-				sharedCreds := awsconfig.NewSharedCredentials(profile)
+				sharedCreds := awsconfig.NewSharedCredentials(childCreds.Input.RoleAssumption.Profile)
 				if err := sharedCreds.Save(childCreds.Credentials); err != nil {
 					return errors.Wrap(err, "error saving credentials")
 				}
@@ -369,8 +402,6 @@ func assumeRole(account *cfg.IDPAccount, parentCreds *awsconfig.AWSCredentials, 
 	if err != nil {
 		return nil, errors.Wrap(err, "error retrieving STS credentials")
 	}
-
-	logrus.Infof("Assumed role %s", roleArn)
 
 	return &awsconfig.AWSCredentials{
 		AWSAccessKey:     aws.StringValue(resp.Credentials.AccessKeyId),

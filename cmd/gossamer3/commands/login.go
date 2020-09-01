@@ -254,8 +254,6 @@ func loginToStsUsingRole(account *cfg.IDPAccount, role *g3.AWSRole, samlAssertio
 		DurationSeconds: aws.Int64(int64(account.SessionDuration)),
 	}
 
-	log.Println("Requesting AWS credentials using SAML assertion")
-
 	resp, err := svc.AssumeRoleWithSAML(params)
 	if err != nil {
 		return nil, errors.Wrap(err, "error retrieving STS credentials using SAML")
