@@ -64,14 +64,20 @@ type SecondaryRoleOutput struct {
 
 // Assume assumes a primary role, returning the credentials to assume secondary role if needed
 func (input *PrimaryRoleInput) Assume(roleSessionName string, force bool) {
-	l := logrus.WithFields(logrus.Fields{
-		"Role": input.Role.RoleARN,
-	})
-
 	var creds *awsconfig.AWSCredentials
 	var err error
 	existingCreds := false
 
+	// Initialize logging
+	fields := logrus.Fields{
+		"Role": input.Role.RoleARN,
+	}
+	if logrus.GetLevel() >= logrus.DebugLevel {
+		fields["SamlProvider"] = input.Role.PrincipalARN
+	}
+	l := logrus.WithFields(fields)
+
+	// Check for existing credentials if a profile is configured
 	if input.RoleConfig.Profile != "" {
 		l = l.WithField("Profile", input.RoleConfig.Profile)
 
@@ -92,28 +98,37 @@ func (input *PrimaryRoleInput) Assume(roleSessionName string, force bool) {
 		creds, err = loginToStsUsingRole(input.Account, input.Role, input.SAMLAssertion)
 	}
 
+	// Check for errors
 	if err != nil {
+		// Log the error
 		l.Errorf(err.Error())
 
+		// Send response through the channel
 		input.channel <- PrimaryRoleOutput{
 			Input: input,
 			err:   err,
 		}
+
+		// Complete the wait group
 		input.wg.Done()
+
 		return
 	}
 
+	// Build success message
 	successMessage := "Parent assumed"
 	if existingCreds {
 		successMessage = "Using existing parent credentials"
 	}
 
-	l.WithField("SamlProvider", input.Role.PrincipalARN).Debugf(successMessage)
+	// Log success
 	l.Infof(successMessage)
 
+	// Create channel and wait group for secondary assumptions
 	c := make(chan SecondaryRoleOutput, len(input.RoleConfig.AssumeRoles))
 	wg := &sync.WaitGroup{}
 
+	// Loop through secondary assumptions from config
 	for _, item := range input.RoleConfig.AssumeRoles {
 		secondaryInput := SecondaryRoleInput{
 			PrimaryCredentials: creds,
@@ -123,52 +138,75 @@ func (input *PrimaryRoleInput) Assume(roleSessionName string, force bool) {
 			channel:            c,
 		}
 
+		// Add to the wait group
 		wg.Add(1)
+
+		// Perform secondary assumption
 		go secondaryInput.Assume(roleSessionName, force)
 	}
 
+	// Create a channel to wait for completion of the wait group
 	done := make(chan bool, 1)
-
 	go func(ch chan bool) {
 		wg.Wait()
 		ch <- true
 	}(done)
 
 	select {
+	// Wait for completion channel
 	case <-done:
+		// Close the channel
+		close(c)
+
 		output := PrimaryRoleOutput{
 			Input:              input,
 			PrimaryCredentials: creds,
 		}
 
-		close(c)
-
+		// Loop through channel responses
 		for item := range c {
 			if item.err != nil {
+				// Wrap errors
 				output.err = errors.Wrap(item.err, "")
 			} else {
+				// Append secondary output to the primary output
 				output.Output = append(output.Output, item)
 			}
 		}
 
+		// Send output through the primary channel up the stack
 		input.channel <- output
+
+		// Complete the wait group
 		input.wg.Done()
 
+	// Timeout if not completed in time
 	case <-time.After(time.Second * 10):
-		logrus.Errorf("Timed out assuming secondary credentials")
+		l.Errorf("Timed out assuming secondary credentials")
 	}
 }
 
 // Assume assumes a secondary role using the PrimaryRoleInput parent object
 func (input *SecondaryRoleInput) Assume(roleSessionName string, force bool) {
+	var creds *awsconfig.AWSCredentials
+	var err error
+	existingCreds := false
+
+	// Initialize logging
+	fields := logrus.Fields{
+		"Role":    input.RoleAssumption.RoleArn,
+		"Profile": input.RoleAssumption.Profile,
+	}
+	if logrus.GetLevel() >= logrus.DebugLevel {
+		fields["PrimaryRole"] = input.PrimaryInput.Role.RoleARN
+	}
+	l := logrus.WithFields(fields)
+
+	// Generate a profile if one is not provided
 	if input.RoleAssumption.Profile == "" {
 		arnParts := strings.Split(input.RoleAssumption.RoleArn, ":")
 		input.RoleAssumption.Profile = fmt.Sprintf("%s/%s", arnParts[4], strings.TrimPrefix(arnParts[5], "role/"))
 	}
-
-	var creds *awsconfig.AWSCredentials
-	var err error
-	existingCreds := false
 
 	// Not forcing credential refresh, pull from file
 	if !force {
@@ -181,7 +219,7 @@ func (input *SecondaryRoleInput) Assume(roleSessionName string, force bool) {
 		}
 	}
 
-	// Get new credentials
+	// Get new credentials if forced, error encountered, or credentials are not found
 	if force || err != nil || creds == nil {
 		creds, err = assumeRole(input.PrimaryInput.Account, input.PrimaryCredentials, input.RoleAssumption.RoleArn, roleSessionName)
 	}
@@ -192,38 +230,31 @@ func (input *SecondaryRoleInput) Assume(roleSessionName string, force bool) {
 		err:         err,
 	}
 
-	successMessage := "Successfully assumed role"
-	if existingCreds {
-		successMessage = "Using existing credentials"
-	}
-
 	if err != nil {
-		logrus.WithFields(logrus.Fields{
-			"Profile":     input.RoleAssumption.Profile,
-			"Role":        input.RoleAssumption.RoleArn,
-			"PrimaryRole": input.PrimaryInput.Role.RoleARN,
-		}).Error(err.Error())
+		// Log the error
+		l.Error(err.Error())
 	} else {
-		logrus.WithFields(logrus.Fields{
-			"Role":        input.RoleAssumption.RoleArn,
-			"Profile":     input.RoleAssumption.Profile,
-			"PrimaryRole": input.PrimaryInput.Role.RoleARN,
-		}).Debugf(successMessage)
-		logrus.WithFields(logrus.Fields{
-			"Role":    input.RoleAssumption.RoleArn,
-			"Profile": input.RoleAssumption.Profile,
-		}).Infof(successMessage)
+		// Log the success
+		successMessage := "Successfully assumed role"
+		if existingCreds {
+			successMessage = "Using existing credentials"
+		}
+		l.Infof(successMessage)
 	}
 
+	// Send response up through the channel
 	input.channel <- output
+
+	// Complete the wait group
 	input.wg.Done()
 }
 
 // BulkLogin login to multiple roles
 func BulkLogin(loginFlags *flags.LoginExecFlags) error {
-
+	// Create logger
 	logger := logrus.WithField("command", "bulk-login")
 
+	// Build the IDP account
 	account, err := buildIdpAccount(loginFlags)
 	if err != nil {
 		return errors.Wrap(err, "error building login details")
@@ -235,11 +266,12 @@ func BulkLogin(loginFlags *flags.LoginExecFlags) error {
 		log.Fatalln(err)
 	}
 
+	// Check if any credentials need to be refreshed - only run when force is false
 	logger.Debug("check if Creds Exist")
-
 	expired := false
 	if !loginFlags.Force {
 		for _, role := range roleConfig.Roles {
+			// Only check for expiration of primary role if it has a profile
 			if role.Profile != "" {
 				sharedCreds := awsconfig.NewSharedCredentials(role.Profile)
 				if sharedCreds.Expired() {
@@ -248,7 +280,9 @@ func BulkLogin(loginFlags *flags.LoginExecFlags) error {
 				}
 			}
 
+			// Check child roles
 			for _, child := range role.AssumeRoles {
+				// If profile is empty, generate one
 				if child.Profile == "" {
 					arnParts := strings.Split(child.RoleArn, ":")
 					child.Profile = fmt.Sprintf("%s/%s", arnParts[4], strings.TrimPrefix(arnParts[5], "role/"))
@@ -267,6 +301,7 @@ func BulkLogin(loginFlags *flags.LoginExecFlags) error {
 		}
 	}
 
+	// If none of the credentials are expired, exit out
 	if !expired {
 		log.Println("credentials are not expired skipping")
 		return nil
@@ -282,12 +317,14 @@ func BulkLogin(loginFlags *flags.LoginExecFlags) error {
 	//	return nil
 	//}
 
+	// Pull the login details
 	loginDetails, err := resolveLoginDetails(account, loginFlags)
 	if err != nil {
 		log.Printf("%+v", err)
 		os.Exit(1)
 	}
 
+	// Validate login details
 	err = loginDetails.Validate()
 	if err != nil {
 		return errors.Wrap(err, "error validating login details")
@@ -295,13 +332,14 @@ func BulkLogin(loginFlags *flags.LoginExecFlags) error {
 
 	logger.WithField("idpAccount", account).Debug("building provider")
 
+	// Create saml client for the provider
 	provider, err := g3.NewSAMLClient(account)
 	if err != nil {
 		return errors.Wrap(err, "error building IdP client")
 	}
 
+	// Authenticate against IDP
 	log.Printf("Authenticating as %s ...", loginDetails.Username)
-
 	samlAssertion, err := provider.Authenticate(loginDetails)
 	if err != nil {
 		return errors.Wrap(err, "error authenticating to IdP")
@@ -327,6 +365,7 @@ func BulkLogin(loginFlags *flags.LoginExecFlags) error {
 		return errors.Wrap(err, "error decoding saml assertion")
 	}
 
+	// Get the role session name to use in role assumptions
 	roleSessionName, err := g3.ExtractRoleSessionName(samlAssertionData)
 	if err != nil {
 		return errors.Wrap(err, "error extracting role session name")
@@ -338,16 +377,15 @@ func BulkLogin(loginFlags *flags.LoginExecFlags) error {
 	ch := make(chan PrimaryRoleOutput, len(roleConfig.Roles))
 	done := make(chan bool, 1)
 
+	// Loop through the role config
 	for _, item := range roleConfig.Roles {
+		// Fetch the primary role
 		primaryRole, err := getPrimaryRole(samlAssertion, account, item.PrimaryRoleArn)
 		if err != nil {
 			err := errors.Wrap(err, "Failed to assume parent role, please check whether you are permitted to assume the given role for the AWS service")
-			logrus.Errorf(err.Error())
+			logger.Errorf(err.Error())
 			continue
 		}
-
-		// TODO: Check if creds are not expired
-		logrus.Debugf("Logging into %s using SAML", primaryRole.RoleARN)
 
 		input := PrimaryRoleInput{
 			RoleConfig:    item,
@@ -357,6 +395,8 @@ func BulkLogin(loginFlags *flags.LoginExecFlags) error {
 			channel:       ch,
 			wg:            wg,
 		}
+
+		// Add to the wait group
 		wg.Add(1)
 
 		// Perform role assumption
@@ -370,11 +410,14 @@ func BulkLogin(loginFlags *flags.LoginExecFlags) error {
 	}(done)
 
 	select {
+	// Wait for completion channel
 	case <-done:
+		// Close the channel
 		close(ch)
 
 		// Save credentials
 		for creds := range ch {
+			// Handle primary credentials
 			if creds.Input.RoleConfig.Profile != "" {
 				sharedCreds := awsconfig.NewSharedCredentials(creds.Input.RoleConfig.Profile)
 				if err := sharedCreds.Save(creds.PrimaryCredentials); err != nil {
@@ -382,7 +425,7 @@ func BulkLogin(loginFlags *flags.LoginExecFlags) error {
 				}
 			}
 
-			// Handle secondary
+			// Handle secondary credentials
 			for _, childCreds := range creds.Output {
 				sharedCreds := awsconfig.NewSharedCredentials(childCreds.Input.RoleAssumption.Profile)
 				if err := sharedCreds.Save(childCreds.Credentials); err != nil {
@@ -391,14 +434,16 @@ func BulkLogin(loginFlags *flags.LoginExecFlags) error {
 			}
 		}
 
+	// Timeout
 	case <-time.After(time.Second * 10):
-		logrus.Errorf("Timed out")
+		logger.Errorf("Timed out")
 		return errors.New("timed out while assuming roles")
 	}
 
 	return nil
 }
 
+// getPrimaryRole : Read the SAML assertion to find a specific role
 func getPrimaryRole(samlAssertion string, account *cfg.IDPAccount, roleArn string) (*g3.AWSRole, error) {
 	data, err := b64.StdEncoding.DecodeString(samlAssertion)
 	if err != nil {
@@ -424,6 +469,7 @@ func getPrimaryRole(samlAssertion string, account *cfg.IDPAccount, roleArn strin
 	return resolvePrimaryRole(awsRoles, samlAssertion, account, roleArn)
 }
 
+// resolvePrimaryRole : Finds a Role ARN in the SAML assertion and returns it as an AWSRole object
 func resolvePrimaryRole(awsRoles []*g3.AWSRole, samlAssertion string, account *cfg.IDPAccount, roleArn string) (*g3.AWSRole, error) {
 	if len(awsRoles) == 1 {
 		if account.RoleARN != "" {
@@ -457,8 +503,9 @@ func resolvePrimaryRole(awsRoles []*g3.AWSRole, samlAssertion string, account *c
 	return g3.LocateRole(awsRoles, roleArn)
 }
 
+// assumeRole : Assumes a child role using provided credentials
 func assumeRole(account *cfg.IDPAccount, parentCreds *awsconfig.AWSCredentials, roleArn string, roleSessionName string) (*awsconfig.AWSCredentials, error) {
-
+	// Create config using supplied region and credentials
 	config := aws.NewConfig().WithRegion(account.Region).WithCredentials(
 		awsCredentials.NewStaticCredentials(
 			parentCreds.AWSAccessKey,
@@ -467,24 +514,27 @@ func assumeRole(account *cfg.IDPAccount, parentCreds *awsconfig.AWSCredentials, 
 		),
 	)
 
+	// Create session and client
 	sess, err := session.NewSession(config)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create session")
 	}
-
 	svc := sts.New(sess)
 
+	// Generate input
 	params := &sts.AssumeRoleInput{
 		RoleArn:         aws.String(roleArn),         // Required
 		RoleSessionName: aws.String(roleSessionName), // Required
 		DurationSeconds: aws.Int64(int64(account.SessionDuration)),
 	}
 
+	// Assume the role
 	resp, err := svc.AssumeRole(params)
 	if err != nil {
 		return nil, errors.Wrap(err, "error retrieving STS credentials")
 	}
 
+	// Return the credentials
 	return &awsconfig.AWSCredentials{
 		AWSAccessKey:     aws.StringValue(resp.Credentials.AccessKeyId),
 		AWSSecretKey:     aws.StringValue(resp.Credentials.SecretAccessKey),
