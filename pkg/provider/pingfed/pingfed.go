@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/url"
 	"strings"
@@ -219,7 +220,7 @@ func (ac *Client) handleToken(ctx context.Context, doc *goquery.Document) (conte
 		return ctx, nil, errors.Wrap(err, "error extracting login form")
 	}
 
-	token := prompter.StringRequired("Enter Token Code")
+	token := prompter.Password("Enter Token Code")
 
 	form.Values.Set("pf.pass", token)
 	form.URL = makeAbsoluteURL(form.URL, loginDetails.URL)
@@ -239,7 +240,7 @@ func (ac *Client) handleChallenge(ctx context.Context, doc *goquery.Document) (c
 		return ctx, nil, errors.Wrap(err, "error extracting login form")
 	}
 
-	token := prompter.StringRequired("Enter Next Token Code")
+	token := prompter.Password("Enter Next Token Code")
 
 	form.Values.Set("pf.challengeResponse", token)
 	form.Values.Set("pf.ok", "clicked")
@@ -260,7 +261,7 @@ func (ac *Client) handleSiteMinderLogin(ctx context.Context, doc *goquery.Docume
 		return ctx, nil, errors.Wrap(err, "error extracting login form")
 	}
 
-	token := prompter.StringRequired("Enter PIN + Token Code / Passcode")
+	token := prompter.Password("Enter PIN + Token Code / Passcode")
 
 	form.Values.Set("username", loginDetails.Username)
 	form.Values.Set("PASSWORD", token)
@@ -276,7 +277,7 @@ func (ac *Client) handleOTP(ctx context.Context, doc *goquery.Document) (context
 		return ctx, nil, errors.Wrap(err, "error extracting OTP form")
 	}
 
-	token := prompter.StringRequired("Enter passcode")
+	token := prompter.Password("Enter passcode")
 	form.Values.Set("otp", token)
 
 	// Add CSRF token from cookie
@@ -322,6 +323,8 @@ func (ac *Client) handleSwipe(ctx context.Context, doc *goquery.Document) (conte
 	if err != nil {
 		return ctx, nil, err
 	}
+
+	log.Println("Sending swipe to phone...")
 
 	for {
 		time.Sleep(3 * time.Second)
