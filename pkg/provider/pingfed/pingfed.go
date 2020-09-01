@@ -72,14 +72,14 @@ func (ac *Client) follow(ctx context.Context, req *http.Request) (string, error)
 	if err != nil {
 		return "", errors.Wrap(err, "error following")
 	}
-	doc, err := goquery.NewDocumentFromResponse(res)
+	doc, err := goquery.NewDocumentFromReader(res.Body)
 	if err != nil {
 		return "", errors.Wrap(err, "failed to build document from response")
 	}
 
-	html, _ := doc.Html()
-	logger.Debugf("Headers: %+v", res.Header)
-	logger.Debugf("Body: %+v", html)
+	//html, _ := doc.Html()
+	//logger.Debugf("Headers: %+v", res.Header)
+	//logger.Debugf("Body: %+v", html)
 
 	var handler func(context.Context, *goquery.Document) (context.Context, *http.Request, error)
 
@@ -166,7 +166,7 @@ func (ac *Client) follow(ctx context.Context, req *http.Request) (string, error)
 
 	for _, cookie := range cookies {
 		req.AddCookie(cookie)
-		logger.Debugf("Cookie: %s=%s", cookie.Name, cookie.Value)
+		//logger.Debugf("Cookie: %s=%s", cookie.Name, cookie.Value)
 	}
 
 	return ac.follow(ctx, req)

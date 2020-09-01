@@ -1,0 +1,13 @@
+- name: wolfeidau
+  username: mark@wolfe.id.au
+  provider: keycloak
+  mfa: totp
+
+- name: test123
+  username: abc@whatever.com
+  provider: keycloak
+  mfa: sms
+  url: https://id.whatever.com
+  skip_verify: false
+  timeout: 0
+
