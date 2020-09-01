@@ -5,12 +5,10 @@ import (
 	"time"
 
 	"github.com/GESkunkworks/gossamer3/pkg/awsconfig"
-	"github.com/GESkunkworks/gossamer3/pkg/cfg"
-	"github.com/GESkunkworks/gossamer3/pkg/flags"
 )
 
 // BuildEnvVars build an array of env vars in the format required for exec
-func BuildEnvVars(awsCreds *awsconfig.AWSCredentials, account *cfg.IDPAccount, execFlags *flags.LoginExecFlags) []string {
+func BuildEnvVars(awsCreds *awsconfig.AWSCredentials) []string {
 
 	environmentVars := []string{
 		fmt.Sprintf("AWS_SESSION_TOKEN=%s", awsCreds.AWSSessionToken),
@@ -21,10 +19,5 @@ func BuildEnvVars(awsCreds *awsconfig.AWSCredentials, account *cfg.IDPAccount, e
 		fmt.Sprintf("AWS_CREDENTIAL_EXPIRATION=%s", awsCreds.Expires.Format(time.RFC3339)),
 	}
 
-	if execFlags.ExecProfile == "" {
-		// Only set profile env vars if we haven't already assumed a role via a profile
-		environmentVars = append(environmentVars, fmt.Sprintf("AWS_PROFILE=%s", account.Profile))
-		environmentVars = append(environmentVars, fmt.Sprintf("AWS_DEFAULT_PROFILE=%s", account.Profile))
-	}
 	return environmentVars
 }

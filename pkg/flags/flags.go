@@ -28,6 +28,7 @@ type LoginExecFlags struct {
 	CommonFlags     *CommonFlags
 	Force           bool
 	ExecProfile     string
+	AssumeChildRole string
 	BulkLoginConfig string
 }
 

@@ -47,7 +47,7 @@ func Exec(execFlags *flags.LoginExecFlags, cmdline []string) error {
 		return errors.Wrap(err, "error loading credentials")
 	}
 
-	if awsCreds.Expires.Sub(time.Now()) < 0 {
+	if time.Until(awsCreds.Expires) < 0 {
 		return errors.New("error aws credentials have expired")
 	}
 
@@ -70,9 +70,24 @@ func Exec(execFlags *flags.LoginExecFlags, cmdline []string) error {
 			return errors.Wrap(err,
 				fmt.Sprintf("error acquiring credentials for profile: %s", execFlags.ExecProfile))
 		}
+	} else if execFlags.AssumeChildRole != "" {
+		roleSessionName, err := getRoleSessionNameFromCredentials(account, awsCreds)
+		if err != nil {
+			return errors.Wrap(err, "error getting role session name")
+		}
+
+		awsCreds, err = assumeRole(
+			account,
+			awsCreds,
+			execFlags.AssumeChildRole,
+			roleSessionName,
+		)
+		if err != nil {
+			return errors.Wrap(err, "error assuming role "+execFlags.AssumeChildRole)
+		}
 	}
 
-	return shell.ExecShellCmd(cmdline, shell.BuildEnvVars(awsCreds, account, execFlags))
+	return shell.ExecShellCmd(cmdline, shell.BuildEnvVars(awsCreds))
 }
 
 // assumeRoleWithProfile uses an AWS profile (via ~/.aws/config) and performs (multiple levels of) role assumption

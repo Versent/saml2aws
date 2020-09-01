@@ -6,14 +6,10 @@ import (
 	"time"
 
 	"github.com/GESkunkworks/gossamer3/pkg/awsconfig"
-	"github.com/GESkunkworks/gossamer3/pkg/cfg"
 	"github.com/GESkunkworks/gossamer3/pkg/flags"
 )
 
 func TestBuildEnvVars(t *testing.T) {
-	account := &cfg.IDPAccount{
-		Profile: "saml",
-	}
 	awsCreds := &awsconfig.AWSCredentials{
 		AWSAccessKey:     "123",
 		AWSSecretKey:     "345",
@@ -37,8 +33,6 @@ func TestBuildEnvVars(t *testing.T) {
 				"AWS_ACCESS_KEY_ID=123",
 				"AWS_SECRET_ACCESS_KEY=345",
 				"AWS_CREDENTIAL_EXPIRATION=2016-09-04T14:27:00Z",
-				"AWS_PROFILE=saml",
-				"AWS_DEFAULT_PROFILE=saml",
 			},
 		},
 		{
@@ -58,7 +52,7 @@ func TestBuildEnvVars(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := BuildEnvVars(awsCreds, account, tt.flags); !reflect.DeepEqual(got, tt.want) {
+			if got := BuildEnvVars(awsCreds); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("BuildEnvVars() = %v, want %v", got, tt.want)
 			}
 		})

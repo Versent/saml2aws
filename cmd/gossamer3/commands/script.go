@@ -11,19 +11,23 @@ import (
 	"github.com/pkg/errors"
 )
 
-const bashTmpl = `export AWS_ACCESS_KEY_ID="{{ .AWSAccessKey }}"
-export AWS_SECRET_ACCESS_KEY="{{ .AWSSecretKey }}"
-export AWS_SESSION_TOKEN="{{ .AWSSessionToken }}"
-export AWS_SECURITY_TOKEN="{{ .AWSSecurityToken }}"
-export GOSSAMER3_PROFILE="{{ .ProfileName }}"
-export AWS_CREDENTIAL_EXPIRATION="{{ .Expires.Format "2006-01-02T15:04:05Z07:00" }}"
+const bashTmpl = `export AWS_ACCESS_KEY_ID={{ .AWSAccessKey }}
+export AWS_SECRET_ACCESS_KEY={{ .AWSSecretKey }}
+export AWS_SESSION_TOKEN={{ .AWSSessionToken }}
+export AWS_SECURITY_TOKEN={{ .AWSSecurityToken }}
+{{- if ne .ProfileName "" }}
+export GOSSAMER3_PROFILE={{ .ProfileName }}
+{{- end }}
+export AWS_CREDENTIAL_EXPIRATION={{ .Expires.Format "2006-01-02T15:04:05Z07:00" }}
 `
 
 const fishTmpl = `set -gx AWS_ACCESS_KEY_ID {{ .AWSAccessKey }}
 set -gx AWS_SECRET_ACCESS_KEY {{ .AWSSecretKey }}
 set -gx AWS_SESSION_TOKEN {{ .AWSSessionToken }}
 set -gx AWS_SECURITY_TOKEN {{ .AWSSecurityToken }}
+{{ if ne .ProfileName "" }}
 set -gx GOSSAMER3_PROFILE {{ .ProfileName }}
+{{ end }}
 set -gx AWS_CREDENTIAL_EXPIRATION '{{ .Expires.Format "2006-01-02T15:04:05Z07:00" }}'
 `
 
@@ -31,7 +35,9 @@ const powershellTmpl = `$env:AWS_ACCESS_KEY_ID='{{ .AWSAccessKey }}'
 $env:AWS_SECRET_ACCESS_KEY='{{ .AWSSecretKey }}'
 $env:AWS_SESSION_TOKEN='{{ .AWSSessionToken }}'
 $env:AWS_SECURITY_TOKEN='{{ .AWSSecurityToken }}'
+{{ if ne .ProfileName "" }}
 $env:GOSSAMER3_PROFILE='{{ .ProfileName }}'
+{{ end }}
 $env:AWS_CREDENTIAL_EXPIRATION='{{ .Expires.Format "2006-01-02T15:04:05Z07:00" }}'
 `
 
@@ -61,18 +67,36 @@ func Script(execFlags *flags.LoginExecFlags, shell string) error {
 		return errors.Wrap(err, "error loading credentials")
 	}
 
-	if awsCreds.Expires.Sub(time.Now()) < 0 {
+	if time.Until(awsCreds.Expires) < 0 {
 		return errors.New("error aws credentials have expired")
 	}
 
-	// annoymous struct to pass to template
-	data := struct {
+	type output struct {
 		ProfileName string
 		*awsconfig.AWSCredentials
-	}{
-		account.Profile,
-		awsCreds,
 	}
+	var data output
+
+	if execFlags.AssumeChildRole != "" {
+		roleSessionName, err := getRoleSessionNameFromCredentials(account, awsCreds)
+		if err != nil {
+			return errors.Wrap(err, "error getting role session name")
+		}
+
+		awsCreds, err = assumeRole(
+			account,
+			awsCreds,
+			execFlags.AssumeChildRole,
+			roleSessionName,
+		)
+		if err != nil {
+			return errors.Wrap(err, "error assuming role "+execFlags.AssumeChildRole)
+		}
+	} else {
+		data.ProfileName = account.Profile
+	}
+
+	data.AWSCredentials = awsCreds
 
 	err = buildTmpl(shell, data)
 	if err != nil {

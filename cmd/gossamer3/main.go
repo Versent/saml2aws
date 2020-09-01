@@ -94,8 +94,8 @@ func main() {
 	// `bulk-login` command and settings
 	cmdBulkLogin := app.Command("bulk-login", "Bulk login to a SAML 2.0 IDP and convert the SAML assertion to an STS token.")
 	bulkLoginFlags := new(flags.LoginExecFlags)
+	cmdBulkLogin.Arg("config", "Bulk role configuration file").Required().StringVar(&bulkLoginFlags.BulkLoginConfig)
 	bulkLoginFlags.CommonFlags = commonFlags
-	cmdBulkLogin.Flag("role-config", "Bulk role configuration file").Required().Short('c').StringVar(&bulkLoginFlags.BulkLoginConfig)
 	cmdBulkLogin.Flag("force", "Refresh credentials even if not expired.").BoolVar(&loginFlags.Force)
 
 	// `exec` command and settings
@@ -103,6 +103,7 @@ func main() {
 	execFlags := new(flags.LoginExecFlags)
 	execFlags.CommonFlags = commonFlags
 	cmdExec.Flag("profile", "The AWS profile to save the temporary credentials. (env: GOSSAMER3_PROFILE)").Envar("GOSSAMER3_PROFILE").Short('p').StringVar(&commonFlags.Profile)
+	cmdExec.Flag("assume-child-role", "ARN of child role to assume before performing command (env: GOSSAMER3_ASSUME_CHILD_ROLE)").Envar("GOSSAMER3_ASSUME_CHILD_ROLE").StringVar(&execFlags.AssumeChildRole)
 	cmdExec.Flag("exec-profile", "The AWS profile to utilize for command execution. Useful to allow the aws cli to perform secondary role assumption. (env: GOSSAMER3_EXEC_PROFILE)").Envar("GOSSAMER3_EXEC_PROFILE").StringVar(&execFlags.ExecProfile)
 	cmdLine := buildCmdList(cmdExec.Arg("command", "The command to execute."))
 
@@ -112,6 +113,7 @@ func main() {
 	consoleFlags.LoginExecFlags = execFlags
 	consoleFlags.LoginExecFlags.CommonFlags = commonFlags
 	cmdConsole.Flag("exec-profile", "The AWS profile to utilize for console execution. (env: GOSSAMER3_EXEC_PROFILE)").Envar("GOSSAMER3_EXEC_PROFILE").StringVar(&consoleFlags.LoginExecFlags.ExecProfile)
+	cmdConsole.Flag("assume-child-role", "ARN of child role to assume before logging into console (env: GOSSAMER3_ASSUME_CHILD_ROLE)").Envar("GOSSAMER3_ASSUME_CHILD_ROLE").StringVar(&consoleFlags.LoginExecFlags.AssumeChildRole)
 	cmdConsole.Flag("profile", "The AWS profile to save the temporary credentials. (env: GOSSAMER3_PROFILE)").Envar("GOSSAMER3_PROFILE").Short('p').StringVar(&commonFlags.Profile)
 	cmdConsole.Flag("force", "Refresh credentials even if not expired.").BoolVar(&consoleFlags.LoginExecFlags.Force)
 	cmdConsole.Flag("link", "Present link to AWS console instead of opening browser").BoolVar(&consoleFlags.Link)
@@ -126,6 +128,7 @@ func main() {
 	scriptFlags := new(flags.LoginExecFlags)
 	scriptFlags.CommonFlags = commonFlags
 	cmdScript.Flag("profile", "The AWS profile to save the temporary credentials. (env: GOSSAMER3_PROFILE)").Envar("GOSSAMER3_PROFILE").Short('p').StringVar(&commonFlags.Profile)
+	cmdScript.Flag("assume-child-role", "ARN of child role to assume before running script (env: GOSSAMER3_ASSUME_CHILD_ROLE)").Envar("GOSSAMER3_ASSUME_CHILD_ROLE").StringVar(&scriptFlags.AssumeChildRole)
 	var shell string
 	cmdScript.
 		Flag("shell", "Type of shell environment. Options include: bash, powershell, fish").

@@ -18,7 +18,7 @@ func PromptForConfigurationDetails(idpAccount *cfg.IDPAccount) error {
 
 	var err error
 
-	idpAccount.Provider, err = prompter.ChooseWithDefault("Please choose a provider:", idpAccount.Provider, providers)
+	idpAccount.Provider, err = prompter.ChooseWithDefault("Please choose a provider:", providers[0], providers)
 	if err != nil {
 		return errors.Wrap(err, "error selecting provider file")
 	}
@@ -40,6 +40,7 @@ func PromptForConfigurationDetails(idpAccount *cfg.IDPAccount) error {
 
 	idpAccount.URL = prompter.String("URL", idpAccount.URL)
 	idpAccount.Username = prompter.String("Username", idpAccount.Username)
+	idpAccount.AmazonWebservicesURN = prompter.String("AWS URN", idpAccount.AmazonWebservicesURN)
 
 	return nil
 }

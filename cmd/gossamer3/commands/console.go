@@ -7,7 +7,13 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
+
+	"github.com/aws/aws-sdk-go/aws"
+	awsCredentials "github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/sts"
 
 	"github.com/GESkunkworks/gossamer3/pkg/awsconfig"
 	"github.com/GESkunkworks/gossamer3/pkg/cfg"
@@ -45,10 +51,6 @@ func Console(consoleFlags *flags.ConsoleFlags) error {
 
 	awsCreds, err := loadOrLogin(account, sharedCreds, consoleFlags)
 	if err != nil {
-		return errors.Wrap(err,
-			fmt.Sprintf("error loading credentials for profile: %s", consoleFlags.LoginExecFlags.ExecProfile))
-	}
-	if err != nil {
 		return errors.Wrap(err, "error logging in")
 	}
 
@@ -58,6 +60,22 @@ func Console(consoleFlags *flags.ConsoleFlags) error {
 		if err != nil {
 			return errors.Wrap(err,
 				fmt.Sprintf("error acquiring credentials for profile: %s", consoleFlags.LoginExecFlags.ExecProfile))
+		}
+	} else if consoleFlags.LoginExecFlags.AssumeChildRole != "" {
+		roleSessionName, err := getRoleSessionNameFromCredentials(account, awsCreds)
+		if err != nil {
+			return errors.Wrap(err, "error getting role session name")
+		}
+
+		// Assume a child role
+		awsCreds, err = assumeRole(
+			account,
+			awsCreds,
+			consoleFlags.LoginExecFlags.AssumeChildRole,
+			roleSessionName,
+		)
+		if err != nil {
+			return errors.Wrap(err, "error assuming role "+consoleFlags.LoginExecFlags.AssumeChildRole)
 		}
 	}
 
@@ -83,7 +101,7 @@ func loadOrLogin(account *cfg.IDPAccount, sharedCreds *awsconfig.CredentialsProv
 		return loginRefreshCredentials(sharedCreds, execFlags.LoginExecFlags)
 	}
 
-	if awsCreds.Expires.Sub(time.Now()) < 0 {
+	if time.Until(awsCreds.Expires) < 0 {
 		log.Println("expired credentials triggering login")
 		return loginRefreshCredentials(sharedCreds, execFlags.LoginExecFlags)
 	}
@@ -172,4 +190,35 @@ func federatedLogin(creds *awsconfig.AWSCredentials, consoleFlags *flags.Console
 	}
 
 	return open.Run(loginURL)
+}
+
+func getRoleSessionNameFromCredentials(account *cfg.IDPAccount, awsCreds *awsconfig.AWSCredentials) (string, error) {
+	// Create config using supplied credentials and region
+	config := aws.NewConfig().WithRegion(account.Region).WithCredentials(
+		awsCredentials.NewStaticCredentials(
+			awsCreds.AWSAccessKey,
+			awsCreds.AWSSecretKey,
+			awsCreds.AWSSessionToken,
+		),
+	)
+
+	// Create session
+	sess, err := session.NewSession(config)
+	if err != nil {
+		return "", errors.Wrap(err, "failed to create session")
+	}
+
+	// Call to STS Get Caller Identity
+	svc := sts.New(sess)
+	resp, err := svc.GetCallerIdentity(&sts.GetCallerIdentityInput{})
+	if err != nil {
+		return "", errors.Wrap(err, "failed to get caller identity")
+	}
+
+	// Extract the role session name from the arn (everything after the final /)
+	arn := aws.StringValue(resp.Arn)
+	arnParts := strings.Split(arn, "/")
+	roleSessionName := arnParts[len(arnParts)-1]
+
+	return roleSessionName, nil
 }
