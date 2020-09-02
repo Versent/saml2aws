@@ -64,7 +64,7 @@ func TestNewConfigManagerSave(t *testing.T) {
 	idpAccount, err := cfgm.LoadIDPAccount("testing2")
 	require.Nil(t, err)
 	require.Equal(t, &IDPAccount{
-		Name:                 DefaultName,
+		Name:                 "testing2",
 		URL:                  "https://id.whatever.com",
 		Username:             "abc@whatever.com",
 		Provider:             "keycloak",
