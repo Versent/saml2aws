@@ -415,12 +415,14 @@ The first role will save its credentials into a profile named jump-role. The sec
 Next, the credentials used in the first stage will be used to assume children roles:
 
 **arn:aws:iam::111122223333:role/developer-jump-role**
+
 This will assume the child roles:
 - arn:aws:iam::222233334444:role/developer (saved to profile acct1-developer)
 - arn:aws:iam::555566667777:role/developer (saved to profile acct2-developer)
 - arn:aws:iam::888899990000:role/developer (saved to auto-generated profile 888899990000/developer)
 
 **arn:aws:iam::111122223333:role/admin-jump-role**
+
 This will assume the child roles:
 - arn:aws:iam::222233334444:role/admin (saved to profile acct1-admin)
 
