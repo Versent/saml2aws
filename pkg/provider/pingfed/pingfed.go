@@ -261,7 +261,11 @@ func (ac *Client) handleSiteMinderLogin(ctx context.Context, doc *goquery.Docume
 		return ctx, nil, errors.Wrap(err, "error extracting login form")
 	}
 
-	token := prompter.Password("Enter PIN + Token Code / Passcode")
+	// Pull MFA token from command line if specified
+	token := loginDetails.MFAToken
+	if loginDetails.MFAToken == "" {
+		token = prompter.Password("Enter PIN + Token Code / Passcode")
+	}
 
 	form.Values.Set("username", loginDetails.Username)
 	form.Values.Set("PASSWORD", token)
