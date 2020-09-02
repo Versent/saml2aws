@@ -23,8 +23,9 @@ import (
 )
 
 const (
-	federationURL = "https://signin.aws.amazon.com/federation"
-	issuer        = "gossamer3"
+	commercialFederationURL = "https://signin.aws.amazon.com/federation"
+	govFederationURL        = "https://signin.amazonaws-us-gov.com/federation"
+	issuer                  = "gossamer3"
 )
 
 // Console open the aws console from the CLI
@@ -79,6 +80,11 @@ func Console(consoleFlags *flags.ConsoleFlags) error {
 		}
 	}
 
+	federationURL := commercialFederationURL
+	if strings.HasPrefix(account.Region, "us-gov-") {
+		federationURL = govFederationURL
+	}
+
 	log.Printf("Presenting credentials for %s to %s", account.Profile, federationURL)
 	return federatedLogin(awsCreds, consoleFlags)
 }
@@ -106,7 +112,7 @@ func loadOrLogin(account *cfg.IDPAccount, sharedCreds *awsconfig.CredentialsProv
 		return loginRefreshCredentials(sharedCreds, execFlags.LoginExecFlags)
 	}
 
-	ok, err := checkToken(account.Profile)
+	ok, err := checkToken(account)
 	if err != nil {
 		return nil, errors.Wrap(err, "error validating token")
 	}
@@ -136,6 +142,11 @@ func federatedLogin(creds *awsconfig.AWSCredentials, consoleFlags *flags.Console
 	})
 	if err != nil {
 		return err
+	}
+
+	federationURL := commercialFederationURL
+	if strings.HasPrefix(creds.Region, "us-gov-") {
+		federationURL = govFederationURL
 	}
 
 	req, err := http.NewRequest("GET", federationURL, nil)
@@ -174,6 +185,9 @@ func federatedLogin(creds *awsconfig.AWSCredentials, consoleFlags *flags.Console
 	}
 
 	destination := "https://console.aws.amazon.com/"
+	if strings.HasPrefix(creds.Region, "us-gov-") {
+		destination = "https://console.amazonaws-us-gov.com/"
+	}
 
 	loginURL := fmt.Sprintf(
 		"%s?Action=login&Issuer=%s&Destination=%s&SigninToken=%s",

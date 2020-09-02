@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/GESkunkworks/gossamer3/pkg/cfg"
+
 	"github.com/GESkunkworks/gossamer3/pkg/awsconfig"
 	"github.com/GESkunkworks/gossamer3/pkg/flags"
 	"github.com/GESkunkworks/gossamer3/pkg/shell"
@@ -51,7 +53,7 @@ func Exec(execFlags *flags.LoginExecFlags, cmdline []string) error {
 		return errors.New("error aws credentials have expired")
 	}
 
-	ok, err := checkToken(account.Profile)
+	ok, err := checkToken(account)
 	if err != nil {
 		return errors.Wrap(err, "error validating token")
 	}
@@ -131,9 +133,12 @@ func assumeRoleWithProfile(targetProfile string, sessionDuration int) (*awsconfi
 	}, nil
 }
 
-func checkToken(profile string) (bool, error) {
+func checkToken(account *cfg.IDPAccount) (bool, error) {
+	config := aws.NewConfig().WithRegion(account.Region)
+
 	sess, err := session.NewSessionWithOptions(session.Options{
-		Profile: profile,
+		Profile: account.Profile,
+		Config:  *config,
 	})
 	if err != nil {
 		return false, err
