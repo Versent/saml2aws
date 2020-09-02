@@ -94,7 +94,7 @@ func TestHandleLogin(t *testing.T) {
 func TestHandleOTP(t *testing.T) {
 	pr := &mocks.Prompter{}
 	prompter.SetPrompter(pr)
-	pr.Mock.On("StringRequired", "Enter passcode").Return("5309")
+	pr.Mock.On("Password", "Enter passcode").Return("5309")
 
 	data, err := ioutil.ReadFile("example/otp.html")
 	require.Nil(t, err)
