@@ -95,12 +95,8 @@ func (ia *IDPAccount) Validate() error {
 
 // NewIDPAccount Create an idp account and fill in any default fields with sane values
 func NewIDPAccount() *IDPAccount {
-	return &IDPAccount{
-		AmazonWebservicesURN: DefaultAmazonWebservicesURN,
-		SessionDuration:      DefaultSessionDuration,
-		Profile:              DefaultProfile,
-		Name:                 DefaultName,
-	}
+	account := setDefaults(IDPAccount{})
+	return &account
 }
 
 // ConfigManager manage the various IDP account settings
@@ -123,8 +119,25 @@ func NewConfigManager(configFile string) (*ConfigManager, error) {
 	return &ConfigManager{configPath}, nil
 }
 
+func setDefaults(account IDPAccount) IDPAccount {
+	if account.Name == "" {
+		account.Name = DefaultName
+	}
+	if account.Profile == "" {
+		account.Profile = DefaultProfile
+	}
+	if account.AmazonWebservicesURN == "" {
+		account.AmazonWebservicesURN = DefaultAmazonWebservicesURN
+	}
+	if account.SessionDuration == 0 {
+		account.SessionDuration = DefaultSessionDuration
+	}
+
+	return account
+}
+
 // SaveIDPAccount save idp account
-func (cm *ConfigManager) SaveIDPAccount(idpAccountName string, account *IDPAccount) error {
+func (cm *ConfigManager) SaveIDPAccount(account *IDPAccount) error {
 
 	if err := account.Validate(); err != nil {
 		return errors.Wrap(err, "Account validation failed")
@@ -185,6 +198,11 @@ func (cm *ConfigManager) loadIDPAccounts() ([]IDPAccount, error) {
 		return nil, errors.Wrap(err, "Unable to read idp accounts from config")
 	}
 
+	// Set default values if they are not provided
+	for i, provider := range providers {
+		providers[i] = setDefaults(provider)
+	}
+
 	return providers, nil
 }
 
@@ -209,7 +227,7 @@ func overwriteAccount(newAccount IDPAccount, providers []IDPAccount) []IDPAccoun
 	}
 
 	if !found {
-		providers = append(providers, newAccount)
+		providers = append(providers, setDefaults(newAccount))
 	}
 
 	return providers

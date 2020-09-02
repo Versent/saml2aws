@@ -15,7 +15,7 @@ import (
 
 var (
 	// Version app version
-	Version = "1.0.0"
+	Version = "2.0.0"
 )
 
 // The `cmdLineList` type is used to make a `[]string` meet the requirements
@@ -47,6 +47,7 @@ func main() {
 	log.SetOutput(os.Stderr)
 	log.SetFlags(0)
 	logrus.SetOutput(os.Stderr)
+	logrus.SetFormatter(&logrus.TextFormatter{DisableTimestamp: true})
 
 	// the following avoids issues with powershell, and shells in windows reporting a program errors
 	// because it has written to stderr
@@ -96,7 +97,7 @@ func main() {
 	bulkLoginFlags := new(flags.LoginExecFlags)
 	cmdBulkLogin.Arg("config", "Bulk role configuration file").Required().StringVar(&bulkLoginFlags.BulkLoginConfig)
 	bulkLoginFlags.CommonFlags = commonFlags
-	cmdBulkLogin.Flag("force", "Refresh credentials even if not expired.").BoolVar(&loginFlags.Force)
+	cmdBulkLogin.Flag("force", "Refresh credentials even if not expired.").BoolVar(&bulkLoginFlags.Force)
 
 	// `exec` command and settings
 	cmdExec := app.Command("exec", "Exec the supplied command with env vars from STS token.")

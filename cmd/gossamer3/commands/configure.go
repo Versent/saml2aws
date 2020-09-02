@@ -45,7 +45,7 @@ func Configure(configFlags *flags.CommonFlags) error {
 		}
 	}
 
-	err = cfgm.SaveIDPAccount(idpAccountName, account)
+	err = cfgm.SaveIDPAccount(account)
 	if err != nil {
 		return errors.Wrap(err, "failed to save configuration")
 	}

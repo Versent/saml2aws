@@ -116,7 +116,7 @@ func (input *PrimaryRoleInput) Assume(roleSessionName string, force bool) {
 	}
 
 	// Build success message
-	successMessage := "Parent assumed"
+	successMessage := "Assumed parent role"
 	if existingCreds {
 		successMessage = "Using existing parent credentials"
 	}
@@ -235,7 +235,7 @@ func (input *SecondaryRoleInput) Assume(roleSessionName string, force bool) {
 		l.Error(err.Error())
 	} else {
 		// Log the success
-		successMessage := "Successfully assumed role"
+		successMessage := "Assumed child role"
 		if existingCreds {
 			successMessage = "Using existing credentials"
 		}
@@ -266,15 +266,20 @@ func BulkLogin(loginFlags *flags.LoginExecFlags) error {
 		log.Fatalln(err)
 	}
 
+	logger.Debugf("Role Config: %+v", roleConfig)
+
 	// Check if any credentials need to be refreshed - only run when force is false
-	logger.Debug("check if Creds Exist")
-	expired := false
+	logger.Debug("Check if credentials exist")
 	if !loginFlags.Force {
+		logger.Debugf("Forcing credential refresh")
+		expired := false
+
 		for _, role := range roleConfig.Roles {
 			// Only check for expiration of primary role if it has a profile
 			if role.Profile != "" {
 				sharedCreds := awsconfig.NewSharedCredentials(role.Profile)
 				if sharedCreds.Expired() {
+					logger.WithField("Role", role.PrimaryRoleArn).Debugf("Credentials have expired")
 					expired = true
 					break
 				}
@@ -290,6 +295,7 @@ func BulkLogin(loginFlags *flags.LoginExecFlags) error {
 
 				sharedCreds := awsconfig.NewSharedCredentials(child.Profile)
 				if sharedCreds.Expired() {
+					logger.WithField("Role", child.RoleArn).Debugf("Credentials have expired")
 					expired = true
 					break
 				}
@@ -299,12 +305,12 @@ func BulkLogin(loginFlags *flags.LoginExecFlags) error {
 				break
 			}
 		}
-	}
 
-	// If none of the credentials are expired, exit out
-	if !expired {
-		log.Println("credentials are not expired skipping")
-		return nil
+		// If none of the credentials are expired, exit out
+		if !expired {
+			log.Println("credentials are not expired skipping")
+			return nil
+		}
 	}
 
 	// this checks if the credentials file has been created yet

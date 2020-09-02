@@ -40,9 +40,10 @@ func TestNewConfigManagerLoad(t *testing.T) {
 	idpAccount, err = cfgm.LoadIDPAccount("")
 	require.Nil(t, err)
 	require.Equal(t, &IDPAccount{
+		Name:                 DefaultName,
 		AmazonWebservicesURN: DefaultAmazonWebservicesURN,
-		SessionDuration:      3600,
-		Profile:              "saml",
+		SessionDuration:      DefaultSessionDuration,
+		Profile:              DefaultProfile,
 	}, idpAccount)
 }
 
@@ -51,7 +52,8 @@ func TestNewConfigManagerSave(t *testing.T) {
 	cfgm, err := NewConfigManager(throwAwayConfig)
 	require.Nil(t, err)
 
-	err = cfgm.SaveIDPAccount("testing2", &IDPAccount{
+	err = cfgm.SaveIDPAccount(&IDPAccount{
+		Name:     "testing2",
 		URL:      "https://id.whatever.com",
 		MFA:      "none",
 		Provider: "keycloak",
@@ -62,13 +64,14 @@ func TestNewConfigManagerSave(t *testing.T) {
 	idpAccount, err := cfgm.LoadIDPAccount("testing2")
 	require.Nil(t, err)
 	require.Equal(t, &IDPAccount{
-		Name:                 "default",
+		Name:                 DefaultName,
 		URL:                  "https://id.whatever.com",
 		Username:             "abc@whatever.com",
 		Provider:             "keycloak",
 		MFA:                  "none",
+		SessionDuration:      DefaultSessionDuration,
 		AmazonWebservicesURN: DefaultAmazonWebservicesURN,
-		Profile:              "saml",
+		Profile:              DefaultProfile,
 	}, idpAccount)
 
 	os.Remove(throwAwayConfig)
