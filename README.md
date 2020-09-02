@@ -111,6 +111,7 @@ Flags:
       --version                Show application version.
       --verbose                Enable verbose logging
   -i, --provider=PROVIDER      This flag is obsolete. See: https://github.com/GESkunkworks/gossamer3#configuring-idp-accounts
+      --config=CONFIG          Path/filename of gossamer3 config file (env: GOSSAMER3_CONFIGFILE)
   -a, --idp-account="default"  The name of the configured IDP account. (env: GOSSAMER3_IDP_ACCOUNT)
       --idp-provider=IDP-PROVIDER
                                The configured IDP provider. (env: GOSSAMER3_IDP_PROVIDER)
@@ -118,7 +119,6 @@ Flags:
   -s, --skip-verify            Skip verification of server certificate. (env: GOSSAMER3_SKIP_VERIFY)
       --url=URL                The URL of the SAML IDP server used to login. (env: GOSSAMER3_URL)
       --username=USERNAME      The username used to login. (env: GOSSAMER3_USERNAME)
-      --password=PASSWORD      The password used to login. (env: GOSSAMER3_PASSWORD)
       --mfa-token=MFA-TOKEN    The current MFA token (supported in Keycloak, ADFS, GoogleApps). (env: GOSSAMER3_MFA_TOKEN)
       --role=ROLE              The ARN of the role to assume. (env: GOSSAMER3_ROLE)
       --aws-urn=AWS-URN        The URN used by SAML when you login. (env: GOSSAMER3_AWS_URN)
@@ -136,29 +136,39 @@ Commands:
   configure [<flags>]
     Configure a new IDP account.
 
-    -p, --profile=PROFILE          The AWS profile to save the temporary credentials. (env: GOSSAMER3_PROFILE)
-        --config=CONFIG            Path/filename of gossamer3 config file (env: GOSSAMER3_CONFIGFILE)
+    -p, --profile=PROFILE  The AWS profile to save the temporary credentials. (env: GOSSAMER3_PROFILE)
 
   login [<flags>]
     Login to a SAML 2.0 IDP and convert the SAML assertion to an STS token.
 
-    -p, --profile=PROFILE      The AWS profile to save the temporary credentials. (env: GOSSAMER3_PROFILE)
-        --force                Refresh credentials even if not expired.
+    -p, --profile=PROFILE  The AWS profile to save the temporary credentials. (env: GOSSAMER3_PROFILE)
+        --force            Refresh credentials even if not expired.
+
+  bulk-login [<flags>] <config>
+    Bulk login to a SAML 2.0 IDP and convert the SAML assertion to an STS token.
+
+    --force  Refresh credentials even if not expired.
 
   exec [<flags>] [<command>...]
     Exec the supplied command with env vars from STS token.
 
     -p, --profile=PROFILE  The AWS profile to save the temporary credentials. (env: GOSSAMER3_PROFILE)
+        --assume-child-role=ASSUME-CHILD-ROLE
+                           ARN of child role to assume before performing command (env: GOSSAMER3_ASSUME_CHILD_ROLE)
         --exec-profile=EXEC-PROFILE
-                           The AWS profile to utilize for command execution. Useful to allow the aws cli to perform secondary role assumption. (env: GOSSAMER3_EXEC_PROFILE)
+                           The AWS profile to utilize for command execution. Useful to allow the aws cli to perform secondary role assumption.
+                           (env: GOSSAMER3_EXEC_PROFILE)
 
   console [<flags>]
     Console will open the aws console after logging in.
 
         --exec-profile=EXEC-PROFILE
                            The AWS profile to utilize for console execution. (env: GOSSAMER3_EXEC_PROFILE)
+        --assume-child-role=ASSUME-CHILD-ROLE
+                           ARN of child role to assume before logging into console (env: GOSSAMER3_ASSUME_CHILD_ROLE)
     -p, --profile=PROFILE  The AWS profile to save the temporary credentials. (env: GOSSAMER3_PROFILE)
         --force            Refresh credentials even if not expired.
+        --link             Present link to AWS console instead of opening browser
 
   list-roles
     List available role ARNs.
@@ -168,6 +178,8 @@ Commands:
     Emit a script that will export environment variables.
 
     -p, --profile=PROFILE  The AWS profile to save the temporary credentials. (env: GOSSAMER3_PROFILE)
+        --assume-child-role=ASSUME-CHILD-ROLE
+                           ARN of child role to assume before running script (env: GOSSAMER3_ASSUME_CHILD_ROLE)
         --shell=bash       Type of shell environment. Options include: bash, powershell, fish
 
 
@@ -312,7 +324,7 @@ To use this credential, call the AWS CLI with the --profile option (e.g. aws --p
 
 ## Advanced Configuration
 
-Configuring multiple accounts with custom role and profile in `~/.aws/config` with goal being isolation between infra code when deploying to these environments. This setup assumes you're using separate roles and probably AWS accounts for `dev` and `test` and is designed to help operations staff avoid accidentally deploying to the wrong AWS account in complex environments. Note that this method configures SAML authentication to each AWS account directly (in this case different AWS accounts). In the example below, separate authentication values are configured for AWS accounts 'profile=customer-dev/awsAccount=was 121234567890' and 'profile=customer-test/awsAccount=121234567891'
+Configuring multiple accounts with a custom role and profile in `~/.aws/config` with goal being isolation between infra code when deploying to these environments. This setup assumes you're using separate roles and probably AWS accounts for `dev` and `test` and is designed to help operations staff avoid accidentally deploying to the wrong AWS account in complex environments. Note that this method configures SAML authentication to each AWS account directly (in this case different AWS accounts). In the example below, separate authentication values are configured for AWS accounts 'profile=customer-dev/awsAccount=was 121234567890' and 'profile=customer-test/awsAccount=121234567891'
 
 ### Dev Account Setup
 
@@ -322,21 +334,21 @@ To setup the dev account run the following and enter URL, username and password,
 gossamer3 configure -a customer-dev --role=arn:aws:iam::121234567890:role/customer-admin-role -p customer-dev
 ```
 
-This will result in the following configuration in `~/.gossamer3`.
+This will result in the following configuration in `~/.gossamer3.yaml`.
 
-```
-[customer-dev]
-url                     = https://id.customer.cloud
-username                = mark@wolfe.id.au
-provider                = Ping
-mfa                     = Auto
-skip_verify             = false
-timeout                 = 0
-aws_urn                 = urn:amazon:webservices
-aws_session_duration    = 28800
-aws_profile             = customer-dev
-role_arn                = arn:aws:iam::121234567890:role/customer-admin-role
-region                  = us-east-1
+```yaml
+- name: customer-dev
+  url: https://id.customer.cloud
+  username: mark@wolfe.id.au
+  provider: Ping
+  mfa: Auto
+  skip_verify: false
+  timeout: 0
+  aws_urn: urn:amazon:webservices
+  aws_session_duration: 28800
+  aws_profile: customer-dev
+  role_arn: arn:aws:iam::121234567890:role/customer-admin-role
+  region: us-east-1
 ```
 
 To use this you will need to export `AWS_DEFAULT_PROFILE=customer-dev` environment variable to target `dev`.
@@ -349,31 +361,95 @@ To setup the test account run the following and enter URL, username and password
 gossamer3 configure -a customer-test --role=arn:aws:iam::121234567891:role/customer-admin-role -p customer-test
 ```
 
-This results in the following configuration in `~/.gossamer3`.
+This results in the following configuration in `~/.gossamer3.yaml`.
 
-```
-[customer-test]
-url                     = https://id.customer.cloud
-username                = mark@wolfe.id.au
-provider                = Ping
-mfa                     = Auto
-skip_verify             = false
-timeout                 = 0
-aws_urn                 = urn:amazon:webservices
-aws_session_duration    = 28800
-aws_profile             = customer-test
-role_arn                = arn:aws:iam::121234567891:role/customer-admin-role
-region                  = us-east-1
+```yaml
+- name: customer-test
+  url: https://id.customer.cloud
+  username: mark@wolfe.id.au
+  provider: Ping
+  mfa: Auto
+  skip_verify: false
+  timeout: 0
+  aws_urn: urn:amazon:webservices
+  aws_session_duration: 28800
+  aws_profile: customer-test
+  role_arn: arn:aws:iam::121234567891:role/customer-admin-role
+  region: us-east-1
 ```
 
 To use this you will need to export `AWS_DEFAULT_PROFILE=customer-test` environment variable to target `test`.
 
 ## Advanced Configuration (Multiple AWS account access but SAML authenticate against a single 'SSO' AWS account)
 
+### Method 1 - Bulk Login with Role Config File
 Example:
 (Authenticate to my 'SSO' AWS account. With this setup, there is no need to authenticate again. We can now rely on IAM to assume role cross account)
 
-~/.aws/credentials: #(these are generated by `gossamer3 login`. Sets up SAML authentication into my AWS 'SSO' account)
+~/roles.yml:
+```yaml
+assume_all_roles: false
+roles:
+  - primary_role_arn: arn:aws:iam::111122223333:role/developer-jump-role
+    profile: jump-role
+    assume_roles:
+      - role_arn: arn:aws:iam::222233334444:role/developer
+        profile: acct1-developer
+      - role_arn: arn:aws:iam::555566667777:role/developer
+        profile: acct2-developer
+      - role_arn: arn:aws:iam::888899990000:role/developer
+
+  - primary_role_arn: arn:aws:iam::111122223333:role/admin-jump-role
+    assume_roles:
+      - role_arn: arn:aws:iam::222233334444:role/admin
+        profile: acct1-admin
+```
+
+This configuration will assume the primary roles using SAML:
+
+- arn:aws:iam::111122223333:role/developer-jump-role
+- arn:aws:iam::111122223333:role/admin-jump-role
+
+The first role will save its credentials into a profile named jump-role. The second role will not save its credentials.
+
+Next, the credentials used in the first stage will be used to assume children roles:
+
+**arn:aws:iam::111122223333:role/developer-jump-role**
+This will assume the child roles:
+- arn:aws:iam::222233334444:role/developer (saved to profile acct1-developer)
+- arn:aws:iam::555566667777:role/developer (saved to profile acct2-developer)
+- arn:aws:iam::888899990000:role/developer (saved to auto-generated profile 888899990000/developer)
+
+**arn:aws:iam::111122223333:role/admin-jump-role**
+This will assume the child roles:
+- arn:aws:iam::222233334444:role/admin (saved to profile acct1-admin)
+
+Perform a `gossamer3 bulk-login`:
+```
+gossamer3 bulk-login -a sso ~/roles.yml
+
+Using IDP Account ping to access Ping https://example.com
+To use saved password just hit enter.
+? Username user123
+? Password 
+
+Authenticating as user123 ...
+? Enter PIN + Token Code / Passcode ********
+INFO Assumed parent role                           Profile=jump-role Role="arn:aws:iam::111122223333:role/developer-jump-role"
+INFO Assumed child role                            Profile=acct1-developer Role="arn:aws:iam::222233334444:role/developer"
+INFO Assumed child role                            Profile=acct2-developer Role="arn:aws:iam::555566667777:role/developer"
+INFO Assumed child role                            Profile=888899990000/developer Role="arn:aws:iam::888899990000:role/developer"
+INFO Assumed parent role                           Role="arn:aws:iam::111122223333:role/admin-jump-role"
+INFO Assumed child role                            Profile=acct1-admin Role="arn:aws:iam::222233334444:role/admin-organizations-admin"
+```
+
+Credentials have now been saved into the AWS credentials file.
+
+### Method 2 - AWS Credential File
+Example:
+(Authenticate to my 'SSO' AWS account. With this setup, there is no need to authenticate again. We can now rely on IAM to assume role cross account)
+
+~/.aws/credentials: (these are generated by `gossamer3 login`. Sets up SAML authentication into my AWS 'SSO' account)
 ```
 [saml]
 aws_access_key_id        = AAAAAAAAAAAAAAAAB
@@ -480,21 +556,21 @@ Use following parameters in `~/.gossamer3` file:
 - `region` - configures which region endpoints to use, See [Audience](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_providers_create_saml_assertions.html#saml_audience-restriction) and [partition](https://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html#arns-syntax)
 
 Example: typical configuration with such parameters would look like follows:
-```
-[default]
-url                     = https://id.customer.cloud
-username                = user@example.com
-provider                = Ping
-mfa                     = Auto
-skip_verify             = false
-timeout                 = 0
-aws_urn                 = urn:amazon:webservices
-aws_session_duration    = 28800
-aws_profile             = customer-dev
-role_arn                = arn:aws:iam::121234567890:role/customer-admin-role
-http_attempts_count     = 3
-http_retry_delay        = 1
-region                  = us-east-1
+```yaml
+- name: default
+  url: https://id.customer.cloud
+  username: user@example.com
+  provider: Ping
+  mfa: Auto
+  skip_verify: false
+  timeout: 0
+  aws_urn: urn:amazon:webservices
+  aws_session_duration: 28800
+  aws_profile: customer-dev
+  role_arn: arn:aws:iam::121234567890:role/customer-admin-role
+  http_attempts_count: 3
+  http_retry_delay: 1
+  region: us-east-1
 ```
 ## Building
 
@@ -525,8 +601,6 @@ The exec sub command will export the following environment variables.
 * AWS_SESSION_TOKEN
 * AWS_SECURITY_TOKEN
 * EC2_SECURITY_TOKEN
-* AWS_PROFILE
-* AWS_DEFAULT_PROFILE
 * AWS_CREDENTIAL_EXPIRATION
 
 Note: That profile environment variables enable you to use `exec` with a script or command which requires an explicit profile.
