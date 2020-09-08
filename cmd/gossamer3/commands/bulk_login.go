@@ -2,6 +2,7 @@ package commands
 
 import (
 	b64 "encoding/base64"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -9,17 +10,15 @@ import (
 	"sync"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/sts"
-
-	"github.com/GESkunkworks/gossamer3/pkg/awsconfig"
-
 	g3 "github.com/GESkunkworks/gossamer3"
 	"github.com/GESkunkworks/gossamer3/helper/credentials"
+	"github.com/GESkunkworks/gossamer3/pkg/awsconfig"
 	"github.com/GESkunkworks/gossamer3/pkg/cfg"
 	"github.com/GESkunkworks/gossamer3/pkg/flags"
+	"github.com/aws/aws-sdk-go/aws"
 	awsCredentials "github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/sts"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
@@ -270,7 +269,7 @@ func BulkLogin(loginFlags *flags.LoginExecFlags) error {
 
 	// Check if any credentials need to be refreshed - only run when force is false
 	logger.Debug("Check if credentials exist")
-	if !loginFlags.Force {
+	if !loginFlags.Force && !roleConfig.AssumeAllRoles {
 		logger.Debugf("Forcing credential refresh")
 		expired := false
 
@@ -378,6 +377,52 @@ func BulkLogin(loginFlags *flags.LoginExecFlags) error {
 	}
 	roleSessionName = fmt.Sprintf("gossamer3-%s", roleSessionName)
 
+	if roleConfig.AssumeAllRoles {
+		logger.Infof("Grabbing all roles and ignoring duplicates...")
+		// Check for duplicate roles (Only when assume_all_roles)
+		// Populate role config using all roles from aws saml assertion
+		samlAssertionRoles, err := grabAllAwsRoles(samlAssertionData)
+		if err != nil {
+			return errors.Wrap(err, "error getting your aws roles from saml assertion")
+		}
+
+		for _, role := range samlAssertionRoles {
+			var duplicate = false
+			for _, configRole := range roleConfig.Roles {
+				// Look for duplicate role
+				if role.RoleARN == configRole.PrimaryRoleArn {
+					duplicate = true
+
+					if configRole.Profile == "" {
+						arnParts := strings.Split(configRole.PrimaryRoleArn, ":")
+						configRole.Profile = fmt.Sprintf("%s/%s", arnParts[4], strings.TrimPrefix(arnParts[5], "role/"))
+					}
+
+					break
+				}
+			}
+
+			if !duplicate {
+				arnParts := strings.Split(role.RoleARN, ":")
+				profile := fmt.Sprintf("%s/%s", arnParts[4], strings.TrimPrefix(arnParts[5], "role/"))
+
+				roleConfig.Roles = append(roleConfig.Roles, cfg.RoleConfig{
+					PrimaryRoleArn: role.RoleARN,
+					Profile:        profile,
+				})
+			}
+
+		}
+		{
+			// Log using debug all roles
+			bs, err := json.Marshal(roleConfig.Roles)
+			if err == nil {
+				logger.Debugf("Got %v groups to assume roles from file & from AWS", len(roleConfig.Roles))
+				logger.Debugln(string(bs))
+			}
+		}
+		logger.Debugf("Got groups: %+v", roleConfig.Roles)
+	}
 	// Create channel and wait group
 	wg := &sync.WaitGroup{}
 	ch := make(chan PrimaryRoleOutput, len(roleConfig.Roles))
@@ -423,6 +468,11 @@ func BulkLogin(loginFlags *flags.LoginExecFlags) error {
 
 		// Save credentials
 		for creds := range ch {
+			if creds.err != nil {
+				logger.Debugf("Error assuming role: %s", creds.err.Error())
+				continue
+			}
+
 			// Handle primary credentials
 			if creds.Input.RoleConfig.Profile != "" {
 				sharedCreds := awsconfig.NewSharedCredentials(creds.Input.RoleConfig.Profile)

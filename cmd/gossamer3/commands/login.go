@@ -164,13 +164,8 @@ func resolveLoginDetails(account *cfg.IDPAccount, loginFlags *flags.LoginExecFla
 	return loginDetails, nil
 }
 
-func selectAwsRole(samlAssertion string, account *cfg.IDPAccount) (*g3.AWSRole, error) {
-	data, err := b64.StdEncoding.DecodeString(samlAssertion)
-	if err != nil {
-		return nil, errors.Wrap(err, "error decoding saml assertion")
-	}
-
-	roles, err := g3.ExtractAwsRoles(data)
+func grabAllAwsRoles(samlAssertion []byte) ([]*g3.AWSRole, error) {
+	roles, err := g3.ExtractAwsRoles(samlAssertion)
 	if err != nil {
 		return nil, errors.Wrap(err, "error parsing aws roles")
 	}
@@ -181,9 +176,18 @@ func selectAwsRole(samlAssertion string, account *cfg.IDPAccount) (*g3.AWSRole, 
 		os.Exit(1)
 	}
 
-	awsRoles, err := g3.ParseAWSRoles(roles)
+	return g3.ParseAWSRoles(roles)
+}
+
+func selectAwsRole(samlAssertion string, account *cfg.IDPAccount) (*g3.AWSRole, error) {
+	data, err := b64.StdEncoding.DecodeString(samlAssertion)
 	if err != nil {
-		return nil, errors.Wrap(err, "error parsing aws roles")
+		return nil, errors.Wrap(err, "error decoding saml assertion")
+	}
+
+	awsRoles, err := grabAllAwsRoles(data)
+	if err != nil {
+		return nil, err
 	}
 
 	return resolveRole(awsRoles, samlAssertion, account)
