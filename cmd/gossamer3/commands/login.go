@@ -111,6 +111,8 @@ func buildIdpAccount(loginFlags *flags.LoginExecFlags) (*cfg.IDPAccount, error) 
 	account, err := cfgm.LoadIDPAccount(loginFlags.CommonFlags.IdpAccount)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to load idp account")
+	} else if account == nil {
+		return nil, errors.Errorf("idp account %s does not exist", loginFlags.CommonFlags.IdpAccount)
 	}
 
 	// update username and hostname if supplied

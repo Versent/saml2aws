@@ -37,14 +37,9 @@ func TestNewConfigManagerLoad(t *testing.T) {
 		Profile:              "saml",
 	}, idpAccount)
 
-	idpAccount, err = cfgm.LoadIDPAccount("")
+	idpAccount, err = cfgm.LoadIDPAccount("fake-account")
 	require.Nil(t, err)
-	require.Equal(t, &IDPAccount{
-		Name:                 DefaultName,
-		AmazonWebservicesURN: DefaultAmazonWebservicesURN,
-		SessionDuration:      DefaultSessionDuration,
-		Profile:              DefaultProfile,
-	}, idpAccount)
+	require.Nil(t, idpAccount)
 }
 
 func TestNewConfigManagerSave(t *testing.T) {

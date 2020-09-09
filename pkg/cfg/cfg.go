@@ -213,7 +213,7 @@ func readAccount(idpAccountName string, providers []IDPAccount) (*IDPAccount, er
 		}
 	}
 
-	return NewIDPAccount(), nil
+	return nil, nil
 }
 
 func overwriteAccount(newAccount IDPAccount, providers []IDPAccount) []IDPAccount {

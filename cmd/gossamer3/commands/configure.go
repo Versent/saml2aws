@@ -26,6 +26,8 @@ func Configure(configFlags *flags.CommonFlags) error {
 	account, err := cfgm.LoadIDPAccount(idpAccountName)
 	if err != nil {
 		return errors.Wrap(err, "failed to load idp account")
+	} else if account == nil {
+		account = cfg.NewIDPAccount()
 	}
 
 	// update username and hostname if supplied
