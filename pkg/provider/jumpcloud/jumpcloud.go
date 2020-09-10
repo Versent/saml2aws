@@ -137,8 +137,8 @@ func (jc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 
 		// If the error indicates something other than missing MFA, then it's fatal.
 		if jcmsg.Message != "MFA required." {
-			log.Fatalf(jcmsg.Message)
-			return samlAssertion, nil
+			errMsg := fmt.Sprintf("Jumpcloud error: %s", jcmsg.Message)
+			return samlAssertion, errors.Wrap(err, errMsg)
 		}
 
 		// Get the user's MFA token and re-build the body
