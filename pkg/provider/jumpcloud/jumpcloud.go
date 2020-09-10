@@ -47,6 +47,10 @@ type JCRedirect struct {
 	Address string `json:"redirectTo"`
 }
 
+type JCMessage struct {
+	Message string `json:"message"`
+}
+
 // New creates a new JumpCloud client
 func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 
@@ -114,9 +118,29 @@ func (jc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		return samlAssertion, errors.Wrap(err, "error retrieving login form")
 	}
 
-	// Check if we get a 401.  If we did, MFA is required and the OTP was not provided.
-	// Get the OTP and resubmit.
+	// Check if we get a 401.  If we did, and MFA is required, get the OTP and resubmit.
+	// Otherwise log the authentication message as a fatal error.
 	if res.StatusCode == 401 {
+
+		// Grab the body from the response that has the message in it.
+		messageBody, err := ioutil.ReadAll(res.Body)
+		if err != nil {
+			return samlAssertion, errors.Wrap(err, "Error reading body")
+		}
+
+		// Unmarshall the body to get the message.
+		var jcmsg = new(JCMessage)
+		err = json.Unmarshal(messageBody, &jcmsg)
+		if err != nil {
+			log.Fatalf("Error unmarshalling message response! %v", err)
+		}
+
+		// If the error indicates something other than missing MFA, then it's fatal.
+		if jcmsg.Message != "MFA required." {
+			log.Fatalf(jcmsg.Message)
+			return samlAssertion, nil
+		}
+
 		// Get the user's MFA token and re-build the body
 		a.OTP = loginDetails.MFAToken
 		if a.OTP == "" {
