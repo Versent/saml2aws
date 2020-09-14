@@ -11,6 +11,7 @@ type CommonFlags struct {
 	IdpProvider          string
 	MFA                  string
 	MFAToken             string
+	MFADevice            string
 	URL                  string
 	Username             string
 	RoleArn              string
@@ -20,6 +21,7 @@ type CommonFlags struct {
 	SkipVerify           bool
 	Profile              string
 	DisableKeychain      bool
+	Quiet                bool
 	Region               string
 }
 

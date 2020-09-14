@@ -130,7 +130,13 @@ func resolveLoginDetails(account *cfg.IDPAccount, loginFlags *flags.LoginExecFla
 
 	// log.Printf("loginFlags %+v", loginFlags)
 
-	loginDetails := &creds.LoginDetails{URL: account.URL, Username: account.Username, MFAToken: loginFlags.CommonFlags.MFAToken}
+	loginDetails := &creds.LoginDetails{
+		URL:       account.URL,
+		Username:  account.Username,
+		MFAToken:  loginFlags.CommonFlags.MFAToken,
+		MFADevice: account.MFADevice,
+		MFAPrompt: account.MFAPrompt,
+	}
 
 	log.Printf("Using IDP Account %s to access %s %s", loginFlags.CommonFlags.IdpAccount, account.Provider, account.URL)
 
@@ -149,6 +155,10 @@ func resolveLoginDetails(account *cfg.IDPAccount, loginFlags *flags.LoginExecFla
 	// if you supply a username in a flag it takes precedence
 	if loginFlags.CommonFlags.Username != "" {
 		loginDetails.Username = loginFlags.CommonFlags.Username
+	}
+
+	if loginFlags.CommonFlags.MFADevice != "" {
+		loginDetails.MFADevice = loginFlags.CommonFlags.MFADevice
 	}
 
 	// log.Printf("loginDetails %+v", loginDetails)

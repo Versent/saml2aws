@@ -32,6 +32,7 @@ type Client struct {
 
 var cookies = []*http.Cookie{}
 var resp *http.Response
+var deviceSelected = false
 
 // New create a new PingFed client
 func New(idpAccount *cfg.IDPAccount) (*Client, error) {
@@ -77,10 +78,6 @@ func (ac *Client) follow(ctx context.Context, req *http.Request) (string, error)
 		return "", errors.Wrap(err, "failed to build document from response")
 	}
 
-	//html, _ := doc.Html()
-	//logger.Debugf("Headers: %+v", res.Header)
-	//logger.Debugf("Body: %+v", html)
-
 	var handler func(context.Context, *goquery.Document) (context.Context, *http.Request, error)
 
 	if docIsFormRedirectToAWS(doc) {
@@ -117,6 +114,12 @@ func (ac *Client) follow(ctx context.Context, req *http.Request) (string, error)
 	} else if docIsSiteMinderLogin(doc) {
 		logger.WithField("type", "siteminder-login").Debug("doc detect")
 		handler = ac.handleSiteMinderLogin
+	} else if docIsSelectDevice(doc) {
+		logger.WithField("type", "select-device").Debug("doc detect")
+		handler = ac.handleSelectDevice
+	} else if docIsSecurityKeyAuth(doc) {
+		logger.WithField("type", "security-key").Debug("doc detect")
+		handler = ac.handleSecurityKeyLogin
 	} else if docIsOTP(doc) {
 		logger.WithField("type", "otp").Debug("doc detect")
 		handler = ac.handleOTP
@@ -126,6 +129,9 @@ func (ac *Client) follow(ctx context.Context, req *http.Request) (string, error)
 	} else if docIsSwipe(doc) {
 		logger.WithField("type", "swipe").Debug("doc detect")
 		handler = ac.handleSwipe
+	} else if docIsPingAuth(doc) {
+		logger.WithField("type", "ping-auth").Debug("doc detect")
+		handler = ac.handleFormRedirect
 	} else if docIsFormRedirect(doc) {
 		logger.WithField("type", "form-redirect").Debug("doc detect")
 		handler = ac.handleFormRedirect
@@ -165,8 +171,9 @@ func (ac *Client) follow(ctx context.Context, req *http.Request) (string, error)
 	}
 
 	for _, cookie := range cookies {
-		req.AddCookie(cookie)
-		//logger.Debugf("Cookie: %s=%s", cookie.Name, cookie.Value)
+		if cookie.Domain == req.URL.Host {
+			req.AddCookie(cookie)
+		}
 	}
 
 	return ac.follow(ctx, req)
@@ -296,6 +303,52 @@ func (ac *Client) handleOTP(ctx context.Context, doc *goquery.Document) (context
 	return ctx, req, err
 }
 
+func (ac *Client) handleSecurityKeyLogin(ctx context.Context, doc *goquery.Document) (context.Context, *http.Request, error) {
+	loginDetails, ok := ctx.Value(ctxKey("login")).(*creds.LoginDetails)
+	if !ok {
+		return ctx, nil, fmt.Errorf("no context value for 'login'")
+	}
+
+	// Intercept and request user to select a device if they have not already
+	if loginDetails.MFAPrompt && !deviceSelected {
+		log.Println("Checking for additional devices...")
+
+		// Check for device change
+		req, err := http.NewRequest("GET", "https://authenticator.pingone.com/pingid/ppm/devices", nil)
+		if err != nil {
+			return ctx, nil, err
+		}
+
+		for _, cookie := range resp.Cookies() {
+			if cookie.Domain == req.URL.Host {
+				req.AddCookie(cookie)
+			}
+		}
+
+		return ctx, req, nil
+	}
+
+	form, err := page.NewFormFromDocument(doc, "#otp-form")
+	if err != nil {
+		return ctx, nil, errors.Wrap(err, "error extracting OTP form")
+	}
+
+	// Get public key options set by the server
+	publicKeyOptions := form.Values.Get("publicKeyCredentialRequestOptions")
+
+	// Perform security auth
+	authRes, err := securityKeyAuth(publicKeyOptions)
+	if err != nil {
+		return ctx, nil, err
+	}
+	logger.Debugf("Auth Response: %+v\n", authRes)
+
+	// Set the otp and build the request
+	form.Values.Set("otp", authRes)
+	req, err := form.BuildRequest()
+	return ctx, req, err
+}
+
 func (ac *Client) handleMfaSpinner(ctx context.Context, doc *goquery.Document) (context.Context, *http.Request, error) {
 	loginDetails, ok := ctx.Value(ctxKey("login")).(*creds.LoginDetails)
 	if !ok {
@@ -315,7 +368,92 @@ func (ac *Client) handleMfaSpinner(ctx context.Context, doc *goquery.Document) (
 	return ctx, req, err
 }
 
+func (ac *Client) handleSelectDevice(ctx context.Context, doc *goquery.Document) (context.Context, *http.Request, error) {
+	var deviceNames []string
+	var deviceIds []string
+
+	loginDetails, ok := ctx.Value(ctxKey("login")).(*creds.LoginDetails)
+	if !ok {
+		return ctx, nil, fmt.Errorf("no context value for 'login'")
+	}
+
+	deviceList := doc.Find("ul.device-list li.device")
+	numDevices := deviceList.Size()
+
+	// Find device names and ids
+	for i := 0; i < numDevices; i++ {
+		device := deviceList.Find("a")
+		deviceName := device.Find("div.device-name").Text()
+		if deviceName == "" {
+			deviceName = strings.TrimSpace(device.Text())
+		}
+
+		if deviceId, ok := deviceList.Attr("data-id"); ok {
+			deviceIds = append(deviceIds, deviceId)
+			deviceNames = append(deviceNames, deviceName)
+		}
+
+		deviceList = deviceList.Next()
+	}
+
+	// Select a device
+	selectedDevice := 0
+	if len(deviceNames) == 0 || len(deviceIds) == 0 {
+		return ctx, nil, errors.New("No devices found to authenticate with")
+	} else if len(deviceNames) > 1 {
+		// Prompt user to select a device
+		if loginDetails.MFADevice == "" || !contains(deviceNames, loginDetails.MFADevice) {
+			selectedDevice = prompter.Choose("Select device", deviceNames)
+		} else {
+			for i, item := range deviceNames {
+				if item == loginDetails.MFADevice {
+					selectedDevice = i
+					break
+				}
+			}
+		}
+	}
+	deviceSelected = true
+	logger.Debugf("Selected device %s (ID: %s)\n", deviceNames[selectedDevice], deviceIds[selectedDevice])
+
+	// Build form
+	form, err := page.NewFormFromDocument(doc, "form#device-form")
+	if err != nil {
+		return ctx, nil, errors.Wrap(err, "error extracting device form")
+	}
+	form.URL = resp.Request.URL.String()
+	form.Values.Set("deviceId", deviceIds[selectedDevice])
+	req, err := form.BuildRequest()
+	return ctx, req, err
+}
+
 func (ac *Client) handleSwipe(ctx context.Context, doc *goquery.Document) (context.Context, *http.Request, error) {
+	log.Println("Sending swipe to phone...")
+
+	loginDetails, ok := ctx.Value(ctxKey("login")).(*creds.LoginDetails)
+	if !ok {
+		return ctx, nil, fmt.Errorf("no context value for 'login'")
+	}
+
+	// Intercept and request user to select a device if they have not already
+	if loginDetails.MFAPrompt && !deviceSelected {
+		log.Println("Checking for additional devices...")
+
+		// Check for device change
+		req, err := http.NewRequest("GET", "https://authenticator.pingone.com/pingid/ppm/devices", nil)
+		if err != nil {
+			return ctx, nil, err
+		}
+
+		for _, cookie := range resp.Cookies() {
+			if cookie.Domain == req.URL.Host {
+				req.AddCookie(cookie)
+			}
+		}
+
+		return ctx, req, nil
+	}
+
 	form, err := page.NewFormFromDocument(doc, "#form1")
 	if err != nil {
 		return ctx, nil, errors.Wrap(err, "error extracting swipe status form")
@@ -328,10 +466,8 @@ func (ac *Client) handleSwipe(ctx context.Context, doc *goquery.Document) (conte
 		return ctx, nil, err
 	}
 
-	log.Println("Sending swipe to phone...")
-
 	for {
-		time.Sleep(3 * time.Second)
+		time.Sleep(2 * time.Second)
 
 		res, err := ac.client.Do(req)
 		if err != nil {
@@ -352,7 +488,11 @@ func (ac *Client) handleSwipe(ctx context.Context, doc *goquery.Document) (conte
 		//DEVICE_CLAIM_TIMEOUT indicates nobody swiped
 		//otherwise loop forever?
 
-		if pingfedMFAStatusResponse == "OK" || pingfedMFAStatusResponse == "DEVICE_CLAIM_TIMEOUT" || pingfedMFAStatusResponse == "TIMEOUT" {
+		if pingfedMFAStatusResponse == "OK" {
+			log.Println("Received swipe")
+			break
+		} else if pingfedMFAStatusResponse == "DEVICE_CLAIM_TIMEOUT" || pingfedMFAStatusResponse == "TIMEOUT" {
+			log.Println("Swipe timed out")
 			break
 		}
 	}
@@ -380,7 +520,7 @@ func (ac *Client) handleWebAuthn(ctx context.Context, doc *goquery.Document) (co
 	if err != nil {
 		return ctx, nil, errors.Wrap(err, "error extracting webauthn form")
 	}
-	form.Values.Set("isWebAuthnSupportedByBrowser", "false")
+	form.Values.Set("isWebAuthnSupportedByBrowser", "true")
 	req, err := form.BuildRequest()
 	return ctx, req, err
 }
@@ -416,7 +556,19 @@ func docIsMfaSpinner(doc *goquery.Document) bool {
 }
 
 func docIsOTP(doc *goquery.Document) bool {
-	return doc.Has("form#otp-form").Size() == 1
+	return doc.Has("form#otp-form").Size() == 1 && !docIsSecurityKeyAuth(doc)
+}
+
+func docIsSelectDevice(doc *goquery.Document) bool {
+	return doc.Has("form#device-form").Size() == 1
+}
+
+func docIsSecurityKeyAuth(doc *goquery.Document) bool {
+	return doc.Has("input[name=\"publicKeyCredentialRequestOptions\"]").Size() == 1
+}
+
+func docIsPingAuth(doc *goquery.Document) bool {
+	return doc.Has("form#form1").Size() == 1
 }
 
 func docIsSwipe(doc *goquery.Document) bool {
@@ -468,4 +620,13 @@ func makeAbsoluteURL(v string, base string) string {
 		}
 	}
 	return v
+}
+
+func contains(items []string, value string) bool {
+	for _, item := range items {
+		if item == value {
+			return true
+		}
+	}
+	return false
 }

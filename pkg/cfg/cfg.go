@@ -40,6 +40,8 @@ type IDPAccount struct {
 	Username             string `yaml:"username"`
 	Provider             string `yaml:"provider"`
 	MFA                  string `yaml:"mfa"`
+	MFADevice            string `yaml:"mfa_device"`
+	MFAPrompt            bool   `yaml:"mfa_prompt"`
 	SkipVerify           bool   `yaml:"skip_verify"`
 	Timeout              int    `yaml:"timeout"`
 	AmazonWebservicesURN string `yaml:"aws_urn"`

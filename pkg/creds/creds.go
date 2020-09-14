@@ -4,10 +4,12 @@ import "errors"
 
 // LoginDetails used to authenticate
 type LoginDetails struct {
-	Username string
-	Password string
-	MFAToken string
-	URL      string
+	Username  string
+	Password  string
+	MFAPrompt bool
+	MFADevice string
+	MFAToken  string
+	URL       string
 }
 
 // Validate validate the login details

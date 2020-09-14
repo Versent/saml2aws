@@ -245,12 +245,12 @@ func (ac *Client) handleFormSelectDevice(ctx context.Context, doc *goquery.Docum
 		deviceId, _ := s.Attr("data-id")
 		deviceName, _ := s.Find("a > div.device-name").Html()
 
-		logger.WithField("device name", deviceName).WithField("device id", deviceId).Debug("Select Device")
+		logger.WithField("device name", deviceName).WithField("device id", deviceId).Debug("Select MFADevice")
 		deviceList[deviceName] = deviceId
 		deviceNameList = append(deviceNameList, deviceName)
 	})
 
-	var chooseDevice = prompter.Choose("Select which MFA Device to use", deviceNameList)
+	var chooseDevice = prompter.Choose("Select which MFA MFADevice to use", deviceNameList)
 
 	form, err := page.NewFormFromDocument(doc, "")
 	if err != nil {
@@ -263,7 +263,7 @@ func (ac *Client) handleFormSelectDevice(ctx context.Context, doc *goquery.Docum
 		return ctx, nil, err
 	}
 
-	logger.WithField("value", form.Values.Encode()).Debug("Select Device")
+	logger.WithField("value", form.Values.Encode()).Debug("Select MFADevice")
 	req, err := form.BuildRequest()
 	return ctx, req, err
 }

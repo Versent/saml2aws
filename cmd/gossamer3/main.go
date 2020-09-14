@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/tls"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -69,6 +70,7 @@ func main() {
 	app.Flag("idp-account", "The name of the configured IDP account. (env: GOSSAMER3_IDP_ACCOUNT)").Envar("GOSSAMER3_IDP_ACCOUNT").Short('a').Default("default").StringVar(&commonFlags.IdpAccount)
 	app.Flag("idp-provider", "The configured IDP provider. (env: GOSSAMER3_IDP_PROVIDER)").Envar("GOSSAMER3_IDP_PROVIDER").EnumVar(&commonFlags.IdpProvider, "Ping")
 	app.Flag("mfa", "The name of the mfa. (env: GOSSAMER3_MFA)").Envar("GOSSAMER3_MFA").StringVar(&commonFlags.MFA)
+	app.Flag("mfa-device", "The name of the mfa device to use for authentication when multiple mfa devices are available. (env: GOSSAMER3_MFA_DEVICE)").Envar("GOSSAMER3_MFA_DEVICE").StringVar(&commonFlags.MFADevice)
 	app.Flag("skip-verify", "Skip verification of server certificate. (env: GOSSAMER3_SKIP_VERIFY)").Envar("GOSSAMER3_SKIP_VERIFY").Short('s').BoolVar(&commonFlags.SkipVerify)
 	app.Flag("url", "The URL of the SAML IDP server used to login. (env: GOSSAMER3_URL)").Envar("GOSSAMER3_URL").StringVar(&commonFlags.URL)
 	app.Flag("username", "The username used to login. (env: GOSSAMER3_USERNAME)").Envar("GOSSAMER3_USERNAME").StringVar(&commonFlags.Username)
@@ -79,6 +81,7 @@ func main() {
 	app.Flag("session-duration", "The duration of your AWS Session. (env: GOSSAMER3_SESSION_DURATION)").Envar("GOSSAMER3_SESSION_DURATION").IntVar(&commonFlags.SessionDuration)
 	app.Flag("disable-keychain", "Do not use keychain at all.").Envar("GOSSAMER3_DISABLE_KEYCHAIN").BoolVar(&commonFlags.DisableKeychain)
 	app.Flag("region", "AWS region to use for API requests, e.g. us-east-1, us-gov-west-1, cn-north-1 (env: GOSSAMER3_REGION)").Envar("GOSSAMER3_REGION").Short('r').StringVar(&commonFlags.Region)
+	app.Flag("quiet", "Do not show any log messages").Short('q').BoolVar(&commonFlags.Quiet)
 
 	// `configure` command and settings
 	cmdConfigure := app.Command("configure", "Configure a new IDP account.")
@@ -149,6 +152,9 @@ func main() {
 	if *verbose {
 		logrus.SetLevel(logrus.DebugLevel)
 		errtpl = "%+v\n"
+	} else if commonFlags.Quiet {
+		logrus.SetLevel(logrus.ErrorLevel)
+		log.SetOutput(ioutil.Discard)
 	}
 
 	// Set the default transport settings so all http clients will pick them up.
@@ -176,7 +182,7 @@ func main() {
 	}
 
 	if err != nil {
-		log.Printf(errtpl, err)
+		logrus.Errorf(errtpl, err)
 		os.Exit(1)
 	}
 }

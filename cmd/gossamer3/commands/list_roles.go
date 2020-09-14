@@ -2,6 +2,7 @@ package commands
 
 import (
 	b64 "encoding/base64"
+	"fmt"
 	"log"
 	"os"
 
@@ -71,7 +72,7 @@ func ListRoles(loginFlags *flags.LoginExecFlags) error {
 	}
 
 	if len(roles) == 0 {
-		log.Println("No roles to assume")
+		fmt.Println("No roles to assume")
 		os.Exit(1)
 	}
 
@@ -89,9 +90,9 @@ func ListRoles(loginFlags *flags.LoginExecFlags) error {
 
 func listRoles(awsRoles []*g3.AWSRole, samlAssertion string, loginFlags *flags.LoginExecFlags) error {
 	if len(awsRoles) == 1 {
-		log.Println("")
-		log.Println("Only one role to assume. Will be automatically assumed on login")
-		log.Println(awsRoles[0].RoleARN)
+		fmt.Println("")
+		fmt.Println("Only one role to assume. Will be automatically assumed on login")
+		fmt.Println(awsRoles[0].RoleARN)
 		return nil
 	} else if len(awsRoles) == 0 {
 		return errors.New("no roles available")
@@ -114,13 +115,13 @@ func listRoles(awsRoles []*g3.AWSRole, samlAssertion string, loginFlags *flags.L
 
 	g3.AssignPrincipals(awsRoles, awsAccounts)
 
-	log.Println("")
+	fmt.Println("")
 	for _, account := range awsAccounts {
-		log.Println(account.Name)
+		fmt.Println(account.Name)
 		for _, role := range account.Roles {
-			log.Println(role.RoleARN)
+			fmt.Println(role.RoleARN)
 		}
-		log.Println("")
+		fmt.Println("")
 	}
 
 	return nil
