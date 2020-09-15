@@ -30,9 +30,14 @@ type Client struct {
 	idpAccount *cfg.IDPAccount
 }
 
-var cookies = []*http.Cookie{}
-var resp *http.Response
-var deviceSelected = false
+type ctxKey string
+
+var (
+	cookies        = []*http.Cookie{}
+	resp           *http.Response
+	deviceSelected = false
+	mfaAttempt     = 0
+)
 
 // New create a new PingFed client
 func New(idpAccount *cfg.IDPAccount) (*Client, error) {
@@ -54,12 +59,10 @@ func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 	}, nil
 }
 
-type ctxKey string
-
-// Authenticate Authenticate to PingFed and return the data from the body of the SAML assertion.
+// Authenticate: Authenticate to PingFed and return the data from the body of the SAML assertion.
 func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error) {
-	url := fmt.Sprintf("%s/idp/startSSO.ping?PartnerSpId=%s", loginDetails.URL, ac.idpAccount.AmazonWebservicesURN)
-	req, err := http.NewRequest("GET", url, nil)
+	loginUrl := fmt.Sprintf("%s/idp/startSSO.ping?PartnerSpId=%s", loginDetails.URL, ac.idpAccount.AmazonWebservicesURN)
+	req, err := http.NewRequest("GET", loginUrl, nil)
 	if err != nil {
 		return "", errors.Wrap(err, "error building request")
 	}
@@ -67,12 +70,33 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 	return ac.follow(ctx, req)
 }
 
+// follow: Perform the request and determine how it should be handled
 func (ac *Client) follow(ctx context.Context, req *http.Request) (string, error) {
 	res, err := ac.client.Do(req)
-	resp = res
 	if err != nil {
 		return "", errors.Wrap(err, "error following")
 	}
+
+	// Save the response so it can be used in a child
+	resp = res
+
+	// Store cookies from the response
+	for _, cookie := range res.Cookies() {
+		found := false
+		for i, item := range cookies {
+			if item.Name == cookie.Name {
+				found = true
+				cookies[i] = cookie
+				break
+			}
+		}
+
+		if !found {
+			cookies = append(cookies, cookie)
+		}
+	}
+
+	// Create document from response body
 	doc, err := goquery.NewDocumentFromReader(res.Body)
 	if err != nil {
 		return "", errors.Wrap(err, "failed to build document from response")
@@ -144,37 +168,21 @@ func (ac *Client) follow(ctx context.Context, req *http.Request) (string, error)
 		errorDetails := strings.TrimSpace(doc.Find("div#error-details-div").Text())
 		return "", fmt.Errorf("%s\n%s", pingError, errorDetails)
 	}
+
 	if handler == nil {
 		html, _ := doc.Selection.Html()
 		logger.WithField("doc", html).Debug("Unknown document type")
 		return "", fmt.Errorf("Unknown document type")
 	}
 
+	// Generate the request
 	ctx, req, err = handler(ctx, doc)
 	if err != nil {
 		return "", err
 	}
 
-	for _, cookie := range res.Cookies() {
-		found := false
-		for i, item := range cookies {
-			if item.Name == cookie.Name {
-				found = true
-				cookies[i] = cookie
-				break
-			}
-		}
-
-		if !found {
-			cookies = append(cookies, cookie)
-		}
-	}
-
-	for _, cookie := range cookies {
-		if cookie.Domain == req.URL.Host {
-			req.AddCookie(cookie)
-		}
-	}
+	// Add cookies to the request
+	addCookies(req, cookies)
 
 	return ac.follow(ctx, req)
 }
@@ -229,6 +237,11 @@ func (ac *Client) handleToken(ctx context.Context, doc *goquery.Document) (conte
 
 	token := prompter.Password("Enter Token Code")
 
+	// Make sure a token value was provided
+	if token == "" {
+		return ctx, nil, errors.New("MFA token code not provided")
+	}
+
 	form.Values.Set("pf.pass", token)
 	form.URL = makeAbsoluteURL(form.URL, loginDetails.URL)
 
@@ -248,6 +261,11 @@ func (ac *Client) handleChallenge(ctx context.Context, doc *goquery.Document) (c
 	}
 
 	token := prompter.Password("Enter Next Token Code")
+
+	// Make sure a token value was provided
+	if token == "" {
+		return ctx, nil, errors.New("Next token code value not provided")
+	}
 
 	form.Values.Set("pf.challengeResponse", token)
 	form.Values.Set("pf.ok", "clicked")
@@ -270,8 +288,14 @@ func (ac *Client) handleSiteMinderLogin(ctx context.Context, doc *goquery.Docume
 
 	// Pull MFA token from command line if specified
 	token := loginDetails.MFAToken
-	if loginDetails.MFAToken == "" {
+	if loginDetails.MFAToken == "" || mfaAttempt > 0 {
 		token = prompter.Password("Enter PIN + Token Code / Passcode")
+	}
+	mfaAttempt += 1
+
+	// Make sure a token value was provided
+	if token == "" {
+		return ctx, nil, errors.New("MFA token value not provided")
 	}
 
 	form.Values.Set("username", loginDetails.Username)
@@ -289,7 +313,14 @@ func (ac *Client) handleOTP(ctx context.Context, doc *goquery.Document) (context
 	}
 
 	token := prompter.Password("Enter passcode")
+
+	// Make sure a token value was provided
+	if token == "" {
+		return ctx, nil, errors.New("Passcode value not provided")
+	}
+
 	form.Values.Set("otp", token)
+	mfaAttempt += 1
 
 	// Add CSRF token from cookie
 	for _, cookie := range cookies {
@@ -311,21 +342,7 @@ func (ac *Client) handleSecurityKeyLogin(ctx context.Context, doc *goquery.Docum
 
 	// Intercept and request user to select a device if they have not already
 	if loginDetails.MFAPrompt && !deviceSelected {
-		log.Println("Checking for additional devices...")
-
-		// Check for device change
-		req, err := http.NewRequest("GET", "https://authenticator.pingone.com/pingid/ppm/devices", nil)
-		if err != nil {
-			return ctx, nil, err
-		}
-
-		for _, cookie := range resp.Cookies() {
-			if cookie.Domain == req.URL.Host {
-				req.AddCookie(cookie)
-			}
-		}
-
-		return ctx, req, nil
+		return ctx, checkForDevices(), nil
 	}
 
 	form, err := page.NewFormFromDocument(doc, "#otp-form")
@@ -437,21 +454,7 @@ func (ac *Client) handleSwipe(ctx context.Context, doc *goquery.Document) (conte
 
 	// Intercept and request user to select a device if they have not already
 	if loginDetails.MFAPrompt && !deviceSelected {
-		log.Println("Checking for additional devices...")
-
-		// Check for device change
-		req, err := http.NewRequest("GET", "https://authenticator.pingone.com/pingid/ppm/devices", nil)
-		if err != nil {
-			return ctx, nil, err
-		}
-
-		for _, cookie := range resp.Cookies() {
-			if cookie.Domain == req.URL.Host {
-				req.AddCookie(cookie)
-			}
-		}
-
-		return ctx, req, nil
+		return ctx, checkForDevices(), nil
 	}
 
 	form, err := page.NewFormFromDocument(doc, "#form1")
@@ -629,4 +632,29 @@ func contains(items []string, value string) bool {
 		}
 	}
 	return false
+}
+
+// checkForDevices : Generates a GET request to the devices page on PingOne
+func checkForDevices() *http.Request {
+	log.Println("Checking for additional devices...")
+
+	// Check for device change
+	req, err := http.NewRequest("GET", "https://authenticator.pingone.com/pingid/ppm/devices", nil)
+	if err != nil {
+		return nil
+	}
+
+	// Add cookies to the request
+	addCookies(req, resp.Cookies())
+
+	return req
+}
+
+// addCookies : Adds the correct cookies to the request
+func addCookies(req *http.Request, reqCookies []*http.Cookie) {
+	for _, cookie := range reqCookies {
+		if cookie.Domain == req.URL.Host {
+			req.AddCookie(cookie)
+		}
+	}
 }

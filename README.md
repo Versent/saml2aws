@@ -342,6 +342,8 @@ This will result in the following configuration in `~/.gossamer3.yaml`.
   username: mark@wolfe.id.au
   provider: Ping
   mfa: Auto
+  mfa_device:
+  mfa_prompt: false
   skip_verify: false
   timeout: 0
   aws_urn: urn:amazon:webservices
@@ -369,6 +371,8 @@ This results in the following configuration in `~/.gossamer3.yaml`.
   username: mark@wolfe.id.au
   provider: Ping
   mfa: Auto
+  mfa_device:
+  mfa_prompt: false
   skip_verify: false
   timeout: 0
   aws_urn: urn:amazon:webservices
