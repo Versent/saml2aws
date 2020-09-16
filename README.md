@@ -560,6 +560,8 @@ Use following parameters in `~/.gossamer3` file:
 - `http_attempts_count` - configures the number of attempts to send http requests in order to authorise with saml provider. Defaults to 1
 - `http_retry_delay` - configures the duration (in seconds) of timeout between attempts to send http requests to saml provider. Defaults to 1
 - `region` - configures which region endpoints to use, See [Audience](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_providers_create_saml_assertions.html#saml_audience-restriction) and [partition](https://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html#arns-syntax)
+- `mfa_prompt` - when set to `true`, regardless of what your default MFA device is, you will be prompted to select which MFA device you would like to use when authenticating (such as a YubiKey instead of a phone push notification).
+- `mfa_device` - when non-empty and `mfa_prompt` is set to `true`, this is the name of the MFA device that you would like to authenticate with. You will not be prompted to select a device when this parameter has a value.
 
 Example: typical configuration with such parameters would look like follows:
 ```yaml
@@ -568,6 +570,8 @@ Example: typical configuration with such parameters would look like follows:
   username: user@example.com
   provider: Ping
   mfa: Auto
+  mfa_prompt: false
+  mfa_device:
   skip_verify: false
   timeout: 0
   aws_urn: urn:amazon:webservices

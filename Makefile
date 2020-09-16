@@ -1,6 +1,6 @@
 NAME=gossamer3
 ARCH=$(shell uname -m)
-VERSION=2.27.0
+VERSION=3.0.0
 ITERATION := 1
 
 SOURCE_FILES?=$$(go list ./... | grep -v /vendor/)
