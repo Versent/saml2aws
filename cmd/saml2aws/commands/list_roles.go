@@ -2,6 +2,7 @@ package commands
 
 import (
 	b64 "encoding/base64"
+	"fmt"
 	"log"
 	"os"
 
@@ -116,11 +117,11 @@ func listRoles(awsRoles []*saml2aws.AWSRole, samlAssertion string, loginFlags *f
 
 	log.Println("")
 	for _, account := range awsAccounts {
-		log.Println(account.Name)
+		fmt.Println(account.Name)
 		for _, role := range account.Roles {
-			log.Println(role.RoleARN)
+			fmt.Println(role.RoleARN)
 		}
-		log.Println("")
+		fmt.Println("")
 	}
 
 	return nil
