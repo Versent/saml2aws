@@ -414,28 +414,23 @@ func (ac *Client) handleSelectDevice(ctx context.Context, doc *goquery.Document)
 		return ctx, nil, fmt.Errorf("no context value for 'login'")
 	}
 
-	deviceList := doc.Find("ul.device-list > li.device[data-id] > a")
-
 	// Find device names and ids
-	for i := 0; i < deviceList.Size(); i++ {
-		device := deviceList.Get(i)
-		deviceName := strings.TrimSpace(device.FirstChild.Data)
-		deviceId := ""
-
+	doc.Find("ul.device-list > li.device[data-id]").Each(func(_ int, selection *goquery.Selection) {
 		// Extract device id
-		for _, attr := range device.Parent.Attr {
-			if attr.Key == "data-id" {
-				deviceId = attr.Val
-				break
-			}
+		deviceId, ok := selection.Attr("data-id")
+		if !ok {
+			return
 		}
+
+		// Extract device name
+		deviceName := strings.TrimSpace(selection.Find("a").Get(0).FirstChild.Data)
 
 		// Store device
 		if deviceId != "" {
 			deviceIds = append(deviceIds, deviceId)
 			deviceNames = append(deviceNames, deviceName)
 		}
-	}
+	})
 
 	// Select a device
 	selectedDevice := 0
