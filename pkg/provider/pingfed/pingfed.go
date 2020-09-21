@@ -426,7 +426,7 @@ func (ac *Client) handleSelectDevice(ctx context.Context, doc *goquery.Document)
 		deviceName := strings.TrimSpace(selection.Find("a").Get(0).FirstChild.Data)
 
 		// Store device
-		if deviceId != "" {
+		if deviceId != "" && deviceName != "" {
 			deviceIds = append(deviceIds, deviceId)
 			deviceNames = append(deviceNames, deviceName)
 		}
