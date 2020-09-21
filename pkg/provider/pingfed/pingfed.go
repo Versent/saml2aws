@@ -312,14 +312,22 @@ func (ac *Client) handleOTP(ctx context.Context, doc *goquery.Document) (context
 		return ctx, nil, errors.Wrap(err, "error extracting OTP form")
 	}
 
-	token := prompter.Password("Enter passcode")
-
-	// Make sure a token value was provided
-	if token == "" {
-		return ctx, nil, errors.New("Passcode value not provided")
+	// Check if this is a yubikey auth
+	promptMessage := "Enter passcode"
+	authType := doc.Find("div.content h1")
+	if authType.Size() == 1 && strings.Contains(authType.Text(), "YubiKey") {
+		promptMessage = "Touch button on your YubiKey"
 	}
 
-	form.Values.Set("otp", token)
+	// Request OTP
+	otp := prompter.Password(promptMessage)
+
+	// Make sure a value was provided
+	if otp == "" {
+		return ctx, nil, errors.New("OTP value not provided")
+	}
+
+	form.Values.Set("otp", otp)
 	mfaAttempt += 1
 
 	// Add CSRF token from cookie
@@ -394,23 +402,27 @@ func (ac *Client) handleSelectDevice(ctx context.Context, doc *goquery.Document)
 		return ctx, nil, fmt.Errorf("no context value for 'login'")
 	}
 
-	deviceList := doc.Find("ul.device-list li.device")
-	numDevices := deviceList.Size()
+	deviceList := doc.Find("ul.device-list > li.device[data-id] > a")
 
 	// Find device names and ids
-	for i := 0; i < numDevices; i++ {
-		device := deviceList.Find("a")
-		deviceName := device.Find("div.device-name").Text()
-		if deviceName == "" {
-			deviceName = strings.TrimSpace(device.Text())
+	for i := 0; i < deviceList.Size(); i++ {
+		device := deviceList.Get(i)
+		deviceName := strings.TrimSpace(device.FirstChild.Data)
+		deviceId := ""
+
+		// Extract device id
+		for _, attr := range device.Parent.Attr {
+			if attr.Key == "data-id" {
+				deviceId = attr.Val
+				break
+			}
 		}
 
-		if deviceId, ok := deviceList.Attr("data-id"); ok {
+		// Store device
+		if deviceId != "" {
 			deviceIds = append(deviceIds, deviceId)
 			deviceNames = append(deviceNames, deviceName)
 		}
-
-		deviceList = deviceList.Next()
 	}
 
 	// Select a device
