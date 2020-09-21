@@ -2,6 +2,7 @@ package commands
 
 import (
 	b64 "encoding/base64"
+	"fmt"
 	"log"
 	"os"
 
@@ -49,7 +50,7 @@ func ListRoles(loginFlags *flags.LoginExecFlags) error {
 	if samlAssertion == "" {
 		log.Println("Response did not contain a valid SAML assertion")
 		log.Println("Please check your username and password is correct")
-		log.Println("To see the output follow the instructions in https://github.com/versent/saml2aws/v2#debugging-issues-with-idps")
+		log.Println("To see the output follow the instructions in https://github.com/versent/saml2aws#debugging-issues-with-idps")
 		os.Exit(1)
 	}
 
@@ -116,11 +117,11 @@ func listRoles(awsRoles []*saml2aws.AWSRole, samlAssertion string, loginFlags *f
 
 	log.Println("")
 	for _, account := range awsAccounts {
-		log.Println(account.Name)
+		fmt.Println(account.Name)
 		for _, role := range account.Roles {
-			log.Println(role.RoleARN)
+			fmt.Println(role.RoleARN)
 		}
-		log.Println("")
+		fmt.Println("")
 	}
 
 	return nil

@@ -68,6 +68,7 @@ If you're on OSX you can install saml2aws using homebrew!
 ```
 brew tap versent/homebrew-taps
 brew install saml2aws
+saml2aws --version
 ```
 
 ### Windows
@@ -88,6 +89,7 @@ $ CURRENT_VERSION=2.26.1
 $ wget https://github.com/Versent/saml2aws/releases/download/v${CURRENT_VERSION}/saml2aws_${CURRENT_VERSION}_linux_amd64.tar.gz
 $ tar -xzvf saml2aws_${CURRENT_VERSION}_linux_amd64.tar.gz -C ~/.local/bin
 $ chmod u+x ~/.local/bin/saml2aws
+$ saml2aws --version
 ```
 **Note**: You will need to logout of your current user session or force a bash reload for `saml2aws` to be useable after following the above steps.
 
