@@ -434,7 +434,7 @@ func (ac *Client) handleSelectDevice(ctx context.Context, doc *goquery.Document)
 
 	// Select a device
 	selectedDevice := 0
-	if len(deviceNames) == 0 || len(deviceIds) == 0 {
+	if len(deviceNames) == 0 {
 		return ctx, nil, errors.New("No devices found to authenticate with")
 	} else if len(deviceNames) > 1 {
 		// Prompt user to select a device
