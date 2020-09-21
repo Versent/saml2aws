@@ -949,6 +949,7 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 				return "", errors.Wrap(err, "error building cert validation request")
 			}
 
+			req.Header.Add("Referer", "https://" + duoHost)
 			res, err = oc.client.Do(req)
 			oc.client.Transport = originalTransport
 
@@ -957,10 +958,12 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 				duoCertURL := fmt.Sprintf("%s?sid=%s&certs_txid=%s&type=AJAX", certUrl, url.QueryEscape(sid), txid)
 
 				req, err = http.NewRequest("GET", duoCertURL, nil)
+
 				if err != nil {
 					return "", errors.Wrap(err, "error building cert validation request ")
 				}
 
+				req.Header.Add("Referer", "https://" + duoHost)
 				res, err = oc.client.Do(req)
 
 				if err != nil {
