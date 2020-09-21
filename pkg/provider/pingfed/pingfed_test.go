@@ -103,7 +103,40 @@ func TestHandleOTP(t *testing.T) {
 	require.Nil(t, err)
 
 	ac := Client{}
-	_, req, err := ac.handleOTP(context.Background(), doc)
+	loginDetails := creds.LoginDetails{
+		Username: "fdsa",
+		Password: "secret",
+		URL:      "https://example.com/foo",
+	}
+	ctx := context.WithValue(context.Background(), ctxKey("login"), &loginDetails)
+
+	_, req, err := ac.handleOTP(ctx, doc)
+	require.Nil(t, err)
+
+	b, err := ioutil.ReadAll(req.Body)
+	require.Nil(t, err)
+
+	s := string(b[:])
+	require.Contains(t, s, "otp=5309")
+}
+
+func TestHandleOTPWithArgument(t *testing.T) {
+	data, err := ioutil.ReadFile("example/otp.html")
+	require.Nil(t, err)
+
+	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(data))
+	require.Nil(t, err)
+
+	ac := Client{}
+	loginDetails := creds.LoginDetails{
+		Username: "fdsa",
+		Password: "secret",
+		URL:      "https://example.com/foo",
+		MFAToken: "5309",
+	}
+	ctx := context.WithValue(context.Background(), ctxKey("login"), &loginDetails)
+
+	_, req, err := ac.handleOTP(ctx, doc)
 	require.Nil(t, err)
 
 	b, err := ioutil.ReadAll(req.Body)
@@ -147,5 +180,5 @@ func TestHandleWebAuthn(t *testing.T) {
 	require.Nil(t, err)
 
 	s := string(b[:])
-	require.Contains(t, s, "isWebAuthnSupportedByBrowser=false")
+	require.Contains(t, s, "isWebAuthnSupportedByBrowser=true")
 }
