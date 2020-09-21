@@ -288,10 +288,11 @@ func (ac *Client) handleSiteMinderLogin(ctx context.Context, doc *goquery.Docume
 
 	// Pull MFA token from command line if specified
 	token := loginDetails.MFAToken
+
+	// Request token
 	if loginDetails.MFAToken == "" || mfaAttempt > 0 {
 		token = prompter.Password("Enter PIN + Token Code / Passcode")
 	}
-	mfaAttempt += 1
 
 	// Make sure a token value was provided
 	if token == "" {
@@ -301,12 +302,18 @@ func (ac *Client) handleSiteMinderLogin(ctx context.Context, doc *goquery.Docume
 	form.Values.Set("username", loginDetails.Username)
 	form.Values.Set("PASSWORD", token)
 	form.URL = resp.Request.URL.String()
+	mfaAttempt += 1
 
 	req, err := form.BuildRequest()
 	return ctx, req, err
 }
 
 func (ac *Client) handleOTP(ctx context.Context, doc *goquery.Document) (context.Context, *http.Request, error) {
+	loginDetails, ok := ctx.Value(ctxKey("login")).(*creds.LoginDetails)
+	if !ok {
+		return ctx, nil, fmt.Errorf("no context value for 'login'")
+	}
+
 	form, err := page.NewFormFromDocument(doc, "#otp-form")
 	if err != nil {
 		return ctx, nil, errors.Wrap(err, "error extracting OTP form")
@@ -319,8 +326,13 @@ func (ac *Client) handleOTP(ctx context.Context, doc *goquery.Document) (context
 		promptMessage = "Touch button on your YubiKey"
 	}
 
+	// Pull MFA token from command line if specified
+	otp := loginDetails.MFAToken
+
 	// Request OTP
-	otp := prompter.Password(promptMessage)
+	if loginDetails.MFAToken == "" || mfaAttempt > 0 {
+		otp = prompter.Password(promptMessage)
+	}
 
 	// Make sure a value was provided
 	if otp == "" {
