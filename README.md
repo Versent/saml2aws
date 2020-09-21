@@ -451,6 +451,42 @@ INFO Assumed child role                            Profile=acct1-admin Role="arn
 
 Credentials have now been saved into the AWS credentials file.
 
+#### Assume All Roles
+
+When the `assume_all_roles` option is set to `true`, Gossamer 3 will attempt to assume all primary roles that are listed in your SAML assertion. By default, these credentials will be saved to a generated profile following the format of `account-number/role-name` (ex. `000011112222/developer-role`). If you wish to customize the name of AWS credentials profile that the credentials are saved to, you need to configure the `profile` argument:
+
+```yaml
+assume_all_roles: true
+roles:
+  - primary_role_arn: arn:aws:iam::000011112222:role/developer-role
+    profile: primary-developer
+```
+
+You can still configure the primary roles to assume secondary roles as before:
+
+```yaml
+assume_all_roles: true
+roles:
+  - primary_role_arn: arn:aws:iam::000011112222:role/developer-role
+    profile: primary-developer
+    assume_roles:
+      - role_arn: arn:aws:iam::111122223333:role/child-role
+```
+
+In this example, the child's credentials would be saved to a generated profile named `111122223333/child-role`, unless you specify a profile name:
+
+```yaml
+assume_all_roles: true
+roles:
+  - primary_role_arn: arn:aws:iam::000011112222:role/developer-role
+    profile: primary-developer
+    assume_roles:
+      - role_arn: arn:aws:iam::111122223333:role/child-role
+        profile: child-role
+```
+
+If your SAML assertion contains more roles than you specify in your roles configuration file, those roles will still be assumed and credentials saved using the pattern mentioned previously. You only need to specify roles if you want to customize the profile the credentials are saved under or if you need to perform child role assumptions.
+
 ### Method 2 - AWS Credential File
 Example:
 (Authenticate to my 'SSO' AWS account. With this setup, there is no need to authenticate again. We can now rely on IAM to assume role cross account)
