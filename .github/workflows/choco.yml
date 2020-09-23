@@ -1,0 +1,37 @@
+# This workflow will build and upload binaries when a release is created
+
+name: Push to choco
+
+on:
+  release:
+    types: [created]
+
+jobs:
+  deploy:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set version env
+        run: echo ::set-env name=VERSION::${GITHUB_REF#refs/*/}
+      - name: Set up Go 1.x
+        uses: actions/setup-go@v2
+        with:
+          go-version: ^1.14
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v2
+      - name: Prepare for CI and run tests
+        run: make ci
+      - name: Compile
+        run: make compile
+      - name: Create distributions
+        run: make dist
+
+      - name: Install choco
+        run: >-
+          Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
+
+      - name: Push to chocolatey
+        run: >-
+          choco apiKey -k $CHOCO_API_KEY -source https://push.chocolatey.org/
+          choco push ./choco/gossamer3.${VERSION}.nupkg
