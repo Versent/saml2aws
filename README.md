@@ -56,7 +56,7 @@ Aside from Okta, most of the providers in this project are using screen scraping
 If you're on OSX you can install gossamer3 using homebrew!
 
 ```
-brew tap geskunkworks/homebrew-taps
+brew tap GESkunkworks/geskunkworks-taps https://github.com/GESkunkworks/geskunkworks-taps
 brew install gossamer3
 ```
 
