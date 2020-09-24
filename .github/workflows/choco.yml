@@ -35,11 +35,9 @@ jobs:
 
       - name: Vendor packages
         run: go mod vendor
-
-      - name: Build the binary
-        run: |
-          go build $(go list .\...)
-          dir
+        
+      - name: Perform the build
+        run: .\default.build.ps1
 
 #      - name: Push to chocolatey
 #        run: >-
