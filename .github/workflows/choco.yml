@@ -33,8 +33,13 @@ jobs:
         run: >-
           Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
 
+      - name: Vendor packages
+        run: go mod vendor
+
       - name: Build the binary
-        run: go build $(go list .\...)
+        run: |
+          go build $(go list .\...)
+          dir
 
 #      - name: Push to chocolatey
 #        run: >-
