@@ -1,6 +1,6 @@
 Set-StrictMode -Version 'Latest'
 
-$version = $env:GITHUB_REF.Split("/")[2]
+$version = $env:GITHUB_REF.Split("/")[2].Split('v')[1]
 
 echo "Building gossamer3"
 go build -o "bin/gossamer3.exe" -ldflags "-X main.Version=${version}" "./cmd/gossamer3"
