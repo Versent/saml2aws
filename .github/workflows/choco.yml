@@ -2,9 +2,9 @@
 
 name: Push to choco
 
-on: push
-#  release:
-#    types: [created]
+on:
+  release:
+    types: [unpublished]
 
 jobs:
   deploy:
@@ -25,10 +25,6 @@ jobs:
 
       #      - name: Prepare for CI and run tests
       #        run: make ci
-      #      - name: Compile
-      #        run: make compile
-      #      - name: Create distributions
-      #        run: make dist
 
       - name: Install choco
         run: >-
@@ -37,10 +33,5 @@ jobs:
       - name: Vendor packages
         run: go mod vendor
 
-      - name: Build gossamer3
-        run: .\default.build.ps1
-
-#      - name: Push to chocolatey
-#        run: >-
-#          choco apiKey -k $CHOCO_API_KEY -source https://push.chocolatey.org/
-#          choco push ./choco/gossamer3.${VERSION}.nupkg
+      - name: Build gossamer3 and push to choco
+        run: .\choco\deploy.ps1
