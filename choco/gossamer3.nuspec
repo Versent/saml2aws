@@ -9,7 +9,7 @@
     <!-- owners is a poor name for maintainers of the package. It sticks around by this name for compatibility reasons. It basically means you. -->
     <owners>GESkunkworks, https://github.com/GESkunkworks</owners>
     <title>gossamer3 (Install)</title>
-    <authors>Mark Wolfe, https://github.com/wolfeidau</authors>
+    <authors>GESkunkworks, https://github.com/GESkunkworks</authors>
     <projectUrl>https://github.com/GESkunkworks/gossamer3</projectUrl>
     <licenseUrl>https://github.com/GESkunkworks/gossamer3/blob/master/LICENSE.md</licenseUrl>
     <requireLicenseAcceptance>true</requireLicenseAcceptance>
