@@ -11,6 +11,9 @@ jobs:
     runs-on: windows-latest
 
     steps:
+      - name: env vars
+        run: >-
+          Get-ChildItem Env:
       - name: Set version env
         run: echo ::set-env name=VERSION::${env:GITHUB_REF#refs/*/}
 #      - name: Set up Go 1.x
