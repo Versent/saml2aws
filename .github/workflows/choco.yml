@@ -12,32 +12,34 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      - uses: actions/checkout@v2
       - name: Set version env
         run: echo ::set-env name=VERSION::${env:GITHUB_REF#refs/*/}
-      - name: Set up Go 1.x
-        uses: actions/setup-go@v2
-        with:
-          go-version: ^1.13
-      - name: Check out code into the Go module directory
-        uses: actions/checkout@v2
+#      - name: Set up Go 1.x
+#        uses: actions/setup-go@v2
+#        with:
+#          go-version: ^1.13
+#      - name: Check out code into the Go module directory
+#        uses: actions/checkout@v2
 
-#      - name: Prepare for CI and run tests
-#        run: make ci
-#      - name: Compile
-#        run: make compile
-#      - name: Create distributions
-#        run: make dist
+      #      - name: Prepare for CI and run tests
+      #        run: make ci
+      #      - name: Compile
+      #        run: make compile
+      #      - name: Create distributions
+      #        run: make dist
 
-      - name: Install choco
-        run: >-
-          Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
+#      - name: Install choco
+#        run: >-
+#          Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
+#
+#      - name: Vendor packages
+#        run: go mod vendor
 
-      - name: Vendor packages
-        run: go mod vendor
-        
-      - name: Perform the build
-        run: .\default.build.ps1
+      - name: get version
+        run: echo $env:VERSION
+
+#      - name: Perform the build
+#        run: .\default.build.ps1
 
 #      - name: Push to chocolatey
 #        run: >-
