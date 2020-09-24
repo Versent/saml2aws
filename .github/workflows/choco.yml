@@ -4,7 +4,7 @@ name: Push to choco
 
 on:
   release:
-    types: [unpublished]
+    types: [prereleased]
 
 jobs:
   deploy:
