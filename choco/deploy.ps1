@@ -18,10 +18,10 @@ $hash = Get-FileHash "gossamer3.${version}.nupkg"
 "$($hash.Hash) $(Split-Path $hash.Path -Leaf)" > "gossamer3.${version}.nupkg.sha256"
 
 echo "Zipping binary"
-7z a "gossamer3.zip" "bin\gossamer3.exe"
+7z a "gossamer3.zip" "src\gossamer3.exe"
 $hash = Get-FileHash "gossamer3.zip"
 "$($hash.Hash) $(Split-Path $hash.Path -Leaf)" > "gossamer3.zip.sha256"
 
 echo "Push to choco"
 choco apiKey -k $env:CHOCO_API_KEY -source https://push.chocolatey.org/
-choco push "./choco/gossamer3.${version}.nupkg"
+choco push "./gossamer3.${version}.nupkg"
