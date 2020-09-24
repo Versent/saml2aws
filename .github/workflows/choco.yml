@@ -2,8 +2,7 @@
 
 name: Push to choco
 
-on:
-  workflow_dispatch:
+on: push
 #  release:
 #    types: [created]
 
