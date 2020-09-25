@@ -9,6 +9,8 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/pkg/errors"
 	"github.com/skratchdot/open-golang/open"
 	"github.com/versent/saml2aws/v2/pkg/awsconfig"
@@ -88,7 +90,9 @@ func loadOrLogin(account *cfg.IDPAccount, sharedCreds *awsconfig.CredentialsProv
 		return loginRefreshCredentials(sharedCreds, execFlags.LoginExecFlags)
 	}
 
-	ok, err := checkToken(account.Profile)
+	ok, err := checkToken(&session.Options{
+		Profile: account.Profile,
+		Config:  aws.Config{Region: aws.String(account.Region)}})
 	if err != nil {
 		return nil, errors.Wrap(err, "error validating token")
 	}
