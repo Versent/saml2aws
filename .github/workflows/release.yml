@@ -9,8 +9,12 @@ jobs:
     name: Build and deploy
     runs-on: ubuntu-latest
     steps:
+      # strip off refs/tags/ and the v prefix (if it exists)
       - name: Set release env var
-        run: echo ::set-env name=VERSION::${${GITHUB_REF#refs/*/}#v} # strip off refs/tags/ and the v prefix (if it exists)
+        run: |
+          version=${GITHUB_REF#refs/*/}
+          stripped_version=${version#v}
+          echo ::set-env name=VERSION::${stripped_version}
       - name: Checkout code
         uses: actions/checkout@v2
       - name: Set up Go 1.x
