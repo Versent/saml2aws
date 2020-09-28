@@ -7,7 +7,7 @@ on:
 jobs:
   build:
     name: Build and deploy
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     steps:
       # strip off refs/tags/ and the v prefix (if it exists)
       - name: Set release env var
@@ -15,6 +15,8 @@ jobs:
           version=${GITHUB_REF#refs/*/}
           stripped_version=${version#v}
           echo ::set-env name=VERSION::${stripped_version}
+      - name: get version
+        run: echo $VERSION
       - name: Checkout code
         uses: actions/checkout@v2
       - name: Set up Go 1.x
