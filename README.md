@@ -45,6 +45,14 @@ The process goes something like this:
   * PingFederate + PingId
 * AWS SAML Provider configured
 
+### Ping Federate Supported MFA
+The Ping Federate provider supports multiple MFA devices
+- PingID app
+- Security Key (U2F)
+- YubiKey
+
+Gossamer 3 has built in support for all three MFA types on Mac OS. The security key MFA is not fully supported on Windows and Linux currently, but you can still use the YubiKey MFA type and use the one time password that your YubiKey generates.
+
 ## Caveats
 
 Aside from Okta, most of the providers in this project are using screen scraping to log users into SAML, this isn't ideal and hopefully vendors make this easier in the future. In addition to this there are some things you need to know:
