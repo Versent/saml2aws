@@ -5,8 +5,8 @@ on:
     types: [created]
 
 jobs:
-  build-mac:
-    name: Mac build
+  build-all:
+    name: Build all platforms
     runs-on: macos-latest
     steps:
       # strip off refs/tags/ and the v prefix (if it exists)
@@ -25,11 +25,9 @@ jobs:
         run: make mod
       - name: Run tests
         run: make ci
-      - name: Compile binary
-        run: go build -o "build/gossamer3_${VERSION}_darwin_amd64/gossamer3" -ldflags "-X main.Version=${VERSION}" "./cmd/gossamer3"
-#      - name: Compile binaries
-#        run: make compile
-      - name: Package binary
+      - name: Compile binaries
+        run: make compile
+      - name: Package binaries
         run: make dist
 
       - name: Get release information
@@ -46,80 +44,121 @@ jobs:
           upload_url: ${{ steps.get_release.outputs.upload_url }}
           targets: ./dist/*
 
-  build-linux:
-    name: Linux build
-    runs-on: ubuntu-latest
-    steps:
-      # strip off refs/tags/ and the v prefix (if it exists)
-      - name: Set release env var
-        run: |
-          version=${GITHUB_REF#refs/*/}
-          stripped_version=${version#v}
-          echo ::set-env name=VERSION::${stripped_version}
-      - name: Checkout code
-        uses: actions/checkout@v2
-      - name: Set up Go 1.x
-        uses: actions/setup-go@v2
-        with:
-          go-version: ^1.14
-      - name: Vendor packages
-        run: make mod
-      - name: Run tests
-        run: make ci
-      - name: Compile binary
-        run: go build -o "build/gossamer3_${VERSION}_linux_amd64/gossamer3" -ldflags "-X main.Version=${VERSION}" "./cmd/gossamer3"
-      - name: Package binary
-        run: make dist
-
-      - name: Get release information
-        id: get_release
-        uses: bruceadams/get-release@v1.2.1
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-
-      - name: Upload Release Assets
-        uses: NBTX/upload-release-assets@v1
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        with:
-          upload_url: ${{ steps.get_release.outputs.upload_url }}
-          targets: ./dist/*
-
-
-  build-windows:
-    name: Windows build
-    runs-on: windows-latest
-    steps:
-      # strip off refs/tags/ and the v prefix (if it exists)
-      - name: Set release env var
-        run: |
-          $ver = $env:GITHUB_REF.Split("/")[2].Split('v')[1]
-          echo ::set-env name=VERSION::${ver}
-      - name: Checkout code
-        uses: actions/checkout@v2
-      - name: Set up Go 1.x
-        uses: actions/setup-go@v2
-        with:
-          go-version: ^1.14
-      - name: Vendor packages
-        run: make mod
-      - name: Run tests
-        run: make ci
-      - name: Compile binary
-        run: go build -o "build/gossamer3_${VERSION}_windows_amd64/gossamer3.exe" -ldflags "-X main.Version=${VERSION}" "./cmd/gossamer3"
-      - name: Package binary
-        run: make dist
-
-      - name: Get release information
-        id: get_release
-        uses: bruceadams/get-release@v1.2.1
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-
-      - name: Upload Release Assets
-        uses: NBTX/upload-release-assets@v1
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        with:
-          upload_url: ${{ steps.get_release.outputs.upload_url }}
-          targets: ./dist/*
+#  build-mac:
+#    name: Mac build
+#    runs-on: macos-latest
+#    steps:
+#      # strip off refs/tags/ and the v prefix (if it exists)
+#      - name: Set release env var
+#        run: |
+#          version=${GITHUB_REF#refs/*/}
+#          stripped_version=${version#v}
+#          echo ::set-env name=VERSION::${stripped_version}
+#      - name: Checkout code
+#        uses: actions/checkout@v2
+#      - name: Set up Go 1.x
+#        uses: actions/setup-go@v2
+#        with:
+#          go-version: ^1.14
+#      - name: Vendor packages
+#        run: make mod
+#      - name: Run tests
+#        run: make ci
+#      - name: Compile binary
+#        run: go build -o "build/gossamer3_${VERSION}_darwin_amd64/gossamer3" -ldflags "-X main.Version=${VERSION}" "./cmd/gossamer3"
+##      - name: Compile binaries
+##        run: make compile
+#      - name: Package binary
+#        run: make dist
+#
+#      - name: Get release information
+#        id: get_release
+#        uses: bruceadams/get-release@v1.2.1
+#        env:
+#          GITHUB_TOKEN: ${{ github.token }}
+#
+#      - name: Upload Release Assets
+#        uses: NBTX/upload-release-assets@v1
+#        env:
+#          GITHUB_TOKEN: ${{ github.token }}
+#        with:
+#          upload_url: ${{ steps.get_release.outputs.upload_url }}
+#          targets: ./dist/*
+#
+#  build-linux:
+#    name: Linux build
+#    runs-on: ubuntu-latest
+#    steps:
+#      # strip off refs/tags/ and the v prefix (if it exists)
+#      - name: Set release env var
+#        run: |
+#          version=${GITHUB_REF#refs/*/}
+#          stripped_version=${version#v}
+#          echo ::set-env name=VERSION::${stripped_version}
+#      - name: Checkout code
+#        uses: actions/checkout@v2
+#      - name: Set up Go 1.x
+#        uses: actions/setup-go@v2
+#        with:
+#          go-version: ^1.14
+#      - name: Vendor packages
+#        run: make mod
+#      - name: Run tests
+#        run: make ci
+#      - name: Compile binary
+#        run: go build -o "build/gossamer3_${VERSION}_linux_amd64/gossamer3" -ldflags "-X main.Version=${VERSION}" "./cmd/gossamer3"
+#      - name: Package binary
+#        run: make dist
+#
+#      - name: Get release information
+#        id: get_release
+#        uses: bruceadams/get-release@v1.2.1
+#        env:
+#          GITHUB_TOKEN: ${{ github.token }}
+#
+#      - name: Upload Release Assets
+#        uses: NBTX/upload-release-assets@v1
+#        env:
+#          GITHUB_TOKEN: ${{ github.token }}
+#        with:
+#          upload_url: ${{ steps.get_release.outputs.upload_url }}
+#          targets: ./dist/*
+#
+#
+#  build-windows:
+#    name: Windows build
+#    runs-on: windows-latest
+#    steps:
+#      # strip off refs/tags/ and the v prefix (if it exists)
+#      - name: Set release env var
+#        run: |
+#          $ver = $env:GITHUB_REF.Split("/")[2].Split('v')[1]
+#          echo ::set-env name=VERSION::${ver}
+#      - name: Checkout code
+#        uses: actions/checkout@v2
+#      - name: Set up Go 1.x
+#        uses: actions/setup-go@v2
+#        with:
+#          go-version: ^1.14
+#      - name: Vendor packages
+#        run: make mod
+#      - name: Run tests
+#        run: make ci
+#      - name: Compile binary
+#        run: go build -o "build/gossamer3_${env:VERSION}_windows_amd64/gossamer3.exe" -ldflags "-X main.Version=${env:VERSION}" "./cmd/gossamer3"
+#      - name: Package binary
+#        run: make dist
+#
+#      - name: Get release information
+#        id: get_release
+#        uses: bruceadams/get-release@v1.2.1
+#        env:
+#          GITHUB_TOKEN: ${{ github.token }}
+#
+#      - name: Upload Release Assets
+#        uses: NBTX/upload-release-assets@v1
+#        env:
+#          GITHUB_TOKEN: ${{ github.token }}
+#        with:
+#          upload_url: ${{ steps.get_release.outputs.upload_url }}
+#          targets: ./dist/*
