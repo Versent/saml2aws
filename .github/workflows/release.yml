@@ -1,0 +1,41 @@
+name: Publish release assets
+
+on:
+  release:
+    types: [created]
+
+jobs:
+  build:
+    name: Build and deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set release env var
+        run: echo ::set-env name=VERSION::${${GITHUB_REF#refs/*/}#v} # strip off refs/tags/ and the v prefix (if it exists)
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Set up Go 1.x
+        uses: actions/setup-go@v2
+        with:
+          go-version: ^1.14
+      - name: Vendor packages
+        run: make mod
+      - name: Run tests
+        run: make ci
+      - name: Compile binaries
+        run: make compile
+      - name: Package binaries
+        run: make dist
+
+      - name: Get release information
+        id: get_release
+        uses: bruceadams/get-release@v1.2.1
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+      - name: Upload Release Assets
+        uses: NBTX/upload-release-assets@v1
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          upload_url: ${{ steps.get_release.outputs.upload_url }}
+          targets: ./dist/*
