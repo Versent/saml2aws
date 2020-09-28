@@ -26,7 +26,7 @@ jobs:
       - name: Run tests
         run: make ci
       - name: Compile binary
-        run: go build -o "bin/gossamer3_${VERSION}_darwin_amd64/gossamer3" -ldflags "-X main.Version=${VERSION}" "./cmd/gossamer3"
+        run: go build -o "build/gossamer3_${VERSION}_darwin_amd64/gossamer3" -ldflags "-X main.Version=${VERSION}" "./cmd/gossamer3"
 #      - name: Compile binaries
 #        run: make compile
       - name: Package binary
@@ -67,7 +67,7 @@ jobs:
       - name: Run tests
         run: make ci
       - name: Compile binary
-        run: go build -o "bin/gossamer3_${VERSION}_linux_amd64/gossamer3" -ldflags "-X main.Version=${VERSION}" "./cmd/gossamer3"
+        run: go build -o "build/gossamer3_${VERSION}_linux_amd64/gossamer3" -ldflags "-X main.Version=${VERSION}" "./cmd/gossamer3"
       - name: Package binary
         run: make dist
 
@@ -93,7 +93,8 @@ jobs:
       # strip off refs/tags/ and the v prefix (if it exists)
       - name: Set release env var
         run: |
-          echo ::set-env name=VERSION::$env:GITHUB_REF.Split("/")[2].Split('v')[1]
+          $ver = $env:GITHUB_REF.Split("/")[2].Split('v')[1]
+          echo ::set-env name=VERSION::${ver}
       - name: Checkout code
         uses: actions/checkout@v2
       - name: Set up Go 1.x
@@ -105,7 +106,7 @@ jobs:
       - name: Run tests
         run: make ci
       - name: Compile binary
-        run: go build -o "bin/gossamer3.exe" -ldflags "-X main.Version=${VERSION}" "./cmd/gossamer3"
+        run: go build -o "build/gossamer3_${VERSION}_windows_amd64/gossamer3.exe" -ldflags "-X main.Version=${VERSION}" "./cmd/gossamer3"
       - name: Package binary
         run: make dist
 
