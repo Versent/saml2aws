@@ -27,11 +27,14 @@ The process goes something like this:
 - [Dependency Setup](#dependency-setup)
 - [Usage](#usage)
     - [`gossamer3 script`](#gossamer3-script)
+    - [`gossamer3 exec`](#gossamer3-exec)
     - [Configuring IDP Accounts](#configuring-idp-accounts)
 - [Example](#example)
 - [Advanced Configuration](#advanced-configuration)
     - [Dev Account Setup](#dev-account-setup)
     - [Test Account Setup](#test-account-setup)
+    - [Bulk Login with Role Config File](#method-1---bulk-login-with-role-config-file)
+    - [AWS Credential File](#method-2---aws-credential-file)
 - [Building](#building)
 - [Environment vars](#environment-vars)
 - [Provider Specific Documentation](#provider-specific-documentation)
@@ -74,7 +77,7 @@ gossamer3 --version
 While brew is available for Linux you can also run the following without using a package manager.
 
 ```
-$ CURRENT_VERSION=2.26.1
+$ CURRENT_VERSION=3.0.0
 $ wget https://github.com/GESkunkworks/gossamer3/releases/download/v${CURRENT_VERSION}/gossamer3_${CURRENT_VERSION}_linux_amd64.tar.gz
 $ tar -xzvf gossamer3_${CURRENT_VERSION}_linux_amd64.tar.gz -C ~/.local/bin
 $ chmod u+x ~/.local/bin/gossamer3
@@ -82,14 +85,6 @@ $ chmod u+x ~/.local/bin/gossamer3
 **Note**: You will need to logout of your current user session or force a bash reload for `gossamer3` to be useable after following the above steps.
 
 e.g. `exec -l bash`
-
-#### [Void Linux](https://voidlinux.org/)
-
-If you are on Void Linux you can use xbps to install the gossamer3 package!
-
-```
-xbps-install gossamer3
-```
 
 ## Dependency Setup
 
