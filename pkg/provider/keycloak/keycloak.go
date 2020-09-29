@@ -186,10 +186,7 @@ func extractSamlResponse(doc *goquery.Document) string {
 
 	doc.Find("input").Each(func(i int, s *goquery.Selection) {
 		name, ok := s.Attr("name")
-		if !ok {
-			log.Fatalf("unable to locate IDP authentication form submit URL")
-		}
-		if name == "SAMLResponse" {
+		if ( ok && name == "SAMLResponse" ) {
 			val, ok := s.Attr("value")
 			if !ok {
 				log.Fatalf("unable to locate saml assertion value")
@@ -197,6 +194,10 @@ func extractSamlResponse(doc *goquery.Document) string {
 			samlAssertion = val
 		}
 	})
+
+	if samlAssertion == "" {
+		log.Fatalf("unable to locate saml response field")
+	}
 
 	return samlAssertion
 }
