@@ -156,6 +156,16 @@ func TestClient_postTotpFormWithProvidedMFAToken(t *testing.T) {
 	pr.Mock.AssertNumberOfCalls(t, "RequestSecurityCode", 0)
 }
 
+func TestClient_extractSamlResponse(t *testing.T) {
+	data, err := ioutil.ReadFile("example/assertion.html")
+	require.Nil(t, err)
+
+	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(data))
+	require.Nil(t, err)
+
+	require.Equal(t, extractSamlResponse(doc), "abc123")
+}
+
 func TestClient_containsTotpForm(t *testing.T) {
 	data, err := ioutil.ReadFile("example/mfapage.html")
 	require.Nil(t, err)
