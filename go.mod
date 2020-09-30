@@ -21,7 +21,7 @@ require (
 	github.com/keybase/go-keychain v0.0.0-20181011010623-f1daa725cce4 // indirect
 	github.com/kr/pretty v0.1.0 // indirect
 	github.com/marshallbrekka/go-u2fhost v0.0.0-20200107013215-ad5fdc1986ac
-	github.com/mitchellh/go-homedir v1.0.0
+	github.com/mitchellh/go-homedir v1.1.0
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.7.0
 	github.com/skratchdot/open-golang v0.0.0-20200116055534-eef842397966
