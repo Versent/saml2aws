@@ -19,15 +19,11 @@ jobs:
       - name: Check out code into the Go module directory
         uses: actions/checkout@v2
 
-      - name: Vendor packages
-        run: go mod vendor
+      - name: Install packages
+        run: make mod
 
       - name: Run tests
-        run: |
-          go install github.com/axw/gocov/gocov
-          ${env:GOBIN}/gocov test $(go list ./...) | ${env:GOBIN}/gocov report
-        env:
-          GOBIN: ${GITHUB_WORKSPACE}/bin
+        run: make ci
 
 #      - name: Build gossamer3 and push to choco
 #        run: .\choco\deploy.ps1
