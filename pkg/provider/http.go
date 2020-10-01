@@ -3,22 +3,19 @@ package provider
 import (
 	"crypto/tls"
 	"fmt"
-	"github.com/avast/retry-go"
-	"github.com/versent/saml2aws/pkg/cfg"
+	"log"
 	"net"
 	"net/http"
-	"os"
 	"runtime"
 	"strconv"
 	"time"
 
-	"github.com/sirupsen/logrus"
-	"github.com/versent/saml2aws/pkg/cookiejar"
-	"github.com/versent/saml2aws/pkg/dump"
-
-	"github.com/briandowns/spinner"
-	"github.com/mattn/go-isatty"
+	"github.com/avast/retry-go"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
+	"github.com/versent/saml2aws/v2/pkg/cfg"
+	"github.com/versent/saml2aws/v2/pkg/cookiejar"
+	"github.com/versent/saml2aws/v2/pkg/dump"
 	"golang.org/x/net/publicsuffix"
 )
 
@@ -95,23 +92,6 @@ func NewHTTPClient(tr http.RoundTripper, opts *HTTPClientOptions) (*HTTPClient, 
 
 // Do do the request
 func (hc *HTTPClient) Do(req *http.Request) (*http.Response, error) {
-
-	if isatty.IsTerminal(os.Stdout.Fd()) {
-		cs := spinner.CharSets[14]
-
-		// use a NON unicode spinner for windows
-		if runtime.GOOS == "windows" {
-			cs = spinner.CharSets[26]
-		}
-
-		if logrus.GetLevel() != logrus.DebugLevel {
-			s := spinner.New(cs, 100*time.Millisecond)
-			defer func() {
-				s.Stop()
-			}()
-			s.Start()
-		}
-	}
 
 	req.Header.Set("User-Agent", fmt.Sprintf("saml2aws/1.0 (%s %s) Versent", runtime.GOOS, runtime.GOARCH))
 
@@ -191,7 +171,7 @@ func SuccessOrRedirectResponseValidator(req *http.Request, resp *http.Response) 
 func (hc *HTTPClient) logHTTPRequest(req *http.Request) {
 
 	if dump.ContentEnable() {
-		fmt.Println(dump.RequestString(req))
+		log.Println(dump.RequestString(req))
 		return
 	}
 
@@ -204,7 +184,7 @@ func (hc *HTTPClient) logHTTPRequest(req *http.Request) {
 func (hc *HTTPClient) logHTTPResponse(resp *http.Response) {
 
 	if dump.ContentEnable() {
-		fmt.Println(dump.ResponseString(resp))
+		log.Println(dump.ResponseString(resp))
 		return
 	}
 

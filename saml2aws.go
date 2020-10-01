@@ -2,26 +2,26 @@ package saml2aws
 
 import (
 	"fmt"
-	"github.com/versent/saml2aws/pkg/provider/netiq"
+	"github.com/versent/saml2aws/v2/pkg/provider/netiq"
 	"sort"
 
-	"github.com/versent/saml2aws/pkg/cfg"
-	"github.com/versent/saml2aws/pkg/creds"
-	"github.com/versent/saml2aws/pkg/provider/aad"
-	"github.com/versent/saml2aws/pkg/provider/adfs"
-	"github.com/versent/saml2aws/pkg/provider/adfs2"
-	"github.com/versent/saml2aws/pkg/provider/akamai"
-	"github.com/versent/saml2aws/pkg/provider/f5apm"
-	"github.com/versent/saml2aws/pkg/provider/googleapps"
-	"github.com/versent/saml2aws/pkg/provider/jumpcloud"
-	"github.com/versent/saml2aws/pkg/provider/keycloak"
-	"github.com/versent/saml2aws/pkg/provider/okta"
-	"github.com/versent/saml2aws/pkg/provider/onelogin"
-	"github.com/versent/saml2aws/pkg/provider/pingfed"
-	"github.com/versent/saml2aws/pkg/provider/pingone"
-	"github.com/versent/saml2aws/pkg/provider/shell"
-	"github.com/versent/saml2aws/pkg/provider/shibboleth"
-	"github.com/versent/saml2aws/pkg/provider/shibbolethecp"
+	"github.com/versent/saml2aws/v2/pkg/cfg"
+	"github.com/versent/saml2aws/v2/pkg/creds"
+	"github.com/versent/saml2aws/v2/pkg/provider/aad"
+	"github.com/versent/saml2aws/v2/pkg/provider/adfs"
+	"github.com/versent/saml2aws/v2/pkg/provider/adfs2"
+	"github.com/versent/saml2aws/v2/pkg/provider/akamai"
+	"github.com/versent/saml2aws/v2/pkg/provider/f5apm"
+	"github.com/versent/saml2aws/v2/pkg/provider/googleapps"
+	"github.com/versent/saml2aws/v2/pkg/provider/jumpcloud"
+	"github.com/versent/saml2aws/v2/pkg/provider/keycloak"
+	"github.com/versent/saml2aws/v2/pkg/provider/okta"
+	"github.com/versent/saml2aws/v2/pkg/provider/onelogin"
+	"github.com/versent/saml2aws/v2/pkg/provider/pingfed"
+	"github.com/versent/saml2aws/v2/pkg/provider/pingone"
+	"github.com/versent/saml2aws/v2/pkg/provider/shell"
+	"github.com/versent/saml2aws/v2/pkg/provider/shibboleth"
+	"github.com/versent/saml2aws/v2/pkg/provider/shibbolethecp"
 )
 
 // ProviderList list of providers with their MFAs
@@ -36,14 +36,14 @@ var MFAsByProvider = ProviderList{
 	"PingOne":       []string{"Auto"},        // automatically detects PingID
 	"JumpCloud":     []string{"Auto"},
 	"Okta":          []string{"Auto", "PUSH", "DUO", "SMS", "TOTP", "OKTA", "FIDO", "YUBICO TOKEN:HARDWARE"}, // automatically detects DUO, SMS, ToTP, and FIDO
-	"OneLogin":      []string{"Auto", "OLP", "SMS", "TOTP" ,"YUBIKEY"},                                       // automatically detects OneLogin Protect, SMS and ToTP
+	"OneLogin":      []string{"Auto", "OLP", "SMS", "TOTP", "YUBIKEY"},                                       // automatically detects OneLogin Protect, SMS and ToTP
 	"KeyCloak":      []string{"Auto"},                                                                        // automatically detects ToTP
 	"GoogleApps":    []string{"Auto"},                                                                        // automatically detects ToTP
 	"Shibboleth":    []string{"Auto"},
 	"F5APM":         []string{"Auto"},
 	"Akamai":        []string{"Auto", "DUO", "SMS", "EMAIL", "TOTP"},
 	"ShibbolethECP": []string{"auto", "phone", "push", "passcode"},
-	"NetIQ":         []string{"Auto"},
+	"NetIQ":         []string{"Auto", "Privileged"},
 }
 
 // Names get a list of provider names
@@ -162,7 +162,10 @@ func NewSAMLClient(idpAccount *cfg.IDPAccount) (SAMLClient, error) {
 	case "Shell":
 		return shell.New(idpAccount)
 	case "NetIQ":
-		return netiq.New(idpAccount)
+		if invalidMFA(idpAccount.Provider, idpAccount.MFA) {
+			return nil, fmt.Errorf("Invalid MFA type: %v for %v provider", idpAccount.MFA, idpAccount.Provider)
+		}
+		return netiq.New(idpAccount, idpAccount.MFA)
 	default:
 		return nil, fmt.Errorf("Invalid provider: %v", idpAccount.Provider)
 	}

@@ -4,15 +4,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/url"
 	"time"
 
 	"github.com/pkg/errors"
 	"github.com/skratchdot/open-golang/open"
-	"github.com/versent/saml2aws/pkg/awsconfig"
-	"github.com/versent/saml2aws/pkg/cfg"
-	"github.com/versent/saml2aws/pkg/flags"
+	"github.com/versent/saml2aws/v2/pkg/awsconfig"
+	"github.com/versent/saml2aws/v2/pkg/cfg"
+	"github.com/versent/saml2aws/v2/pkg/flags"
 )
 
 const (
@@ -20,10 +21,10 @@ const (
 	issuer        = "saml2aws"
 )
 
-// Exec execute the supplied command after seeding the environment
-func Console(consoleFlags *flags.LoginExecFlags) error {
+// Console open the aws console from the CLI
+func Console(consoleFlags *flags.ConsoleFlags) error {
 
-	account, err := buildIdpAccount(consoleFlags)
+	account, err := buildIdpAccount(consoleFlags.LoginExecFlags)
 	if err != nil {
 		return errors.Wrap(err, "error building login details")
 	}
@@ -38,39 +39,39 @@ func Console(consoleFlags *flags.LoginExecFlags) error {
 		return errors.Wrap(err, "error loading credentials")
 	}
 	if !exist {
-		fmt.Println("unable to load credentials, login required to create them")
+		log.Println("unable to load credentials, login required to create them")
 		return nil
 	}
 
 	awsCreds, err := loadOrLogin(account, sharedCreds, consoleFlags)
 	if err != nil {
 		return errors.Wrap(err,
-			fmt.Sprintf("error loading credentials for profile: %s", consoleFlags.ExecProfile))
+			fmt.Sprintf("error loading credentials for profile: %s", consoleFlags.LoginExecFlags.ExecProfile))
 	}
 	if err != nil {
 		return errors.Wrap(err, "error logging in")
 	}
 
-	if consoleFlags.ExecProfile != "" {
+	if consoleFlags.LoginExecFlags.ExecProfile != "" {
 		// Assume the desired role before generating env vars
-		awsCreds, err = assumeRoleWithProfile(consoleFlags.ExecProfile, consoleFlags.CommonFlags.SessionDuration)
+		awsCreds, err = assumeRoleWithProfile(consoleFlags.LoginExecFlags.ExecProfile, consoleFlags.LoginExecFlags.CommonFlags.SessionDuration)
 		if err != nil {
 			return errors.Wrap(err,
-				fmt.Sprintf("error acquiring credentials for profile: %s", consoleFlags.ExecProfile))
+				fmt.Sprintf("error acquiring credentials for profile: %s", consoleFlags.LoginExecFlags.ExecProfile))
 		}
 	}
 
-	fmt.Printf("Presenting credentials for %s to %s\n", account.Profile, federationURL)
+	log.Printf("Presenting credentials for %s to %s", account.Profile, federationURL)
 	return federatedLogin(awsCreds, consoleFlags)
 }
 
-func loadOrLogin(account *cfg.IDPAccount, sharedCreds *awsconfig.CredentialsProvider, execFlags *flags.LoginExecFlags) (*awsconfig.AWSCredentials, error) {
+func loadOrLogin(account *cfg.IDPAccount, sharedCreds *awsconfig.CredentialsProvider, execFlags *flags.ConsoleFlags) (*awsconfig.AWSCredentials, error) {
 
 	var err error
 
-	if execFlags.Force {
-		fmt.Println("force login requested")
-		return loginRefreshCredentials(sharedCreds, execFlags)
+	if execFlags.LoginExecFlags.Force {
+		log.Println("force login requested")
+		return loginRefreshCredentials(sharedCreds, execFlags.LoginExecFlags)
 	}
 
 	awsCreds, err := sharedCreds.Load()
@@ -78,13 +79,13 @@ func loadOrLogin(account *cfg.IDPAccount, sharedCreds *awsconfig.CredentialsProv
 		if err != awsconfig.ErrCredentialsNotFound {
 			return nil, errors.Wrap(err, "failed to load credentials")
 		}
-		fmt.Println("credentials not found triggering login")
-		return loginRefreshCredentials(sharedCreds, execFlags)
+		log.Println("credentials not found triggering login")
+		return loginRefreshCredentials(sharedCreds, execFlags.LoginExecFlags)
 	}
 
 	if awsCreds.Expires.Sub(time.Now()) < 0 {
-		fmt.Println("expired credentials triggering login")
-		return loginRefreshCredentials(sharedCreds, execFlags)
+		log.Println("expired credentials triggering login")
+		return loginRefreshCredentials(sharedCreds, execFlags.LoginExecFlags)
 	}
 
 	ok, err := checkToken(account.Profile)
@@ -93,8 +94,8 @@ func loadOrLogin(account *cfg.IDPAccount, sharedCreds *awsconfig.CredentialsProv
 	}
 
 	if !ok {
-		fmt.Println("aws rejected credentials triggering login")
-		return loginRefreshCredentials(sharedCreds, execFlags)
+		log.Println("aws rejected credentials triggering login")
+		return loginRefreshCredentials(sharedCreds, execFlags.LoginExecFlags)
 	}
 
 	return awsCreds, nil
@@ -109,7 +110,7 @@ func loginRefreshCredentials(sharedCreds *awsconfig.CredentialsProvider, execFla
 	return sharedCreds.Load()
 }
 
-func federatedLogin(creds *awsconfig.AWSCredentials, consoleFlags *flags.LoginExecFlags) error {
+func federatedLogin(creds *awsconfig.AWSCredentials, consoleFlags *flags.ConsoleFlags) error {
 	jsonBytes, err := json.Marshal(map[string]string{
 		"sessionId":    creds.AWSAccessKey,
 		"sessionKey":   creds.AWSSecretKey,
@@ -163,6 +164,12 @@ func federatedLogin(creds *awsconfig.AWSCredentials, consoleFlags *flags.LoginEx
 		url.QueryEscape(destination),
 		url.QueryEscape(signinToken),
 	)
+
+	// write the URL to stdout making it easy to capture seperately and use in a shell function
+	if consoleFlags.Link {
+		fmt.Println(loginURL)
+		return nil
+	}
 
 	return open.Run(loginURL)
 }

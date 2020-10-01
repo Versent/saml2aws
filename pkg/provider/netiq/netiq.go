@@ -5,11 +5,11 @@ import (
 	"github.com/PuerkitoBio/goquery"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"github.com/versent/saml2aws/pkg/cfg"
-	"github.com/versent/saml2aws/pkg/creds"
-	"github.com/versent/saml2aws/pkg/page"
-	"github.com/versent/saml2aws/pkg/prompter"
-	"github.com/versent/saml2aws/pkg/provider"
+	"github.com/versent/saml2aws/v2/pkg/cfg"
+	"github.com/versent/saml2aws/v2/pkg/creds"
+	"github.com/versent/saml2aws/v2/pkg/page"
+	"github.com/versent/saml2aws/v2/pkg/prompter"
+	"github.com/versent/saml2aws/v2/pkg/provider"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -20,16 +20,17 @@ var logger = logrus.WithField("provider", "NetIQ")
 
 type Client struct {
 	client *provider.HTTPClient
+	MFA    string
 }
 
 // New creates a new external client
-func New(idpAccount *cfg.IDPAccount) (*Client, error) {
+func New(idpAccount *cfg.IDPAccount, mfa string) (*Client, error) {
 	tr := provider.NewDefaultTransport(idpAccount.SkipVerify)
 	client, err := provider.NewHTTPClient(tr, provider.BuildHttpClientOpts(idpAccount))
 	if err != nil {
 		return nil, errors.Wrap(err, "Error building HTTP client")
 	}
-	return &Client{client: client}, nil
+	return &Client{client: client, MFA: mfa}, nil
 
 }
 
@@ -55,7 +56,11 @@ func (nc *Client) follow(req *http.Request, loginDetails *creds.LoginDetails) (s
 	if isSAMLResponse(doc) {
 		return extractSAMLAssertion(doc)
 	} else if resourcePath, isGetToContext := extractGetToContentUrl(doc); isGetToContext {
-		newReq, err := buildGetToContentRequest(loginDetails.URL + resourcePath + "&uiDestination=contentDiv")
+		loginUrl, err := getLoginUrl(nc.MFA, loginDetails.URL, resourcePath)
+		if err != nil {
+			return "", errors.Wrap(err, "MFA option unsupported. Valid MFA options are: Auto or Privileged")
+		}
+		newReq, err := buildGetToContentRequest(loginUrl + "&uiDestination=contentDiv")
 		if err != nil {
 			return "", errors.Wrap(err, "Error building request")
 		}
@@ -180,4 +185,17 @@ func logDocDetected(docType string, data string) {
 		logDetect = logDetect.WithField("data", data)
 	}
 	logDetect.Debug("doc detect")
+}
+
+func getLoginUrl(mfa string, baseUrl string, defaultResourcePath string) (string, error) {
+	var loginUrl string
+	if mfa == "Auto" {
+		loginUrl = baseUrl + defaultResourcePath
+	} else if mfa == "Privileged" {
+		// Privileged account skip MFA and have different login URL
+		loginUrl = baseUrl + "/nidp/app/login?id=privacc&sid=0&option=credential"
+	} else {
+		return "", errors.New("Unsupported MFA")
+	}
+	return loginUrl, nil
 }

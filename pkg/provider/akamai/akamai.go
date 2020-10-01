@@ -5,20 +5,21 @@ import (
 	"fmt"
 	"html"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
 
 	"github.com/sirupsen/logrus"
-	"github.com/versent/saml2aws/pkg/prompter"
+	"github.com/versent/saml2aws/v2/pkg/prompter"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/pkg/errors"
 	"github.com/tidwall/gjson"
-	"github.com/versent/saml2aws/pkg/cfg"
-	"github.com/versent/saml2aws/pkg/creds"
-	"github.com/versent/saml2aws/pkg/provider"
+	"github.com/versent/saml2aws/v2/pkg/cfg"
+	"github.com/versent/saml2aws/v2/pkg/creds"
+	"github.com/versent/saml2aws/v2/pkg/provider"
 
 	"encoding/json"
 )
@@ -273,7 +274,7 @@ func verifyMfa(oc *Client, akamaiOrgHost string, loginDetails *creds.LoginDetail
 
 	mfaConfigData := gjson.GetBytes(body, "mfa.config.options")
 	if mfaConfigData.Index == 0 {
-		fmt.Println("Mfa Config option not found")
+		log.Println("Mfa Config option not found")
 		return errors.Wrap(err, "Mfa not configured ")
 	}
 
@@ -564,7 +565,7 @@ func verifyMfa(oc *Client, akamaiOrgHost string, loginDetails *creds.LoginDetail
 		duoTxResult := gjson.Get(resp, "response.result").String()
 		duoResultURL := gjson.Get(resp, "response.result_url").String()
 
-		fmt.Println(gjson.Get(resp, "response.status").String())
+		log.Println(gjson.Get(resp, "response.status").String())
 
 		if duoTxResult != "SUCCESS" {
 			//poll as this is likely a push request
@@ -593,7 +594,7 @@ func verifyMfa(oc *Client, akamaiOrgHost string, loginDetails *creds.LoginDetail
 				duoTxResult = gjson.Get(resp, "response.result").String()
 				duoResultURL = gjson.Get(resp, "response.result_url").String()
 
-				fmt.Println(gjson.Get(resp, "response.status").String())
+				log.Println(gjson.Get(resp, "response.status").String())
 
 				if duoTxResult == "FAILURE" {
 					return errors.Wrap(err, "failed to authenticate device")

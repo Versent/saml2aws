@@ -11,13 +11,13 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 
-	"github.com/versent/saml2aws/pkg/cfg"
-	"github.com/versent/saml2aws/pkg/creds"
-	"github.com/versent/saml2aws/pkg/dump"
-	"github.com/versent/saml2aws/pkg/prompter"
+	"github.com/versent/saml2aws/v2/pkg/cfg"
+	"github.com/versent/saml2aws/v2/pkg/creds"
+	"github.com/versent/saml2aws/v2/pkg/dump"
+	"github.com/versent/saml2aws/v2/pkg/prompter"
 
 	"github.com/pkg/errors"
-	"github.com/versent/saml2aws/pkg/provider"
+	"github.com/versent/saml2aws/v2/pkg/provider"
 
 	"github.com/sirupsen/logrus"
 )
@@ -61,6 +61,9 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 	}
 
 	upDoc, err := goquery.NewDocumentFromReader(bytes.NewBuffer(upData))
+	if err != nil {
+		return "", errors.Wrap(err, "Error reading UP data")
+	}
 	mfaFound, mfaMethods := containsMFAForm(upDoc)
 
 	// Prompt for MFA if needed
@@ -123,10 +126,13 @@ func (ac *Client) getSAMLAssertion(loginDetails *creds.LoginDetails) (string, er
 	debugHTTPResponse(ac, res)
 	samlData, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		return "", errors.Wrap(err, "Error reading SAML asseration body")
+		return "", errors.Wrap(err, "Error reading SAML assertion body")
 	}
 	var samlAssertion string
 	doc, err := goquery.NewDocumentFromReader(bytes.NewBuffer(samlData))
+	if err != nil {
+		return "", errors.Wrap(err, "Error reading SAML data")
+	}
 	doc.Find("input").Each(func(i int, s *goquery.Selection) {
 		name, ok := s.Attr("name")
 		if !ok {

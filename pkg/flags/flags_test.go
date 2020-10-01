@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/versent/saml2aws/pkg/cfg"
+	"github.com/versent/saml2aws/v2/pkg/cfg"
 )
 
 func TestOverrideAllFlags(t *testing.T) {
@@ -25,7 +25,7 @@ func TestOverrideAllFlags(t *testing.T) {
 		SkipVerify:           false,
 		URL:                  "https://id.test.com",
 		Username:             "test123",
-		AmazonWebservicesURN: "urn:govcloud:webservices",
+		AmazonWebservicesURN: "urn:amazon:webservices:govcloud",
 	}
 
 	expected := &cfg.IDPAccount{
@@ -59,7 +59,7 @@ func TestNoOverrides(t *testing.T) {
 		SkipVerify:           false,
 		URL:                  "https://id.test.com",
 		Username:             "test123",
-		AmazonWebservicesURN: "urn:govcloud:webservices",
+		AmazonWebservicesURN: "urn:amazon:webservices:govcloud",
 	}
 
 	expected := &cfg.IDPAccount{
@@ -68,7 +68,7 @@ func TestNoOverrides(t *testing.T) {
 		SkipVerify:           false,
 		URL:                  "https://id.test.com",
 		Username:             "test123",
-		AmazonWebservicesURN: "urn:govcloud:webservices",
+		AmazonWebservicesURN: "urn:amazon:webservices:govcloud",
 	}
 	ApplyFlagOverrides(commonFlags, idpa)
 

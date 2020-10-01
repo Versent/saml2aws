@@ -10,9 +10,9 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/pkg/errors"
-	"github.com/versent/saml2aws/pkg/creds"
-	"github.com/versent/saml2aws/pkg/dump"
-	"github.com/versent/saml2aws/pkg/prompter"
+	"github.com/versent/saml2aws/v2/pkg/creds"
+	"github.com/versent/saml2aws/v2/pkg/dump"
+	"github.com/versent/saml2aws/v2/pkg/prompter"
 )
 
 // Authenticate authenticate the user using the supplied login details
@@ -29,6 +29,20 @@ func (ac *Client) authenticateRsa(loginDetails *creds.LoginDetails) (string, err
 	}
 
 	passcodeForm, passcodeActionURL, err := extractFormData(doc)
+	if err != nil {
+		return "", errors.Wrap(err, "error extractign login data")
+	}
+
+	/**
+	 * RSAv2 requires an additional POST to establish a context
+	 * https://github.com/torric1/AWSCLI-MFA-RSAv2
+	 * https://gist.github.com/jgard/17262e0fc073c82bc7930db2f5603446
+	 */
+	if passcodeForm.Get("AuthMethod") == "SecurIDv2Authentication" {
+		doc, err = ac.postPasscodeForm(passcodeActionURL, passcodeForm)
+	}
+
+	passcodeForm, passcodeActionURL, err = extractFormData(doc)
 	if err != nil {
 		return "", errors.Wrap(err, "error extracting mfa form data")
 	}
@@ -104,14 +118,16 @@ func (ac *Client) getLoginForm(loginDetails *creds.LoginDetails) (string, url.Va
 
 	logger.WithField("status", res.StatusCode).WithField("url", loginDetails.URL).WithField("res", dump.ResponseString(res)).Debug("GET")
 
-	// REALLY need to extract the form and actionURL from the previous response
+	// Extract the form and actionURL from the previous response
 
-	authForm := url.Values{}
-	authForm.Add("UserName", loginDetails.Username)
-	authForm.Add("Password", loginDetails.Password)
-	authForm.Add("AuthMethod", "FormsAuthentication")
+	doc, err := goquery.NewDocumentFromResponse(res)
+	authForm, authSubmitURL, err := extractFormData(doc)
+	if err != nil {
+		return "", nil, errors.Wrap(err, "error extracting login data")
+	}
 
-	authSubmitURL := fmt.Sprintf("%s/adfs/ls/idpinitiatedsignon", loginDetails.URL)
+	authForm.Set("UserName", loginDetails.Username)
+	authForm.Set("Password", loginDetails.Password)
 
 	return authSubmitURL, authForm, nil
 }
@@ -189,10 +205,10 @@ func extractFormData(doc *goquery.Document) (url.Values, string, error) {
 			return
 		}
 		val, ok := s.Attr("value")
-		if !ok {
+		if !ok || len(val) == 0 {
 			return
 		}
-		formData.Add(name, val)
+		formData.Set(name, val)
 	})
 
 	return formData, actionURL, nil

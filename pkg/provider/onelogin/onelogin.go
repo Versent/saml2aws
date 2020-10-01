@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/url"
 	"strings"
@@ -13,10 +14,10 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/tidwall/gjson"
-	"github.com/versent/saml2aws/pkg/cfg"
-	"github.com/versent/saml2aws/pkg/creds"
-	"github.com/versent/saml2aws/pkg/prompter"
-	"github.com/versent/saml2aws/pkg/provider"
+	"github.com/versent/saml2aws/v2/pkg/cfg"
+	"github.com/versent/saml2aws/v2/pkg/creds"
+	"github.com/versent/saml2aws/v2/pkg/prompter"
+	"github.com/versent/saml2aws/v2/pkg/provider"
 )
 
 // MFA identifier constants.
@@ -244,9 +245,9 @@ func verifyMFA(oc *Client, oauthToken, appID, resp string) (string, error) {
 
 	switch mfaIdentifer {
 	// These MFA options doesn't need additional request (e.g. to send SMS or a push notification etc) since the user can generate the code using their MFA app of choice.
-	case IdentifierTotpMfa, IdentifierYubiKey: 
+	case IdentifierTotpMfa, IdentifierYubiKey:
 		break
-	
+
 	default:
 		var verifyBody bytes.Buffer
 		err := json.NewEncoder(&verifyBody).Encode(VerifyRequest{AppID: appID, DeviceID: mfaDeviceID, StateToken: stateToken})
@@ -329,7 +330,7 @@ func verifyMFA(oc *Client, oauthToken, appID, resp string) (string, error) {
 		// loop until success, error, or timeout
 		for {
 			if time.Since(started) > time.Minute {
-				fmt.Println(" Timeout")
+				log.Println(" Timeout")
 				return "", errors.New("User did not accept MFA in time")
 			}
 
@@ -357,11 +358,11 @@ func verifyMFA(oc *Client, oauthToken, appID, resp string) (string, error) {
 				fmt.Print(".")
 
 			case TypeSuccess:
-				fmt.Println(" Approved")
+				log.Println(" Approved")
 				return gjson.Get(string(body), "data").String(), nil
 
 			default:
-				fmt.Println(" Error:")
+				log.Println(" Error:")
 				return "", errors.New("unsupported response from OneLogin, please raise ticket with saml2aws")
 			}
 		}

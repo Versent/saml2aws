@@ -40,6 +40,7 @@ The process goes something like this:
 
 * One of the supported Identity Providers
   * ADFS (2.x or 3.x)
+  * [AzureAD](doc/provider/aad/README.md)
   * PingFederate + PingId
   * [Okta](pkg/provider/okta/README.md)
   * KeyCloak + (TOTP)
@@ -67,6 +68,7 @@ If you're on OSX you can install saml2aws using homebrew!
 ```
 brew tap versent/homebrew-taps
 brew install saml2aws
+saml2aws --version
 ```
 
 ### Windows
@@ -83,10 +85,11 @@ saml2aws --version
 While brew is available for Linux you can also run the following without using a package manager.
 
 ```
-$ CURRENT_VERSION=2.25.0
+$ CURRENT_VERSION=2.26.1
 $ wget https://github.com/Versent/saml2aws/releases/download/v${CURRENT_VERSION}/saml2aws_${CURRENT_VERSION}_linux_amd64.tar.gz
 $ tar -xzvf saml2aws_${CURRENT_VERSION}_linux_amd64.tar.gz -C ~/.local/bin
 $ chmod u+x ~/.local/bin/saml2aws
+$ saml2aws --version
 ```
 **Note**: You will need to logout of your current user session or force a bash reload for `saml2aws` to be useable after following the above steps.
 
@@ -121,7 +124,7 @@ Flags:
       --verbose                Enable verbose logging
   -i, --provider=PROVIDER      This flag is obsolete. See: https://github.com/Versent/saml2aws#configuring-idp-accounts
   -a, --idp-account="default"  The name of the configured IDP account. (env: SAML2AWS_IDP_ACCOUNT)
-      --idp-provider=IDP-PROVIDER  
+      --idp-provider=IDP-PROVIDER
                                The configured IDP provider. (env: SAML2AWS_IDP_PROVIDER)
       --mfa=MFA                The name of the mfa. (env: SAML2AWS_MFA)
   -s, --skip-verify            Skip verification of server certificate. (env: SAML2AWS_SKIP_VERIFY)
@@ -132,9 +135,10 @@ Flags:
       --role=ROLE              The ARN of the role to assume. (env: SAML2AWS_ROLE)
       --aws-urn=AWS-URN        The URN used by SAML when you login. (env: SAML2AWS_AWS_URN)
       --skip-prompt            Skip prompting for parameters during login.
-      --session-duration=SESSION-DURATION  
+      --session-duration=SESSION-DURATION
                                The duration of your AWS Session. (env: SAML2AWS_SESSION_DURATION)
       --disable-keychain       Do not use keychain at all.
+  -r, --region=REGION          AWS region to use for API requests, e.g. us-east-1, us-gov-west-1, cn-north-1 (env: SAML2AWS_REGION)
 
 Commands:
   help [<command>...]
@@ -146,7 +150,7 @@ Commands:
 
         --app-id=APP-ID            OneLogin app id required for SAML assertion. (env: ONELOGIN_APP_ID)
         --client-id=CLIENT-ID      OneLogin client id, used to generate API access token. (env: ONELOGIN_CLIENT_ID)
-        --client-secret=CLIENT-SECRET  
+        --client-secret=CLIENT-SECRET
                                    OneLogin client secret, used to generate API access token. (env: ONELOGIN_CLIENT_SECRET)
         --subdomain=SUBDOMAIN      OneLogin subdomain of your company account. (env: ONELOGIN_SUBDOMAIN)
     -p, --profile=PROFILE          The AWS profile to save the temporary credentials. (env: SAML2AWS_PROFILE)
@@ -157,10 +161,10 @@ Commands:
     Login to a SAML 2.0 IDP and convert the SAML assertion to an STS token.
 
     -p, --profile=PROFILE      The AWS profile to save the temporary credentials. (env: SAML2AWS_PROFILE)
-        --duo-mfa-option=DUO-MFA-OPTION  
+        --duo-mfa-option=DUO-MFA-OPTION
                                The MFA option you want to use to authenticate with
         --client-id=CLIENT-ID  OneLogin client id, used to generate API access token. (env: ONELOGIN_CLIENT_ID)
-        --client-secret=CLIENT-SECRET  
+        --client-secret=CLIENT-SECRET
                                OneLogin client secret, used to generate API access token. (env: ONELOGIN_CLIENT_SECRET)
         --force                Refresh credentials even if not expired.
 
@@ -168,13 +172,14 @@ Commands:
     Exec the supplied command with env vars from STS token.
 
     -p, --profile=PROFILE  The AWS profile to save the temporary credentials. (env: SAML2AWS_PROFILE)
-        --exec-profile=EXEC-PROFILE  
-                           The AWS profile to utilize for command execution. Useful to allow the aws cli to perform secondary role assumption. (env:
-                           SAML2AWS_EXEC_PROFILE)
+        --exec-profile=EXEC-PROFILE
+                           The AWS profile to utilize for command execution. Useful to allow the aws cli to perform secondary role assumption. (env: SAML2AWS_EXEC_PROFILE)
 
   console [<flags>]
     Console will open the aws console after logging in.
 
+        --exec-profile=EXEC-PROFILE
+                           The AWS profile to utilize for console execution. (env: SAML2AWS_EXEC_PROFILE)
     -p, --profile=PROFILE  The AWS profile to save the temporary credentials. (env: SAML2AWS_PROFILE)
         --force            Refresh credentials even if not expired.
 
@@ -257,6 +262,7 @@ account {
   AmazonWebservicesURN: urn:amazon:webservices
   SessionDuration: 3600
   Profile: myaccount
+  Region: us-east-1
 }
 
 Configuration saved for IDP account: default
@@ -277,7 +283,7 @@ saml2aws configure -a wolfeidau
 You can also configure the account alias without prompts.
 
 ```
-saml2aws configure -a wolfeidau --idp-provider KeyCloak --username mark@wolfe.id.au \
+saml2aws configure -a wolfeidau --idp-provider KeyCloak --username mark@wolfe.id.au -r cn-north-1  \
   --url https://keycloak.wolfe.id.au/auth/realms/master/protocol/saml/clients/amazon-aws --skip-prompt
 ```
 
@@ -353,6 +359,7 @@ aws_urn                 = urn:amazon:webservices
 aws_session_duration    = 28800
 aws_profile             = customer-dev
 role_arn                = arn:aws:iam::121234567890:role/customer-admin-role
+region                  = us-east-1
 ```
 
 To use this you will need to export `AWS_DEFAULT_PROFILE=customer-dev` environment variable to target `dev`.
@@ -379,6 +386,7 @@ aws_urn                 = urn:amazon:webservices
 aws_session_duration    = 28800
 aws_profile             = customer-test
 role_arn                = arn:aws:iam::121234567891:role/customer-admin-role
+region                  = us-east-1
 ```
 
 To use this you will need to export `AWS_DEFAULT_PROFILE=customer-test` environment variable to target `test`.
@@ -492,6 +500,7 @@ There are few additional parameters allowing to customise saml2aws configuration
 Use following parameters in `~/.saml2aws` file:
 - `http_attempts_count` - configures the number of attempts to send http requests in order to authorise with saml provider. Defaults to 1
 - `http_retry_delay` - configures the duration (in seconds) of timeout between attempts to send http requests to saml provider. Defaults to 1
+- `region` - configures which region endpoints to use, See [Audience](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_providers_create_saml_assertions.html#saml_audience-restriction) and [partition](https://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html#arns-syntax)
 
 Example: typical configuration with such parameters would look like follows:
 ```
@@ -508,6 +517,7 @@ aws_profile             = customer-dev
 role_arn                = arn:aws:iam::121234567890:role/customer-admin-role
 http_attempts_count     = 3
 http_retry_delay        = 1
+region                  = us-east-1
 ```
 ## Building
 

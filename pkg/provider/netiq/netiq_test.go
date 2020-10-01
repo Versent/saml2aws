@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"github.com/PuerkitoBio/goquery"
 	"github.com/stretchr/testify/require"
-	"github.com/versent/saml2aws/pkg/page"
+	"github.com/versent/saml2aws/v2/pkg/page"
 	"io/ioutil"
 	"net/url"
 	"testing"
@@ -165,6 +165,26 @@ func TestExtractIDPLoginPassNegative(t *testing.T) {
 	require.Nil(t, actualResourceUrl)
 }
 
+func TestExtractPrivilegedIDPLoginPassPositive(t *testing.T) {
+	//given
+	idpLoginPassData, err := ioutil.ReadFile("responses/privileged_flow/idpLoginPass.html")
+	require.Nil(t, err)
+	expectedForm := &page.Form{
+		URL:    "https://login.authbridge.somegroup.com/nidp/app/login?sid=0&sid=0",
+		Method: "POST",
+		Values: &url.Values{},
+	}
+
+	//when
+	idpLoginPassDoc, err := goquery.NewDocumentFromReader(bytes.NewReader(idpLoginPassData))
+	require.Nil(t, err)
+	actualForm, ok := extractIDPLoginPass(idpLoginPassDoc)
+
+	//then
+	require.True(t, ok)
+	require.Equal(t, expectedForm, actualForm)
+}
+
 func TestExtractIDPLoginRsaPositive(t *testing.T) {
 	//given
 	idpLoginRsaData, err := ioutil.ReadFile("responses/idpLoginRsa.html")
@@ -198,4 +218,63 @@ func TestExtractIDPLoginRsaNegative(t *testing.T) {
 	//then
 	require.False(t, ok)
 	require.Nil(t, actualResourceUrl)
+}
+
+func TestExtractPrivilegedIDPLoginRsaNegative(t *testing.T) {
+	//given
+	idpLoginPassData, err := ioutil.ReadFile("responses/privileged_flow/idpLoginPass.html")
+	require.Nil(t, err)
+
+	//when
+	idpLoginPassDoc, err := goquery.NewDocumentFromReader(bytes.NewReader(idpLoginPassData))
+	require.Nil(t, err)
+	actualResourceUrl, ok := extractIDPLoginRsa(idpLoginPassDoc)
+
+	//then
+	require.False(t, ok)
+	require.Nil(t, actualResourceUrl)
+}
+
+func TestPrivilegedLoginUrl(t *testing.T) {
+	//given
+	mfa := "Privileged"
+	baseUrl := "https://abc.com"
+	defaultResourcePath := "/login.html"
+	expectedLoginUrl := baseUrl + "/nidp/app/login?id=privacc&sid=0&option=credential"
+
+	//when
+	loginUrl, err := getLoginUrl(mfa, baseUrl, defaultResourcePath)
+
+	//then
+	require.Nil(t, err)
+	require.Equal(t, loginUrl, expectedLoginUrl)
+}
+
+func TestDefaultLoginUrl(t *testing.T) {
+	//given
+	mfa := "Auto"
+	baseUrl := "https://abc.com"
+	defaultResourcePath := "/login.html"
+	expectedLoginUrl := baseUrl + defaultResourcePath
+
+	//when
+	loginUrl, err := getLoginUrl(mfa, baseUrl, defaultResourcePath)
+
+	//then
+	require.Nil(t, err)
+	require.Equal(t, loginUrl, expectedLoginUrl)
+}
+
+func TestUnsupportedMFA(t *testing.T) {
+	//given
+	mfa := "None"
+	baseUrl := "https://abc.com"
+	defaultResourcePath := "/login.html"
+	expectedErrorString := "Unsupported MFA"
+
+	//when
+	_, err := getLoginUrl(mfa, baseUrl, defaultResourcePath)
+
+	//then
+	require.EqualError(t, err, expectedErrorString)
 }

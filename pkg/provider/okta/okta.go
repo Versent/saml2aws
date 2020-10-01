@@ -4,27 +4,26 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"html"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/url"
 	"regexp"
 	"strings"
 	"time"
 
-	"github.com/sirupsen/logrus"
-	"github.com/versent/saml2aws/pkg/prompter"
-
-	"encoding/json"
-
 	"github.com/PuerkitoBio/goquery"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 	"github.com/tidwall/gjson"
-	"github.com/versent/saml2aws/pkg/cfg"
-	"github.com/versent/saml2aws/pkg/creds"
-	"github.com/versent/saml2aws/pkg/page"
-	"github.com/versent/saml2aws/pkg/provider"
+	"github.com/versent/saml2aws/v2/pkg/cfg"
+	"github.com/versent/saml2aws/v2/pkg/creds"
+	"github.com/versent/saml2aws/v2/pkg/page"
+	"github.com/versent/saml2aws/v2/pkg/prompter"
+	"github.com/versent/saml2aws/v2/pkg/provider"
 )
 
 const (
@@ -269,7 +268,17 @@ func docIsFormResume(doc *goquery.Document) bool {
 }
 
 func docIsFormRedirectToAWS(doc *goquery.Document) bool {
-	return doc.Find("form[action=\"https://signin.aws.amazon.com/saml\"]").Size() == 1
+	urls := []string{"form[action=\"https://signin.aws.amazon.com/saml\"]",
+		"form[action=\"https://signin.amazonaws-us-gov.com/saml\"]",
+		"form[action=\"https://signin.amazonaws.cn/saml\"]",
+	}
+
+	for _, value := range urls {
+		if doc.Find(value).Size() > 0 {
+			return true
+		}
+	}
+	return false
 }
 
 func extractSAMLResponse(doc *goquery.Document) (v string, ok bool) {
@@ -294,7 +303,7 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 
 	if strings.ToUpper(oc.mfa) != "AUTO" {
 		for idx, val := range mfaOptions {
-			if strings.HasPrefix(val, oc.mfa) {
+			if strings.HasPrefix(strings.ToUpper(val), oc.mfa) {
 				mfaOption = idx
 				break
 			}
@@ -540,7 +549,7 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 		duoTxStat := gjson.Get(resp, "stat").String()
 		duoTxID := gjson.Get(resp, "response.txid").String()
 		if duoTxStat != "OK" {
-			return "", errors.Wrap(err, "error authenticating mfa device")
+			return "", errors.New("error authenticating mfa device")
 		}
 
 		// get duo cookie
@@ -571,8 +580,12 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 
 		duoTxResult := gjson.Get(resp, "response.result").String()
 		duoResultURL := gjson.Get(resp, "response.result_url").String()
+		newSID := gjson.Get(resp, "response.sid").String()
+		if newSID != "" {
+			duoSID = newSID
+		}
 
-		fmt.Println(gjson.Get(resp, "response.status").String())
+		log.Println(gjson.Get(resp, "response.status").String())
 
 		if duoTxResult != "SUCCESS" {
 			//poll as this is likely a push request
@@ -600,8 +613,12 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 
 				duoTxResult = gjson.Get(resp, "response.result").String()
 				duoResultURL = gjson.Get(resp, "response.result_url").String()
+				newSID = gjson.Get(resp, "response.sid").String()
+				if newSID != "" {
+					duoSID = newSID
+				}
 
-				fmt.Println(gjson.Get(resp, "response.status").String())
+				log.Println(gjson.Get(resp, "response.status").String())
 
 				if duoTxResult == "FAILURE" {
 					return "", errors.Wrap(err, "failed to authenticate device")
@@ -614,6 +631,10 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 		}
 
 		duoRequestURL := fmt.Sprintf("https://%s%s", duoHost, duoResultURL)
+
+		duoForm = url.Values{}
+		duoForm.Add("sid", duoSID)
+
 		req, err = http.NewRequest("POST", duoRequestURL, strings.NewReader(duoForm.Encode()))
 		if err != nil {
 			return "", errors.Wrap(err, "error constructing request object to result url")
@@ -632,9 +653,16 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 		}
 
 		resp := string(body)
+
+		duoTxStat = gjson.Get(resp, "stat").String()
+		if duoTxStat != "OK" {
+			message := gjson.Get(resp, "message").String()
+			return "", fmt.Errorf("duoResultSubmit: %s %s", duoTxStat, message)
+		}
+
 		duoTxCookie := gjson.Get(resp, "response.cookie").String()
 		if duoTxCookie == "" {
-			return "", errors.Wrap(err, "duoResultSubmit: Unable to get response.cookie")
+			return "", errors.New("duoResultSubmit: Unable to get response.cookie")
 		}
 
 		// callback to okta with cookie

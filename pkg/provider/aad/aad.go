@@ -1,11 +1,13 @@
 package aad
 
 import (
+	"bytes"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/url"
 	"strings"
@@ -13,10 +15,10 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/pkg/errors"
-	"github.com/versent/saml2aws/pkg/cfg"
-	"github.com/versent/saml2aws/pkg/creds"
-	"github.com/versent/saml2aws/pkg/prompter"
-	"github.com/versent/saml2aws/pkg/provider"
+	"github.com/versent/saml2aws/v2/pkg/cfg"
+	"github.com/versent/saml2aws/v2/pkg/creds"
+	"github.com/versent/saml2aws/v2/pkg/prompter"
+	"github.com/versent/saml2aws/v2/pkg/provider"
 )
 
 // Client wrapper around AzureAD enabling authentication and retrieval of assertions
@@ -26,7 +28,7 @@ type Client struct {
 }
 
 // Autogenerate startSAML Response struct
-// some case, some fiels is not exists
+// some case, some fields is not exists
 type startSAMLResponse struct {
 	FShowPersistentCookiesWarning         bool     `json:"fShowPersistentCookiesWarning"`
 	URLMsaLogout                          string   `json:"urlMsaLogout"`
@@ -200,7 +202,7 @@ type startSAMLResponse struct {
 }
 
 // Autogenerate password login response
-// some case, some fiels is not exists
+// some case, some fields is not exists
 type passwordLoginResponse struct {
 	ArrUserProofs []struct {
 		AuthMethodID string `json:"authMethodId"`
@@ -489,7 +491,7 @@ type mfaResponse struct {
 }
 
 // Autogenerate ProcessAuth response
-// some case, some fiels is not exists
+// some case, some fields is not exists
 type processAuthResponse struct {
 	IMaxStackForKnockoutAsyncComponents int    `json:"iMaxStackForKnockoutAsyncComponents"`
 	StrCopyrightTxt                     string `json:"strCopyrightTxt"`
@@ -639,7 +641,7 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		return samlAssertion, errors.Wrap(err, "error retrieving form")
 	}
 
-	// data is embeded javascript object
+	// data is embedded javascript object
 	// <script><![CDATA[  $Config=......; ]]>
 	resBody, _ := ioutil.ReadAll(res.Body)
 	resBodyStr := string(resBody)
@@ -693,7 +695,7 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		resBodyStr = string(resBody)
 	}
 
-	// data is embeded javascript object
+	// data is embedded javascript object
 	// <script><![CDATA[  $Config=......; ]]>
 	var loginPasswordJson string
 	if strings.Contains(resBodyStr, "$Config") {
@@ -787,7 +789,7 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 				mfaReq.AdditionalAuthData = verifyCode
 			}
 			if mfaReq.AuthMethodID == "PhoneAppNotification" && i == 0 {
-				fmt.Println("Phone approval required.")
+				log.Println("Phone approval required.")
 			}
 			mfaReqJson, err := json.Marshal(mfaReq)
 			if err != nil {
@@ -840,6 +842,42 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		res, err = ac.client.Do(ProcessAuthRequest)
 		if err != nil {
 			return samlAssertion, errors.Wrap(err, "error retrieving process auth results")
+		}
+		// data is embeded javascript object
+		// <script><![CDATA[  $Config=......; ]]>
+		resBody, _ = ioutil.ReadAll(res.Body)
+		resBodyStr = string(resBody)
+		// reset res.Body so it can be read again later if required
+		res.Body = ioutil.NopCloser(bytes.NewBuffer(resBody))
+
+		// After performing MFA we may be prompted with KMSI (Keep Me Signed In) page
+		// Ref: https://docs.microsoft.com/ja-jp/azure/active-directory/fundamentals/keep-me-signed-in
+		if strings.Contains(resBodyStr, "$Config") {
+			startIndex := strings.Index(resBodyStr, "$Config=") + 8
+			endIndex := startIndex + strings.Index(resBodyStr[startIndex:], ";")
+			ProcessAuthJson := resBodyStr[startIndex:endIndex]
+
+			var processAuthResp processAuthResponse
+			if err := json.Unmarshal([]byte(ProcessAuthJson), &processAuthResp); err != nil {
+				return samlAssertion, errors.Wrap(err, "ProcessAuth response unmarshal error")
+			}
+
+			KmsiURL := res.Request.URL.Scheme + "://" + res.Request.URL.Host + processAuthResp.URLPost
+			KmsiValues := url.Values{}
+			KmsiValues.Set("flowToken", processAuthResp.SFT)
+			KmsiValues.Set("ctx", processAuthResp.SCtx)
+			KmsiValues.Set("LoginOptions", "1")
+			KmsiRequest, err := http.NewRequest("POST", KmsiURL, strings.NewReader(KmsiValues.Encode()))
+			if err != nil {
+				return samlAssertion, errors.Wrap(err, "error retrieving kmsi results")
+			}
+			KmsiRequest.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+			ac.client.DisableFollowRedirect()
+			res, err = ac.client.Do(KmsiRequest)
+			if err != nil {
+				return samlAssertion, errors.Wrap(err, "error retrieving kmsi results")
+			}
+			ac.client.EnableFollowRedirect()
 		}
 	} else {
 		// There was no explicit link to skip MFA
@@ -926,7 +964,7 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 
 	oidcResponseStr := string(oidcResponse)
 
-	// data is embeded javascript
+	// data is embedded javascript
 	// window.location = 'https:/..../?SAMLRequest=......'
 	oidcResponseList := strings.Split(oidcResponseStr, ";")
 	var SAMLRequestURL string

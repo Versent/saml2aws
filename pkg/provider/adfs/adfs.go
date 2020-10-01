@@ -11,10 +11,10 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/pkg/errors"
-	"github.com/versent/saml2aws/pkg/cfg"
-	"github.com/versent/saml2aws/pkg/creds"
-	"github.com/versent/saml2aws/pkg/prompter"
-	"github.com/versent/saml2aws/pkg/provider"
+	"github.com/versent/saml2aws/v2/pkg/cfg"
+	"github.com/versent/saml2aws/v2/pkg/creds"
+	"github.com/versent/saml2aws/v2/pkg/prompter"
+	"github.com/versent/saml2aws/v2/pkg/provider"
 )
 
 // Client wrapper around ADFS enabling authentication and retrieval of assertions
@@ -124,7 +124,7 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 			if sel.Index() != -1 {
 				if instructions != sel.Text() {
 					instructions = sel.Text()
-					fmt.Println(instructions)
+					log.Println(instructions)
 				}
 			}
 			time.Sleep(1 * time.Second)
@@ -201,7 +201,7 @@ func checkResponse(doc *goquery.Document) (AuthResponseType, string, error) {
 		if name == "AuthMethod" {
 			val, _ := s.Attr("value")
 			switch val {
-			case "VIPAuthenticationProviderWindowsAccountName":
+			case "VIPAuthenticationProviderWindowsAccountName", "VIPAuthenticationProviderUPN":
 				responseType = MFA_PROMPT
 			case "AzureMfaAuthentication":
 				responseType = AZURE_MFA_WAIT

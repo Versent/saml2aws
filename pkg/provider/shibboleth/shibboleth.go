@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"html"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -14,10 +15,10 @@ import (
 	"github.com/PuerkitoBio/goquery"
 	"github.com/pkg/errors"
 	"github.com/tidwall/gjson"
-	"github.com/versent/saml2aws/pkg/cfg"
-	"github.com/versent/saml2aws/pkg/creds"
-	"github.com/versent/saml2aws/pkg/prompter"
-	"github.com/versent/saml2aws/pkg/provider"
+	"github.com/versent/saml2aws/v2/pkg/cfg"
+	"github.com/versent/saml2aws/v2/pkg/creds"
+	"github.com/versent/saml2aws/v2/pkg/prompter"
+	"github.com/versent/saml2aws/v2/pkg/provider"
 )
 
 // Client wrapper around Shibboleth enabling authentication and retrieval of assertions
@@ -208,8 +209,8 @@ func verifyDuoMfa(oc *Client, duoHost string, parent string, tx string) (string,
 	duoTxCookie, ok := doc.Find("input[name=\"js_cookie\"]").Attr("value")
 	if ok {
 		if duoTxCookie == "" {
-                        return "", errors.Wrap(err, "duoMfaBypass: invalid response cookie")
-                }
+			return "", errors.Wrap(err, "duoMfaBypass: invalid response cookie")
+		}
 		return duoTxCookie, nil
 	}
 
@@ -304,7 +305,7 @@ func verifyDuoMfa(oc *Client, duoHost string, parent string, tx string) (string,
 	duoTxResult := gjson.Get(resp, "response.result").String()
 	duoResultURL := gjson.Get(resp, "response.result_url").String()
 
-	fmt.Println(gjson.Get(resp, "response.status").String())
+	log.Println(gjson.Get(resp, "response.status").String())
 
 	if duoTxResult != "SUCCESS" {
 		//poll as this is likely a push request
@@ -333,7 +334,7 @@ func verifyDuoMfa(oc *Client, duoHost string, parent string, tx string) (string,
 			duoTxResult = gjson.Get(resp, "response.result").String()
 			duoResultURL = gjson.Get(resp, "response.result_url").String()
 
-			fmt.Println(gjson.Get(resp, "response.status").String())
+			log.Println(gjson.Get(resp, "response.status").String())
 
 			if duoTxResult == "FAILURE" {
 				return "", errors.Wrap(err, "failed to authenticate device")
