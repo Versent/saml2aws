@@ -43,6 +43,8 @@ jobs:
           go-version: ^1.14
       - name: Vendor packages
         run: make mod
+      - name: Install CI utilities
+        run: make prepare
       - name: Compile binaries
         run: make compile
       - name: Package binaries
