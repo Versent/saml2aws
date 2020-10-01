@@ -2,8 +2,9 @@ Set-StrictMode -Version 'Latest'
 
 $version = $env:GITHUB_REF.Split("/")[2].Split('v')[1]
 
-echo "Install choco"
-Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
+# Choco is already installed on Github runners
+#echo "Install choco"
+#Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
 
 echo "Building gossamer3"
 go build -o "bin/gossamer3.exe" -ldflags "-X main.Version=${version}" "./cmd/gossamer3"
@@ -25,6 +26,6 @@ echo "Zipping binary"
 $hash = Get-FileHash "gossamer3.zip"
 "$($hash.Hash) $(Split-Path $hash.Path -Leaf)" > "gossamer3.zip.sha256"
 
-echo "Push to choco"
-choco apiKey -k $env:CHOCO_API_KEY -source https://push.chocolatey.org/
-choco push "./gossamer3.${version}.nupkg"
+#echo "Push to choco"
+#choco apiKey -k $env:CHOCO_API_KEY -source https://push.chocolatey.org/
+#choco push "./gossamer3.${version}.nupkg"
