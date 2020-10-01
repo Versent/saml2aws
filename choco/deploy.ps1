@@ -23,5 +23,5 @@ $hash = Get-FileHash "gossamer3.zip"
 "$($hash.Hash) $(Split-Path $hash.Path -Leaf)" > "gossamer3.zip.sha256"
 
 echo "Push to choco"
-choco apiKey -k $env:CHOCO_API_KEY -source https://push.chocolatey.org/
+choco apiKey -k $env:CHOCO_API_KEY -s https://push.chocolatey.org/
 choco push "./gossamer3.${version}.nupkg"
