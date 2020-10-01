@@ -203,7 +203,7 @@ GOSSAMER3_PROFILE=saml
 
 Powershell, and fish shells are supported as well.
 
-If you use `eval $(gossamer3 script)` frequently, you may want to create a alias for it:
+If you use `eval $(gossamer3 script)` frequently, you may want to create an alias for it:
 
 zsh:
 ```
