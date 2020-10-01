@@ -12,7 +12,7 @@ require (
 	github.com/aulanov/go.dbus v0.0.0-20150729231527-25c3068a42a0 // indirect
 	github.com/avast/retry-go v2.6.1+incompatible
 	github.com/aws/aws-sdk-go v1.35.0
-	github.com/beevik/etree v1.0.1
+	github.com/beevik/etree v1.1.0
 	github.com/danieljoos/wincred v1.1.0
 	github.com/dvsekhvalnov/jose2go v0.0.0-20170216131308-f21a8cedbbae // indirect
 	github.com/godbus/dbus v4.1.0+incompatible // indirect
