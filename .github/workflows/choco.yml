@@ -25,9 +25,9 @@ jobs:
       - name: Run tests
         run: |
           go install github.com/axw/gocov/gocov
-          ${GOBIN}\gocov test $(go list .\...) | ${GOBIN}\gocov report
+          ${env:GOBIN}/gocov test $(go list ./...) | ${env:GOBIN}/gocov report
         env:
-          GOBIN: ${GITHUB_WORKSPACE}\bin
+          GOBIN: ${GITHUB_WORKSPACE}/bin
 
-      - name: Build gossamer3 and push to choco
-        run: .\choco\deploy.ps1
+#      - name: Build gossamer3 and push to choco
+#        run: .\choco\deploy.ps1
