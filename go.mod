@@ -10,7 +10,7 @@ require (
 	github.com/alecthomas/template v0.0.0-20160405071501-a0175ee3bccc // indirect
 	github.com/alecthomas/units v0.0.0-20190910110746-680d30ca3117 // indirect
 	github.com/aulanov/go.dbus v0.0.0-20150729231527-25c3068a42a0 // indirect
-	github.com/avast/retry-go v2.6.0+incompatible
+	github.com/avast/retry-go v2.6.1+incompatible
 	github.com/aws/aws-sdk-go v1.35.0
 	github.com/beevik/etree v1.0.1
 	github.com/danieljoos/wincred v1.0.1
