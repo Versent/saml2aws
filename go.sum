@@ -22,6 +22,8 @@ github.com/aws/aws-sdk-go v1.34.9 h1:cUGBW9CVdi0mS7K1hDzxIqTpfeWhpoQiguq81M1tjK0
 github.com/aws/aws-sdk-go v1.34.9/go.mod h1:5zCpMtNQVjRREroY7sYe8lOMRSxkhG6MZveU8YkpAk0=
 github.com/aws/aws-sdk-go v1.34.33 h1:ymkFm0rNPEOlgjyX3ojEd4zqzW6kGICBkqWs7LqgHtU=
 github.com/aws/aws-sdk-go v1.34.33/go.mod h1:H7NKnBqNVzoTJpGfLrQkkD+ytBA93eiDYi/+8rV9s48=
+github.com/aws/aws-sdk-go v1.35.0 h1:Pxqn1MWNfBCNcX7jrXCCTfsKpg5ms2IMUMmmcGtYJuo=
+github.com/aws/aws-sdk-go v1.35.0/go.mod h1:H7NKnBqNVzoTJpGfLrQkkD+ytBA93eiDYi/+8rV9s48=
 github.com/beevik/etree v1.0.1 h1:lWzdj5v/Pj1X360EV7bUudox5SRipy4qZLjY0rhb0ck=
 github.com/beevik/etree v1.0.1/go.mod h1:r8Aw8JqVegEf0w2fDnATrX9VpkMcyFeM0FhwO62wh+A=
 github.com/danieljoos/wincred v1.0.1 h1:fcRTaj17zzROVqni2FiToKUVg3MmJ4NtMSGCySPIr/g=
