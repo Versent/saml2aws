@@ -83,6 +83,8 @@ jobs:
 
       - name: Build gossamer3 and push to choco
         run: .\choco\deploy.ps1
+        env:
+          CHOCO_API_KEY: ${{ secrets.CHOCO_API_KEY }}
 
 # ----------------------------------------------------------------------------------------------------------------------
 
