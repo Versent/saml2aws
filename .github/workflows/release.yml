@@ -7,10 +7,13 @@ on:
 jobs:
   test:
     name: Run tests
-    runs-on:
-      - macos-latest
-      - ubuntu-latest
-      - windows-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os:
+          - macos-latest
+          - ubuntu-latest
+          - windows-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
