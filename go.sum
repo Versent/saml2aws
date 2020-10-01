@@ -18,6 +18,8 @@ github.com/aulanov/go.dbus v0.0.0-20150729231527-25c3068a42a0 h1:EEDvbomAQ+MFWqJ
 github.com/aulanov/go.dbus v0.0.0-20150729231527-25c3068a42a0/go.mod h1:VHvUx+4lTCaJ8zUnEXF4cWEc9c8lnDt4PGLwlZ+3yaM=
 github.com/avast/retry-go v2.6.0+incompatible h1:FelcMrm7Bxacr1/RM8+/eqkDkmVN7tjlsy51dOzB3LI=
 github.com/avast/retry-go v2.6.0+incompatible/go.mod h1:XtSnn+n/sHqQIpZ10K1qAevBhOOCWBLXXy3hyiqqBrY=
+github.com/avast/retry-go v2.6.1+incompatible h1:quvLI98pOPWtTq7xnbX4TI5l9PmRJooM2AI1T7mOFUA=
+github.com/avast/retry-go v2.6.1+incompatible/go.mod h1:XtSnn+n/sHqQIpZ10K1qAevBhOOCWBLXXy3hyiqqBrY=
 github.com/aws/aws-sdk-go v1.34.9 h1:cUGBW9CVdi0mS7K1hDzxIqTpfeWhpoQiguq81M1tjK0=
 github.com/aws/aws-sdk-go v1.34.9/go.mod h1:5zCpMtNQVjRREroY7sYe8lOMRSxkhG6MZveU8YkpAk0=
 github.com/aws/aws-sdk-go v1.34.33 h1:ymkFm0rNPEOlgjyX3ojEd4zqzW6kGICBkqWs7LqgHtU=
