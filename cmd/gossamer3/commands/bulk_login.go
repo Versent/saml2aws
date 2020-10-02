@@ -581,7 +581,6 @@ func assumeRole(account *cfg.IDPAccount, parentCreds *awsconfig.AWSCredentials, 
 	params := &sts.AssumeRoleInput{
 		RoleArn:         aws.String(roleArn),         // Required
 		RoleSessionName: aws.String(roleSessionName), // Required
-		DurationSeconds: aws.Int64(int64(account.SessionDuration)),
 	}
 
 	// Assume the role
