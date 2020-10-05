@@ -13,7 +13,9 @@ require (
 	github.com/aulanov/go.dbus v0.0.0-20150729231527-25c3068a42a0 // indirect
 	github.com/avast/retry-go v2.6.0+incompatible
 	github.com/aws/aws-sdk-go v1.34.9
+	github.com/axw/gocov v1.0.0 // indirect
 	github.com/beevik/etree v1.0.1
+	github.com/buildkite/github-release v0.0.0-20200205104344-c0a6db85594d // indirect
 	github.com/danieljoos/wincred v1.0.1
 	github.com/dvsekhvalnov/jose2go v0.0.0-20170216131308-f21a8cedbbae // indirect
 	github.com/godbus/dbus v4.1.0+incompatible // indirect
@@ -24,6 +26,7 @@ require (
 	github.com/kr/pretty v0.1.0 // indirect
 	github.com/marshallbrekka/go-u2fhost v0.0.0-20200107013215-ad5fdc1986ac
 	github.com/mitchellh/go-homedir v1.0.0
+	github.com/mitchellh/gox v1.0.1 // indirect
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.6.0
 	github.com/skratchdot/open-golang v0.0.0-20200116055534-eef842397966

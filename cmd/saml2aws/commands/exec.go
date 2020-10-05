@@ -51,7 +51,9 @@ func Exec(execFlags *flags.LoginExecFlags, cmdline []string) error {
 		return errors.New("error aws credentials have expired")
 	}
 
-	ok, err := checkToken(account.Profile)
+	ok, err := checkToken(&session.Options{
+		Profile: account.Profile,
+		Config:  aws.Config{Region: aws.String(account.Region)}})
 	if err != nil {
 		return errors.Wrap(err, "error validating token")
 	}
@@ -116,10 +118,8 @@ func assumeRoleWithProfile(targetProfile string, sessionDuration int) (*awsconfi
 	}, nil
 }
 
-func checkToken(profile string) (bool, error) {
-	sess, err := session.NewSessionWithOptions(session.Options{
-		Profile: profile,
-	})
+func checkToken(sessionOptions *session.Options) (bool, error) {
+	sess, err := session.NewSessionWithOptions(*sessionOptions)
 	if err != nil {
 		return false, err
 	}
