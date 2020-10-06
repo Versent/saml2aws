@@ -15,8 +15,8 @@ type ProviderList map[string][]string
 
 // MFAsByProvider a list of providers with their respective supported MFAs
 var MFAsByProvider = ProviderList{
-	"Ping":    []string{"Auto"}, // automatically detects PingID
-	"PingOne": []string{"Auto"}, // automatically detects PingID
+	"Ping":    []string{"Auto", "None"}, // automatically detects PingID
+	"PingOne": []string{"Auto"},         // automatically detects PingID
 }
 
 // Names get a list of provider names

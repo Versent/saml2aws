@@ -84,7 +84,7 @@ func (ac *Client) follow(ctx context.Context, req *http.Request) (string, error)
 	for _, cookie := range res.Cookies() {
 		found := false
 		for i, item := range cookies {
-			if item.Name == cookie.Name {
+			if item.Name == cookie.Name && item.Domain == cookie.Domain {
 				found = true
 				cookies[i] = cookie
 				break
@@ -286,23 +286,38 @@ func (ac *Client) handleSiteMinderLogin(ctx context.Context, doc *goquery.Docume
 		return ctx, nil, errors.Wrap(err, "error extracting login form")
 	}
 
-	// Pull MFA token from command line if specified
-	token := loginDetails.MFAToken
-
-	// Request token
-	if loginDetails.MFAToken == "" || mfaAttempt > 0 {
-		token = prompter.Password("Enter PIN + Token Code / Passcode")
-	}
-
-	// Make sure a token value was provided
-	if token == "" {
-		return ctx, nil, errors.New("MFA token value not provided")
-	}
-
+	// Set username
 	form.Values.Set("username", loginDetails.Username)
-	form.Values.Set("PASSWORD", token)
-	form.URL = resp.Request.URL.String()
-	mfaAttempt += 1
+
+	// Determine how password should be presented (non-mfa vs. mfa)
+	if ac.idpAccount.MFA == "None" {
+		// Make sure a value was provided
+		if loginDetails.Password == "" {
+			return ctx, nil, errors.New("Password is empty")
+		}
+
+		// Set values on the form
+		form.Values.Set("password", loginDetails.Password)
+		form.URL = fmt.Sprintf("%s://%s%s", resp.Request.URL.Scheme, resp.Request.URL.Host, form.URL)
+	} else {
+		// Pull MFA token from command line if specified
+		token := loginDetails.MFAToken
+
+		// Request token
+		if loginDetails.MFAToken == "" || mfaAttempt > 0 {
+			token = prompter.Password("Enter PIN + Token Code / Passcode")
+		}
+		mfaAttempt += 1
+
+		// Make sure a value was provided
+		if token == "" {
+			return ctx, nil, errors.New("MFA token value not provided")
+		}
+
+		// Set values on the form
+		form.Values.Set("PASSWORD", token)
+		form.URL = resp.Request.URL.String()
+	}
 
 	req, err := form.BuildRequest()
 	return ctx, req, err
@@ -570,7 +585,7 @@ func docIsChallenge(doc *goquery.Document) bool {
 }
 
 func docIsSiteMinderLogin(doc *goquery.Document) bool {
-	return doc.Has("div#loginFrm").Size() == 1
+	return doc.Has("div.loginFrm>form#signon").Size() == 1
 }
 
 func docIsMfaSpinner(doc *goquery.Document) bool {
@@ -672,7 +687,7 @@ func checkForDevices() *http.Request {
 // addCookies : Adds the correct cookies to the request
 func addCookies(req *http.Request, reqCookies []*http.Cookie) {
 	for _, cookie := range reqCookies {
-		if cookie.Domain == req.URL.Host {
+		if strings.HasSuffix(req.URL.Host, cookie.Domain) {
 			req.AddCookie(cookie)
 		}
 	}
