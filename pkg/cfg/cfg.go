@@ -31,6 +31,9 @@ const (
 
 	// DefaultName defaults to default for UX yo
 	DefaultName = "default"
+
+	// DefaultTimeout defaults to 10 seconds, overwritten by what is in the .gossamer3.yaml file
+	DefaultTimeout = 10
 )
 
 // IDPAccount saml IDP account
@@ -178,6 +181,11 @@ func (cm *ConfigManager) LoadIDPAccount(idpAccountName string) (*IDPAccount, err
 	account, err := readAccount(idpAccountName, providers)
 	if err != nil {
 		return nil, errors.Wrap(err, "Unable to read idp account")
+	}
+
+	// Check default timeout
+	if account.Timeout == 0 {
+		account.Timeout = DefaultTimeout
 	}
 
 	return account, nil

@@ -31,7 +31,7 @@ type PrimaryRoleInput struct {
 	SAMLAssertion string
 
 	channel chan PrimaryRoleOutput
-	wg      *sync.WaitGroup
+	// wg      *sync.WaitGroup
 }
 
 // SecondaryRoleInput is the input to assume a secondary role based on a primary role
@@ -41,7 +41,7 @@ type SecondaryRoleInput struct {
 	PrimaryInput       *PrimaryRoleInput
 
 	channel chan SecondaryRoleOutput
-	wg      *sync.WaitGroup
+	// wg      *sync.WaitGroup
 }
 
 // PrimaryRoleOutput is the output of assuming the primary role
@@ -110,9 +110,6 @@ func (input *PrimaryRoleInput) Assume(roleSessionName string, force bool) {
 			err:   err,
 		}
 
-		// Complete the wait group
-		input.wg.Done()
-
 		return
 	}
 
@@ -135,7 +132,6 @@ func (input *PrimaryRoleInput) Assume(roleSessionName string, force bool) {
 			PrimaryCredentials: creds,
 			RoleAssumption:     item,
 			PrimaryInput:       input,
-			wg:                 wg,
 			channel:            c,
 		}
 
@@ -153,37 +149,33 @@ func (input *PrimaryRoleInput) Assume(roleSessionName string, force bool) {
 		ch <- true
 	}(done)
 
-	select {
-	// Wait for completion channel
-	case <-done:
-		// Close the channel
-		close(c)
+	output := PrimaryRoleOutput{
+		Input:              input,
+		PrimaryCredentials: creds,
+	}
 
-		output := PrimaryRoleOutput{
-			Input:              input,
-			PrimaryCredentials: creds,
-		}
-
-		// Loop through channel responses
-		for item := range c {
-			if item.err != nil {
-				// Wrap errors
-				output.err = errors.Wrap(item.err, "")
+	for {
+		select {
+		case secondaryRole := <-c:
+			if secondaryRole.err != nil {
+				// TODO: Something doesnt seem right about this
+				// we do log there error in the secondary assume, but still
+				output.err = errors.Wrap(secondaryRole.err, "")
 			} else {
-				// Append secondary output to the primary output
-				output.Output = append(output.Output, item)
+				output.Output = append(output.Output, secondaryRole)
 			}
+
+			wg.Done()
+
+		// Wait for completion channel
+		case <-done:
+			// Send output through the primary channel up the stack
+			input.channel <- output
+
+		// Timeout if not completed in time
+		case <-time.After(time.Second * time.Duration(input.Account.Timeout)):
+			l.Errorf("Timed out assuming secondary credentials after %v seconds", input.Account.Timeout)
 		}
-
-		// Send output through the primary channel up the stack
-		input.channel <- output
-
-		// Complete the wait group
-		input.wg.Done()
-
-	// Timeout if not completed in time
-	case <-time.After(time.Second * 10):
-		l.Errorf("Timed out assuming secondary credentials")
 	}
 }
 
@@ -245,9 +237,6 @@ func (input *SecondaryRoleInput) Assume(roleSessionName string, force bool) {
 
 	// Send response up through the channel
 	input.channel <- output
-
-	// Complete the wait group
-	input.wg.Done()
 }
 
 // BulkLogin login to multiple roles
@@ -500,7 +489,6 @@ func bulkAssumeAsync(roles []cfg.RoleConfig, account *cfg.IDPAccount, roleSessio
 			Role:          primaryRole,
 			SAMLAssertion: samlAssertion,
 			channel:       ch,
-			wg:            wg,
 		}
 
 		wg.Add(1)
@@ -509,23 +497,23 @@ func bulkAssumeAsync(roles []cfg.RoleConfig, account *cfg.IDPAccount, roleSessio
 		go input.Assume(roleSessionName, force)
 	}
 
+	// Done channel
 	go func(ch chan bool) {
 		wg.Wait()
 		ch <- true
 	}(done)
 
-	select {
-	case <-done:
-		close(ch)
-
-		// Save creds
-		for creds := range ch {
+	for {
+		select {
+		case creds := <-ch:
 			if creds.err != nil {
-				logger.Debugf("Error assuming rile: %s", creds.err.Error())
+				logger.Debugf("Error assuming role: %s", creds.err.Error())
+				wg.Done()
 				continue
 			}
 
-			// Handle primary creds. Only need to save primary if NOT using existing creds
+			// TODO: Why is there an error when primary doesnt have profile name
+			// Handle primary creds, only need to save primary if NOT using existing creds
 			if creds.Input.RoleConfig.Profile != "" && !useExistingCreds {
 				sharedCreds := awsconfig.NewSharedCredentials(creds.Input.RoleConfig.Profile)
 				if err := sharedCreds.Save(creds.PrimaryCredentials); err != nil {
@@ -540,15 +528,18 @@ func bulkAssumeAsync(roles []cfg.RoleConfig, account *cfg.IDPAccount, roleSessio
 					return errors.Wrap(err, "error saving credentials")
 				}
 			}
+			wg.Done()
+
+		case <-done:
+			logger.Infof("Done!")
+			os.Exit(0)
+
+		// Timeout
+		case <-time.After(time.Second * time.Duration(account.Timeout)):
+			logger.Errorf("Timed out after %v seconds", account.Timeout)
+			return errors.New("timed out while assuming roles")
 		}
-
-	// Timeout
-	case <-time.After(time.Second * 10):
-		logger.Errorf("Timed out")
-		return errors.New("timed out while assuming roles")
 	}
-
-	return nil
 }
 
 // getPrimaryRole : Read the SAML assertion to find a specific role

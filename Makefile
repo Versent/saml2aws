@@ -17,7 +17,7 @@ prepare: prepare.metalinter
 	GOBIN=$(BIN_DIR) go install golang.org/x/tools/cmd/cover
 
 # Gometalinter is deprecated and broken dependency so let's use with GO111MODULE=off
-prepare.metalinter:
+prepare: prepare.metalinter
 	GO111MODULE=off go get -u github.com/alecthomas/gometalinter
 	GO111MODULE=off gometalinter --fast --install
 
