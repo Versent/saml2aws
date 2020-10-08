@@ -31,7 +31,6 @@ type PrimaryRoleInput struct {
 	SAMLAssertion string
 
 	channel chan PrimaryRoleOutput
-	// wg      *sync.WaitGroup
 }
 
 // SecondaryRoleInput is the input to assume a secondary role based on a primary role
@@ -41,7 +40,6 @@ type SecondaryRoleInput struct {
 	PrimaryInput       *PrimaryRoleInput
 
 	channel chan SecondaryRoleOutput
-	// wg      *sync.WaitGroup
 }
 
 // PrimaryRoleOutput is the output of assuming the primary role
