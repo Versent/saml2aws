@@ -119,6 +119,7 @@ Flags:
       --idp-provider=IDP-PROVIDER
                                The configured IDP provider. (env: GOSSAMER3_IDP_PROVIDER)
       --mfa=MFA                The name of the mfa. (env: GOSSAMER3_MFA)
+      --mfa-device=MFA-DEVICE  The name of the mfa device to use for authentication when multiple mfa devices are available. (env: GOSSAMER3_MFA_DEVICE)
   -s, --skip-verify            Skip verification of server certificate. (env: GOSSAMER3_SKIP_VERIFY)
       --url=URL                The URL of the SAML IDP server used to login. (env: GOSSAMER3_URL)
       --username=USERNAME      The username used to login. (env: GOSSAMER3_USERNAME)
@@ -130,6 +131,7 @@ Flags:
                                The duration of your AWS Session. (env: GOSSAMER3_SESSION_DURATION)
       --disable-keychain       Do not use keychain at all.
   -r, --region=REGION          AWS region to use for API requests, e.g. us-east-1, us-gov-west-1, cn-north-1 (env: GOSSAMER3_REGION)
+  -q, --quiet                  Do not show any log messages
 
 Commands:
   help [<command>...]
@@ -146,6 +148,8 @@ Commands:
 
     -p, --profile=PROFILE  The AWS profile to save the temporary credentials. (env: GOSSAMER3_PROFILE)
         --force            Refresh credentials even if not expired.
+        --assume-child-role=ASSUME-CHILD-ROLE
+                           ARN of child role to assume before performing command (env: GOSSAMER3_ASSUME_CHILD_ROLE)
 
   bulk-login [<flags>] <config>
     Bulk login to a SAML 2.0 IDP and convert the SAML assertion to an STS token.
@@ -159,8 +163,7 @@ Commands:
         --assume-child-role=ASSUME-CHILD-ROLE
                            ARN of child role to assume before performing command (env: GOSSAMER3_ASSUME_CHILD_ROLE)
         --exec-profile=EXEC-PROFILE
-                           The AWS profile to utilize for command execution. Useful to allow the aws cli to perform secondary role assumption.
-                           (env: GOSSAMER3_EXEC_PROFILE)
+                           The AWS profile to utilize for command execution. Useful to allow the aws cli to perform secondary role assumption. (env: GOSSAMER3_EXEC_PROFILE)
 
   console [<flags>]
     Console will open the aws console after logging in.
@@ -184,8 +187,6 @@ Commands:
         --assume-child-role=ASSUME-CHILD-ROLE
                            ARN of child role to assume before running script (env: GOSSAMER3_ASSUME_CHILD_ROLE)
         --shell=bash       Type of shell environment. Options include: bash, powershell, fish
-
-
 ```
 
 
