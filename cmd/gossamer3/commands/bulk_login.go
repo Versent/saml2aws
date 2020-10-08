@@ -10,6 +10,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/aws/aws-sdk-go/aws/awserr"
+
+	"github.com/cenkalti/backoff/v4"
+
 	g3 "github.com/GESkunkworks/gossamer3"
 	"github.com/GESkunkworks/gossamer3/helper/credentials"
 	"github.com/GESkunkworks/gossamer3/pkg/awsconfig"
@@ -155,11 +159,7 @@ func (input *PrimaryRoleInput) Assume(roleSessionName string, force bool) {
 	for {
 		select {
 		case secondaryRole := <-c:
-			if secondaryRole.err != nil {
-				// TODO: Something doesnt seem right about this
-				// we do log there error in the secondary assume, but still
-				output.err = errors.Wrap(secondaryRole.err, "")
-			} else {
+			if secondaryRole.err == nil {
 				output.Output = append(output.Output, secondaryRole)
 			}
 
@@ -504,6 +504,7 @@ func bulkAssumeAsync(roles []cfg.RoleConfig, account *cfg.IDPAccount, roleSessio
 	for {
 		select {
 		case creds := <-ch:
+			// Handles if the primary role fails
 			if creds.err != nil {
 				logger.Debugf("Error assuming role: %s", creds.err.Error())
 				wg.Done()
@@ -624,10 +625,40 @@ func assumeRole(account *cfg.IDPAccount, parentCreds *awsconfig.AWSCredentials, 
 		RoleSessionName: aws.String(roleSessionName), // Required
 	}
 
-	// Assume the role
-	resp, err := svc.AssumeRole(params)
-	if err != nil {
-		return nil, errors.Wrap(err, "error retrieving STS credentials")
+	// Create exponential backoff (max duration 10 min)
+	eb := backoff.NewExponentialBackOff()
+	eb.MaxElapsedTime = time.Second * 15
+	var resp *sts.AssumeRoleOutput
+	var respErr error = nil
+	attempt := 0
+
+	// Create the backoff function
+	webhookBackoff := func() error {
+		// Assume the role
+		resp, err = svc.AssumeRole(params)
+		respErr = err
+		attempt += 1
+
+		if err != nil {
+			_, ok := err.(awserr.RequestFailure)
+			if ok {
+				// Exit backoff when access is denied
+				return nil
+			}
+		}
+
+		return err
+	}
+
+	// Create notification handler for logging
+	notifyHandler := func(err error, duration time.Duration) {
+		logrus.WithError(err).WithField("Duration", duration).WithField("Role", roleArn).WithField("Attempt", attempt).Debugf("Assume Role failed")
+	}
+
+	// Assume role with exponential backoff
+	err = backoff.RetryNotify(webhookBackoff, eb, notifyHandler)
+	if respErr != nil {
+		return nil, errors.Wrap(respErr, "error retrieving STS credentials")
 	}
 
 	// Return the credentials
