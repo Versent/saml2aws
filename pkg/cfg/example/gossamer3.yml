@@ -2,6 +2,7 @@
   username: mark@wolfe.id.au
   provider: keycloak
   mfa: totp
+  timeout: 20
 
 - name: test123
   username: abc@whatever.com
