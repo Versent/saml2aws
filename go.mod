@@ -5,7 +5,7 @@ go 1.14
 require (
 	github.com/99designs/keyring v0.0.0-20190110203331-82da6802f65f
 	github.com/AlecAivazis/survey/v2 v2.1.1
-	github.com/PuerkitoBio/goquery v1.5.1
+	github.com/PuerkitoBio/goquery v1.6.0
 	github.com/alecthomas/kingpin v2.2.6+incompatible
 	github.com/alecthomas/template v0.0.0-20160405071501-a0175ee3bccc // indirect
 	github.com/alecthomas/units v0.0.0-20190910110746-680d30ca3117 // indirect
