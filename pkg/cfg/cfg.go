@@ -137,6 +137,9 @@ func setDefaults(account IDPAccount) IDPAccount {
 	if account.SessionDuration == 0 {
 		account.SessionDuration = DefaultSessionDuration
 	}
+	if account.Timeout == 0 {
+		account.Timeout = DefaultTimeout
+	}
 
 	return account
 }
@@ -181,11 +184,6 @@ func (cm *ConfigManager) LoadIDPAccount(idpAccountName string) (*IDPAccount, err
 	account, err := readAccount(idpAccountName, providers)
 	if err != nil {
 		return nil, errors.Wrap(err, "Unable to read idp account")
-	}
-
-	// Check default timeout
-	if account.Timeout == 0 {
-		account.Timeout = DefaultTimeout
 	}
 
 	return account, nil

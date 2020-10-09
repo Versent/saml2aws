@@ -283,13 +283,11 @@ func BulkLogin(loginFlags *flags.LoginExecFlags) error {
 				if sessionRoleName == "" {
 					creds, err := sharedCreds.Load()
 					if err != nil {
-						logger.Errorf("Error creating shared creds: %v", err)
-						os.Exit(1)
+						return errors.Wrap(err, "error creating shared creds")
 					}
 					name, err := getRoleSessionNameFromCredentials(account, creds)
 					if err != nil {
-						logger.Errorf("Error getting role session name from creds: %v", err)
-						os.Exit(1)
+						return errors.Wrap(err, "error getting role session name from creds")
 					}
 
 					if !strings.HasPrefix(name, "gossamer3-") {
@@ -518,7 +516,6 @@ func bulkAssumeAsync(roles []cfg.RoleConfig, account *cfg.IDPAccount, roleSessio
 				continue
 			}
 
-			// TODO: Why is there an error when primary doesnt have profile name
 			// Handle primary creds, only need to save primary if NOT using existing creds
 			if creds.Input.RoleConfig.Profile != "" && !useExistingCreds {
 				sharedCreds := awsconfig.NewSharedCredentials(creds.Input.RoleConfig.Profile)
@@ -538,7 +535,7 @@ func bulkAssumeAsync(roles []cfg.RoleConfig, account *cfg.IDPAccount, roleSessio
 
 		case <-done:
 			logger.Infof("Done!")
-			os.Exit(0)
+			return nil
 
 		// Timeout
 		case <-time.After(time.Second * time.Duration(account.Timeout)):
@@ -644,12 +641,11 @@ func assumeRole(account *cfg.IDPAccount, parentCreds *awsconfig.AWSCredentials, 
 		// Assume the role
 		resp, err = svc.AssumeRole(params)
 		respErr = err
-		attempt += 1
+		attempt++
 
 		if err != nil {
 			// Exit backoff when any AWS error comes back
-			_, ok := err.(awserr.RequestFailure)
-			if ok {
+			if _, ok := err.(awserr.RequestFailure); ok {
 				return nil
 			}
 		}
