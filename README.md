@@ -237,6 +237,7 @@ To add a default IdP account to gossamer3 just run the following command and fol
 ```
 $ gossamer3 configure
 ? Please choose a provider: Ping
+? Please choose an MFA: Auto
 ? AWS Profile myaccount
 
 ? URL https://example.com

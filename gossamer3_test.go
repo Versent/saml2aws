@@ -18,6 +18,6 @@ func TestProviderList_Mfas(t *testing.T) {
 
 	mfas := MFAsByProvider.Mfas("Ping")
 
-	require.Len(t, mfas, 1)
+	require.Len(t, mfas, 2)
 
 }
