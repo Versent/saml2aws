@@ -275,7 +275,6 @@ func BulkLogin(loginFlags *flags.LoginExecFlags) error {
 					logger.WithField("Role", primary.PrimaryRoleArn).Debugf("Creds have expired")
 					primaryExpired = true
 					noCredsExpired = false
-					fmt.Println("Role", primary.PrimaryRoleArn, "has expired")
 					break
 				}
 
