@@ -2,6 +2,7 @@ package commands
 
 import (
 	b64 "encoding/base64"
+	"fmt"
 	"log"
 	"os"
 
@@ -97,6 +98,27 @@ func Login(loginFlags *flags.LoginExecFlags) error {
 	awsCreds, err := loginToStsUsingRole(account, role, samlAssertion)
 	if err != nil {
 		return errors.Wrap(err, "error logging into aws role using saml assertion")
+	}
+
+	// Assume a child role
+	if loginFlags.AssumeChildRole != "" {
+		samlAssertionData, err := b64.StdEncoding.DecodeString(samlAssertion)
+		if err != nil {
+			return errors.Wrap(err, "error decoding saml assertion")
+		}
+
+		// Get the role session name to use in role assumptions
+		roleSessionName, err := g3.ExtractRoleSessionName(samlAssertionData)
+		if err != nil {
+			return errors.Wrap(err, "error extracting role session name")
+		}
+		roleSessionName = fmt.Sprintf("gossamer3-%s", roleSessionName)
+
+		// Assume child role
+		awsCreds, err = assumeRole(account, awsCreds, loginFlags.AssumeChildRole, roleSessionName)
+		if err != nil {
+			return errors.Wrap(err, "error assuming child role")
+		}
 	}
 
 	return saveCredentials(awsCreds, sharedCreds)

@@ -94,6 +94,7 @@ func main() {
 	loginFlags.CommonFlags = commonFlags
 	cmdLogin.Flag("profile", "The AWS profile to save the temporary credentials. (env: GOSSAMER3_PROFILE)").Short('p').Envar("GOSSAMER3_PROFILE").StringVar(&commonFlags.Profile)
 	cmdLogin.Flag("force", "Refresh credentials even if not expired.").BoolVar(&loginFlags.Force)
+	cmdLogin.Flag("assume-child-role", "ARN of child role to assume before performing command (env: GOSSAMER3_ASSUME_CHILD_ROLE)").Envar("GOSSAMER3_ASSUME_CHILD_ROLE").StringVar(&loginFlags.AssumeChildRole)
 
 	// `bulk-login` command and settings
 	cmdBulkLogin := app.Command("bulk-login", "Bulk login to a SAML 2.0 IDP and convert the SAML assertion to an STS token.")
