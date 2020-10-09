@@ -625,14 +625,14 @@ func assumeRole(account *cfg.IDPAccount, parentCreds *awsconfig.AWSCredentials, 
 		RoleSessionName: aws.String(roleSessionName), // Required
 	}
 
-	// Create exponential backoff (max duration 10 min)
+	// Create exponential backoff (max duration 15 seconds)
 	eb := backoff.NewExponentialBackOff()
 	eb.MaxElapsedTime = time.Second * 15
+
+	// Create the backoff function
 	var resp *sts.AssumeRoleOutput
 	var respErr error = nil
 	attempt := 0
-
-	// Create the backoff function
 	webhookBackoff := func() error {
 		// Assume the role
 		resp, err = svc.AssumeRole(params)
@@ -640,9 +640,9 @@ func assumeRole(account *cfg.IDPAccount, parentCreds *awsconfig.AWSCredentials, 
 		attempt += 1
 
 		if err != nil {
+			// Exit backoff when any AWS error comes back
 			_, ok := err.(awserr.RequestFailure)
 			if ok {
-				// Exit backoff when access is denied
 				return nil
 			}
 		}
@@ -651,12 +651,16 @@ func assumeRole(account *cfg.IDPAccount, parentCreds *awsconfig.AWSCredentials, 
 	}
 
 	// Create notification handler for logging
-	notifyHandler := func(err error, duration time.Duration) {
-		logrus.WithError(err).WithField("Duration", duration).WithField("Role", roleArn).WithField("Attempt", attempt).Debugf("Assume Role failed")
+	notifyHandler := func(err error, delay time.Duration) {
+		logrus.WithError(err).WithFields(logrus.Fields{
+			"Delay":   delay,
+			"Role":    roleArn,
+			"Attempt": attempt,
+		}).Debugf("Assume Role failed")
 	}
 
 	// Assume role with exponential backoff
-	err = backoff.RetryNotify(webhookBackoff, eb, notifyHandler)
+	_ = backoff.RetryNotify(webhookBackoff, eb, notifyHandler)
 	if respErr != nil {
 		return nil, errors.Wrap(respErr, "error retrieving STS credentials")
 	}
