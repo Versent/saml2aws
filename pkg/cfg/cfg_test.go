@@ -32,6 +32,7 @@ func TestNewConfigManagerLoad(t *testing.T) {
 		Username:             "abc@whatever.com",
 		Provider:             "keycloak",
 		MFA:                  "sms",
+		Timeout:              DefaultTimeout,
 		AmazonWebservicesURN: DefaultAmazonWebservicesURN,
 		SessionDuration:      3600,
 		Profile:              "saml",
@@ -54,6 +55,7 @@ func TestNewConfigManagerSave(t *testing.T) {
 		Provider: "keycloak",
 		Username: "abc@whatever.com",
 		Profile:  "saml",
+		Timeout:  30,
 	})
 	require.Nil(t, err)
 	idpAccount, err := cfgm.LoadIDPAccount("testing2")
@@ -67,6 +69,7 @@ func TestNewConfigManagerSave(t *testing.T) {
 		SessionDuration:      DefaultSessionDuration,
 		AmazonWebservicesURN: DefaultAmazonWebservicesURN,
 		Profile:              DefaultProfile,
+		Timeout:              30,
 	}, idpAccount)
 
 	os.Remove(throwAwayConfig)
