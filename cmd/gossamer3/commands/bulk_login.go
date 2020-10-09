@@ -299,37 +299,44 @@ func BulkLogin(loginFlags *flags.LoginExecFlags) error {
 				}
 			}
 
+			// Create a copy of the primary, to only add roles that are expired
+			var primaryCopy = cfg.RoleConfig{
+				PrimaryRoleArn: primary.PrimaryRoleArn,
+				Profile:        primary.Profile,
+				AssumeRoles:    []cfg.RoleAssumption{},
+			}
+
 			// Primary role not expired, check secondary roles
 			// if a secondary role IS expired, add to list of rolesToAssume
-			var secondaryExpired = false
 
-			for i, secondary := range primary.AssumeRoles {
+			for _, secondary := range primary.AssumeRoles {
 				// If profile is empty, generate one
 				if secondary.Profile == "" {
 					arnParts := strings.Split(secondary.RoleArn, ":")
-					primary.AssumeRoles[i].Profile = fmt.Sprintf("%s/%s", arnParts[4], strings.TrimPrefix(arnParts[5], "role/"))
+					secondary.Profile = fmt.Sprintf("%s/%s", arnParts[4], strings.TrimPrefix(arnParts[5], "role/"))
 				}
 
-				sharedCreds := awsconfig.NewSharedCredentials(primary.AssumeRoles[i].Profile)
+				sharedCreds := awsconfig.NewSharedCredentials(secondary.Profile)
 				if sharedCreds.Expired() {
 					logger.WithField("SecondaryRole", secondary.RoleArn).Debugf("Creds have expired")
-					fmt.Println("*** Secondary Role", secondary.RoleArn, "has expired")
 
-					secondaryExpired = true
+					// Secondary is expired. Add secondary role to primary
 					noCredsExpired = false
+
+					// Add just the secondary expired role to the primary role assumptions
+					primaryCopy.AssumeRoles = append(primaryCopy.AssumeRoles, secondary)
 
 					// // If primary has no profile, prompt for login
 					if primary.Profile == "" {
 						primaryExpired = true
-						fmt.Println("*** Primary doesnt have a profile, its child is expired. Prompting login")
 						break
 					}
 				}
 			}
 
-			// Secondary is expired, but primary isnt
-			if secondaryExpired {
-				rolesToAssume = append(rolesToAssume, primary) // Add entire primary if any of the secondaries are expired
+			// If any secondaries are expired, add them to rolesToAssume
+			if len(primaryCopy.AssumeRoles) > 0 {
+				rolesToAssume = append(rolesToAssume, primaryCopy) // Add entire primary if any of the secondaries are expired
 			}
 		}
 
