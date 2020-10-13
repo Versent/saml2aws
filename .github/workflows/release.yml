@@ -2,7 +2,9 @@ name: Create release
 
 on:
   release:
-    types: [created]
+    types:
+      - prereleased
+      - released
 
 jobs:
   test:
