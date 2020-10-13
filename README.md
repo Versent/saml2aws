@@ -76,7 +76,7 @@ brew install gossamer3
 If you're on Windows you can install gossamer3 using chocolatey!
 
 ```
-choco install gossamer3 --version=3.1.0
+choco install gossamer3 --version=3.0.0
 gossamer3 --version
 ```
 
