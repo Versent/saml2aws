@@ -33,10 +33,11 @@ type Client struct {
 type ctxKey string
 
 var (
-	cookies        = []*http.Cookie{}
-	resp           *http.Response
-	deviceSelected = false
-	mfaAttempt     = 0
+	cookies            = []*http.Cookie{}
+	resp               *http.Response
+	deviceSelected     = false
+	mfaAttempt         = 0
+	checkDeviceAttempt = 0
 )
 
 // New create a new PingFed client
@@ -307,7 +308,7 @@ func (ac *Client) handleSiteMinderLogin(ctx context.Context, doc *goquery.Docume
 		if loginDetails.MFAToken == "" || mfaAttempt > 0 {
 			token = prompter.Password("Enter PIN + Token Code / Passcode")
 		}
-		mfaAttempt += 1
+		mfaAttempt++
 
 		// Make sure a value was provided
 		if token == "" {
@@ -355,7 +356,7 @@ func (ac *Client) handleOTP(ctx context.Context, doc *goquery.Document) (context
 	}
 
 	form.Values.Set("otp", otp)
-	mfaAttempt += 1
+	mfaAttempt++
 
 	// Add CSRF token from cookie
 	for _, cookie := range cookies {
@@ -376,7 +377,7 @@ func (ac *Client) handleSecurityKeyLogin(ctx context.Context, doc *goquery.Docum
 	}
 
 	// Intercept and request user to select a device if they have not already
-	if loginDetails.MFAPrompt && !deviceSelected {
+	if loginDetails.MFAPrompt && !deviceSelected && checkDeviceAttempt == 0 {
 		return ctx, checkForDevices(), nil
 	}
 
@@ -487,7 +488,7 @@ func (ac *Client) handleSwipe(ctx context.Context, doc *goquery.Document) (conte
 	}
 
 	// Intercept and request user to select a device if they have not already
-	if loginDetails.MFAPrompt && !deviceSelected {
+	if loginDetails.MFAPrompt && !deviceSelected && checkDeviceAttempt == 0 {
 		return ctx, checkForDevices(), nil
 	}
 
@@ -671,6 +672,7 @@ func contains(items []string, value string) bool {
 // checkForDevices : Generates a GET request to the devices page on PingOne
 func checkForDevices() *http.Request {
 	log.Println("Checking for additional devices...")
+	checkDeviceAttempt++
 
 	// Check for device change
 	req, err := http.NewRequest("GET", "https://authenticator.pingone.com/pingid/ppm/devices", nil)
