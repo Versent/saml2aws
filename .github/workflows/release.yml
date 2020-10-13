@@ -86,6 +86,16 @@ jobs:
         env:
           CHOCO_API_KEY: ${{ secrets.CHOCO_API_KEY }}
 
+      - name: Store artifacts on failure
+        uses: actions/upload-artifact@v2
+        if: failure()
+        with:
+          name: choco-release
+          path: |
+            choco\gossamer3.*.nupkg
+            choco\gossamer3.zip
+            choco\gossamer3.zip.sha256
+
 # ----------------------------------------------------------------------------------------------------------------------
 
 #  build-mac:
