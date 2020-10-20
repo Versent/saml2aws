@@ -169,6 +169,7 @@ func (input *PrimaryRoleInput) Assume(roleSessionName string, force bool) {
 		case <-done:
 			// Send output through the primary channel up the stack
 			input.channel <- output
+			return
 
 		// Timeout if not completed in time
 		case <-time.After(time.Second * time.Duration(input.Account.Timeout)):
