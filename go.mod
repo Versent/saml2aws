@@ -11,7 +11,7 @@ require (
 	github.com/alecthomas/units v0.0.0-20190910110746-680d30ca3117 // indirect
 	github.com/aulanov/go.dbus v0.0.0-20150729231527-25c3068a42a0 // indirect
 	github.com/avast/retry-go v2.7.0+incompatible
-	github.com/aws/aws-sdk-go v1.35.8
+	github.com/aws/aws-sdk-go v1.35.10
 	github.com/beevik/etree v1.1.0
 	github.com/cenkalti/backoff/v4 v4.1.0
 	github.com/danieljoos/wincred v1.1.0

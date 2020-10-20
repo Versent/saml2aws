@@ -18,8 +18,8 @@ github.com/aulanov/go.dbus v0.0.0-20150729231527-25c3068a42a0 h1:EEDvbomAQ+MFWqJ
 github.com/aulanov/go.dbus v0.0.0-20150729231527-25c3068a42a0/go.mod h1:VHvUx+4lTCaJ8zUnEXF4cWEc9c8lnDt4PGLwlZ+3yaM=
 github.com/avast/retry-go v2.7.0+incompatible h1:XaGnzl7gESAideSjr+I8Hki/JBi+Yb9baHlMRPeSC84=
 github.com/avast/retry-go v2.7.0+incompatible/go.mod h1:XtSnn+n/sHqQIpZ10K1qAevBhOOCWBLXXy3hyiqqBrY=
-github.com/aws/aws-sdk-go v1.35.8 h1:+S3BTWePYImKLh7DUJxMVm+/FQUnmHADsMzo/psHFr4=
-github.com/aws/aws-sdk-go v1.35.8/go.mod h1:tlPOdRjfxPBpNIwqDj61rmsnA85v9jc0Ps9+muhnW+k=
+github.com/aws/aws-sdk-go v1.35.10 h1:FsJtrOS7P+Qmq1rPTGgS/+qC1Y9eGuAJHvAZpZlhmb4=
+github.com/aws/aws-sdk-go v1.35.10/go.mod h1:tlPOdRjfxPBpNIwqDj61rmsnA85v9jc0Ps9+muhnW+k=
 github.com/beevik/etree v1.1.0 h1:T0xke/WvNtMoCqgzPhkX2r4rjY3GDZFi+FjpRZY2Jbs=
 github.com/beevik/etree v1.1.0/go.mod h1:r8Aw8JqVegEf0w2fDnATrX9VpkMcyFeM0FhwO62wh+A=
 github.com/cenkalti/backoff/v4 v4.1.0 h1:c8LkOFQTzuO0WBM/ae5HdGQuZPfPxp7lqBRwQRm4fSc=
