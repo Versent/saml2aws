@@ -13,8 +13,7 @@ require (
 	github.com/avast/retry-go v2.7.0+incompatible
 	github.com/aws/aws-sdk-go v1.35.10
 	github.com/beevik/etree v1.1.0
-	github.com/cenkalti/backoff v2.2.1+incompatible
-	github.com/cenkalti/backoff/v4 v4.1.0 // indirect
+	github.com/cenkalti/backoff/v4 v4.1.0
 	github.com/danieljoos/wincred v1.1.0
 	github.com/dvsekhvalnov/jose2go v0.0.0-20170216131308-f21a8cedbbae // indirect
 	github.com/godbus/dbus v4.1.0+incompatible // indirect

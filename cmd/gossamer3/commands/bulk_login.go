@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/cenkalti/backoff"
+	"github.com/cenkalti/backoff/v4"
 
 	g3 "github.com/GESkunkworks/gossamer3"
 	"github.com/GESkunkworks/gossamer3/helper/credentials"
