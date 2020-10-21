@@ -95,7 +95,7 @@ func Login(loginFlags *flags.LoginExecFlags) error {
 
 	log.Println("Selected role:", role.RoleARN)
 
-	awsCreds, err := loginToStsUsingRole(account, role, samlAssertion)
+	awsCreds, err := loginToStsUsingRole(account, role, samlAssertion, account.Region)
 	if err != nil {
 		return errors.Wrap(err, "error logging into aws role using saml assertion")
 	}
@@ -115,7 +115,7 @@ func Login(loginFlags *flags.LoginExecFlags) error {
 		roleSessionName = fmt.Sprintf("gossamer3-%s", roleSessionName)
 
 		// Assume child role
-		awsCreds, err = assumeRole(account, awsCreds, loginFlags.AssumeChildRole, roleSessionName)
+		awsCreds, err = assumeRole(account, awsCreds, loginFlags.AssumeChildRole, roleSessionName, account.Region)
 		if err != nil {
 			return errors.Wrap(err, "error assuming child role")
 		}
@@ -274,10 +274,13 @@ func resolveRole(awsRoles []*g3.AWSRole, samlAssertion string, account *cfg.IDPA
 	return role, nil
 }
 
-func loginToStsUsingRole(account *cfg.IDPAccount, role *g3.AWSRole, samlAssertion string) (*awsconfig.AWSCredentials, error) {
+func loginToStsUsingRole(account *cfg.IDPAccount, role *g3.AWSRole, samlAssertion string, region string) (*awsconfig.AWSCredentials, error) {
+	if region == "" {
+		region = account.Region
+	}
 
 	sess, err := session.NewSession(&aws.Config{
-		Region: &account.Region,
+		Region: &region,
 	})
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create session")
@@ -304,7 +307,7 @@ func loginToStsUsingRole(account *cfg.IDPAccount, role *g3.AWSRole, samlAssertio
 		AWSSecurityToken: aws.StringValue(resp.Credentials.SessionToken),
 		PrincipalARN:     aws.StringValue(resp.AssumedRoleUser.Arn),
 		Expires:          resp.Credentials.Expiration.Local(),
-		Region:           account.Region,
+		Region:           region,
 	}, nil
 }
 
