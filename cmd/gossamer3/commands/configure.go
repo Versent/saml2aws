@@ -14,16 +14,13 @@ import (
 
 // Configure configure account profiles
 func Configure(configFlags *flags.CommonFlags) error {
-
-	idpAccountName := configFlags.IdpAccount
-
 	// pass in alternative location of g3 config file, if set.
 	cfgm, err := cfg.NewConfigManager(configFlags.ConfigFile)
 	if err != nil {
 		return errors.Wrap(err, "failed to load configuration")
 	}
 
-	account, err := cfgm.LoadIDPAccount(idpAccountName)
+	account, err := cfgm.LoadIDPAccount(configFlags.IdpAccount)
 	if err != nil {
 		return errors.Wrap(err, "failed to load idp account")
 	} else if account == nil {
@@ -55,7 +52,7 @@ func Configure(configFlags *flags.CommonFlags) error {
 	log.Println("")
 	log.Println(account)
 	log.Println("")
-	log.Printf("Configuration saved for IDP account: %s", idpAccountName)
+	log.Printf("Configuration saved for IDP account: %s", account.Name)
 
 	return nil
 }
