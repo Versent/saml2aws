@@ -4,20 +4,21 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/mitchellh/go-homedir"
-
+	homedir "github.com/mitchellh/go-homedir"
 	"github.com/pkg/errors"
-	"gopkg.in/yaml.v3"
+	yaml "gopkg.in/yaml.v3"
 )
 
 type RoleAssumption struct {
 	RoleArn string `yaml:"role_arn"`
 	Profile string `yaml:"profile"`
+	Region  string `yaml:"region"`
 }
 
 type RoleConfig struct {
 	PrimaryRoleArn string           `yaml:"primary_role_arn"`
 	Profile        string           `yaml:"profile"`
+	Region         string           `yaml:"region"`
 	AssumeRoles    []RoleAssumption `yaml:"assume_roles"`
 }
 

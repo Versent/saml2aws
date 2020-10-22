@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws/awserr"
-
 	"github.com/cenkalti/backoff/v4"
 
 	g3 "github.com/GESkunkworks/gossamer3"
@@ -98,7 +97,7 @@ func (input *PrimaryRoleInput) Assume(roleSessionName string, force bool) {
 
 	// Get new credentials
 	if force || err != nil || creds == nil || input.RoleConfig.Profile == "" {
-		creds, err = loginToStsUsingRole(input.Account, input.Role, input.SAMLAssertion)
+		creds, err = loginToStsUsingRole(input.Account, input.Role, input.SAMLAssertion, input.RoleConfig.Region)
 	}
 
 	// Check for errors
@@ -213,7 +212,7 @@ func (input *SecondaryRoleInput) Assume(roleSessionName string, force bool) {
 
 	// Get new credentials if forced, error encountered, or credentials are not found
 	if force || err != nil || creds == nil {
-		creds, err = assumeRole(input.PrimaryInput.Account, input.PrimaryCredentials, input.RoleAssumption.RoleArn, roleSessionName)
+		creds, err = assumeRole(input.PrimaryInput.Account, input.PrimaryCredentials, input.RoleAssumption.RoleArn, roleSessionName, input.RoleAssumption.Region)
 	}
 
 	output := SecondaryRoleOutput{
@@ -606,9 +605,13 @@ func resolvePrimaryRole(awsRoles []*g3.AWSRole, samlAssertion string, account *c
 }
 
 // assumeRole : Assumes a child role using provided credentials
-func assumeRole(account *cfg.IDPAccount, parentCreds *awsconfig.AWSCredentials, roleArn string, roleSessionName string) (*awsconfig.AWSCredentials, error) {
+func assumeRole(account *cfg.IDPAccount, parentCreds *awsconfig.AWSCredentials, roleArn string, roleSessionName string, region string) (*awsconfig.AWSCredentials, error) {
+	if region == "" {
+		region = account.Region
+	}
+
 	// Create config using supplied region and credentials
-	config := aws.NewConfig().WithRegion(account.Region).WithCredentials(
+	config := aws.NewConfig().WithRegion(region).WithCredentials(
 		awsCredentials.NewStaticCredentials(
 			parentCreds.AWSAccessKey,
 			parentCreds.AWSSecretKey,
@@ -643,11 +646,9 @@ func assumeRole(account *cfg.IDPAccount, parentCreds *awsconfig.AWSCredentials, 
 		respErr = err
 		attempt++
 
-		if err != nil {
-			// Exit backoff when any AWS error comes back
-			if _, ok := err.(awserr.RequestFailure); ok {
-				return nil
-			}
+		// Exit backoff when any AWS error comes back
+		if _, ok := err.(awserr.RequestFailure); ok {
+			return nil
 		}
 
 		return err
@@ -676,6 +677,6 @@ func assumeRole(account *cfg.IDPAccount, parentCreds *awsconfig.AWSCredentials, 
 		AWSSecurityToken: aws.StringValue(resp.Credentials.SessionToken),
 		PrincipalARN:     aws.StringValue(resp.AssumedRoleUser.Arn),
 		Expires:          resp.Credentials.Expiration.Local(),
-		Region:           account.Region,
+		Region:           region,
 	}, nil
 }

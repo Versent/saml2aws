@@ -462,11 +462,14 @@ assume_all_roles: false
 roles:
   - primary_role_arn: arn:aws:iam::111122223333:role/developer-jump-role
     profile: jump-role
+    region: us-east-1
     assume_roles:
       - role_arn: arn:aws:iam::222233334444:role/developer
         profile: acct1-developer
+        region: us-east-1
       - role_arn: arn:aws:iam::555566667777:role/developer
         profile: acct2-developer
+        region: us-east-1
       - role_arn: arn:aws:iam::888899990000:role/developer
 
   - primary_role_arn: arn:aws:iam::111122223333:role/admin-jump-role
@@ -475,26 +478,28 @@ roles:
         profile: acct1-admin
 ```
 
+When not specified, the `region` argument will default to the value of the region configured in the IDP configuration file (`~/.gossamer3.yaml`), which defaults to us-east-1. When the argument is provided, the credentials will be saved such that all API calls will default to using that region.
+
 This configuration will assume the primary roles using SAML:
 
 - arn:aws:iam::111122223333:role/developer-jump-role
 - arn:aws:iam::111122223333:role/admin-jump-role
 
-The first role will save its credentials into a profile named jump-role. The second role will not save its credentials.
+The first role will save its credentials into a profile named jump-role with the region us-east-1. The second role will not save its credentials.
 
 Next, the credentials used in the first stage will be used to assume children roles:
 
 **arn:aws:iam::111122223333:role/developer-jump-role**
 
 This will assume the child roles:
-- arn:aws:iam::222233334444:role/developer (saved to profile acct1-developer)
-- arn:aws:iam::555566667777:role/developer (saved to profile acct2-developer)
-- arn:aws:iam::888899990000:role/developer (saved to auto-generated profile 888899990000/developer)
+- arn:aws:iam::222233334444:role/developer (saved to profile acct1-developer with region us-east-1)
+- arn:aws:iam::555566667777:role/developer (saved to profile acct2-developer with region us-east-2)
+- arn:aws:iam::888899990000:role/developer (saved to auto-generated profile 888899990000/developer with region us-east-1)
 
 **arn:aws:iam::111122223333:role/admin-jump-role**
 
 This will assume the child roles:
-- arn:aws:iam::222233334444:role/admin (saved to profile acct1-admin)
+- arn:aws:iam::222233334444:role/admin (saved to profile acct1-admin with region us-east-1)
 
 Perform a `gossamer3 bulk-login`:
 ```

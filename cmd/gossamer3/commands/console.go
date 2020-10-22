@@ -74,6 +74,7 @@ func Console(consoleFlags *flags.ConsoleFlags) error {
 			awsCreds,
 			consoleFlags.LoginExecFlags.AssumeChildRole,
 			roleSessionName,
+			account.Region,
 		)
 		if err != nil {
 			return errors.Wrap(err, "error assuming role "+consoleFlags.LoginExecFlags.AssumeChildRole)
