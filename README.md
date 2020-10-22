@@ -37,7 +37,6 @@ The process goes something like this:
     - [AWS Credential File](#method-2---aws-credential-file)
 - [Building](#building)
 - [Environment vars](#environment-vars)
-- [Provider Specific Documentation](#provider-specific-documentation)
 
 ## Requirements
 
