@@ -236,7 +236,7 @@ func (ac *Client) handleToken(ctx context.Context, doc *goquery.Document) (conte
 		return ctx, nil, errors.Wrap(err, "error extracting login form")
 	}
 
-	token := prompter.Password("Enter Token Code")
+	token := prompter.Password("Enter Token Code (PIN + Token / Passcode for RSA)")
 
 	// Make sure a token value was provided
 	if token == "" {
@@ -261,7 +261,7 @@ func (ac *Client) handleChallenge(ctx context.Context, doc *goquery.Document) (c
 		return ctx, nil, errors.Wrap(err, "error extracting login form")
 	}
 
-	token := prompter.Password("Enter Next Token Code")
+	token := prompter.Password("Enter Next Token Code (PIN + Token / Passcode for RSA)")
 
 	// Make sure a token value was provided
 	if token == "" {
