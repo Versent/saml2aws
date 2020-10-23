@@ -95,7 +95,7 @@ func Login(loginFlags *flags.LoginExecFlags) error {
 
 	log.Println("Selected role:", role.RoleARN)
 
-	awsCreds, err := loginToStsUsingRole(account, role, samlAssertion, account.Region)
+	awsCreds, err := loginToStsUsingRole(account, role, account.SessionDuration, samlAssertion, account.Region)
 	if err != nil {
 		return errors.Wrap(err, "error logging into aws role using saml assertion")
 	}
@@ -274,7 +274,7 @@ func resolveRole(awsRoles []*g3.AWSRole, samlAssertion string, account *cfg.IDPA
 	return role, nil
 }
 
-func loginToStsUsingRole(account *cfg.IDPAccount, role *g3.AWSRole, samlAssertion string, region string) (*awsconfig.AWSCredentials, error) {
+func loginToStsUsingRole(account *cfg.IDPAccount, role *g3.AWSRole, sessionDuration int, samlAssertion, region string) (*awsconfig.AWSCredentials, error) {
 	if region == "" {
 		region = account.Region
 	}
@@ -292,7 +292,7 @@ func loginToStsUsingRole(account *cfg.IDPAccount, role *g3.AWSRole, samlAssertio
 		PrincipalArn:    aws.String(role.PrincipalARN), // Required
 		RoleArn:         aws.String(role.RoleARN),      // Required
 		SAMLAssertion:   aws.String(samlAssertion),     // Required
-		DurationSeconds: aws.Int64(int64(account.SessionDuration)),
+		DurationSeconds: aws.Int64(int64(sessionDuration)),
 	}
 
 	resp, err := svc.AssumeRoleWithSAML(params)
