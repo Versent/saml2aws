@@ -95,10 +95,17 @@ e.g. `exec -l bash`
 
 #### Pass Setup
 
-To support credential management in Linux, you will need to install the `pass` package:
+To support credential management in Linux, you will need to [install](https://www.passwordstore.org/#download) the `pass` package:
 
+
+Ubuntu/Debian:
 ```
 sudo apt install pass
+```
+
+Fedora / RHEL:
+```
+sudo yum install pass
 ```
 
 Next, generate a GPG key if you do not already have one. Create an RSA, 2048-bit key with your name and email:
