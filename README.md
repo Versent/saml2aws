@@ -190,6 +190,7 @@ Flags:
   -s, --skip-verify            Skip verification of server certificate. (env: GOSSAMER3_SKIP_VERIFY)
       --url=URL                The URL of the SAML IDP server used to login. (env: GOSSAMER3_URL)
       --username=USERNAME      The username used to login. (env: GOSSAMER3_USERNAME)
+      --password=PASSWORD      The password used to login. (env: GOSSAMER3_PASSWORD)
       --mfa-token=MFA-TOKEN    The current MFA token (supported in Keycloak, ADFS, GoogleApps). (env: GOSSAMER3_MFA_TOKEN)
       --role=ROLE              The ARN of the role to assume. (env: GOSSAMER3_ROLE)
       --aws-urn=AWS-URN        The URN used by SAML when you login. (env: GOSSAMER3_AWS_URN)
