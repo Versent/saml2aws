@@ -74,6 +74,7 @@ func main() {
 	app.Flag("skip-verify", "Skip verification of server certificate. (env: GOSSAMER3_SKIP_VERIFY)").Envar("GOSSAMER3_SKIP_VERIFY").Short('s').BoolVar(&commonFlags.SkipVerify)
 	app.Flag("url", "The URL of the SAML IDP server used to login. (env: GOSSAMER3_URL)").Envar("GOSSAMER3_URL").StringVar(&commonFlags.URL)
 	app.Flag("username", "The username used to login. (env: GOSSAMER3_USERNAME)").Envar("GOSSAMER3_USERNAME").StringVar(&commonFlags.Username)
+	app.Flag("password", "The password used to login. (env: GOSSAMER3_PASSWORD)").Envar("GOSSAMER3_PASSWORD").StringVar(&commonFlags.Password)
 	app.Flag("mfa-token", "The current MFA token (supported in Keycloak, ADFS, GoogleApps). (env: GOSSAMER3_MFA_TOKEN)").Envar("GOSSAMER3_MFA_TOKEN").StringVar(&commonFlags.MFAToken)
 	app.Flag("role", "The ARN of the role to assume. (env: GOSSAMER3_ROLE)").Envar("GOSSAMER3_ROLE").StringVar(&commonFlags.RoleArn)
 	app.Flag("aws-urn", "The URN used by SAML when you login. (env: GOSSAMER3_AWS_URN)").Envar("GOSSAMER3_AWS_URN").StringVar(&commonFlags.AmazonWebservicesURN)

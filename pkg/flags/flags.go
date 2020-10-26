@@ -14,6 +14,7 @@ type CommonFlags struct {
 	MFADevice            string
 	URL                  string
 	Username             string
+	Password             string
 	RoleArn              string
 	AmazonWebservicesURN string
 	SessionDuration      int

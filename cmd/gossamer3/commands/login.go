@@ -179,6 +179,10 @@ func resolveLoginDetails(account *cfg.IDPAccount, loginFlags *flags.LoginExecFla
 		loginDetails.Username = loginFlags.CommonFlags.Username
 	}
 
+	if loginFlags.CommonFlags.Password != "" {
+		loginDetails.Password = loginFlags.CommonFlags.Password
+	}
+
 	if loginFlags.CommonFlags.MFADevice != "" {
 		loginDetails.MFADevice = loginFlags.CommonFlags.MFADevice
 	}
