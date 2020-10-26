@@ -469,6 +469,7 @@ roles:
   - primary_role_arn: arn:aws:iam::111122223333:role/developer-jump-role
     profile: jump-role
     region: us-east-1
+    aws_session_duration: 7200 # Optional aws_session_duration per primary role
     assume_roles:
       - role_arn: arn:aws:iam::222233334444:role/developer
         profile: acct1-developer
@@ -485,6 +486,8 @@ roles:
 ```
 
 When not specified, the `region` argument will default to the value of the region configured in the IDP configuration file (`~/.gossamer3.yaml`), which defaults to us-east-1. When the argument is provided, the credentials will be saved such that all API calls will default to using that region.
+
+If `aws_session_duration` is specified on a primary role, it will take precedence over the IDP Configuration file, so different primary roles can have different session durations
 
 This configuration will assume the primary roles using SAML:
 

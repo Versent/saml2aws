@@ -16,10 +16,11 @@ type RoleAssumption struct {
 }
 
 type RoleConfig struct {
-	PrimaryRoleArn string           `yaml:"primary_role_arn"`
-	Profile        string           `yaml:"profile"`
-	Region         string           `yaml:"region"`
-	AssumeRoles    []RoleAssumption `yaml:"assume_roles"`
+	PrimaryRoleArn  string           `yaml:"primary_role_arn"`
+	Profile         string           `yaml:"profile"`
+	Region          string           `yaml:"region"`
+	SessionDuration int              `yaml:"aws_session_duration"`
+	AssumeRoles     []RoleAssumption `yaml:"assume_roles"`
 }
 
 type BulkRoleConfig struct {
