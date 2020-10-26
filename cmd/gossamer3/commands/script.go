@@ -84,7 +84,6 @@ func Script(execFlags *flags.LoginExecFlags, shell string) error {
 		}
 
 		awsCreds, err = assumeRole(
-			account,
 			awsCreds,
 			execFlags.AssumeChildRole,
 			roleSessionName,

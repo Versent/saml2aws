@@ -24,8 +24,9 @@ type RoleConfig struct {
 }
 
 type BulkRoleConfig struct {
-	AssumeAllRoles bool         `yaml:"assume_all_roles"`
-	Roles          []RoleConfig `yaml:"roles"`
+	AssumeAllRoles   bool              `yaml:"assume_all_roles"`
+	Roles            []RoleConfig      `yaml:"roles"`
+	AccountRegionMap map[string]string `yaml:"account_region_map"`
 }
 
 func LoadRoleConfig(configPath string) (*BulkRoleConfig, error) {

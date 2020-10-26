@@ -79,7 +79,6 @@ func Exec(execFlags *flags.LoginExecFlags, cmdline []string) error {
 		}
 
 		awsCreds, err = assumeRole(
-			account,
 			awsCreds,
 			execFlags.AssumeChildRole,
 			roleSessionName,

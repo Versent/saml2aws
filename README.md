@@ -465,6 +465,9 @@ Example:
 ~/roles.yml:
 ```yaml
 assume_all_roles: false
+account_region_map:
+  111122223333: us-east-2
+  222233334444: eu-west-1
 roles:
   - primary_role_arn: arn:aws:iam::111122223333:role/developer-jump-role
     profile: jump-role
@@ -485,7 +488,15 @@ roles:
         profile: acct1-admin
 ```
 
-When not specified, the `region` argument will default to the value of the region configured in the IDP configuration file (`~/.gossamer3.yaml`), which defaults to us-east-1. When the argument is provided, the credentials will be saved such that all API calls will default to using that region.
+The `account_region_map` can be used to map a default region to an account number. See the above snippet for example usage.
+
+The region will be selected in this order of precedence:
+1. `region` provided on an item in `assume_roles` or `roles`
+2. Region from the `account_region_map`
+3. `--region` argument on command line
+4. Region from the IDP configuration file (`~/.gossamer3.yaml`).
+
+When none of these are specified, the default region is us-east-1. The selected region will be saved to your AWS credentials file such that all API calls will default to using that region.
 
 If `aws_session_duration` is specified on a primary role, it will take precedence over the IDP Configuration file, so different primary roles can have different session durations
 

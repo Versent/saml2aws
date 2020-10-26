@@ -70,7 +70,6 @@ func Console(consoleFlags *flags.ConsoleFlags) error {
 
 		// Assume a child role
 		awsCreds, err = assumeRole(
-			account,
 			awsCreds,
 			consoleFlags.LoginExecFlags.AssumeChildRole,
 			roleSessionName,
