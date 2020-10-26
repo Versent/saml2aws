@@ -83,7 +83,9 @@ func (input *PrimaryRoleInput) Assume(roleSessionName string, force bool) {
 	}
 
 	// Initialize logging
-	fields := logrus.Fields{}
+	fields := logrus.Fields{
+		"Region": region,
+	}
 	if input.Role != nil {
 		fields["Role"] = input.Role.RoleARN
 		if logrus.GetLevel() >= logrus.DebugLevel {
