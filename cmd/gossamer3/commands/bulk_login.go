@@ -27,10 +27,11 @@ import (
 
 // PrimaryRoleInput is the input to assume a primary role into secondary roles
 type PrimaryRoleInput struct {
-	RoleConfig    cfg.RoleConfig
-	Account       *cfg.IDPAccount
-	Role          *g3.AWSRole
-	SAMLAssertion string
+	RoleConfig       cfg.RoleConfig
+	AccountRegionMap map[string]string
+	Account          *cfg.IDPAccount
+	Role             *g3.AWSRole
+	SAMLAssertion    string
 
 	channel chan PrimaryRoleOutput
 }
@@ -103,7 +104,19 @@ func (input *PrimaryRoleInput) Assume(roleSessionName string, force bool) {
 		}
 		l = l.WithField("Duration", fmt.Sprintf("%vs", sessDur))
 
-		creds, err = loginToStsUsingRole(input.Account, input.Role, sessDur, input.SAMLAssertion, input.RoleConfig.Region)
+		// Select region with this priority:
+		// 1. Role region
+		// 2. AccountMap region
+		// 3. Default region from IDPAccount configuration
+		region := input.Account.Region
+		accountNumber := strings.Split(input.Role.RoleARN, ":")[4]
+		if input.RoleConfig.Region != "" {
+			region = input.RoleConfig.Region
+		} else if r, ok := input.AccountRegionMap[accountNumber]; ok {
+			region = r
+		}
+
+		creds, err = loginToStsUsingRole(input.Role, sessDur, input.SAMLAssertion, region)
 	}
 
 	// Check for errors
@@ -216,9 +229,21 @@ func (input *SecondaryRoleInput) Assume(roleSessionName string, force bool) {
 		}
 	}
 
+	// Select region with this priority:
+	// 1. Role region
+	// 2. AccountMap region
+	// 3. Default region from IDPAccount configuration
+	region := input.PrimaryInput.Account.Region
+	accountNumber := strings.Split(input.RoleAssumption.RoleArn, ":")[4]
+	if input.RoleAssumption.Region != "" {
+		region = input.RoleAssumption.Region
+	} else if r, ok := input.PrimaryInput.AccountRegionMap[accountNumber]; ok {
+		region = r
+	}
+
 	// Get new credentials if forced, error encountered, or credentials are not found
 	if force || err != nil || creds == nil {
-		creds, err = assumeRole(input.PrimaryInput.Account, input.PrimaryCredentials, input.RoleAssumption.RoleArn, roleSessionName, input.RoleAssumption.Region)
+		creds, err = assumeRole(input.PrimaryCredentials, input.RoleAssumption.RoleArn, roleSessionName, region)
 	}
 
 	output := SecondaryRoleOutput{
@@ -354,7 +379,7 @@ func BulkLogin(loginFlags *flags.LoginExecFlags) error {
 			// Get the role session name
 			logger.Infof("Using primary role session to assume child roles. No need to login")
 
-			return bulkAssumeAsync(rolesToAssume, account, sessionRoleName, false, true, "")
+			return bulkAssumeAsync(rolesToAssume, account, roleConfig, sessionRoleName, false, true, "")
 		}
 	}
 
@@ -462,12 +487,12 @@ func BulkLogin(loginFlags *flags.LoginExecFlags) error {
 		logger.Debugf("Got groups: %+v", roleConfig.Roles)
 	}
 
-	return bulkAssumeAsync(roleConfig.Roles, account, roleSessionName, loginFlags.Force, false, samlAssertion)
+	return bulkAssumeAsync(roleConfig.Roles, account, roleConfig, roleSessionName, loginFlags.Force, false, samlAssertion)
 }
 
 // bulkAssumeAsync assumes all primary and secondary roles given in the roles slice. If useExistingCreds is true, the samlAssertion
 // is NOT needed
-func bulkAssumeAsync(roles []cfg.RoleConfig, account *cfg.IDPAccount, roleSessionName string, force, useExistingCreds bool, samlAssertion string) error {
+func bulkAssumeAsync(roles []cfg.RoleConfig, account *cfg.IDPAccount, roleConfig *cfg.BulkRoleConfig, roleSessionName string, force, useExistingCreds bool, samlAssertion string) error {
 	logger := logrus.WithFields(logrus.Fields{
 		"Action":           "Bulk Assume",
 		"UseExistingCreds": useExistingCreds,
@@ -491,11 +516,12 @@ func bulkAssumeAsync(roles []cfg.RoleConfig, account *cfg.IDPAccount, roleSessio
 		}
 
 		input := PrimaryRoleInput{
-			RoleConfig:    role,
-			Account:       account,
-			Role:          primaryRole,
-			SAMLAssertion: samlAssertion,
-			channel:       ch,
+			AccountRegionMap: roleConfig.AccountRegionMap,
+			RoleConfig:       role,
+			Account:          account,
+			Role:             primaryRole,
+			SAMLAssertion:    samlAssertion,
+			channel:          ch,
 		}
 
 		wg.Add(1)
@@ -610,11 +636,7 @@ func resolvePrimaryRole(awsRoles []*g3.AWSRole, samlAssertion string, account *c
 }
 
 // assumeRole : Assumes a child role using provided credentials
-func assumeRole(account *cfg.IDPAccount, parentCreds *awsconfig.AWSCredentials, roleArn string, roleSessionName string, region string) (*awsconfig.AWSCredentials, error) {
-	if region == "" {
-		region = account.Region
-	}
-
+func assumeRole(parentCreds *awsconfig.AWSCredentials, roleArn string, roleSessionName string, region string) (*awsconfig.AWSCredentials, error) {
 	// Create config using supplied region and credentials
 	config := aws.NewConfig().WithRegion(region).WithCredentials(
 		awsCredentials.NewStaticCredentials(
