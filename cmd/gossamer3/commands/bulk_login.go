@@ -10,18 +10,17 @@ import (
 	"sync"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/cenkalti/backoff/v4"
-
 	g3 "github.com/GESkunkworks/gossamer3"
 	"github.com/GESkunkworks/gossamer3/helper/credentials"
 	"github.com/GESkunkworks/gossamer3/pkg/awsconfig"
 	"github.com/GESkunkworks/gossamer3/pkg/cfg"
 	"github.com/GESkunkworks/gossamer3/pkg/flags"
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/awserr"
 	awsCredentials "github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sts"
+	"github.com/cenkalti/backoff/v4"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
@@ -97,7 +96,14 @@ func (input *PrimaryRoleInput) Assume(roleSessionName string, force bool) {
 
 	// Get new credentials
 	if force || err != nil || creds == nil || input.RoleConfig.Profile == "" {
-		creds, err = loginToStsUsingRole(input.Account, input.Role, input.SAMLAssertion, input.RoleConfig.Region)
+		// If session duration is defined at a role level, use that instead of the idp account level
+		var sessDur = input.Account.SessionDuration
+		if input.RoleConfig.SessionDuration > 0 {
+			sessDur = input.RoleConfig.SessionDuration
+		}
+		l = l.WithField("Duration", fmt.Sprintf("%vs", sessDur))
+
+		creds, err = loginToStsUsingRole(input.Account, input.Role, sessDur, input.SAMLAssertion, input.RoleConfig.Region)
 	}
 
 	// Check for errors
@@ -350,7 +356,6 @@ func BulkLogin(loginFlags *flags.LoginExecFlags) error {
 
 			return bulkAssumeAsync(rolesToAssume, account, sessionRoleName, false, true, "")
 		}
-
 	}
 
 	// Pull the login details
