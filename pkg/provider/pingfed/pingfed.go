@@ -11,6 +11,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/GESkunkworks/gossamer3/helper/credentials"
+
 	"github.com/GESkunkworks/gossamer3/pkg/cfg"
 	"github.com/GESkunkworks/gossamer3/pkg/creds"
 	"github.com/GESkunkworks/gossamer3/pkg/page"
@@ -37,6 +39,7 @@ var (
 	resp               *http.Response
 	deviceSelected     = false
 	mfaAttempt         = 0
+	loginAttempt       = 0
 	checkDeviceAttempt = 0
 )
 
@@ -211,6 +214,22 @@ func (ac *Client) handleLogin(ctx context.Context, doc *goquery.Document) (conte
 	if !ok {
 		return ctx, nil, fmt.Errorf("no context value for 'login'")
 	}
+
+	if loginAttempt > 1 {
+		// Password was not accepted. Re-prompt for login details
+		log.Println("Invalid username or password")
+		loginDetails.Username = prompter.String("Username", loginDetails.Username)
+		loginDetails.Password = prompter.Password("Password")
+		log.Println("")
+
+		// Overwrite credentials
+		if credentials.SupportsStorage() {
+			if err := credentials.SaveCredentials(ac.idpAccount.URL, loginDetails.Username, loginDetails.Password); err != nil {
+				return ctx, nil, errors.Wrap(err, "failed to save credentials")
+			}
+		}
+	}
+	loginAttempt++
 
 	form, err := page.NewFormFromDocument(doc, "form")
 	if err != nil {
