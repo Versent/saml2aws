@@ -7,7 +7,6 @@ import (
 	"github.com/GESkunkworks/gossamer3/pkg/cfg"
 	"github.com/GESkunkworks/gossamer3/pkg/creds"
 	"github.com/GESkunkworks/gossamer3/pkg/provider/pingfed"
-	"github.com/GESkunkworks/gossamer3/pkg/provider/pingone"
 )
 
 // ProviderList list of providers with their MFAs
@@ -67,11 +66,11 @@ func NewSAMLClient(idpAccount *cfg.IDPAccount) (SAMLClient, error) {
 			return nil, fmt.Errorf("Invalid MFA type: %v for %v provider", idpAccount.MFA, idpAccount.Provider)
 		}
 		return pingfed.New(idpAccount)
-	case "PingOne":
-		if invalidMFA(idpAccount.Provider, idpAccount.MFA) {
-			return nil, fmt.Errorf("Invalid MFA type: %v for %v provider", idpAccount.MFA, idpAccount.Provider)
-		}
-		return pingone.New(idpAccount)
+	//case "PingOne":
+	//	if invalidMFA(idpAccount.Provider, idpAccount.MFA) {
+	//		return nil, fmt.Errorf("Invalid MFA type: %v for %v provider", idpAccount.MFA, idpAccount.Provider)
+	//	}
+	//	return pingone.New(idpAccount)
 	default:
 		return nil, fmt.Errorf("Invalid provider: %v", idpAccount.Provider)
 	}
