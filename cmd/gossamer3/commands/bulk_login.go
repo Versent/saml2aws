@@ -68,6 +68,20 @@ func (input *PrimaryRoleInput) Assume(roleSessionName string, force bool) {
 	var err error
 	existingCreds := false
 
+	// Select region with this priority:
+	// 1. Role region
+	// 2. AccountMap region
+	// 3. Default region from IDPAccount configuration
+	region := input.Account.Region
+	accountNumber := strings.Split(input.Role.RoleARN, ":")[4]
+	if input.RoleConfig.Region != "" {
+		region = input.RoleConfig.Region
+	} else if r, ok := input.AccountRegionMap[accountNumber]; ok {
+		region = r
+	} else if region == "" {
+		region = "us-east-1"
+	}
+
 	// Initialize logging
 	fields := logrus.Fields{}
 	if input.Role != nil {
@@ -103,18 +117,6 @@ func (input *PrimaryRoleInput) Assume(roleSessionName string, force bool) {
 			sessDur = input.RoleConfig.SessionDuration
 		}
 		l = l.WithField("Duration", fmt.Sprintf("%vs", sessDur))
-
-		// Select region with this priority:
-		// 1. Role region
-		// 2. AccountMap region
-		// 3. Default region from IDPAccount configuration
-		region := input.Account.Region
-		accountNumber := strings.Split(input.Role.RoleARN, ":")[4]
-		if input.RoleConfig.Region != "" {
-			region = input.RoleConfig.Region
-		} else if r, ok := input.AccountRegionMap[accountNumber]; ok {
-			region = r
-		}
 
 		creds, err = loginToStsUsingRole(input.Role, sessDur, input.SAMLAssertion, region)
 	}
@@ -202,10 +204,25 @@ func (input *SecondaryRoleInput) Assume(roleSessionName string, force bool) {
 	var err error
 	existingCreds := false
 
+	// Select region with this priority:
+	// 1. Role region
+	// 2. AccountMap region
+	// 3. Default region from IDPAccount configuration
+	region := input.PrimaryInput.Account.Region
+	accountNumber := strings.Split(input.RoleAssumption.RoleArn, ":")[4]
+	if input.RoleAssumption.Region != "" {
+		region = input.RoleAssumption.Region
+	} else if r, ok := input.PrimaryInput.AccountRegionMap[accountNumber]; ok {
+		region = r
+	} else if region == "" {
+		region = "us-east-1"
+	}
+
 	// Initialize logging
 	fields := logrus.Fields{
 		"Role":    input.RoleAssumption.RoleArn,
 		"Profile": input.RoleAssumption.Profile,
+		"Region":  region,
 	}
 	if logrus.GetLevel() >= logrus.DebugLevel && input.PrimaryInput.Role != nil {
 		fields["PrimaryRole"] = input.PrimaryInput.Role.RoleARN
@@ -227,18 +244,6 @@ func (input *SecondaryRoleInput) Assume(roleSessionName string, force bool) {
 			creds, err = sharedCreds.Load()
 			existingCreds = creds != nil
 		}
-	}
-
-	// Select region with this priority:
-	// 1. Role region
-	// 2. AccountMap region
-	// 3. Default region from IDPAccount configuration
-	region := input.PrimaryInput.Account.Region
-	accountNumber := strings.Split(input.RoleAssumption.RoleArn, ":")[4]
-	if input.RoleAssumption.Region != "" {
-		region = input.RoleAssumption.Region
-	} else if r, ok := input.PrimaryInput.AccountRegionMap[accountNumber]; ok {
-		region = r
 	}
 
 	// Get new credentials if forced, error encountered, or credentials are not found
