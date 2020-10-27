@@ -218,8 +218,7 @@ func (ac *Client) handleLogin(ctx context.Context, doc *goquery.Document) (conte
 	// Check for errors from Ping
 	pingErrors := doc.Find("form>.ping-messages>.ping-error")
 	if pingErrors.Size() == 1 {
-		errorContent := pingErrors.Text()
-		return ctx, nil, errors.New(errorContent)
+		return ctx, nil, errors.New(pingErrors.Text())
 	}
 
 	if loginAttempt > 1 {
