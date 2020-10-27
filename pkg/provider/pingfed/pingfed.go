@@ -215,6 +215,13 @@ func (ac *Client) handleLogin(ctx context.Context, doc *goquery.Document) (conte
 		return ctx, nil, fmt.Errorf("no context value for 'login'")
 	}
 
+	// Check for errors from Ping
+	pingErrors := doc.Find("form>.ping-messages>.ping-error")
+	if pingErrors.Size() == 1 {
+		errorContent := pingErrors.Text()
+		return ctx, nil, errors.New(errorContent)
+	}
+
 	if loginAttempt > 1 {
 		// Password was not accepted. Re-prompt for login details
 		log.Println("Invalid username or password")
