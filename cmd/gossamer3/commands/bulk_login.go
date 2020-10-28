@@ -73,7 +73,7 @@ func (input *PrimaryRoleInput) Assume(roleSessionName string, force bool) {
 	// 2. AccountMap region
 	// 3. Default region from IDPAccount configuration
 	region := input.Account.Region
-	accountNumber := strings.Split(input.Role.RoleARN, ":")[4]
+	accountNumber := strings.Split(input.RoleConfig.PrimaryRoleArn, ":")[4]
 	if input.RoleConfig.Region != "" {
 		region = input.RoleConfig.Region
 	} else if r, ok := input.AccountRegionMap[accountNumber]; ok {
