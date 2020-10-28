@@ -8,6 +8,10 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/GESkunkworks/gossamer3/pkg/cfg"
+	"github.com/aws/aws-sdk-go/aws/request"
+	"github.com/aws/aws-sdk-go/aws/session"
+
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -45,6 +49,12 @@ type AWSCredentials struct {
 type CredentialsProvider struct {
 	Filename string
 	Profile  string
+}
+
+func OverrideUserAgent(sess *session.Session) {
+	sess.Handlers.Build.PushBack(func(r *request.Request) {
+		r.HTTPRequest.Header.Set("User-Agent", cfg.GetUserAgent())
+	})
 }
 
 // NewSharedCredentials helper to create the credentials provider

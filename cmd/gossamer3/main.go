@@ -8,6 +8,8 @@ import (
 	"os"
 	"runtime"
 
+	"github.com/GESkunkworks/gossamer3/pkg/cfg"
+
 	"github.com/GESkunkworks/gossamer3/cmd/gossamer3/commands"
 	"github.com/GESkunkworks/gossamer3/pkg/flags"
 	"github.com/alecthomas/kingpin"
@@ -59,6 +61,7 @@ func main() {
 
 	app := kingpin.New("gossamer3", "A command line tool to help with SAML access to the AWS token service.")
 	app.Version(Version)
+	cfg.Version = Version
 
 	// Settings not related to commands
 	verbose := app.Flag("verbose", "Enable verbose logging").Bool()

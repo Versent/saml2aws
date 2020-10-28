@@ -222,6 +222,9 @@ func getRoleSessionNameFromCredentials(account *cfg.IDPAccount, awsCreds *awscon
 		return "", errors.Wrap(err, "failed to create session")
 	}
 
+	// Set user agent handler
+	awsconfig.OverrideUserAgent(sess)
+
 	// Call to STS Get Caller Identity
 	svc := sts.New(sess)
 	resp, err := svc.GetCallerIdentity(&sts.GetCallerIdentityInput{})

@@ -5,11 +5,14 @@ import (
 	"io/ioutil"
 	"net/url"
 	"os"
+	"runtime"
 
 	"github.com/mitchellh/go-homedir"
 	"github.com/pkg/errors"
 	yaml "gopkg.in/yaml.v3"
 )
+
+var Version string
 
 // ErrIdpAccountNotFound returned if the idp account is not found in the configuration file
 var ErrIdpAccountNotFound = errors.New("IDP account not found, run configure to set it up")
@@ -54,6 +57,10 @@ type IDPAccount struct {
 	Region               string `yaml:"region"`
 	HttpAttemptsCount    string `yaml:"http_attempts_count"`
 	HttpRetryDelay       string `yaml:"http_retry_delay"`
+}
+
+func GetUserAgent() string {
+	return fmt.Sprintf("gossamer3/%s (%s; %s; %s)", Version, runtime.Version(), runtime.GOOS, runtime.GOARCH)
 }
 
 func (ia IDPAccount) String() string {
