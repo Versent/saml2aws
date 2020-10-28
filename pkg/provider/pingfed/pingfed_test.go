@@ -49,6 +49,7 @@ var docTests = []struct {
 	{docIsWebAuthn, "example/swipe.html", false},
 	{docIsWebAuthn, "example/form-redirect.html", false},
 	{docIsWebAuthn, "example/webauthn.html", true},
+	{docIsPingMessage, "example/password-expired.html", true},
 }
 
 func TestDocTypes(t *testing.T) {
@@ -181,4 +182,16 @@ func TestHandleWebAuthn(t *testing.T) {
 
 	s := string(b[:])
 	require.Contains(t, s, "isWebAuthnSupportedByBrowser=true")
+}
+
+func TestHandlePasswordExpired(t *testing.T) {
+	data, err := ioutil.ReadFile("example/password-expired.html")
+	require.Nil(t, err)
+
+	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(data))
+	require.Nil(t, err)
+
+	ac := Client{}
+	_, _, err = ac.handlePingMessage(context.Background(), doc)
+	require.Error(t, err, "Your password is expired and must be changed.")
 }

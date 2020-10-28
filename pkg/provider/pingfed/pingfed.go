@@ -166,6 +166,9 @@ func (ac *Client) follow(ctx context.Context, req *http.Request) (string, error)
 	} else if docIsWebAuthn(doc) {
 		logger.WithField("type", "webauthn").Debug("doc detect")
 		handler = ac.handleWebAuthn
+	} else if docIsPingMessage(doc) {
+		logger.WithField("type", "ping-message").Debug("doc detect")
+		handler = ac.handlePingMessage
 	} else if docIsError(doc) {
 		logger.WithField("type", "error").Debug("doc detect")
 		pingError := strings.TrimSpace(doc.Find("div.ping-error").Text())
@@ -569,6 +572,28 @@ func (ac *Client) handleSwipe(ctx context.Context, doc *goquery.Document) (conte
 	return ctx, req, err
 }
 
+func (ac *Client) handlePingMessage(ctx context.Context, doc *goquery.Document) (context.Context, *http.Request, error) {
+	// Extract the error message
+	messages := doc.Find(".ping-messages>.ping-error")
+	pingError := strings.TrimSpace(messages.Text())
+
+	// Print out the link to change password if we can find it
+	if strings.Contains(pingError, "password is expired") {
+		changePassLink := doc.Find("#changePassLink>a")
+		if changePassLink.Size() == 1 {
+			if link, ok := changePassLink.Attr("href"); ok {
+				changePassText := strings.TrimSpace(changePassLink.Text())
+				if changePassText == "" {
+					changePassText = "Change your password"
+				}
+				log.Printf("%s: %s", changePassText, link)
+			}
+		}
+	}
+
+	return ctx, nil, errors.New(pingError)
+}
+
 func (ac *Client) handleFormRedirect(ctx context.Context, doc *goquery.Document) (context.Context, *http.Request, error) {
 	form, err := page.NewFormFromDocument(doc, "")
 	if err != nil {
@@ -599,6 +624,10 @@ func docIsPreLogin(doc *goquery.Document) bool {
 func docIsLogin(doc *goquery.Document) bool {
 	return doc.Has("#login-password-field").Size() == 1 &&
 		doc.Has("input[name=\"pf.pass\"]").Size() == 1
+}
+
+func docIsPingMessage(doc *goquery.Document) bool {
+	return doc.Has(".ping-messages>.ping-error").Size() > 0
 }
 
 func docIsToken(doc *goquery.Document) bool {
