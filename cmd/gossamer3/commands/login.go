@@ -44,7 +44,7 @@ func Login(loginFlags *flags.LoginExecFlags) error {
 	}
 
 	if !sharedCreds.Expired() && !loginFlags.Force {
-		log.Println("credentials are not expired skipping")
+		log.Println("Credentials are not expired (use --force to login anyways)")
 		return nil
 	}
 
@@ -285,6 +285,9 @@ func loginToStsUsingRole(role *g3.AWSRole, sessionDuration int, samlAssertion, r
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create session")
 	}
+
+	// Set user agent handler
+	awsconfig.OverrideUserAgent(sess)
 
 	svc := sts.New(sess)
 

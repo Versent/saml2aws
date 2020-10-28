@@ -108,6 +108,9 @@ func assumeRoleWithProfile(targetProfile string, sessionDuration int) (*awsconfi
 		AssumeRoleDuration: duration,
 	}))
 
+	// Set user agent handler
+	awsconfig.OverrideUserAgent(sess)
+
 	// use an STS client to perform the multiple role assumptions
 	stsClient := sts.New(sess)
 	input := &sts.GetCallerIdentityInput{}
@@ -143,6 +146,9 @@ func checkToken(account *cfg.IDPAccount) (bool, error) {
 	if err != nil {
 		return false, err
 	}
+
+	// Set user agent handler
+	awsconfig.OverrideUserAgent(sess)
 
 	svc := sts.New(sess)
 

@@ -377,7 +377,7 @@ func BulkLogin(loginFlags *flags.LoginExecFlags) error {
 
 		// If no creds are expired, return to sender, no work to be done
 		if noCredsExpired {
-			logger.Infof("No credentials expired")
+			logger.Infof("Credentials are not expired (use --force to login anyways)")
 			return nil
 		}
 
@@ -658,6 +658,10 @@ func assumeRole(parentCreds *awsconfig.AWSCredentials, roleArn string, roleSessi
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create session")
 	}
+
+	// Set user agent handler
+	awsconfig.OverrideUserAgent(sess)
+
 	svc := sts.New(sess)
 
 	// Generate input

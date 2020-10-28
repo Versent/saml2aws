@@ -91,8 +91,7 @@ func NewHTTPClient(tr http.RoundTripper, opts *HTTPClientOptions) (*HTTPClient, 
 
 // Do do the request
 func (hc *HTTPClient) Do(req *http.Request) (*http.Response, error) {
-
-	//req.Header.Set("User-Agent", fmt.Sprintf("gossamer3/1.0 (%s %s)", runtime.GOOS, runtime.GOARCH))
+	req.Header.Set("User-Agent", cfg.GetUserAgent())
 
 	var resp *http.Response
 	var err error
