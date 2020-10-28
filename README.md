@@ -75,7 +75,7 @@ brew install gossamer3
 If you're on Windows you can install gossamer3 using chocolatey!
 
 ```
-choco install gossamer3 --version=3.1.2
+choco install gossamer3 --version=3.1.3
 gossamer3 --version
 ```
 
@@ -84,7 +84,7 @@ gossamer3 --version
 While brew is available for Linux you can also run the following without using a package manager.
 
 ```
-$ CURRENT_VERSION=3.1.2
+$ CURRENT_VERSION=3.1.3
 $ wget https://github.com/GESkunkworks/gossamer3/releases/download/v${CURRENT_VERSION}/gossamer3_${CURRENT_VERSION}_linux_amd64.tar.gz
 $ tar -xzvf gossamer3_${CURRENT_VERSION}_linux_amd64.tar.gz -C ~/.local/bin
 $ chmod u+x ~/.local/bin/gossamer3
