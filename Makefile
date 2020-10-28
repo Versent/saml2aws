@@ -52,7 +52,7 @@ dist:
 	@rm -rf dist && mkdir dist
 	@for f in $(FILES); do \
 		(cd $(shell pwd)/build/$$f && tar -cvzf ../../dist/$$f.tar.gz *); \
-		(cd $(shell pwd)/dist && shasum -a 512 $$f.tar.gz > $$f.sha512); \
+		(cd $(shell pwd)/dist && shasum -a 256 $$f.tar.gz > $$f.sha256); \
 		echo $$f; \
 	done
 
