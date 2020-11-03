@@ -50,6 +50,7 @@ var docTests = []struct {
 	{docIsWebAuthn, "example/form-redirect.html", false},
 	{docIsWebAuthn, "example/webauthn.html", true},
 	{docIsPingMessage, "example/password-expired.html", true},
+	{docIsPasswordExpiring, "example/password-expiring.html", true},
 }
 
 func TestDocTypes(t *testing.T) {
@@ -194,4 +195,24 @@ func TestHandlePasswordExpired(t *testing.T) {
 	ac := Client{}
 	_, _, err = ac.handlePingMessage(context.Background(), doc)
 	require.Error(t, err, "Your password is expired and must be changed.")
+}
+
+func TestHandlePasswordExpiring(t *testing.T) {
+	data, err := ioutil.ReadFile("example/password-expiring.html")
+	require.Nil(t, err)
+
+	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(data))
+	require.Nil(t, err)
+
+	ac := Client{}
+	_, req, err := ac.handlePasswordExpiring(context.Background(), doc)
+	require.Nil(t, err)
+
+	b, err := ioutil.ReadAll(req.Body)
+	require.Nil(t, err)
+
+	s := string(b[:])
+	require.Contains(t, s, "pf.passwordExpiring=true")
+	require.Contains(t, s, "pf.notificationCancel=clicked")
+	require.Contains(t, s, "pf.pcvId=PDPCVOIDC")
 }
