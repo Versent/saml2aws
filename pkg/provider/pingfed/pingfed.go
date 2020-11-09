@@ -267,7 +267,14 @@ func (ac *Client) handleToken(ctx context.Context, doc *goquery.Document) (conte
 		return ctx, nil, errors.Wrap(err, "error extracting login form")
 	}
 
-	token := prompter.Password("Enter Token Code (PIN + Token / Passcode for RSA)")
+	// Pull MFA token from command line if specified
+	token := loginDetails.MFAToken
+
+	// Request token
+	if loginDetails.MFAToken == "" || mfaAttempt > 0 {
+		token = prompter.Password("Enter Token Code (PIN + Token / Passcode for RSA)")
+	}
+	mfaAttempt++
 
 	// Make sure a token value was provided
 	if token == "" {
