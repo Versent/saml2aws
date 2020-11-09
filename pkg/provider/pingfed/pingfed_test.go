@@ -94,6 +94,8 @@ func TestHandleLogin(t *testing.T) {
 }
 
 func TestHandleOTP(t *testing.T) {
+	mfaAttempt = 0
+
 	pr := &mocks.Prompter{}
 	prompter.SetPrompter(pr)
 	pr.Mock.On("Password", "Enter passcode").Return("5309")
@@ -123,6 +125,8 @@ func TestHandleOTP(t *testing.T) {
 }
 
 func TestHandleToken(t *testing.T) {
+	mfaAttempt = 0
+
 	data, err := ioutil.ReadFile("example/token.html")
 	require.Nil(t, err)
 
@@ -149,6 +153,8 @@ func TestHandleToken(t *testing.T) {
 }
 
 func TestHandleTokenWithStdin(t *testing.T) {
+	mfaAttempt = 0
+
 	pr := &mocks.Prompter{}
 	prompter.SetPrompter(pr)
 	pr.Mock.On("Password", "Enter Token Code (PIN + Token / Passcode for RSA)").Return("1337")
@@ -178,6 +184,8 @@ func TestHandleTokenWithStdin(t *testing.T) {
 }
 
 func TestHandleOTPWithArgument(t *testing.T) {
+	mfaAttempt = 0
+
 	data, err := ioutil.ReadFile("example/otp.html")
 	require.Nil(t, err)
 
