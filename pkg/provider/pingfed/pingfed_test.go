@@ -122,6 +122,61 @@ func TestHandleOTP(t *testing.T) {
 	require.Contains(t, s, "otp=5309")
 }
 
+func TestHandleToken(t *testing.T) {
+	data, err := ioutil.ReadFile("example/token.html")
+	require.Nil(t, err)
+
+	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(data))
+	require.Nil(t, err)
+
+	ac := Client{}
+	loginDetails := creds.LoginDetails{
+		Username: "fdsa",
+		Password: "secret",
+		MFAToken: "1337",
+		URL:      "https://example.com/foo",
+	}
+	ctx := context.WithValue(context.Background(), ctxKey("login"), &loginDetails)
+
+	_, req, err := ac.handleToken(ctx, doc)
+	require.Nil(t, err)
+
+	b, err := ioutil.ReadAll(req.Body)
+	require.Nil(t, err)
+
+	s := string(b[:])
+	require.Contains(t, s, "pf.pass=1337")
+}
+
+func TestHandleTokenWithStdin(t *testing.T) {
+	pr := &mocks.Prompter{}
+	prompter.SetPrompter(pr)
+	pr.Mock.On("Password", "Enter Token Code (PIN + Token / Passcode for RSA)").Return("1337")
+
+	data, err := ioutil.ReadFile("example/token.html")
+	require.Nil(t, err)
+
+	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(data))
+	require.Nil(t, err)
+
+	ac := Client{}
+	loginDetails := creds.LoginDetails{
+		Username: "fdsa",
+		Password: "secret",
+		URL:      "https://example.com/foo",
+	}
+	ctx := context.WithValue(context.Background(), ctxKey("login"), &loginDetails)
+
+	_, req, err := ac.handleToken(ctx, doc)
+	require.Nil(t, err)
+
+	b, err := ioutil.ReadAll(req.Body)
+	require.Nil(t, err)
+
+	s := string(b[:])
+	require.Contains(t, s, "pf.pass=1337")
+}
+
 func TestHandleOTPWithArgument(t *testing.T) {
 	data, err := ioutil.ReadFile("example/otp.html")
 	require.Nil(t, err)
