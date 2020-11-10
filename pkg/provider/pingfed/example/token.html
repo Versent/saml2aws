@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>Token</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta http-equiv="x-ua-compatible" content="IE=edge">
+</head>
+<body>
+
+<div class="ping-container ping-signin login-template" style="padding-top:0px;padding-bottom:0px;min-height:0;">
+
+  <!--
+  if there is a logo present in the 'company-logo' container,
+  then 'has-logo' class should be added to 'ping-header' container.
+  -->
+  <div class="ping-header">
+    Token Sign On
+  </div>
+  <!-- .ping-header -->
+
+  <div class="ping-body-container" style="margin-bottom:0px">
+
+    <div>
+      <form method="POST" action="/token" autocomplete="off">
+
+        <div class="ping-messages">
+
+
+        </div>
+
+
+        <div class="ping-input-label">
+          Username
+        </div>
+        <div class="ping-input-container">
+          <input id="username" type="text" size="36" name="pf.username" value="user123" disabled="disabled" autocorrect="off" autocapitalize="off" onkeypress="return postOnReturn(event)"><!---->
+          <div class="place-bottom type-alert tooltip-text" id="username-text">
+            <div class="icon">!</div>
+            Please fill out this field.
+          </div>
+        </div>
+
+        <div class="ping-input-label">
+          Token code
+        </div>
+        <div class="ping-input-container password-container">
+          <input id="password" type="password" size="36" name="pf.pass" onkeypress="return postOnReturn(event)">
+          <div class="place-bottom type-alert tooltip-text" id="password-text">
+            <div class="icon">!</div>
+            Please fill out this field.
+          </div>
+        </div>
+
+        <div class="ping-buttons">
+          <input type="hidden" name="pf.ok" value="">
+          <input type="hidden" name="pf.cancel" value="">
+
+          <a onclick="postOk();" class="ping-button normal allow" title="Sign On">
+            Sign On
+          </a>
+        </div><!-- .ping-buttons -->
+      </form>
+    </div><!-- .ping-body// blank div -->
+
+  </div><!-- .ping-body-container -->
+
+</div><!-- .ping-container -->
+
+</body></html>
