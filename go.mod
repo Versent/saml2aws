@@ -4,7 +4,7 @@ go 1.13
 
 require (
 	github.com/99designs/keyring v0.0.0-20190110203331-82da6802f65f
-	github.com/AlecAivazis/survey/v2 v2.1.1
+	github.com/AlecAivazis/survey/v2 v2.2.2
 	github.com/Azure/go-ntlmssp v0.0.0-20180416175057-4b934ac9dad3
 	github.com/PuerkitoBio/goquery v1.5.1
 	github.com/alecthomas/kingpin v2.2.6+incompatible
@@ -12,7 +12,7 @@ require (
 	github.com/alecthomas/units v0.0.0-20190910110746-680d30ca3117 // indirect
 	github.com/aulanov/go.dbus v0.0.0-20150729231527-25c3068a42a0 // indirect
 	github.com/avast/retry-go v2.6.0+incompatible
-	github.com/aws/aws-sdk-go v1.34.9
+	github.com/aws/aws-sdk-go v1.35.24
 	github.com/beevik/etree v1.0.1
 	github.com/danieljoos/wincred v1.0.1
 	github.com/dvsekhvalnov/jose2go v0.0.0-20170216131308-f21a8cedbbae // indirect
