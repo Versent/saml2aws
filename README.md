@@ -1,4 +1,4 @@
-# saml2aws [![Build Status](https://travis-ci.org/Versent/saml2aws.svg?branch=master)](https://travis-ci.org/Versent/saml2aws) [![Build status - Windows](https://ci.appveyor.com/api/projects/status/ptpi18kci16o4i82/branch/master?svg=true)](https://ci.appveyor.com/project/davidobrien1985/saml2aws/branch/master)
+# saml2aws [![GitHub Actions status](https://github.com/Versent/saml2aws/workflows/Go/badge.svg?branch=master)](https://github.com/Versent/saml2aws/actions?query=workflow%3AGo) [![Build status - Windows](https://ci.appveyor.com/api/projects/status/ptpi18kci16o4i82/branch/master?svg=true)](https://ci.appveyor.com/project/davidobrien1985/saml2aws/branch/master)
 
 CLI tool which enables you to login and retrieve [AWS](https://aws.amazon.com/) temporary credentials using 
 with [ADFS](https://msdn.microsoft.com/en-us/library/bb897402.aspx) or [PingFederate](https://www.pingidentity.com/en/products/pingfederate.html) Identity Providers.
@@ -85,7 +85,7 @@ saml2aws --version
 While brew is available for Linux you can also run the following without using a package manager.
 
 ```
-$ CURRENT_VERSION=2.26.1
+$ CURRENT_VERSION=2.27.1
 $ wget https://github.com/Versent/saml2aws/releases/download/v${CURRENT_VERSION}/saml2aws_${CURRENT_VERSION}_linux_amd64.tar.gz
 $ tar -xzvf saml2aws_${CURRENT_VERSION}_linux_amd64.tar.gz -C ~/.local/bin
 $ chmod u+x ~/.local/bin/saml2aws

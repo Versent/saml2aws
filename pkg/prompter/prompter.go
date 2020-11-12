@@ -24,6 +24,14 @@ func RequestSecurityCode(pattern string) string {
 
 // ChooseWithDefault given the choice return the option selected with a default
 func ChooseWithDefault(pr string, defaultValue string, options []string) (string, error) {
+
+	// ensure the default is not empty and avoid bad input error
+	if defaultValue == "" {
+		if len(options) > 0 {
+			defaultValue = options[0]
+		}
+	}
+
 	return defaultPrompter.ChooseWithDefault(pr, defaultValue, options)
 }
 

@@ -28,6 +28,18 @@ type Client struct {
 	idpAccount *cfg.IDPAccount
 }
 
+// SuccessOrRedirectOrUnauthorizedResponseValidator also allows 401
+func SuccessOrRedirectOrUnauthorizedResponseValidator(req *http.Request, resp *http.Response) error {
+
+	validatorResponse := provider.SuccessOrRedirectResponseValidator(req, resp)
+
+	if validatorResponse == nil || resp.StatusCode == 401 {
+		return nil;
+	}
+
+	return validatorResponse;
+}
+
 // New create a new PingOne client
 func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 
@@ -40,7 +52,7 @@ func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 
 	// assign a response validator to ensure all responses are either success or a redirect
 	// this is to avoid have explicit checks for every single response
-	client.CheckResponseStatus = provider.SuccessOrRedirectResponseValidator
+	client.CheckResponseStatus = SuccessOrRedirectOrUnauthorizedResponseValidator
 
 	return &Client{
 		client:     client,
@@ -107,6 +119,9 @@ func (ac *Client) follow(ctx context.Context, req *http.Request) (string, error)
 	} else if docIsFormRedirect(doc) {
 		logger.WithField("type", "form-redirect").Debug("doc detect")
 		handler = ac.handleFormRedirect
+	} else if docIsRefresh(doc) {
+		logger.WithField("type", "refresh").Debug("doc detect")
+		handler = ac.handleRefresh
 	}
 	if handler == nil {
 		html, _ := doc.Selection.Html()
@@ -237,6 +252,20 @@ func (ac *Client) handleFormSamlRequest(ctx context.Context, doc *goquery.Docume
 	return ctx, req, err
 }
 
+func (ac *Client) handleRefresh(ctx context.Context, doc *goquery.Document, _ *http.Response) (context.Context, *http.Request, error) {
+	loginDetails, ok := ctx.Value(ctxKey("login")).(*creds.LoginDetails)
+	if !ok {
+		return ctx, nil, fmt.Errorf("no context value for 'login'")
+	}
+
+	req, err := http.NewRequest("GET", loginDetails.URL, nil)
+	if err != nil {
+		return ctx, nil, errors.Wrap(err, "error building request")
+	}
+
+	return ctx, req, err
+}
+
 func (ac *Client) handleFormSelectDevice(ctx context.Context, doc *goquery.Document, res *http.Response) (context.Context, *http.Request, error) {
 	deviceList := make(map[string]string)
 	var deviceNameList []string
@@ -302,6 +331,10 @@ func docIsFormRedirectToAWS(doc *goquery.Document) bool {
 
 func docIsFormSelectDevice(doc *goquery.Document) bool {
 	return doc.Has("form[name=\"device-form\"]").Size() == 1
+}
+
+func docIsRefresh(doc *goquery.Document) bool {
+	return doc.Has("meta[http-equiv=\"refresh\"]").Size() == 1
 }
 
 func extractSAMLResponse(doc *goquery.Document) (v string, ok bool) {
