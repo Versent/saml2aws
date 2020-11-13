@@ -1,0 +1,57 @@
+<samlp:Response xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" ID="_8d1930ff-0fdd-4707-b437-48a334aa096e" Version="2.0" IssueInstant="2016-09-10T02:54:39.387Z">
+  <Issuer xmlns="urn:oasis:names:tc:SAML:2.0:assertion">http://id.example.com/adfs/services/trust</Issuer>
+  <samlp:Status>
+    <samlp:StatusCode Value="urn:oasis:names:tc:SAML:2.0:status:Success"/>
+  </samlp:Status>
+  <Assertion xmlns="urn:oasis:names:tc:SAML:2.0:assertion" ID="_f85be5f5-584c-4711-8c9d-5b13c4c49f89" IssueInstant="2016-09-10T02:54:39.386Z" Version="2.0">
+    <Issuer>http://id.example.com/adfs/services/trust</Issuer>
+    <ds:Signature xmlns:ds="http://www.w3.org/2000/09/xmldsig#">
+      <ds:SignedInfo>
+        <ds:CanonicalizationMethod Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/>
+        <ds:SignatureMethod Algorithm="http://www.w3.org/2001/04/xmldsig-more#rsa-sha256"/>
+        <ds:Reference URI="#_f85be5f5-584c-4711-8c9d-5b13c4c49f89">
+          <ds:Transforms>
+            <ds:Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature"/>
+            <ds:Transform Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/>
+          </ds:Transforms>
+          <ds:DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha256"/>
+          <ds:DigestValue>XXX</ds:DigestValue>
+        </ds:Reference>
+      </ds:SignedInfo>
+      <ds:SignatureValue>XXX</ds:SignatureValue>
+      <KeyInfo xmlns="http://www.w3.org/2000/09/xmldsig#">
+        <ds:X509Data>
+          <ds:X509Certificate>XXX</ds:X509Certificate>
+        </ds:X509Data>
+      </KeyInfo>
+    </ds:Signature>
+    <Subject>
+      <NameID Format="urn:oasis:names:tc:SAML:2.0:nameid-format:persistent">EXAMPLE\wolfeidau</NameID>
+      <SubjectConfirmation Method="urn:oasis:names:tc:SAML:2.0:cm:bearer">
+        <SubjectConfirmationData NotOnOrAfter="2016-09-10T02:59:39.387Z" Recipient="https://signin.aws.amazon.com/saml"/>
+      </SubjectConfirmation>
+    </Subject>
+    <Conditions NotBefore="2016-09-10T02:54:39.371Z" NotOnOrAfter="2016-09-10T03:54:39.371Z">
+      <AudienceRestriction>
+        <Audience>urn:amazon:webservices</Audience>
+      </AudienceRestriction>
+    </Conditions>
+    <AttributeStatement>
+      <Attribute Name="https://aws.amazon.com/SAML/Attributes/RoleSessionName">
+        <AttributeValue>wolfeidau@example.com</AttributeValue>
+      </Attribute>
+      <Attribute Name="https://aws.amazon.com/SAML/Attributes/Role">
+        <AttributeValue>arn:aws:iam::123123123123:saml-provider/ExampleADFS,arn:aws:iam::123123123123:role/AWS-Admin-CloudOPSBuild</AttributeValue>
+        <AttributeValue>arn:aws:iam::123123123123:saml-provider/ExampleADFS,arn:aws:iam::123123123123:role/AWS-Admin-CloudOPSNonProd</AttributeValue>
+      </Attribute>
+      <saml2:Attribute Name="https://aws.amazon.com/SAML/Attributes/SessionDuration" NameFormat="urn:oasis:names:tc:SAML:2.0:attrname-format:basic">
+        <saml2:AttributeValue xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="xs:string">28800</saml2:AttributeValue>
+      </saml2:Attribute>
+    </AttributeStatement>
+    <AuthnStatement AuthnInstant="2016-09-10T02:54:39.227Z" SessionIndex="_f85be5f5-584c-4711-8c9d-5b13c4c49f89">
+      <AuthnContext>
+        <AuthnContextClassRef>urn:oasis:names:tc:SAML:2.0:ac:classes:PasswordProtectedTransport</AuthnContextClassRef>
+      </AuthnContext>
+    </AuthnStatement>
+  </Assertion>
+</samlp:Response>
