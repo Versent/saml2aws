@@ -654,7 +654,10 @@ func assumeRole(parentCreds *awsconfig.AWSCredentials, roleArn string, roleSessi
 	)
 
 	// Create session and client
-	sess, err := session.NewSession(config)
+	sess, err := session.NewSessionWithOptions(session.Options{
+		Config:            *config,
+		SharedConfigFiles: []string{},
+	})
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create session")
 	}
