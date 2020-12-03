@@ -32,6 +32,8 @@ compile: mod
 	-osarch="darwin/amd64" \
 	-osarch="linux/i386" \
 	-osarch="linux/amd64" \
+	-osarch="linux/arm" \
+	-osarch="linux/arm64" \
 	-osarch="windows/amd64" \
 	-osarch="windows/i386" \
 	-output "build/{{.Dir}}_$(VERSION)_{{.OS}}_{{.Arch}}/$(NAME)" \
