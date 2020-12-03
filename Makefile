@@ -9,7 +9,7 @@ TEST_OPTIONS?=
 
 BIN_DIR := $(CURDIR)/bin
 
-ci: prepare test
+ci: prepare compile test
 
 prepare: prepare.metalinter
 	GOBIN=$(BIN_DIR) go install github.com/buildkite/github-release
