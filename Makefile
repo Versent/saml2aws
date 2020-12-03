@@ -25,15 +25,25 @@ prepare.metalinter:
 mod:
 	@go mod download
 	@go mod tidy
-
-compile: mod
 	@rm -rf build/
+
+compilewin: prepare mod
 	@$(BIN_DIR)/gox -ldflags "-X main.Version=$(VERSION)" \
-	-osarch="darwin/amd64" \
-	-osarch="linux/i386" \
-	-osarch="linux/amd64" \
 	-osarch="windows/amd64" \
 	-osarch="windows/i386" \
+	-output "build/{{.Dir}}_$(VERSION)_{{.OS}}_{{.Arch}}/$(NAME)" \
+	${SOURCE_FILES}
+
+compilemac: prepare mod
+	@$(BIN_DIR)/gox -ldflags "-X main.Version=$(VERSION)" \
+	-osarch="darwin/amd64" \
+	-output "build/{{.Dir}}_$(VERSION)_{{.OS}}_{{.Arch}}/$(NAME)" \
+	${SOURCE_FILES}
+
+compilelinux: prepare mod
+	@$(BIN_DIR)/gox -ldflags "-X main.Version=$(VERSION)" \
+	-osarch="linux/i386" \
+	-osarch="linux/amd64" \
 	-output "build/{{.Dir}}_$(VERSION)_{{.OS}}_{{.Arch}}/$(NAME)" \
 	${SOURCE_FILES}
 
@@ -79,4 +89,4 @@ generate-mocks:
 	mockery -dir pkg/prompter --all
 	mockery -dir pkg/provider/okta -name U2FDevice
 
-.PHONY: default prepare.metalinter prepare mod compile lint fmt dist release test clean generate-mocks
+.PHONY: default prepare.metalinter prepare mod compilewin compilemac compilelinux lint fmt dist release test clean generate-mocks
