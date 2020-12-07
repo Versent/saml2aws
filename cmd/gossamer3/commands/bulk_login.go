@@ -63,7 +63,7 @@ type SecondaryRoleOutput struct {
 }
 
 // Assume assumes a primary role, returning the credentials to assume secondary role if needed
-func (input *PrimaryRoleInput) Assume(roleSessionName string, force bool) {
+func (input *PrimaryRoleInput) Assume(roleSessionName string, force bool, sharedCreds *awsconfig.Credentials) {
 	var creds *awsconfig.AWSCredentials
 	var err error
 	existingCreds := false
@@ -101,18 +101,17 @@ func (input *PrimaryRoleInput) Assume(roleSessionName string, force bool) {
 
 		// Not forcing credential refresh, pull from file
 		if !force {
-			sharedCreds := awsconfig.NewSharedCredentials(input.RoleConfig.Profile)
 
 			// Check if credentials are expired
-			if !sharedCreds.Expired() {
-				creds, err = sharedCreds.Load()
+			if !sharedCreds.Expired(input.RoleConfig.Profile) {
+				creds, err = sharedCreds.Load(input.RoleConfig.Profile)
 				existingCreds = creds != nil
 			}
 		}
 	}
 
 	// Get new credentials
-	if force || err != nil || creds == nil || input.RoleConfig.Profile == "" {
+	if force || err != nil || !existingCreds || input.RoleConfig.Profile == "" {
 		// If session duration is defined at a role level, use that instead of the idp account level
 		var sessDur = input.Account.SessionDuration
 		if input.RoleConfig.SessionDuration > 0 {
@@ -163,7 +162,7 @@ func (input *PrimaryRoleInput) Assume(roleSessionName string, force bool) {
 		wg.Add(1)
 
 		// Perform secondary assumption
-		go secondaryInput.Assume(roleSessionName, force)
+		go secondaryInput.Assume(roleSessionName, force, sharedCreds)
 	}
 
 	// Create a channel to wait for completion of the wait group
@@ -201,7 +200,7 @@ func (input *PrimaryRoleInput) Assume(roleSessionName string, force bool) {
 }
 
 // Assume assumes a secondary role using the PrimaryRoleInput parent object
-func (input *SecondaryRoleInput) Assume(roleSessionName string, force bool) {
+func (input *SecondaryRoleInput) Assume(roleSessionName string, force bool, sharedCreds *awsconfig.Credentials) {
 	var creds *awsconfig.AWSCredentials
 	var err error
 	existingCreds := false
@@ -239,17 +238,15 @@ func (input *SecondaryRoleInput) Assume(roleSessionName string, force bool) {
 
 	// Not forcing credential refresh, pull from file
 	if !force {
-		sharedCreds := awsconfig.NewSharedCredentials(input.RoleAssumption.Profile)
-
 		// Check if credentials are expired
-		if !sharedCreds.Expired() {
-			creds, err = sharedCreds.Load()
+		if !sharedCreds.Expired(input.RoleAssumption.Profile) {
+			creds, err = sharedCreds.Load(input.RoleAssumption.Profile)
 			existingCreds = creds != nil
 		}
 	}
 
 	// Get new credentials if forced, error encountered, or credentials are not found
-	if force || err != nil || creds == nil {
+	if force || err != nil || !existingCreds {
 		creds, err = assumeRole(input.PrimaryCredentials, input.RoleAssumption.RoleArn, roleSessionName, region)
 	}
 
@@ -297,6 +294,12 @@ func BulkLogin(loginFlags *flags.LoginExecFlags) error {
 	// Check if any credentials need to be refreshed - only run when force is false
 	logger.Debug("Check if credentials exist")
 
+	// Load entire file from single location
+	sharedCreds, err := awsconfig.LoadCredentials()
+	if err != nil {
+		logger.Fatalln(errors.Wrap(err, "couldnt load aws credentials file"))
+	}
+
 	// Not forced, and not assuming all roles
 	if !loginFlags.Force && !roleConfig.AssumeAllRoles {
 		var primaryExpired = false             // Only prompt login if one of the parent credentials are expired
@@ -308,8 +311,7 @@ func BulkLogin(loginFlags *flags.LoginExecFlags) error {
 		for _, primary := range roleConfig.Roles {
 			// Only check for expiration of parent role
 			if primary.Profile != "" {
-				sharedCreds := awsconfig.NewSharedCredentials(primary.Profile)
-				if sharedCreds.Expired() {
+				if sharedCreds.Expired(primary.Profile) {
 					logger.WithField("Role", primary.PrimaryRoleArn).Debugf("Creds have expired")
 					primaryExpired = true
 					noCredsExpired = false
@@ -318,7 +320,7 @@ func BulkLogin(loginFlags *flags.LoginExecFlags) error {
 
 				// Not expired, set the session role name. Only need this once since it should always be the same
 				if sessionRoleName == "" {
-					creds, err := sharedCreds.Load()
+					creds, err := sharedCreds.Load(primary.Profile)
 					if err != nil {
 						return errors.Wrap(err, "error creating shared creds")
 					}
@@ -351,8 +353,7 @@ func BulkLogin(loginFlags *flags.LoginExecFlags) error {
 					secondary.Profile = fmt.Sprintf("%s/%s", arnParts[4], strings.TrimPrefix(arnParts[5], "role/"))
 				}
 
-				sharedCreds := awsconfig.NewSharedCredentials(secondary.Profile)
-				if sharedCreds.Expired() {
+				if sharedCreds.Expired(secondary.Profile) {
 					logger.WithField("SecondaryRole", secondary.RoleArn).Debugf("Creds have expired")
 
 					// Secondary is expired. Add secondary role to primary
@@ -386,7 +387,7 @@ func BulkLogin(loginFlags *flags.LoginExecFlags) error {
 			// Get the role session name
 			logger.Infof("Using primary role session to assume child roles. No need to login")
 
-			return bulkAssumeAsync(rolesToAssume, account, roleConfig, sessionRoleName, false, true, "")
+			return bulkAssumeAsync(sharedCreds, rolesToAssume, account, roleConfig, sessionRoleName, false, true, "")
 		}
 	}
 
@@ -494,12 +495,14 @@ func BulkLogin(loginFlags *flags.LoginExecFlags) error {
 		logger.Debugf("Got groups: %+v", roleConfig.Roles)
 	}
 
-	return bulkAssumeAsync(roleConfig.Roles, account, roleConfig, roleSessionName, loginFlags.Force, false, samlAssertion)
+	return bulkAssumeAsync(sharedCreds, roleConfig.Roles, account, roleConfig, roleSessionName, loginFlags.Force, false, samlAssertion)
 }
 
 // bulkAssumeAsync assumes all primary and secondary roles given in the roles slice. If useExistingCreds is true, the samlAssertion
 // is NOT needed
-func bulkAssumeAsync(roles []cfg.RoleConfig, account *cfg.IDPAccount, roleConfig *cfg.BulkRoleConfig, roleSessionName string, force, useExistingCreds bool, samlAssertion string) error {
+func bulkAssumeAsync(sharedCreds *awsconfig.Credentials, roles []cfg.RoleConfig,
+	account *cfg.IDPAccount, roleConfig *cfg.BulkRoleConfig, roleSessionName string, force, useExistingCreds bool, samlAssertion string) error {
+
 	logger := logrus.WithFields(logrus.Fields{
 		"Action":           "Bulk Assume",
 		"UseExistingCreds": useExistingCreds,
@@ -534,7 +537,7 @@ func bulkAssumeAsync(roles []cfg.RoleConfig, account *cfg.IDPAccount, roleConfig
 		wg.Add(1)
 
 		// Perform role assumption
-		go input.Assume(roleSessionName, force)
+		go input.Assume(roleSessionName, force, sharedCreds)
 	}
 
 	// Done channel
@@ -555,27 +558,29 @@ func bulkAssumeAsync(roles []cfg.RoleConfig, account *cfg.IDPAccount, roleConfig
 
 			// Handle primary creds, only need to save primary if NOT using existing creds
 			if creds.Input.RoleConfig.Profile != "" && !useExistingCreds {
-				sharedCreds := awsconfig.NewSharedCredentials(creds.Input.RoleConfig.Profile)
-				if err := sharedCreds.Save(creds.PrimaryCredentials); err != nil {
+				if err := sharedCreds.StoreCreds(creds.Input.RoleConfig.Profile, creds.PrimaryCredentials); err != nil {
 					return errors.Wrap(err, "error saving credentials")
 				}
 			}
 
 			// Handle secondary creds
 			for _, childCreds := range creds.Output {
-				sharedCreds := awsconfig.NewSharedCredentials(childCreds.Input.RoleAssumption.Profile)
-				if err := sharedCreds.Save(childCreds.Credentials); err != nil {
-					return errors.Wrap(err, "error saving credentials")
+				if err := sharedCreds.StoreCreds(childCreds.Input.RoleAssumption.Profile, childCreds.Credentials); err != nil {
+					return errors.Wrap(err, "error saving child credentials")
 				}
 			}
 			wg.Done()
 
 		case <-done:
+			if err := sharedCreds.Save(); err != nil {
+				log.Fatalf("Error storing new credentials: %v", err)
+			}
 			logger.Infof("Done!")
 			return nil
 
 		// Timeout
 		case <-time.After(time.Second * time.Duration(account.Timeout)):
+			// TODO: Should i store what i have so far?
 			logger.Errorf("Timed out after %v seconds", account.Timeout)
 			return errors.New("timed out while assuming roles")
 		}
