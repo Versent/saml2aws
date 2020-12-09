@@ -5,23 +5,28 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/mitchellh/go-homedir"
 	"gopkg.in/ini.v1"
 )
 
-// Credentials holds the original ini file to eliminate reading it multiple times throughout the process
-type Credentials struct {
+// CredentialsFile holds the original ini file to eliminate reading it multiple times throughout the process
+type CredentialsFile struct {
 	File *ini.File
 
 	fileLoc string
 }
 
-// LoadCredentials loads the AWS credentials file and keeps it in a config object
+// LoadCredentialsFile loads the AWS credentials file and keeps it in a config object
 // with an optional fileName parameter override
-func LoadCredentials(fileName ...string) (*Credentials, error) {
+func LoadCredentialsFile(fileName ...string) (*CredentialsFile, error) {
 	var file string
 	if len(fileName) > 0 {
 		// Filename was passed in as an arg
-		file = fileName[0]
+		expanded, err := homedir.Expand(fileName[0])
+		if err != nil {
+			return nil, err
+		}
+		file = expanded
 	} else {
 		// otherwise use default
 		f, err := locateConfigFile()
@@ -43,20 +48,20 @@ func LoadCredentials(fileName ...string) (*Credentials, error) {
 		return nil, err
 	}
 
-	return &Credentials{
+	return &CredentialsFile{
 		File:    credsFile,
 		fileLoc: file,
 	}, nil
 }
 
-// Save saves the credentials file to where it was loaded from
-func (creds *Credentials) Save() error {
+// SaveFile saves the credentials file to where it was loaded from
+func (creds *CredentialsFile) SaveFile() error {
 	logger.WithField("filename", creds.fileLoc).Debug("storing file")
 	return creds.File.SaveTo(creds.fileLoc)
 }
 
 // Expired checks to see if a profile is expired or not
-func (creds *Credentials) Expired(profile string) bool {
+func (creds *CredentialsFile) Expired(profile string) bool {
 	cred, err := creds.Load(profile)
 	if err != nil {
 		return true
@@ -66,7 +71,7 @@ func (creds *Credentials) Expired(profile string) bool {
 }
 
 // Load loads a credentials file from the
-func (creds *Credentials) Load(profile string) (*AWSCredentials, error) {
+func (creds *CredentialsFile) Load(profile string) (*AWSCredentials, error) {
 	iniProfile, err := creds.File.GetSection(profile)
 	if err != nil {
 		return nil, ErrCredentialsNotFound
@@ -82,7 +87,7 @@ func (creds *Credentials) Load(profile string) (*AWSCredentials, error) {
 }
 
 // StoreCreds takes a profile and the awsCreds to store. This does NOT save the file, that needs to be called later
-func (creds *Credentials) StoreCreds(profile string, awsCreds *AWSCredentials) error {
+func (creds *CredentialsFile) StoreCreds(profile string, awsCreds *AWSCredentials) error {
 	iniProfile, err := creds.File.NewSection(profile)
 	if err != nil {
 		return err
