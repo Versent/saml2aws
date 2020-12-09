@@ -36,7 +36,7 @@ func LoadCredentialsFile(fileName ...string) (*CredentialsFile, error) {
 		file = f
 	}
 
-	logger.WithField("filename", file).Debug("ensureConfigExists")
+	logger.WithField("filename", file).Debug("ensureCredentialsExists")
 
 	if err := ensureCredentialsExist(file); err != nil {
 		return nil, err
