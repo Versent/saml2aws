@@ -49,6 +49,7 @@ func (ac *Client) authenticateRsa(loginDetails *creds.LoginDetails) (string, err
 
 	token := prompter.Password("Enter passcode")
 
+	passcodeForm.Set("ChallengeQuestionAnswer", token)
 	passcodeForm.Set("Passcode", token)
 	passcodeForm.Del("submit")
 
