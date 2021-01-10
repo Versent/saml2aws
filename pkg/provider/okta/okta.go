@@ -597,21 +597,30 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 		}
 		duoSID = html.UnescapeString(duoSID)
 
-		//prompt for mfa type
-		//only supporting push or passcode for now
+		var duoMfaOptions = []string{}
 		var token string
 
-		var duoMfaOptions = []string{
-			"Duo Push",
-			"Passcode",
+		webauthnOption := doc.Find("option[name=\"webauthn\"]")
+
+		if webauthnOption.Length() > 0 {
+			token, _ = webauthnOption.Attr("value")
+			duoMfaOptions = append(duoMfaOptions, "U2F Key")
+		}		
+
+		if doc.Find("option[value=\"phone1\"]").Length() > 0 {
+			duoMfaOptions = append(duoMfaOptions, "Duo Push")
+		}
+
+		if doc.Find("option[value=\"token\"]").Length() > 0  {
+			duoMfaOptions = append(duoMfaOptions, "Passcode")
 		}
 
 		duoMfaOption := 0
 
 		if loginDetails.DuoMFAOption == "Duo Push" {
-			duoMfaOption = 0
-		} else if loginDetails.DuoMFAOption == "Passcode" {
 			duoMfaOption = 1
+		} else if loginDetails.DuoMFAOption == "Passcode" {
+			duoMfaOption = 2
 		} else {
 			duoMfaOption = prompter.Choose("Select a DUO MFA Option", duoMfaOptions)
 		}
@@ -626,11 +635,17 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 
 		duoForm = url.Values{}
 		duoForm.Add("sid", duoSID)
-		duoForm.Add("device", "phone1")
-		duoForm.Add("factor", duoMfaOptions[duoMfaOption])
 		duoForm.Add("out_of_date", "false")
-		if duoMfaOptions[duoMfaOption] == "Passcode" {
-			duoForm.Add("passcode", token)
+
+		if duoMfaOption > 0  {
+			duoForm.Add("device", "phone1")
+			duoForm.Add("factor", duoMfaOptions[duoMfaOption])
+			if duoMfaOptions[duoMfaOption] == "Passcode" {
+				duoForm.Add("passcode", token)
+			}
+		} else {
+			duoForm.Add("device", "u2f_token")
+			duoForm.Add("factor", "U2F Token")
 		}
 
 		req, err = http.NewRequest("POST", duoSubmitURL, strings.NewReader(duoForm.Encode()))
@@ -693,7 +708,105 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 			duoSID = newSID
 		}
 
-		log.Println(gjson.Get(resp, "response.status").String())
+		// Do the webauthn
+		duoRestStatusCode := gjson.Get(resp, "response.status_code").String()
+		
+		if duoRestStatusCode == "u2f_sent" {
+			appId := gjson.Get(resp, "response.u2f_sign_request.0.appId").String()
+			//appId := "api-23a9854b.duosecurity.com"
+			version := gjson.Get(resp, "response.u2f_sign_request.0.version").String()
+			challengeNonce := gjson.Get(resp, "response.u2f_sign_request.0.challenge").String()
+			keyHandle := gjson.Get(resp, "response.u2f_sign_request.0.keyHandle").String()
+			sessionId := gjson.Get(resp, "response.u2f_sign_request.0.sessionId").String()
+
+			u2fClient, err := NewDUOU2FClient(challengeNonce, appId, version, keyHandle, sessionId, new(U2FDeviceFinder))
+
+			if err != nil {
+				return "", err
+			}
+
+			rd, err := u2fClient.ChallengeU2F()
+			if err != nil {
+				return "", err
+			}
+
+			payload, err := json.Marshal(rd)
+			if err != nil {
+				return "", err
+			}
+
+			duoForm = url.Values{}
+			duoForm.Add("sid", duoSID)
+			duoForm.Add("device", "u2f_token")
+			duoForm.Add("factor", "u2f_finish")
+			duoForm.Add("days_to_block", "None")
+			duoForm.Add("out_of_date", "False")
+			duoForm.Add("days_out_of_date", "0")
+			duoForm.Add("response_data", string(payload))
+
+			duoSubmitURL = fmt.Sprintf("https://%s/frame/prompt", duoHost)
+	
+			req, err = http.NewRequest("POST", duoSubmitURL, strings.NewReader(duoForm.Encode()))
+			if err != nil {
+				return "", errors.Wrap(err, "error building authentication request")
+			}
+	
+			req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	
+			res, err = oc.client.Do(req)
+			if err != nil {
+				return "", errors.Wrap(err, "error retrieving verify response")
+			}
+	
+			body, err = ioutil.ReadAll(res.Body)
+			if err != nil {
+				return "", errors.Wrap(err, "error retrieving body from response")
+			}
+	
+			resp = string(body)
+	
+			duoTxStat := gjson.Get(resp, "stat").String()
+			duoTxID := gjson.Get(resp, "response.txid").String()
+			if duoTxStat != "OK" {
+				return "", errors.New("error authenticating mfa device")
+			}
+		
+			// get duo cookie
+			duoSubmitURL = fmt.Sprintf("https://%s/frame/status", duoHost)
+	
+			duoForm = url.Values{}
+			duoForm.Add("sid", duoSID)
+			duoForm.Add("txid", duoTxID)
+	
+			req, err = http.NewRequest("POST", duoSubmitURL, strings.NewReader(duoForm.Encode()))
+			if err != nil {
+				return "", errors.Wrap(err, "error building authentication request")
+			}
+	
+			req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	
+			res, err = oc.client.Do(req)
+			if err != nil {
+				return "", errors.Wrap(err, "error retrieving verify response")
+			}
+	
+			defer res.Body.Close()
+	
+			body, err = ioutil.ReadAll(res.Body)
+			if err != nil {
+				return "", errors.Wrap(err, "error retrieving body from response")
+			}
+		
+			resp = string(body)
+	
+			duoTxResult = gjson.Get(resp, "response.result").String()
+			duoResultURL = gjson.Get(resp, "response.result_url").String()
+			newSID = gjson.Get(resp, "response.sid").String()
+			if newSID != "" {
+				duoSID = newSID
+			}
+	
+		}
 
 		if duoTxResult != "SUCCESS" {
 			//poll as this is likely a push request
@@ -760,7 +873,7 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 			return "", errors.Wrap(err, "duoResultSubmit: error retrieving body from response")
 		}
 
-		resp := string(body)
+		resp = string(body)
 
 		duoTxStat = gjson.Get(resp, "stat").String()
 		if duoTxStat != "OK" {

@@ -8,17 +8,8 @@ import (
 	"github.com/marshallbrekka/go-u2fhost"
 )
 
-const (
-	MaxOpenRetries = 10
-	RetryDelayMS   = 200 * time.Millisecond
-)
-
-var (
-	errNoDeviceFound = fmt.Errorf("no U2F devices found. device might not be plugged in")
-)
-
-// FidoClient represents a challenge and the device used to respond
-type FidoClient struct {
+// DUOU2fClient represents a challenge and the device used to respond
+type DUOU2FClient struct {
 	ChallengeNonce string
 	AppID          string
 	Version        string
@@ -27,26 +18,16 @@ type FidoClient struct {
 	StateToken     string
 }
 
-// SignedAssertion is passed back to Okta as response
-type SignedAssertion struct {
-	StateToken        string `json:"stateToken"`
-	ClientData        string `json:"clientData"`
-	SignatureData     string `json:"signatureData"`
-	AuthenticatorData string `json:"authenticatorData"`
-}
-
-// DeviceFinder is used to mock out finding devices
-type DeviceFinder interface {
-	findDevice() (u2fhost.Device, error)
-}
-
-// U2FDevice is used to support mocking this device with mockery https://github.com/vektra/mockery/issues/210#issuecomment-485026348
-type U2FDevice interface {
-	u2fhost.Device
+// ResponseData is passed back to DUO as a response
+type ResponseData struct {
+	SessionId     string `json:"sessionId"`
+	ClientData    string `json:"clientData"`
+	SignatureData string `json:"signatureData"`
+	KeyHandle     string `json:"keyHandle"`
 }
 
 // NewFidoClient returns a new initialized FIDO1-based WebAuthnClient, representing a single device
-func NewFidoClient(challengeNonce, appID, version, keyHandle, stateToken string, deviceFinder DeviceFinder) (FidoClient, error) {
+func NewDUOU2FClient(challengeNonce, appID, version, keyHandle, stateToken string, deviceFinder DeviceFinder) (*DUOU2FClient, error) {
 	var device u2fhost.Device
 	var err error
 
@@ -55,7 +36,7 @@ func NewFidoClient(challengeNonce, appID, version, keyHandle, stateToken string,
 		device, err = deviceFinder.findDevice()
 		if err != nil {
 			if err == errNoDeviceFound {
-				return FidoClient{}, err
+				return nil, err
 			}
 
 			retryCount++
@@ -63,7 +44,7 @@ func NewFidoClient(challengeNonce, appID, version, keyHandle, stateToken string,
 			continue
 		}
 
-		return FidoClient{
+		return &DUOU2FClient{
 			Device:         device,
 			ChallengeNonce: challengeNonce,
 			AppID:          appID,
@@ -73,18 +54,17 @@ func NewFidoClient(challengeNonce, appID, version, keyHandle, stateToken string,
 		}, nil
 	}
 
-	return FidoClient{}, fmt.Errorf("failed to create client: %s. exceeded max retries of %d", err, MaxOpenRetries)
+	return nil, fmt.Errorf("failed to create client: %s. exceeded max retries of %d", err, MaxOpenRetries)
 }
 
 // ChallengeU2F takes a FidoClient and returns a signed assertion to send to Okta
-func (d *FidoClient) ChallengeU2F() (*SignedAssertion, error) {
+func (d *DUOU2FClient) ChallengeU2F() (*ResponseData, error) {
 	if d.Device == nil {
 		return nil, errors.New("No Device Found")
 	}
 	request := &u2fhost.AuthenticateRequest{
 		Challenge: d.ChallengeNonce,
-		//Facet:     "https://" + d.AppID,
-		Facet: d.AppID,
+		Facet:     d.AppID,
 		AppId:     d.AppID,
 		KeyHandle: d.KeyHandle,
 		WebAuthn:  false,
@@ -93,7 +73,7 @@ func (d *FidoClient) ChallengeU2F() (*SignedAssertion, error) {
 	prompted := false
 	timeout := time.After(time.Second * 25)
 	interval := time.NewTicker(time.Millisecond * 250)
-	var responsePayload *SignedAssertion
+	var responsePayload *ResponseData
 
 	defer func() {
 		d.Device.Close()
@@ -106,11 +86,11 @@ func (d *FidoClient) ChallengeU2F() (*SignedAssertion, error) {
 		case <-interval.C:
 			response, err := d.Device.Authenticate(request)
 			if err == nil {
-				responsePayload = &SignedAssertion{
-					StateToken:        d.StateToken,
+				responsePayload = &ResponseData{
+					SessionId:         d.StateToken,
 					ClientData:        response.ClientData,
 					SignatureData:     response.SignatureData,
-					AuthenticatorData: response.AuthenticatorData,
+					KeyHandle:         d.KeyHandle,
 				}
 				fmt.Printf("  ==> Touch accepted. Proceeding with authentication\n")
 				return responsePayload, nil
@@ -128,29 +108,4 @@ func (d *FidoClient) ChallengeU2F() (*SignedAssertion, error) {
 		}
 	}
 
-}
-
-// U2FDeviceFinder returns a U2F device
-type U2FDeviceFinder struct{}
-
-func (*U2FDeviceFinder) findDevice() (u2fhost.Device, error) {
-	var err error
-
-	allDevices := u2fhost.Devices()
-	if len(allDevices) == 0 {
-		return nil, errNoDeviceFound
-	}
-
-	for i, device := range allDevices {
-		err = device.Open()
-		if err != nil {
-			device.Close()
-
-			continue
-		}
-
-		return allDevices[i], nil
-	}
-
-	return nil, fmt.Errorf("failed to open fido U2F device: %s", err)
 }
