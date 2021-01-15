@@ -569,19 +569,34 @@ region                  = us-east-1
 ```
 ## Building
 
-To build this software on osx clone to the repo to `$GOPATH/src/github.com/versent/saml2aws` and ensure you have `$GOPATH/bin` in your `$PATH`.
-
-```
-make mod
-```
-
-Install the binary to `$GOPATH/bin`.
+To build this software, clone this repository and change dir to the root of it.
+Then either execute
 
 ```
 make install
 ```
 
-Then to test the software just run.
+if you have configured $GOPATH (which will output the binary to the `bin` directory under $GOPATH) or one of
+
+```
+make [windows|darwin|linux]
+```
+
+which will compile the target OS binary to the "build" directory under this root.
+
+Alternatively,
+
+```
+make compile
+```
+
+will compile for all three, windows, darwin and linux.
+
+NOTE: `make darwin` and `make compile` will only build the macOS binary on Darwin.
+
+## Testing and coverage
+
+To test the software and print coverage just run.
 
 ```
 make test
