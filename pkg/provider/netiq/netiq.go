@@ -19,6 +19,8 @@ import (
 var logger = logrus.WithField("provider", "NetIQ")
 
 type Client struct {
+	provider.ValidateBase
+
 	client *provider.HTTPClient
 	MFA    string
 }

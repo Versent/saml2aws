@@ -19,6 +19,8 @@ import (
 
 // Client wrapper around KeyCloak.
 type Client struct {
+	provider.ValidateBase
+
 	client *provider.HTTPClient
 }
 

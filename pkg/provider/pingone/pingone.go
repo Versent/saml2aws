@@ -24,6 +24,8 @@ var logger = logrus.WithField("provider", "pingone")
 
 // Client wrapper around PingOne + PingId enabling authentication and retrieval of assertions
 type Client struct {
+	provider.ValidateBase
+
 	client     *provider.HTTPClient
 	idpAccount *cfg.IDPAccount
 }

@@ -23,6 +23,8 @@ import (
 
 // Client wrapper around AzureAD enabling authentication and retrieval of assertions
 type Client struct {
+	provider.ValidateBase
+
 	client     *provider.HTTPClient
 	idpAccount *cfg.IDPAccount
 }

@@ -2,6 +2,7 @@ package adfs2
 
 import (
 	"crypto/tls"
+	"github.com/versent/saml2aws/v2/pkg/provider"
 	"log"
 	"net/http"
 	"net/http/cookiejar"
@@ -19,6 +20,8 @@ var logger = logrus.WithField("provider", "adfs2")
 
 // Client client for adfs2
 type Client struct {
+	provider.ValidateBase
+
 	idpAccount *cfg.IDPAccount
 	client     *http.Client
 }
