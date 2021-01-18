@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/tls"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -60,6 +61,8 @@ func main() {
 
 	// Settings not related to commands
 	verbose := app.Flag("verbose", "Enable verbose logging").Bool()
+	quiet := app.Flag("quiet", "silences logs").Bool()
+
 	provider := app.Flag("provider", "This flag is obsolete. See: https://github.com/versent/saml2aws/v2#configuring-idp-accounts").Short('i').Enum("Akamai", "AzureAD", "ADFS", "ADFS2", "Ping", "JumpCloud", "Okta", "OneLogin", "PSU", "KeyCloak")
 
 	// Common (to all commands) settings
@@ -147,6 +150,11 @@ func main() {
 	if *verbose {
 		logrus.SetLevel(logrus.DebugLevel)
 		errtpl = "%+v\n"
+	}
+
+	if *quiet {
+		log.SetOutput(ioutil.Discard)
+		logrus.SetOutput(ioutil.Discard)
 	}
 
 	// Set the default transport settings so all http clients will pick them up.

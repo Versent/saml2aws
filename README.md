@@ -121,6 +121,7 @@ A command line tool to help with SAML access to the AWS token service.
 Flags:
       --help                   Show context-sensitive help (also try --help-long and --help-man).
       --version                Show application version.
+      --quiet                  silences logs
       --verbose                Enable verbose logging
   -i, --provider=PROVIDER      This flag is obsolete. See: https://github.com/Versent/saml2aws#configuring-idp-accounts
   -a, --idp-account="default"  The name of the configured IDP account. (env: SAML2AWS_IDP_ACCOUNT)
