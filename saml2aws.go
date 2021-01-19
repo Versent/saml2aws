@@ -2,8 +2,9 @@ package saml2aws
 
 import (
 	"fmt"
-	"github.com/versent/saml2aws/v2/pkg/provider/netiq"
 	"sort"
+
+	"github.com/versent/saml2aws/v2/pkg/provider/netiq"
 
 	"github.com/versent/saml2aws/v2/pkg/cfg"
 	"github.com/versent/saml2aws/v2/pkg/creds"

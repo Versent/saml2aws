@@ -168,6 +168,7 @@ Commands:
         --client-secret=CLIENT-SECRET
                                OneLogin client secret, used to generate API access token. (env: ONELOGIN_CLIENT_SECRET)
         --force                Refresh credentials even if not expired.
+        --credential-process     Enables AWS Credential Process support by outputting credentials to STDOUT in a JSON message.
 
   exec [<flags>] [<command>...]
     Exec the supplied command with env vars from STS token.
@@ -598,6 +599,21 @@ The second emits the content of requests and responses, this includes authentica
 ```
 DUMP_CONTENT=true saml2aws login --verbose
 ```
+# Using saml2aws as credential process
+
+[Credential Process](https://github.com/awslabs/awsprocesscreds) is a convenient way of interfacing credential providers with the AWS Cli.
+
+You can use `saml2aws` as a credential provider by simply configuring it and then adding a profile to the AWS configuration. `saml2aws` has a flag `--credential-process` generating an output with the right JSON format, as well as a flag `--quiet` that will block the logging from being displayed.
+
+An example of the aws configuration (`~/.aws/config`):
+
+```
+[profile mybucket]
+region = us-west-1
+credential_process = saml2aws login --skip-prompt --quiet --credential-process --role <ROLE>
+```
+
+When using the aws cli with the `mybucket` profile, the authentication process will be run and the aws will then be executed based on the returned credentials.
 
 # License
 
