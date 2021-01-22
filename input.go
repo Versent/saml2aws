@@ -3,6 +3,7 @@ package saml2aws
 import (
 	"fmt"
 	"log"
+	"net/url"
 	"sort"
 
 	"github.com/pkg/errors"
@@ -10,6 +11,11 @@ import (
 	"github.com/versent/saml2aws/v2/pkg/creds"
 	"github.com/versent/saml2aws/v2/pkg/prompter"
 )
+
+type URLParams struct {
+	Name  string
+	Value string
+}
 
 // PromptForConfigurationDetails prompt the user to present their hostname, username and mfa
 func PromptForConfigurationDetails(idpAccount *cfg.IDPAccount) error {
@@ -53,6 +59,16 @@ func PromptForConfigurationDetails(idpAccount *cfg.IDPAccount) error {
 	case "AzureAD":
 		idpAccount.AppID = prompter.String("App ID", idpAccount.AppID)
 		log.Println("")
+	case "ADFS":
+		queryParameters := []URLParams{}
+		name := prompter.String("Additional query parameter name (empty for none)", "")
+		for name != "" {
+			value := prompter.String("Query parameter value", "")
+			parameter := URLParams{Name: name, Value: value}
+			queryParameters = append(queryParameters, parameter)
+			name = prompter.String("Additional query parameter name (empty for none)", "")
+		}
+		idpAccount.AdditionalQueryParams = encodeQueryParameters(queryParameters)
 	}
 
 	return nil
@@ -109,4 +125,16 @@ func PromptForAWSRoleSelection(accounts []*AWSAccount) (*AWSRole, error) {
 	}
 
 	return roles[selectedRole], nil
+}
+
+func encodeQueryParameters(queryParams []URLParams) string {
+
+	query := ""
+	for _, param := range queryParams {
+		encodedKey := url.QueryEscape(param.Name)
+		encodedValue := url.QueryEscape(param.Value)
+		parameterString := fmt.Sprintf("%s=%s", encodedKey, encodedValue)
+		query = fmt.Sprintf("%s&%s", query, parameterString)
+	}
+	return query
 }
