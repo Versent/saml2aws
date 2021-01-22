@@ -61,7 +61,7 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 
 	awsURN := url.QueryEscape(ac.idpAccount.AmazonWebservicesURN)
 
-	adfsURL := fmt.Sprintf("%s/adfs/ls/IdpInitiatedSignOn.aspx?loginToRp=%s", loginDetails.URL, awsURN)
+	adfsURL := fmt.Sprintf("%s/adfs/ls/IdpInitiatedSignOn.aspx?loginToRp=%s%s", loginDetails.URL, awsURN, loginDetails.AdditionalURLParams)
 
 	mfaToken := loginDetails.MFAToken
 
@@ -87,7 +87,13 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 	if authSubmitURL == "" {
 		return samlAssertion, fmt.Errorf("unable to locate IDP authentication form submit URL")
 	}
+	// Sometimes the auth url is relative
+	// in this case, prepend the url scheme and host, of the URL we requested
+	if strings.HasPrefix(authSubmitURL, "/") {
+		authSubmitURL = loginDetails.URL + authSubmitURL
+	}
 
+	log.Println("making auth call to " + authSubmitURL)
 	doc, err = ac.submit(authSubmitURL, authForm)
 	if err != nil {
 		return samlAssertion, errors.Wrap(err, "failed to submit adfs auth form")
