@@ -93,7 +93,6 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		authSubmitURL = loginDetails.URL + authSubmitURL
 	}
 
-	log.Println("making auth call to " + authSubmitURL)
 	doc, err = ac.submit(authSubmitURL, authForm)
 	if err != nil {
 		return samlAssertion, errors.Wrap(err, "failed to submit adfs auth form")
