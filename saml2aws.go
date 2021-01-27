@@ -85,6 +85,7 @@ func invalidMFA(provider string, mfa string) bool {
 // SAMLClient client interface
 type SAMLClient interface {
 	Authenticate(loginDetails *creds.LoginDetails) (string, error)
+	Validate(loginDetails *creds.LoginDetails) error
 }
 
 // NewSAMLClient create a new SAML client

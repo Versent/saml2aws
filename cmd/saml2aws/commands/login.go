@@ -62,16 +62,16 @@ func Login(loginFlags *flags.LoginExecFlags) error {
 		os.Exit(1)
 	}
 
-	err = loginDetails.Validate()
-	if err != nil {
-		return errors.Wrap(err, "error validating login details")
-	}
-
 	logger.WithField("idpAccount", account).Debug("building provider")
 
 	provider, err := saml2aws.NewSAMLClient(account)
 	if err != nil {
 		return errors.Wrap(err, "error building IdP client")
+	}
+
+	err = provider.Validate(loginDetails)
+	if err != nil {
+		return errors.Wrap(err, "error validating login details")
 	}
 
 	log.Printf("Authenticating as %s ...", loginDetails.Username)
@@ -184,9 +184,11 @@ func resolveLoginDetails(account *cfg.IDPAccount, loginFlags *flags.LoginExecFla
 		return loginDetails, nil
 	}
 
-	err = saml2aws.PromptForLoginDetails(loginDetails, account.Provider)
-	if err != nil {
-		return nil, errors.Wrap(err, "Error occurred accepting input")
+	if account.Provider != "Shell" {
+		err = saml2aws.PromptForLoginDetails(loginDetails, account.Provider)
+		if err != nil {
+			return nil, errors.Wrap(err, "Error occurred accepting input")
+		}
 	}
 
 	return loginDetails, nil

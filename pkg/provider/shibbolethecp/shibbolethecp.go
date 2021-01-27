@@ -28,6 +28,8 @@ const SHIB_DUO_PASSCODE = "X-Shibboleth-Duo-Passcode"
 
 // Client wrapper around shibbolethecp enabling authentication and retrieval of assertions
 type Client struct {
+	provider.ValidateBase
+
 	client     *provider.HTTPClient
 	idpAccount *cfg.IDPAccount
 }

@@ -1,7 +1,5 @@
 package creds
 
-import "errors"
-
 // LoginDetails used to authenticate
 type LoginDetails struct {
 	ClientID     string // used by OneLogin
@@ -12,18 +10,4 @@ type LoginDetails struct {
 	DuoMFAOption string
 	URL          string
 	StateToken   string // used by Okta
-}
-
-// Validate validate the login details
-func (ld *LoginDetails) Validate() error {
-	if ld.URL == "" {
-		return errors.New("Empty URL")
-	}
-	if ld.Username == "" {
-		return errors.New("Empty username")
-	}
-	if ld.Password == "" {
-		return errors.New("Empty password")
-	}
-	return nil
 }
