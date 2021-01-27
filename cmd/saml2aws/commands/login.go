@@ -2,6 +2,8 @@ package commands
 
 import (
 	b64 "encoding/base64"
+	"encoding/json"
+	"fmt"
 	"log"
 	"os"
 
@@ -44,6 +46,13 @@ func Login(loginFlags *flags.LoginExecFlags) error {
 
 	if !sharedCreds.Expired() && !loginFlags.Force {
 		log.Println("credentials are not expired skipping")
+		previous_creds, err := sharedCreds.Load()
+		if err != nil {
+			log.Println("Unable to load cached credentials")
+		}
+		if loginFlags.CredentialProcess {
+			PrintCredentialProcess(previous_creds)
+		}
 		return nil
 	}
 
@@ -99,6 +108,10 @@ func Login(loginFlags *flags.LoginExecFlags) error {
 		return errors.Wrap(err, "error logging into aws role using saml assertion")
 	}
 
+	// print credential process if needed
+	if loginFlags.CredentialProcess {
+		PrintCredentialProcess(awsCreds)
+	}
 	return saveCredentials(awsCreds, sharedCreds)
 }
 
@@ -304,4 +317,44 @@ func saveCredentials(awsCreds *awsconfig.AWSCredentials, sharedCreds *awsconfig.
 	}
 
 	return nil
+}
+
+// CredentialsToCredentialProcess
+// Returns a Json output that is compatible with the AWS credential_process
+// https://github.com/awslabs/awsprocesscreds
+func CredentialsToCredentialProcess(awsCreds *awsconfig.AWSCredentials) (string, error) {
+
+	type AWSCredentialProcess struct {
+		Version         int
+		AccessKeyId     string
+		SecretAccessKey string
+		SessionToken    string
+		Expiration      string
+	}
+
+	cred_process := AWSCredentialProcess{
+		Version:         1,
+		AccessKeyId:     awsCreds.AWSAccessKey,
+		SecretAccessKey: awsCreds.AWSSecretKey,
+		SessionToken:    awsCreds.AWSSessionToken,
+		Expiration:      awsCreds.Expires.Format("2006-01-02T15:04:05Z07:00"),
+	}
+
+	p, err := json.Marshal(cred_process)
+	if err != nil {
+		return "", errors.Wrap(err, "Error while Marshalling the Credential Process")
+	}
+	return string(p), nil
+
+}
+
+// PrintCredentialProcess
+// Prints a Json output that is compatible with the AWS credential_process
+// https://github.com/awslabs/awsprocesscreds
+func PrintCredentialProcess(awsCreds *awsconfig.AWSCredentials) error {
+	json_output, err := CredentialsToCredentialProcess(awsCreds)
+	if err == nil {
+		fmt.Println(json_output)
+	}
+	return err
 }
