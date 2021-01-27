@@ -25,6 +25,8 @@ const (
 
 // Client is a wrapper representing a JumpCloud SAML client
 type Client struct {
+	provider.ValidateBase
+
 	client *provider.HTTPClient
 }
 

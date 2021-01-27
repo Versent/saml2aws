@@ -25,6 +25,8 @@ var logger = logrus.WithField("provider", "googleapps")
 
 // Client wrapper around Google Apps.
 type Client struct {
+	provider.ValidateBase
+
 	client *provider.HTTPClient
 }
 

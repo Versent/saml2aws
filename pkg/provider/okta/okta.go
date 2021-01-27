@@ -54,6 +54,8 @@ var (
 
 // Client is a wrapper representing a Okta SAML client
 type Client struct {
+	provider.ValidateBase
+
 	client *provider.HTTPClient
 	mfa    string
 }
