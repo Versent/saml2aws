@@ -299,7 +299,9 @@ func saveCredentials(awsCreds *awsconfig.AWSCredentials, sharedCreds *awsconfig.
 	log.Println("")
 	log.Println("Your new access key pair has been stored in the AWS configuration")
 	log.Printf("Note that it will expire at %v", awsCreds.Expires)
-	log.Println("To use this credential, call the AWS CLI with the --profile option (e.g. aws --profile", sharedCreds.Profile, "ec2 describe-instances).")
+	if sharedCreds.Profile != "default" {
+		log.Println("To use this credential, call the AWS CLI with the --profile option (e.g. aws --profile", sharedCreds.Profile, "ec2 describe-instances).")
+	}
 
 	return nil
 }
