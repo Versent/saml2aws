@@ -29,16 +29,16 @@ func ListRoles(loginFlags *flags.LoginExecFlags) error {
 		os.Exit(1)
 	}
 
-	err = loginDetails.Validate()
-	if err != nil {
-		return errors.Wrap(err, "error validating login details")
-	}
-
 	logger.WithField("idpAccount", account).Debug("building provider")
 
 	provider, err := saml2aws.NewSAMLClient(account)
 	if err != nil {
 		return errors.Wrap(err, "error building IdP client")
+	}
+
+	err = provider.Validate(loginDetails)
+	if err != nil {
+		return errors.Wrap(err, "error validating login details")
 	}
 
 	samlAssertion, err := provider.Authenticate(loginDetails)

@@ -49,6 +49,7 @@ func (ac *Client) authenticateRsa(loginDetails *creds.LoginDetails) (string, err
 
 	token := prompter.Password("Enter passcode")
 
+	passcodeForm.Set("ChallengeQuestionAnswer", token)
 	passcodeForm.Set("Passcode", token)
 	passcodeForm.Del("submit")
 
@@ -65,6 +66,7 @@ func (ac *Client) authenticateRsa(loginDetails *creds.LoginDetails) (string, err
 	if rsaForm.Get("SAMLResponse") == "" {
 		nextCode := prompter.Password("Enter nextCode")
 
+		rsaForm.Set("ChallengeQuestionAnswer", token)
 		rsaForm.Set("NextCode", nextCode)
 		rsaForm.Del("submit")
 

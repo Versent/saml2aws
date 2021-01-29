@@ -24,6 +24,8 @@ var logger = logrus.WithField("provider", "pingfed")
 
 // Client wrapper around PingFed + PingId enabling authentication and retrieval of assertions
 type Client struct {
+	provider.ValidateBase
+
 	client     *provider.HTTPClient
 	idpAccount *cfg.IDPAccount
 }

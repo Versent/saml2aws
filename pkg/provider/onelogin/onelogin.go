@@ -49,6 +49,8 @@ var (
 
 // Client is a wrapper representing a OneLogin SAML client.
 type Client struct {
+	provider.ValidateBase
+
 	// AppID represents the OneLogin connector id.
 	AppID string
 	// Client is the HTTP client for accessing the IDP provider's APIs.
