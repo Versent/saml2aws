@@ -42,9 +42,10 @@ type CredentialsProvider struct {
 }
 
 // NewSharedCredentials helper to create the credentials provider
-func NewSharedCredentials(profile string) *CredentialsProvider {
+func NewSharedCredentials(profile string, filename string) *CredentialsProvider {
 	return &CredentialsProvider{
-		Profile: profile,
+		Filename: filename,
+		Profile:  profile,
 	}
 }
 

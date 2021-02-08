@@ -46,6 +46,7 @@ type IDPAccount struct {
 	Region               string `ini:"region"`
 	HttpAttemptsCount    string `ini:"http_attempts_count"`
 	HttpRetryDelay       string `ini:"http_retry_delay"`
+	CredentialsFile      string `ini:"credentials_file"`
 }
 
 func (ia IDPAccount) String() string {
