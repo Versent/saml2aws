@@ -28,6 +28,7 @@ type CommonFlags struct {
 	DisableKeychain      bool
 	Region               string
 	CredentialsFile      string
+	SAMLCache            bool
 }
 
 // LoginExecFlags flags for the Login / Exec commands
@@ -97,5 +98,8 @@ func ApplyFlagOverrides(commonFlags *CommonFlags, account *cfg.IDPAccount) {
 	}
 	if commonFlags.CredentialsFile != "" {
 		account.CredentialsFile = commonFlags.CredentialsFile
+	}
+	if commonFlags.SAMLCache {
+		account.SAMLCache = commonFlags.SAMLCache
 	}
 }

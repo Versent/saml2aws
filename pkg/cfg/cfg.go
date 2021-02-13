@@ -47,6 +47,7 @@ type IDPAccount struct {
 	HttpAttemptsCount    string `ini:"http_attempts_count"`
 	HttpRetryDelay       string `ini:"http_retry_delay"`
 	CredentialsFile      string `ini:"credentials_file"`
+	SAMLCache            bool   `ini:"saml_cache"`
 }
 
 func (ia IDPAccount) String() string {

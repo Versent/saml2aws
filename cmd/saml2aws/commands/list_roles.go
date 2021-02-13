@@ -11,6 +11,7 @@ import (
 	"github.com/versent/saml2aws/v2"
 	"github.com/versent/saml2aws/v2/helper/credentials"
 	"github.com/versent/saml2aws/v2/pkg/flags"
+	"github.com/versent/saml2aws/v2/pkg/samlcache"
 )
 
 // ListRoles will list available role ARNs
@@ -41,10 +42,26 @@ func ListRoles(loginFlags *flags.LoginExecFlags) error {
 		return errors.Wrap(err, "error validating login details")
 	}
 
-	samlAssertion, err := provider.Authenticate(loginDetails)
-	if err != nil {
-		return errors.Wrap(err, "error authenticating to IdP")
+	var samlAssertion string
+	if account.SAMLCache && samlcache.IsValidCache() {
+		samlAssertion, err = samlcache.ReadCache()
+		if err != nil {
+			logger.Debug("Could not read cache:", err)
+		}
+	}
 
+	if samlAssertion == "" {
+		// samlAssertion was not cached
+		samlAssertion, err = provider.Authenticate(loginDetails)
+		if err != nil {
+			return errors.Wrap(err, "error authenticating to IdP")
+		}
+		if account.SAMLCache {
+			err = samlcache.WriteCache(samlAssertion)
+			if err != nil {
+				logger.Error("Could not write samlAssertion:", err)
+			}
+		}
 	}
 
 	if samlAssertion == "" {

@@ -92,6 +92,7 @@ func main() {
 	cmdConfigure.Flag("profile", "The AWS profile to save the temporary credentials. (env: SAML2AWS_PROFILE)").Envar("SAML2AWS_PROFILE").Short('p').StringVar(&commonFlags.Profile)
 	cmdConfigure.Flag("resource-id", "F5APM SAML resource ID of your company account. (env: SAML2AWS_F5APM_RESOURCE_ID)").Envar("SAML2AWS_F5APM_RESOURCE_ID").StringVar(&commonFlags.ResourceID)
 	cmdConfigure.Flag("credentials-file", "The file that will cache the credentials retrieved from AWS. When not specified, will use the default AWS credentials file location. (env: SAML2AWS_CREDENTIALS_FILE)").Envar("SAML2AWS_CREDENTIALS_FILE").StringVar(&commonFlags.CredentialsFile)
+	cmdConfigure.Flag("cache-saml", "Caches the SAML response").Envar("SAML2AWS_CACHE_SAML").BoolVar(&commonFlags.SAMLCache)
 	configFlags := commonFlags
 
 	// `login` command and settings
@@ -105,6 +106,7 @@ func main() {
 	cmdLogin.Flag("force", "Refresh credentials even if not expired.").BoolVar(&loginFlags.Force)
 	cmdLogin.Flag("credential-process", "Enables AWS Credential Process support by outputting credentials to STDOUT in a JSON message.").BoolVar(&loginFlags.CredentialProcess)
 	cmdLogin.Flag("credentials-file", "The file that will cache the credentials retrieved from AWS. When not specified, will use the default AWS credentials file location. (env: SAML2AWS_CREDENTIALS_FILE)").Envar("SAML2AWS_CREDENTIALS_FILE").StringVar(&commonFlags.CredentialsFile)
+	cmdLogin.Flag("cache-saml", "Caches the SAML response").Envar("SAML2AWS_CACHE_SAML").BoolVar(&commonFlags.SAMLCache)
 
 	// `exec` command and settings
 	cmdExec := app.Command("exec", "Exec the supplied command with env vars from STS token.")
@@ -128,6 +130,7 @@ func main() {
 
 	// `list` command and settings
 	cmdListRoles := app.Command("list-roles", "List available role ARNs.")
+	cmdListRoles.Flag("cache-saml", "Caches the SAML response").Envar("SAML2AWS_CACHE_SAML").BoolVar(&commonFlags.SAMLCache)
 	listRolesFlags := new(flags.LoginExecFlags)
 	listRolesFlags.CommonFlags = commonFlags
 
