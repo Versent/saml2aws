@@ -52,10 +52,11 @@ func NewFormFromDocument(doc *goquery.Document, formFilter string) (*Form, error
 	}
 
 	attrValue, ok := formSelection.Attr("action")
-	if !ok {
-		return nil, fmt.Errorf("could not extract form action")
+	if ok {
+		form.URL = attrValue
+	} else {
+		form.URL = doc.Url.String()
 	}
-	form.URL = attrValue
 
 	attrValue, ok = formSelection.Attr("method")
 	if ok {
