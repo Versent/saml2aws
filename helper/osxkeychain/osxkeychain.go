@@ -13,10 +13,6 @@ import (
 
 var logger = logrus.WithField("helper", "osxkeychain")
 
-// errCredentialsNotFound is the specific error message returned by OS X
-// when the credentials are not in the keychain.
-const errCredentialsNotFound = "The specified item could not be found in the keychain."
-
 // Osxkeychain handles secrets using the OS X Keychain as store.
 type Osxkeychain struct{}
 
@@ -107,13 +103,13 @@ func splitServer3(serverURL string, item keychain.Item) (err error) {
 	}
 
 	hostAndPort := strings.Split(u.Host, ":")
-	item.SetServer(hostAndPort[0])
+	SetServer(item, hostAndPort[0])
 	if len(hostAndPort) == 2 {
-		item.SetPort(hostAndPort[1])
+		SetPort(item, hostAndPort[1])
 	}
 
-	item.SetProtocol(u.Scheme)
-	item.SetPath(u.Path)
+	SetProtocol(item, u.Scheme)
+	SetPath(item, u.Path)
 
 	return
 }

@@ -284,7 +284,10 @@ func verifyMFA(oc *Client, oauthToken, appID, resp string) (string, error) {
 	case IdentifierSmsMfa, IdentifierTotpMfa, IdentifierYubiKey:
 		verifyCode := prompter.StringRequired("Enter verification code")
 		var verifyBody bytes.Buffer
-		json.NewEncoder(&verifyBody).Encode(VerifyRequest{AppID: appID, DeviceID: mfaDeviceID, StateToken: stateToken, OTPToken: verifyCode})
+		err := json.NewEncoder(&verifyBody).Encode(VerifyRequest{AppID: appID, DeviceID: mfaDeviceID, StateToken: stateToken, OTPToken: verifyCode})
+		if err != nil {
+			return "", errors.Wrap(err, "error encoding body")
+		}
 		req, err := http.NewRequest("POST", callbackURL, &verifyBody)
 		if err != nil {
 			return "", errors.Wrap(err, "error building token post request")

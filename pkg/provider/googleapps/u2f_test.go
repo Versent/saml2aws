@@ -9,9 +9,8 @@ import (
 )
 
 type fidoClientTests struct {
-	title  string
-	client U2FClient
-	err    error
+	title string
+	err   error
 }
 
 type MockDeviceFinder struct {

@@ -25,6 +25,7 @@ package osxkeychain
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	"github.com/versent/saml2aws/v2/helper/credentials"
 )
 
@@ -57,8 +58,12 @@ func TestOSXKeychainHelper(t *testing.T) {
 		t.Fatalf("expected %s, got %s\n", "foobarbaz", secret)
 	}
 
-	helper.Add(creds1)
-	defer helper.Delete(creds1.ServerURL)
+	err = helper.Add(creds1)
+	require.Nil(t, err)
+
+	defer func() {
+		_ = helper.Delete(creds1.ServerURL)
+	}()
 
 	if err := helper.Delete(creds.ServerURL); err != nil {
 		t.Fatal(err)
