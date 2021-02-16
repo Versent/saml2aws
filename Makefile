@@ -19,26 +19,13 @@ $(BIN_DIR)/golangci-lint-${GOLANGCI_VERSION}:
 	@curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | BINARY=golangci-lint bash -s -- v${GOLANGCI_VERSION}
 	@mv $(BIN_DIR)/golangci-lint $@
 
-prepare:
-	GOBIN=$(BIN_DIR) go install github.com/buildkite/github-release
-	GOBIN=$(BIN_DIR) go install github.com/mitchellh/gox
-	GOBIN=$(BIN_DIR) go install github.com/axw/gocov/gocov
-	GOBIN=$(BIN_DIR) go install golang.org/x/tools/cmd/cover
+$(BIN_DIR)/goreleaser:
+	@go get -u github.com/goreleaser/goreleaser
+	@env GOBIN=$(BIN_DIR) GO111MODULE=on go install github.com/goreleaser/goreleaser
 
 mod:
 	@go mod download
 	@go mod tidy
-
-compile: mod
-	@rm -rf build/
-	@$(BIN_DIR)/gox -ldflags "-X main.Version=$(VERSION)" \
-	-osarch="darwin/amd64" \
-	-osarch="linux/i386" \
-	-osarch="linux/amd64" \
-	-osarch="windows/amd64" \
-	-osarch="windows/i386" \
-	-output "build/{{.Dir}}_$(VERSION)_{{.OS}}_{{.Arch}}/$(NAME)" \
-	${SOURCE_FILES}
 
 lint: $(BIN_DIR)/golangci-lint
 	@echo "--- lint all the things"
@@ -55,32 +42,11 @@ fmt: lint-fix
 install:
 	go install ./cmd/saml2aws
 
-dist:
-	$(eval FILES := $(shell ls build))
-	@rm -rf dist && mkdir dist
-	@for f in $(FILES); do \
-		(cd $(shell pwd)/build/$$f && tar -cvzf ../../dist/$$f.tar.gz *); \
-		(cd $(shell pwd)/dist && shasum -a 512 $$f.tar.gz > $$f.sha512); \
-		echo $$f; \
-	done
-
-release:
-	@$(BIN_DIR)/github-release "v$(VERSION)" dist/* --commit "$(git rev-parse HEAD)" --github-repository versent/$(NAME)
-
-test:
-	@$(BIN_DIR)/gocov test $(SOURCE_FILES) | $(BIN_DIR)/gocov report
+release-snapshot: $(BIN_DIR)/goreleaser
+	$(BIN_DIR)/goreleaser --snapshot --rm-dist
 
 clean:
 	@rm -fr ./build
-
-packages:
-	rm -rf package && mkdir package
-	rm -rf stage && mkdir -p stage/usr/bin
-	cp build/saml2aws_*_linux_amd64/saml2aws stage/usr/bin
-	fpm --name $(NAME) -a x86_64 -t rpm -s dir --version $(VERSION) --iteration $(ITERATION) -C stage -p package/$(NAME)-$(VERSION)_$(ITERATION).rpm usr
-	fpm --name $(NAME) -a x86_64 -t deb -s dir --version $(VERSION) --iteration $(ITERATION) -C stage -p package/$(NAME)-$(VERSION)_$(ITERATION).deb usr
-	shasum -a 512 package/$(NAME)-$(VERSION)_$(ITERATION).rpm > package/$(NAME)-$(VERSION)_$(ITERATION).rpm.sha512
-	shasum -a 512 package/$(NAME)-$(VERSION)_$(ITERATION).deb > package/$(NAME)-$(VERSION)_$(ITERATION).deb.sha512
 
 generate-mocks:
 	mockery -dir pkg/prompter --all
