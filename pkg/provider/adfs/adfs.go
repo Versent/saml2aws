@@ -203,7 +203,7 @@ func checkResponse(doc *goquery.Document) (AuthResponseType, string, error) {
 		if name == "AuthMethod" {
 			val, _ := s.Attr("value")
 			switch val {
-			case "VIPAuthenticationProviderWindowsAccountName", "VIPAuthenticationProviderUPN":
+			case "VIPAuthenticationProviderWindowsAccountName", "VIPAuthenticationProviderUPN", "Defender AD FS Adapter":
 				responseType = MFA_PROMPT
 			case "AzureMfaAuthentication":
 				responseType = AZURE_MFA_WAIT
@@ -254,6 +254,8 @@ func updateOTPFormData(otpForm url.Values, s *goquery.Selection, token string) {
 	if strings.Contains(lname, "security_code") {
 		otpForm.Add(name, token)
 	} else if strings.Contains(lname, "verificationcode") {
+		otpForm.Add(name, token)
+	} else if strings.Contains(lname, "challengequestionanswer") {
 		otpForm.Add(name, token)
 	} else {
 		updatePassthroughFormData(otpForm, s)
