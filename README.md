@@ -544,7 +544,7 @@ make test
 Before raising a PR please run the linter.
 
 ```
-make lint
+make lint-fix
 ```
 
 ## Environment vars

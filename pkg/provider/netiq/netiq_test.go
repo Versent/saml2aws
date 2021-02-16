@@ -2,12 +2,13 @@ package netiq
 
 import (
 	"bytes"
-	"github.com/PuerkitoBio/goquery"
-	"github.com/stretchr/testify/require"
-	"github.com/versent/saml2aws/v2/pkg/page"
 	"io/ioutil"
 	"net/url"
 	"testing"
+
+	"github.com/PuerkitoBio/goquery"
+	"github.com/stretchr/testify/require"
+	"github.com/versent/saml2aws/v2/pkg/page"
 )
 
 func TestIsSAMLResponsePositive(t *testing.T) {
