@@ -57,20 +57,8 @@ func TestOSXKeychainHelper(t *testing.T) {
 		t.Fatalf("expected %s, got %s\n", "foobarbaz", secret)
 	}
 
-	auths, err := helper.List()
-	if err != nil || len(auths) == 0 {
-		t.Fatal(err)
-	}
-
 	helper.Add(creds1)
 	defer helper.Delete(creds1.ServerURL)
-	newauths, err := helper.List()
-	if len(newauths)-len(auths) != 1 {
-		if err == nil {
-			t.Fatalf("Error: len(newauths): %d, len(auths): %d", len(newauths), len(auths))
-		}
-		t.Fatalf("Error: len(newauths): %d, len(auths): %d\n Error= %v", len(newauths), len(auths), err)
-	}
 
 	if err := helper.Delete(creds.ServerURL); err != nil {
 		t.Fatal(err)
