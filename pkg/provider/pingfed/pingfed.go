@@ -24,6 +24,8 @@ var logger = logrus.WithField("provider", "pingfed")
 
 // Client wrapper around PingFed + PingId enabling authentication and retrieval of assertions
 type Client struct {
+	provider.ValidateBase
+
 	client     *provider.HTTPClient
 	idpAccount *cfg.IDPAccount
 }
@@ -66,7 +68,7 @@ func (ac *Client) follow(ctx context.Context, req *http.Request) (string, error)
 	if err != nil {
 		return "", errors.Wrap(err, "error following")
 	}
-	doc, err := goquery.NewDocumentFromResponse(res)
+	doc, err := goquery.NewDocumentFromReader(res.Body)
 	if err != nil {
 		return "", errors.Wrap(err, "failed to build document from response")
 	}
@@ -134,6 +136,8 @@ func (ac *Client) handleLogin(ctx context.Context, doc *goquery.Document) (conte
 
 	form.Values.Set("pf.username", loginDetails.Username)
 	form.Values.Set("pf.pass", loginDetails.Password)
+	form.Values.Set("USER", loginDetails.Username)
+	form.Values.Set("PASSWORD", loginDetails.Password)
 	form.URL = makeAbsoluteURL(form.URL, loginDetails.URL)
 
 	req, err := form.BuildRequest()
@@ -221,7 +225,7 @@ func (ac *Client) handleWebAuthn(ctx context.Context, doc *goquery.Document) (co
 }
 
 func docIsLogin(doc *goquery.Document) bool {
-	return doc.Has("input[name=\"pf.pass\"]").Size() == 1
+	return doc.Has("input[name=\"pf.pass\"]").Size() == 1 || doc.Has("input[name=\"PASSWORD\"]").Size() == 1
 }
 
 func docIsOTP(doc *goquery.Document) bool {

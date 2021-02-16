@@ -54,6 +54,8 @@ var (
 
 // Client is a wrapper representing a Okta SAML client
 type Client struct {
+	provider.ValidateBase
+
 	client *provider.HTTPClient
 	mfa    string
 }
@@ -170,7 +172,7 @@ func (oc *Client) follow(ctx context.Context, req *http.Request, loginDetails *c
 	if err != nil {
 		return "", errors.Wrap(err, "error following")
 	}
-	doc, err := goquery.NewDocumentFromResponse(res)
+	doc, err := goquery.NewDocumentFromReader(res.Body)
 	if err != nil {
 		return "", errors.Wrap(err, "failed to build document from response")
 	}
@@ -480,7 +482,7 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 		}
 
 		//try to extract sid
-		doc, err := goquery.NewDocumentFromResponse(res)
+		doc, err := goquery.NewDocumentFromReader(res.Body)
 		if err != nil {
 			return "", errors.Wrap(err, "error parsing document")
 		}

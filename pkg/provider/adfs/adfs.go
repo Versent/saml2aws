@@ -19,6 +19,8 @@ import (
 
 // Client wrapper around ADFS enabling authentication and retrieval of assertions
 type Client struct {
+	provider.ValidateBase
+
 	client     *provider.HTTPClient
 	idpAccount *cfg.IDPAccount
 }

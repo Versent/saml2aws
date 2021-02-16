@@ -2,6 +2,8 @@ package commands
 
 import (
 	b64 "encoding/base64"
+	"encoding/json"
+	"fmt"
 	"log"
 	"os"
 
@@ -43,7 +45,17 @@ func Login(loginFlags *flags.LoginExecFlags) error {
 	}
 
 	if !sharedCreds.Expired() && !loginFlags.Force {
-		log.Println("credentials are not expired skipping")
+		logger.Debug("credentials are not expired skipping")
+		previousCreds, err := sharedCreds.Load()
+		if err != nil {
+			log.Println("Unable to load cached credentials")
+		}
+		if loginFlags.CredentialProcess {
+			err = PrintCredentialProcess(previousCreds)
+			if err != nil {
+				return err
+			}
+		}
 		return nil
 	}
 
@@ -53,16 +65,16 @@ func Login(loginFlags *flags.LoginExecFlags) error {
 		os.Exit(1)
 	}
 
-	err = loginDetails.Validate()
-	if err != nil {
-		return errors.Wrap(err, "error validating login details")
-	}
-
 	logger.WithField("idpAccount", account).Debug("building provider")
 
 	provider, err := saml2aws.NewSAMLClient(account)
 	if err != nil {
 		return errors.Wrap(err, "error building IdP client")
+	}
+
+	err = provider.Validate(loginDetails)
+	if err != nil {
+		return errors.Wrap(err, "error validating login details")
 	}
 
 	log.Printf("Authenticating as %s ...", loginDetails.Username)
@@ -99,6 +111,13 @@ func Login(loginFlags *flags.LoginExecFlags) error {
 		return errors.Wrap(err, "error logging into aws role using saml assertion")
 	}
 
+	// print credential process if needed
+	if loginFlags.CredentialProcess {
+		err = PrintCredentialProcess(awsCreds)
+		if err != nil {
+			return err
+		}
+	}
 	return saveCredentials(awsCreds, sharedCreds)
 }
 
@@ -171,9 +190,11 @@ func resolveLoginDetails(account *cfg.IDPAccount, loginFlags *flags.LoginExecFla
 		return loginDetails, nil
 	}
 
-	err = saml2aws.PromptForLoginDetails(loginDetails, account.Provider)
-	if err != nil {
-		return nil, errors.Wrap(err, "Error occurred accepting input")
+	if account.Provider != "Shell" {
+		err = saml2aws.PromptForLoginDetails(loginDetails, account.Provider)
+		if err != nil {
+			return nil, errors.Wrap(err, "Error occurred accepting input")
+		}
 	}
 
 	return loginDetails, nil
@@ -297,7 +318,48 @@ func saveCredentials(awsCreds *awsconfig.AWSCredentials, sharedCreds *awsconfig.
 	log.Println("")
 	log.Println("Your new access key pair has been stored in the AWS configuration")
 	log.Printf("Note that it will expire at %v", awsCreds.Expires)
-	log.Println("To use this credential, call the AWS CLI with the --profile option (e.g. aws --profile", sharedCreds.Profile, "ec2 describe-instances).")
+	if sharedCreds.Profile != "default" {
+		log.Println("To use this credential, call the AWS CLI with the --profile option (e.g. aws --profile", sharedCreds.Profile, "ec2 describe-instances).")
+	}
 
 	return nil
+}
+
+// CredentialsToCredentialProcess
+// Returns a Json output that is compatible with the AWS credential_process
+// https://github.com/awslabs/awsprocesscreds
+func CredentialsToCredentialProcess(awsCreds *awsconfig.AWSCredentials) (string, error) {
+
+	type AWSCredentialProcess struct {
+		Version         int
+		AccessKeyId     string
+		SecretAccessKey string
+		SessionToken    string
+		Expiration      string
+	}
+
+	cred_process := AWSCredentialProcess{
+		Version:         1,
+		AccessKeyId:     awsCreds.AWSAccessKey,
+		SecretAccessKey: awsCreds.AWSSecretKey,
+		SessionToken:    awsCreds.AWSSessionToken,
+		Expiration:      awsCreds.Expires.Format("2006-01-02T15:04:05Z07:00"),
+	}
+
+	p, err := json.Marshal(cred_process)
+	if err != nil {
+		return "", errors.Wrap(err, "Error while Marshalling the Credential Process")
+	}
+	return string(p), nil
+
+}
+
+// PrintCredentialProcess Prints a Json output that is compatible with the AWS credential_process
+// https://github.com/awslabs/awsprocesscreds
+func PrintCredentialProcess(awsCreds *awsconfig.AWSCredentials) error {
+	jsonData, err := CredentialsToCredentialProcess(awsCreds)
+	if err == nil {
+		fmt.Println(jsonData)
+	}
+	return err
 }

@@ -28,6 +28,8 @@ const SHIB_DUO_PASSCODE = "X-Shibboleth-Duo-Passcode"
 
 // Client wrapper around shibbolethecp enabling authentication and retrieval of assertions
 type Client struct {
+	provider.ValidateBase
+
 	client     *provider.HTTPClient
 	idpAccount *cfg.IDPAccount
 }
@@ -107,7 +109,9 @@ func (c *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error) 
 	}
 
 	res, err := c.client.Do(req)
-	defer res.Body.Close()
+	defer func() {
+		_ = res.Body.Close()
+	}()
 
 	if err != nil {
 		return "", errors.Wrap(err, "Sending initial SOAP authnRequest")

@@ -27,7 +27,7 @@ func TestClient_getLoginForm(t *testing.T) {
 	require.Nil(t, err)
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write(data)
+		_, _ = w.Write(data)
 	}))
 	defer ts.Close()
 
@@ -56,12 +56,12 @@ func TestClient_getLoginFormRedirect(t *testing.T) {
 	count := 0
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if count > 0 {
-			w.Write(data)
+			_, _ = w.Write(data)
 		} else {
 			w.WriteHeader(http.StatusUnauthorized)
-			w.Write(bytes.Replace(redirectData, []byte(exampleLoginURL), []byte("http://"+r.Host), 1))
+			_, _ = w.Write(bytes.Replace(redirectData, []byte(exampleLoginURL), []byte("http://"+r.Host), 1))
 		}
-		count += 1
+		count++
 	}))
 	defer ts.Close()
 
@@ -86,7 +86,7 @@ func TestClient_postLoginForm(t *testing.T) {
 	require.Nil(t, err)
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write(data)
+		_, _ = w.Write(data)
 	}))
 	defer ts.Close()
 
@@ -110,7 +110,7 @@ func TestClient_postTotpForm(t *testing.T) {
 	require.Nil(t, err)
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write(data)
+		_, _ = w.Write(data)
 	}))
 	defer ts.Close()
 
@@ -126,7 +126,8 @@ func TestClient_postTotpForm(t *testing.T) {
 	opts := &provider.HTTPClientOptions{IsWithRetries: false}
 	kc := Client{client: &provider.HTTPClient{Client: http.Client{}, Options: opts}}
 
-	kc.postTotpForm(ts.URL, mfaToken, doc)
+	_, err = kc.postTotpForm(ts.URL, mfaToken, doc)
+	require.Nil(t, err)
 
 	pr.Mock.AssertCalled(t, "RequestSecurityCode", "000000")
 }
@@ -137,7 +138,7 @@ func TestClient_postTotpFormWithProvidedMFAToken(t *testing.T) {
 	require.Nil(t, err)
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write(data)
+		_, _ = w.Write(data)
 	}))
 	defer ts.Close()
 
@@ -151,8 +152,8 @@ func TestClient_postTotpFormWithProvidedMFAToken(t *testing.T) {
 	opts := &provider.HTTPClientOptions{IsWithRetries: false}
 	kc := Client{client: &provider.HTTPClient{Client: http.Client{}, Options: opts}}
 
-	kc.postTotpForm(ts.URL, mfaToken, doc)
-
+	_, err = kc.postTotpForm(ts.URL, mfaToken, doc)
+	require.Nil(t, err)
 	pr.Mock.AssertNumberOfCalls(t, "RequestSecurityCode", 0)
 }
 

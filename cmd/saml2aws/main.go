@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/tls"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -60,6 +61,8 @@ func main() {
 
 	// Settings not related to commands
 	verbose := app.Flag("verbose", "Enable verbose logging").Bool()
+	quiet := app.Flag("quiet", "silences logs").Bool()
+
 	provider := app.Flag("provider", "This flag is obsolete. See: https://github.com/versent/saml2aws/v2#configuring-idp-accounts").Short('i').Enum("Akamai", "AzureAD", "ADFS", "ADFS2", "Ping", "JumpCloud", "Okta", "OneLogin", "PSU", "KeyCloak")
 
 	// Common (to all commands) settings
@@ -99,6 +102,7 @@ func main() {
 	cmdLogin.Flag("client-id", "OneLogin client id, used to generate API access token. (env: ONELOGIN_CLIENT_ID)").Envar("ONELOGIN_CLIENT_ID").StringVar(&commonFlags.ClientID)
 	cmdLogin.Flag("client-secret", "OneLogin client secret, used to generate API access token. (env: ONELOGIN_CLIENT_SECRET)").Envar("ONELOGIN_CLIENT_SECRET").StringVar(&commonFlags.ClientSecret)
 	cmdLogin.Flag("force", "Refresh credentials even if not expired.").BoolVar(&loginFlags.Force)
+	cmdLogin.Flag("credential-process", "Enables AWS Credential Process support by outputting credentials to STDOUT in a JSON message.").BoolVar(&loginFlags.CredentialProcess)
 
 	// `exec` command and settings
 	cmdExec := app.Command("exec", "Exec the supplied command with env vars from STS token.")
@@ -147,6 +151,11 @@ func main() {
 	if *verbose {
 		logrus.SetLevel(logrus.DebugLevel)
 		errtpl = "%+v\n"
+	}
+
+	if *quiet {
+		log.SetOutput(ioutil.Discard)
+		logrus.SetOutput(ioutil.Discard)
 	}
 
 	// Set the default transport settings so all http clients will pick them up.

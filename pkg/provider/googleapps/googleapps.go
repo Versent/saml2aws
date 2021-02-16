@@ -25,6 +25,8 @@ var logger = logrus.WithField("provider", "googleapps")
 
 // Client wrapper around Google Apps.
 type Client struct {
+	provider.ValidateBase
+
 	client *provider.HTTPClient
 }
 
@@ -403,7 +405,7 @@ func (kc *Client) loadChallengePage(submitURL string, referer string, authForm u
 
 			response, err := u2fClient.ChallengeU2F()
 			if err != nil {
-				errors.Wrap(err, "Second factor failed.")
+				logger.WithError(err).Error("Second factor failed.")
 				return kc.skipChallengePage(doc, submitURL, secondActionURL, loginDetails)
 			}
 
@@ -693,7 +695,7 @@ func extractKeyHandles(doc *goquery.Document, challengeTxt string) (string, []st
 			firstIdx := strings.Index(val, "{")
 			lastIdx := strings.LastIndex(val, "}")
 			obj := []byte(val[firstIdx : lastIdx+1])
-			json.Unmarshal(obj, &result)
+			_ = json.Unmarshal(obj, &result) // ignore the error and continue
 			// Key handles
 			for _, val := range result {
 				list, ok := val.([]interface{})
