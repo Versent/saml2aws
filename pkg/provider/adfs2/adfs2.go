@@ -2,10 +2,11 @@ package adfs2
 
 import (
 	"crypto/tls"
-	"github.com/versent/saml2aws/v2/pkg/provider"
 	"log"
 	"net/http"
 	"net/http/cookiejar"
+
+	"github.com/versent/saml2aws/v2/pkg/provider"
 
 	"golang.org/x/net/publicsuffix"
 

@@ -42,8 +42,13 @@ compile: mod
 
 lint: $(BIN_DIR)/golangci-lint
 	@echo "--- lint all the things"
-	@$(BIN_DIR)/golangci-lint run
+	@$(BIN_DIR)/golangci-lint run ./...
 .PHONY: lint
+
+lint-fix: $(BIN_DIR)/golangci-lint
+	@echo "--- lint all the things"
+	@$(BIN_DIR)/golangci-lint run --fix ./...
+.PHONY: lint-fix
 
 # gofmt and goimports all go files
 fmt:
