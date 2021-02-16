@@ -109,7 +109,9 @@ func (c *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error) 
 	}
 
 	res, err := c.client.Do(req)
-	defer res.Body.Close()
+	defer func() {
+		_ = res.Body.Close()
+	}()
 
 	if err != nil {
 		return "", errors.Wrap(err, "Sending initial SOAP authnRequest")

@@ -541,6 +541,12 @@ Then to test the software just run.
 make test
 ```
 
+Before raising a PR please run the linter.
+
+```
+make lint
+```
+
 ## Environment vars
 
 The exec sub command will export the following environment variables.

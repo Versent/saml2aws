@@ -36,10 +36,10 @@ func SuccessOrRedirectOrUnauthorizedResponseValidator(req *http.Request, resp *h
 	validatorResponse := provider.SuccessOrRedirectResponseValidator(req, resp)
 
 	if validatorResponse == nil || resp.StatusCode == 401 {
-		return nil;
+		return nil
 	}
 
-	return validatorResponse;
+	return validatorResponse
 }
 
 // New create a new PingOne client
@@ -80,7 +80,7 @@ func (ac *Client) follow(ctx context.Context, req *http.Request) (string, error)
 		return "", errors.Wrap(err, "error following")
 	}
 
-	doc, err := goquery.NewDocumentFromResponse(res)
+	doc, err := goquery.NewDocumentFromReader(res.Body)
 	if err != nil {
 		return "", errors.Wrap(err, "failed to build document from response")
 	}
@@ -240,15 +240,6 @@ func (ac *Client) handleFormRedirect(ctx context.Context, doc *goquery.Document,
 	form, err := page.NewFormFromDocument(doc, "")
 	if err != nil {
 		return ctx, nil, errors.Wrap(err, "error extracting redirect form")
-	}
-	req, err := form.BuildRequest()
-	return ctx, req, err
-}
-
-func (ac *Client) handleFormSamlRequest(ctx context.Context, doc *goquery.Document, _ *http.Response) (context.Context, *http.Request, error) {
-	form, err := page.NewFormFromDocument(doc, "")
-	if err != nil {
-		return ctx, nil, errors.Wrap(err, "error extracting samlrequest form")
 	}
 	req, err := form.BuildRequest()
 	return ctx, req, err

@@ -3,6 +3,8 @@ ARCH=$(shell uname -m)
 VERSION=2.28.0
 ITERATION := 1
 
+GOLANGCI_VERSION = 1.32.0
+
 SOURCE_FILES?=$$(go list ./... | grep -v /vendor/)
 TEST_PATTERN?=.
 TEST_OPTIONS?=
@@ -11,16 +13,17 @@ BIN_DIR := $(CURDIR)/bin
 
 ci: prepare test
 
-prepare: prepare.metalinter
+$(BIN_DIR)/golangci-lint: $(BIN_DIR)/golangci-lint-${GOLANGCI_VERSION}
+	@ln -sf golangci-lint-${GOLANGCI_VERSION} $(BIN_DIR)/golangci-lint
+$(BIN_DIR)/golangci-lint-${GOLANGCI_VERSION}:
+	@curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | BINARY=golangci-lint bash -s -- v${GOLANGCI_VERSION}
+	@mv $(BIN_DIR)/golangci-lint $@
+
+prepare:
 	GOBIN=$(BIN_DIR) go install github.com/buildkite/github-release
 	GOBIN=$(BIN_DIR) go install github.com/mitchellh/gox
 	GOBIN=$(BIN_DIR) go install github.com/axw/gocov/gocov
 	GOBIN=$(BIN_DIR) go install golang.org/x/tools/cmd/cover
-
-# Gometalinter is deprecated and broken dependency so let's use with GO111MODULE=off
-prepare.metalinter:
-	GO111MODULE=off go get -u github.com/alecthomas/gometalinter
-	GO111MODULE=off gometalinter --fast --install
 
 mod:
 	@go mod download
@@ -37,9 +40,10 @@ compile: mod
 	-output "build/{{.Dir}}_$(VERSION)_{{.OS}}_{{.Arch}}/$(NAME)" \
 	${SOURCE_FILES}
 
-# Run all the linters
-lint:
-	@gometalinter --vendor ./...
+lint: $(BIN_DIR)/golangci-lint
+	@echo "--- lint all the things"
+	@$(BIN_DIR)/golangci-lint run
+.PHONY: lint
 
 # gofmt and goimports all go files
 fmt:
@@ -79,4 +83,4 @@ generate-mocks:
 	mockery -dir pkg/prompter --all
 	mockery -dir pkg/provider/okta -name U2FDevice
 
-.PHONY: default prepare.metalinter prepare mod compile lint fmt dist release test clean generate-mocks
+.PHONY: default prepare.metalinter prepare mod compile fmt dist release test clean generate-mocks

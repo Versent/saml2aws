@@ -885,13 +885,12 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 				}
 				ac.client.EnableFollowRedirect()
 			}
-		} else {
-			// There was no explicit link to skip MFA
-			// and there were no MFA options available for us to process
-			// This can happen if MFA is enabled, but we're accessing from a MFA trusted IP
-			// See https://docs.microsoft.com/en-us/azure/active-directory/authentication/howto-mfa-mfasettings#targetText=MFA%20service%20settings,-Settings%20for%20app&targetText=Service%20settings%20can%20be%20accessed,Additional%20cloud-based%20MFA%20settings.
-			// Proceed with login as normal
 		}
+		// There was no explicit link to skip MFA
+		// and there were no MFA options available for us to process
+		// This can happen if MFA is enabled, but we're accessing from a MFA trusted IP
+		// See https://docs.microsoft.com/en-us/azure/active-directory/authentication/howto-mfa-mfasettings#targetText=MFA%20service%20settings,-Settings%20for%20app&targetText=Service%20settings%20can%20be%20accessed,Additional%20cloud-based%20MFA%20settings.
+		// Proceed with login as normal
 
 		// If we've been prompted with KMSI despite not going via MFA flow
 		// Azure can do this if MFA is enabled but
@@ -1044,12 +1043,10 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		if !ok {
 			return
 		}
-		if attrName == "SAMLResponse" {
-			samlAssertion, ok = s.Attr("value")
-			if !ok {
-				return
-			}
+		if attrName != "SAMLResponse" {
+			return
 		}
+		samlAssertion, _ = s.Attr("value")
 	})
 	if samlAssertion != "" {
 		return samlAssertion, nil
@@ -1064,17 +1061,18 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 	if err != nil {
 		return samlAssertion, errors.Wrap(err, "failed to build document from result body")
 	}
+
 	doc.Find("input").Each(func(i int, s *goquery.Selection) {
 		attrName, ok := s.Attr("name")
 		if !ok {
 			return
 		}
-		if attrName == "SAMLResponse" {
-			samlAssertion, ok = s.Attr("value")
-			if !ok {
-				return
-			}
+
+		if attrName != "SAMLResponse" {
+			return
 		}
+
+		samlAssertion, _ = s.Attr("value")
 	})
 	if samlAssertion != "" {
 		return samlAssertion, nil

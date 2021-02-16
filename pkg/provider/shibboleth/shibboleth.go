@@ -61,7 +61,7 @@ func (sc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		return samlAssertion, errors.Wrap(err, "error retrieving form")
 	}
 
-	doc, err := goquery.NewDocumentFromResponse(res)
+	doc, err := goquery.NewDocumentFromReader(res.Body)
 	if err != nil {
 		return samlAssertion, errors.Wrap(err, "failed to build document from response")
 	}
@@ -202,7 +202,7 @@ func verifyDuoMfa(oc *Client, duoHost string, parent string, tx string) (string,
 	}
 
 	// retrieve response from post
-	doc, err := goquery.NewDocumentFromResponse(res)
+	doc, err := goquery.NewDocumentFromReader(res.Body)
 	if err != nil {
 		return "", errors.Wrap(err, "error parsing document")
 	}

@@ -83,7 +83,7 @@ func loadOrLogin(account *cfg.IDPAccount, sharedCreds *awsconfig.CredentialsProv
 		return loginRefreshCredentials(sharedCreds, execFlags.LoginExecFlags)
 	}
 
-	if awsCreds.Expires.Sub(time.Now()) < 0 {
+	if time.Until(awsCreds.Expires) < 0 {
 		log.Println("expired credentials triggering login")
 		return loginRefreshCredentials(sharedCreds, execFlags.LoginExecFlags)
 	}
