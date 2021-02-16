@@ -50,9 +50,7 @@ lint-fix: $(BIN_DIR)/golangci-lint
 	@$(BIN_DIR)/golangci-lint run --fix ./...
 .PHONY: lint-fix
 
-# gofmt and goimports all go files
-fmt:
-	find . -name '*.go' -not -wholename './vendor/*' | while read -r file; do gofmt -w -s "$$file"; goimports -w "$$file"; done
+fmt: lint-fix
 
 install:
 	go install ./cmd/saml2aws
@@ -88,4 +86,4 @@ generate-mocks:
 	mockery -dir pkg/prompter --all
 	mockery -dir pkg/provider/okta -name U2FDevice
 
-.PHONY: default prepare.metalinter prepare mod compile fmt dist release test clean generate-mocks
+.PHONY: default prepare mod compile fmt dist release test clean generate-mocks
