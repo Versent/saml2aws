@@ -615,7 +615,7 @@ An example of the aws configuration (`~/.aws/config`):
 ```
 [profile mybucket]
 region = us-west-1
-credential_process = saml2aws login --skip-prompt --quiet --credential-process --role <ROLE>
+credential_process = saml2aws login --skip-prompt --quiet --credential-process --role <ROLE> --profile mybucket
 ```
 
 When using the aws cli with the `mybucket` profile, the authentication process will be run and the aws will then be executed based on the returned credentials.
