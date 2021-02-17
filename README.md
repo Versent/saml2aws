@@ -66,7 +66,6 @@ Aside from Okta, most of the providers in this project are using screen scraping
 If you're on OSX you can install saml2aws using homebrew!
 
 ```
-brew tap versent/homebrew-taps
 brew install saml2aws
 saml2aws --version
 ```
@@ -550,6 +549,12 @@ Then to test the software just run.
 make test
 ```
 
+Before raising a PR please run the linter.
+
+```
+make lint-fix
+```
+
 ## Environment vars
 
 The exec sub command will export the following environment variables.
@@ -620,7 +625,7 @@ An example of the aws configuration (`~/.aws/config`):
 ```
 [profile mybucket]
 region = us-west-1
-credential_process = saml2aws login --skip-prompt --quiet --credential-process --role <ROLE>
+credential_process = saml2aws login --skip-prompt --quiet --credential-process --role <ROLE> --profile mybucket
 ```
 
 When using the aws cli with the `mybucket` profile, the authentication process will be run and the aws will then be executed based on the returned credentials.

@@ -40,6 +40,9 @@ func (ac *Client) authenticateRsa(loginDetails *creds.LoginDetails) (string, err
 	 */
 	if passcodeForm.Get("AuthMethod") == "SecurIDv2Authentication" {
 		doc, err = ac.postPasscodeForm(passcodeActionURL, passcodeForm)
+		if err != nil {
+			return "", errors.Wrap(err, "error posting passcode form")
+		}
 	}
 
 	passcodeForm, passcodeActionURL, err = extractFormData(doc)
@@ -96,7 +99,7 @@ func (ac *Client) postLoginForm(authSubmitURL string, authForm url.Values) (*goq
 
 	logger.WithField("status", res.StatusCode).WithField("authSubmitURL", authSubmitURL).WithField("res", dump.ResponseString(res)).Debug("POST")
 
-	doc, err := goquery.NewDocumentFromResponse(res)
+	doc, err := goquery.NewDocumentFromReader(res.Body)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build document from response")
 	}
@@ -122,7 +125,10 @@ func (ac *Client) getLoginForm(loginDetails *creds.LoginDetails) (string, url.Va
 
 	// Extract the form and actionURL from the previous response
 
-	doc, err := goquery.NewDocumentFromResponse(res)
+	doc, err := goquery.NewDocumentFromReader(res.Body)
+	if err != nil {
+		return "", nil, errors.Wrap(err, "error extracting response data")
+	}
 	authForm, authSubmitURL, err := extractFormData(doc)
 	if err != nil {
 		return "", nil, errors.Wrap(err, "error extracting login data")
@@ -150,7 +156,7 @@ func (ac *Client) postPasscodeForm(passcodeActionURL string, passcodeForm url.Va
 
 	logger.WithField("status", res.StatusCode).WithField("passcodeActionURL", passcodeActionURL).WithField("res", dump.ResponseString(res)).Debug("POST")
 
-	doc, err := goquery.NewDocumentFromResponse(res)
+	doc, err := goquery.NewDocumentFromReader(res.Body)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build document from response")
 	}

@@ -37,7 +37,7 @@ func (oc *Client) Validate(ld *creds.LoginDetails) error {
 	}
 
 	const executableBits = 0o111
-	if stat, err := os.Stat(ld.URL); os.IsNotExist(err) || ((stat.Mode() & executableBits) == 0)  {
+	if stat, err := os.Stat(ld.URL); os.IsNotExist(err) || ((stat.Mode() & executableBits) == 0) {
 		return errors.New("URL for shell provider does not point to a valid executable")
 	}
 

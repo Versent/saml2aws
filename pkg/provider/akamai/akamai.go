@@ -126,7 +126,7 @@ func (oc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		return samlAssertion, errors.Wrap(err, "error retrieving login request")
 	}
 
-	doc, err := goquery.NewDocumentFromResponse(res)
+	doc, err := goquery.NewDocumentFromReader(res.Body)
 	if err != nil {
 		return samlAssertion, errors.Wrap(err, "error parsing document")
 	}
@@ -466,7 +466,7 @@ func verifyMfa(oc *Client, akamaiOrgHost string, loginDetails *creds.LoginDetail
 		}
 
 		//try to extract sid
-		doc, err := goquery.NewDocumentFromResponse(res)
+		doc, err := goquery.NewDocumentFromReader(res.Body)
 		if err != nil {
 			return errors.Wrap(err, "error parsing document from duo")
 		}

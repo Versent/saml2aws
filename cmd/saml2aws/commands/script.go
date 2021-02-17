@@ -61,7 +61,7 @@ func Script(execFlags *flags.LoginExecFlags, shell string) error {
 		return errors.Wrap(err, "error loading credentials")
 	}
 
-	if awsCreds.Expires.Sub(time.Now()) < 0 {
+	if time.Until(awsCreds.Expires) < 0 {
 		return errors.New("error aws credentials have expired")
 	}
 
