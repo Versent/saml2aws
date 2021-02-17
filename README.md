@@ -66,7 +66,6 @@ Aside from Okta, most of the providers in this project are using screen scraping
 If you're on OSX you can install saml2aws using homebrew!
 
 ```
-brew tap versent/homebrew-taps
 brew install saml2aws
 saml2aws --version
 ```
