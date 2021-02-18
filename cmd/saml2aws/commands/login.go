@@ -30,7 +30,7 @@ func Login(loginFlags *flags.LoginExecFlags) error {
 		return errors.Wrap(err, "error building login details")
 	}
 
-	sharedCreds := awsconfig.NewSharedCredentials(account.Profile)
+	sharedCreds := awsconfig.NewSharedCredentials(account.Profile, account.CredentialsFile)
 
 	logger.Debug("check if Creds Exist")
 

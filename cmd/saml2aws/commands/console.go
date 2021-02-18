@@ -29,7 +29,7 @@ func Console(consoleFlags *flags.ConsoleFlags) error {
 		return errors.Wrap(err, "error building login details")
 	}
 
-	sharedCreds := awsconfig.NewSharedCredentials(account.Profile)
+	sharedCreds := awsconfig.NewSharedCredentials(account.Profile, account.CredentialsFile)
 
 	// this checks if the credentials file has been created yet
 	// can only really be triggered if saml2aws exec is run on a new
