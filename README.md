@@ -535,6 +535,7 @@ To build this software on osx clone to the repo to `$GOPATH/src/github.com/verse
 
 ```
 make mod
+make local-build
 ```
 
 Install the binary to `$GOPATH/bin`.
@@ -592,12 +593,6 @@ Install `github-release`.
 
 ```
 go get github.com/buildkite/github-release
-```
-
-To release run.
-
-```
-make release
 ```
 
 # Debugging Issues with IDPs

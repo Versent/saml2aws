@@ -39,6 +39,22 @@ lint-fix: $(BIN_DIR)/golangci-lint
 
 fmt: lint-fix
 
+test:
+	@$(BIN_DIR)/gocov test $(SOURCE_FILES) | $(BIN_DIR)/gocov report
+
+local-compile: mod
+	@rm -rf build/
+	@$(BIN_DIR)/gox -ldflags "-X main.Version=$(VERSION)" \
+	-osarch="darwin/amd64" \
+	-osarch="linux/i386" \
+	-osarch="linux/amd64" \
+	-osarch="windows/amd64" \
+	-osarch="windows/i386" \
+	-output "build/{{.Dir}}_$(VERSION)_{{.OS}}_{{.Arch}}/$(NAME)" \
+	${SOURCE_FILES}
+
+local-build: lint test local-compile
+
 install:
 	go install ./cmd/saml2aws
 
