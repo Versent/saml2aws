@@ -1,3 +1,5 @@
+// +build darwin,cgo
+
 // Copyright (c) 2016 David Calavera
 
 // Permission is hereby granted, free of charge, to any person obtaining

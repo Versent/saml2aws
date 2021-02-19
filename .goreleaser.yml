@@ -8,7 +8,7 @@ builds:
     - -trimpath
     - -v
   ldflags:
-    - -s -w -X main.Version={{.Version}}
+    - -s -w -X main.Version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}}
   goos:
     - windows
     - darwin
