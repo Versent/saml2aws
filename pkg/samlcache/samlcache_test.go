@@ -5,6 +5,7 @@ import (
 	"os"
 	"path"
 	"testing"
+	"time"
 )
 
 func TestLocateCacheDefault(t *testing.T) {
@@ -76,6 +77,33 @@ func TestCanRead(t *testing.T) {
 
 	if output != "testing output" {
 		t.Error("Cache file does not contain the right thing", output)
+	}
+
+	os.Remove("example_cache")
+
+}
+
+func TestIsValid(t *testing.T) {
+
+	// create a dummy file
+	_ = ioutil.WriteFile("example_cache", []byte("testing output"), 0700)
+	p := SAMLCacheProvider{
+		Filename: "example_cache",
+	}
+
+	var valid bool
+	var err error
+	if valid, err = p.IsValid(); !valid {
+		t.Error("Cache file is not valid!", err)
+	}
+
+	// changing the file timestamp to validate expiry
+	// new_time := time.Now().Sub(24 * time.Hour)
+	new_time := time.Now().Add(-24 * time.Hour)
+	_ = os.Chtimes("example_cache", new_time, new_time)
+
+	if valid, _ = p.IsValid(); valid {
+		t.Error("Cache file should be expired!")
 	}
 
 	os.Remove("example_cache")
