@@ -1,40 +1,83 @@
 package samlcache
 
 import (
+	"io/ioutil"
 	"os"
+	"path"
 	"testing"
 )
 
-func TestLocateCache(t *testing.T) {
+func TestLocateCacheDefault(t *testing.T) {
 
-	cache_location, err := locateCacheFile()
+	cache_location, err := locateCacheFile("")
 	if err != nil {
-		t.Errorf("Could not locate cache file: %v", err)
+		t.Error("Could not locate cache file:", err)
 	}
 
 	if cache_location == "" {
-		t.Errorf("Retrieved location is empty")
+		t.Error("Retrieved location is empty")
+	}
+
+	if path.Base(cache_location) != "cache" {
+		t.Error("Filename is not the default one (cache):", path.Base(cache_location))
 	}
 
 }
 
-func TestCanWriteAndRead(t *testing.T) {
+func TestLocateCacheAccount(t *testing.T) {
 
-	cache_location, _ := locateCacheFile()
-
-	err := WriteCache("test_write_cache")
+	cache_location, err := locateCacheFile("myaccount")
 	if err != nil {
-		t.Errorf("Could not write cache: %v", err)
+		t.Error("Could not locate cache file:", err)
 	}
 
-	content, err := ReadCache()
+	if cache_location == "" {
+		t.Error("Retrieved location is empty")
+	}
+
+	if path.Base(cache_location) != "cache_myaccount" {
+		t.Error("Filename is not the default one (cache_myaccount):", path.Base(cache_location))
+	}
+
+}
+
+func TestCanWrite(t *testing.T) {
+
+	p := SAMLCacheProvider{
+		Filename: "testdir/cache_file",
+	}
+
+	err := p.Write("test_write_cache")
 	if err != nil {
-		t.Errorf("Could not read cache: %v", err)
-	}
-	if content != "test_write_cache" {
-		t.Errorf("Content is not as expected: %v", content)
+		t.Error("Could not write cache:", err)
 	}
 
-	os.Remove(cache_location)
+	if _, err := os.Stat("testdir/cache_file"); os.IsNotExist(err) {
+		t.Error("The cache file was not created:", err)
+	}
+
+	os.RemoveAll("testdir")
+
+}
+
+func TestCanRead(t *testing.T) {
+
+	// create a dummy file
+	_ = ioutil.WriteFile("example_cache", []byte("testing output"), 0700)
+
+	p := SAMLCacheProvider{
+		Filename: "example_cache",
+	}
+
+	output, err := p.Read()
+	if err != nil {
+		t.Error("Could not read cache:", err)
+	}
+
+	if output != "testing output" {
+		t.Error("Cache file does not contain the right thing", output)
+	}
+
+	os.Remove("example_cache")
 
 }

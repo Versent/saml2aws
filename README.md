@@ -635,7 +635,9 @@ When using the aws cli with the `mybucket` profile, the authentication process w
 
 You can use the flag `--cache-saml` in order to cache the SAML assertion at authentication time. The SAML assertion cache has a very short validity (5 min) and can be used to authenticate to several roles with a single MFA validation.
 
-The cache name file is called `.saml2aws_cache` and is stored in your `.aws` directory in your user homedir.
+there is a file per saml2aws profile, the cache directory is called `.saml2aws_cache` and is located in your `.aws` directory in your user homedir.
+
+You can toggle `--cache-saml` during `login` or during `list-roles`, and you can set it once during `configure` and use it implicitly.
 
 # License
 

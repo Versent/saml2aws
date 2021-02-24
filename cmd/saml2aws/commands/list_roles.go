@@ -24,6 +24,9 @@ func ListRoles(loginFlags *flags.LoginExecFlags) error {
 		return errors.Wrap(err, "error building login details")
 	}
 
+	// creates a cacheProvider, only used when --cache is set
+	cacheProvider := samlcache.NewSAMLCacheProvider(account.Profile, "")
+
 	loginDetails, err := resolveLoginDetails(account, loginFlags)
 	if err != nil {
 		log.Printf("%+v", err)
@@ -43,10 +46,12 @@ func ListRoles(loginFlags *flags.LoginExecFlags) error {
 	}
 
 	var samlAssertion string
-	if account.SAMLCache && samlcache.IsValidCache() {
-		samlAssertion, err = samlcache.ReadCache()
-		if err != nil {
-			logger.Debug("Could not read cache:", err)
+	if account.SAMLCache {
+		if valid, _ := cacheProvider.IsValid(); valid {
+			samlAssertion, err = cacheProvider.Read()
+			if err != nil {
+				logger.Debug("Could not read cache:", err)
+			}
 		}
 	}
 
@@ -57,7 +62,7 @@ func ListRoles(loginFlags *flags.LoginExecFlags) error {
 			return errors.Wrap(err, "error authenticating to IdP")
 		}
 		if account.SAMLCache {
-			err = samlcache.WriteCache(samlAssertion)
+			err = cacheProvider.Write(samlAssertion)
 			if err != nil {
 				logger.Error("Could not write samlAssertion:", err)
 			}

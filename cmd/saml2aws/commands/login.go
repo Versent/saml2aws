@@ -32,6 +32,8 @@ func Login(loginFlags *flags.LoginExecFlags) error {
 	}
 
 	sharedCreds := awsconfig.NewSharedCredentials(account.Profile, account.CredentialsFile)
+	// creates a cacheProvider, only used when --cache is set
+	cacheProvider := samlcache.NewSAMLCacheProvider(account.Profile, "")
 
 	logger.Debug("check if Creds Exist")
 
@@ -81,10 +83,14 @@ func Login(loginFlags *flags.LoginExecFlags) error {
 	log.Printf("Authenticating as %s ...", loginDetails.Username)
 
 	var samlAssertion string
-	if account.SAMLCache && samlcache.IsValidCache() {
-		samlAssertion, err = samlcache.ReadCache()
-		if err != nil {
-			logger.Debug("Could not read cache:", err)
+	if account.SAMLCache {
+		if valid, err := cacheProvider.IsValid(); valid {
+			samlAssertion, err = cacheProvider.Read()
+			if err != nil {
+				logger.Debug("Could not read cache:", err)
+			}
+		} else {
+			logger.Debug("Cache is invalid:", err)
 		}
 	}
 
@@ -95,7 +101,7 @@ func Login(loginFlags *flags.LoginExecFlags) error {
 			return errors.Wrap(err, "error authenticating to IdP")
 		}
 		if account.SAMLCache {
-			err = samlcache.WriteCache(samlAssertion)
+			err = cacheProvider.Write(samlAssertion)
 			if err != nil {
 				logger.Error("Could not write samlAssertion:", err)
 			}
