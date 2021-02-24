@@ -30,6 +30,7 @@ const (
 
 // IDPAccount saml IDP account
 type IDPAccount struct {
+	Name                 string
 	AppID                string `ini:"app_id"` // used by OneLogin and AzureAD
 	URL                  string `ini:"url"`
 	Username             string `ini:"username"`
@@ -195,6 +196,9 @@ func (cm *ConfigManager) LoadIDPAccount(idpAccountName string) (*IDPAccount, err
 	if err != nil {
 		return nil, errors.Wrap(err, "Unable to read idp account")
 	}
+
+	// adding Name at Load time for the IdpAccount to have awareness of "self"
+	account.Name = idpAccountName
 
 	return account, nil
 }

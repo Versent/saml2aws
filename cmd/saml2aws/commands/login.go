@@ -33,7 +33,7 @@ func Login(loginFlags *flags.LoginExecFlags) error {
 
 	sharedCreds := awsconfig.NewSharedCredentials(account.Profile, account.CredentialsFile)
 	// creates a cacheProvider, only used when --cache is set
-	cacheProvider := samlcache.NewSAMLCacheProvider(account.Profile, "")
+	cacheProvider := samlcache.NewSAMLCacheProvider(account.Name, "")
 
 	logger.Debug("check if Creds Exist")
 

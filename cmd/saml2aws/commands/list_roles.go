@@ -25,7 +25,7 @@ func ListRoles(loginFlags *flags.LoginExecFlags) error {
 	}
 
 	// creates a cacheProvider, only used when --cache is set
-	cacheProvider := samlcache.NewSAMLCacheProvider(account.Profile, "")
+	cacheProvider := samlcache.NewSAMLCacheProvider(account.Name, "")
 
 	loginDetails, err := resolveLoginDetails(account, loginFlags)
 	if err != nil {

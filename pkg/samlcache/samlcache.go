@@ -29,13 +29,13 @@ const (
 // SAMLCacheProvider  loads aws credentials file
 type SAMLCacheProvider struct {
 	Filename string
-	Profile  string
+	Account  string
 }
 
-func NewSAMLCacheProvider(profile string, filename string) *SAMLCacheProvider {
+func NewSAMLCacheProvider(account string, filename string) *SAMLCacheProvider {
 	p := &SAMLCacheProvider{
 		Filename: filename,
-		Profile:  profile,
+		Account:  account,
 	}
 	return p
 }
@@ -58,7 +58,7 @@ func (p *SAMLCacheProvider) IsValid() (bool, error) {
 	var cache_path string
 	var err error
 	if p.Filename == "" {
-		cache_path, err = locateCacheFile(p.Profile)
+		cache_path, err = locateCacheFile(p.Account)
 		if err != nil {
 			logger.Debug("Could not retrieve cache file path")
 			return false, err
@@ -72,10 +72,6 @@ func (p *SAMLCacheProvider) IsValid() (bool, error) {
 		return false, errors.Wrap(err, "Could not access cache file info")
 	}
 
-	// 	if !(fileInfo.Mode()&0700 == 0700) {
-	// 		return false, errors.New("Cache does not have read and write access")
-	// 	}
-
 	if time.Since(fileInfo.ModTime()) < SAMLAssertionValidityTimeout {
 		return true, nil
 	} else {
@@ -83,14 +79,14 @@ func (p *SAMLCacheProvider) IsValid() (bool, error) {
 	}
 }
 
-func locateCacheFile(profile string) (string, error) {
+func locateCacheFile(account string) (string, error) {
 
 	var name, filename string
 	var err error
-	if profile == "" {
+	if account == "" {
 		filename = "cache"
 	} else {
-		filename = fmt.Sprintf("cache_%s", profile)
+		filename = fmt.Sprintf("cache_%s", account)
 	}
 	if runtime.GOOS == "windows" {
 		name = path.Join(os.Getenv("USERPROFILE"), ".aws", SAMLCacheDir, filename)
@@ -116,9 +112,8 @@ func (p *SAMLCacheProvider) Read() (string, error) {
 	var cache_path string
 	var err error
 	if p.Filename == "" {
-		cache_path, err = locateCacheFile(p.Profile)
+		cache_path, err = locateCacheFile(p.Account)
 		if err != nil {
-			logger.Debug("Could not retrieve cache file path")
 			return "", errors.Wrap(err, "Could not retrieve cache file path")
 		}
 	} else {
@@ -138,9 +133,8 @@ func (p *SAMLCacheProvider) Write(samlAssertion string) error {
 	var cache_path string
 	var err error
 	if p.Filename == "" {
-		cache_path, err = locateCacheFile(p.Profile)
+		cache_path, err = locateCacheFile(p.Account)
 		if err != nil {
-			logger.Debug("Could not retrieve cache file path")
 			return errors.Wrap(err, "Could not retrieve cache file path")
 		}
 	} else {
@@ -148,12 +142,10 @@ func (p *SAMLCacheProvider) Write(samlAssertion string) error {
 	}
 
 	// create the directory if it doesn't exist
-	logger.Debug("Going to MkDir:", path.Dir(p.Filename))
 	err = os.MkdirAll(path.Dir(cache_path), SAMLCacheDirPermissions)
 	if err != nil {
 		return errors.Wrap(err, "Could not write the cache file directory")
 	}
-	logger.Debug("Writing file", cache_path)
 	err = ioutil.WriteFile(cache_path, []byte(samlAssertion), SAMLCacheFilePermissions)
 	if err != nil {
 		return errors.Wrap(err, "Could not write the cache file path")
