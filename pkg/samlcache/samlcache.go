@@ -23,7 +23,7 @@ const (
 	SAMLAssertionValidityTimeout = 5 * time.Minute
 	SAMLCacheFilePermissions     = 0600
 	SAMLCacheDirPermissions      = 0700
-	SAMLCacheDir                 = ".saml2aws_cache"
+	SAMLCacheDir                 = "saml2aws"
 )
 
 // SAMLCacheProvider  loads aws credentials file
