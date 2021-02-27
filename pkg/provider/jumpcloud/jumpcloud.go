@@ -11,6 +11,7 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/pkg/errors"
+	"github.com/tidwall/gjson"
 	"github.com/versent/saml2aws/v2/pkg/cfg"
 	"github.com/versent/saml2aws/v2/pkg/creds"
 	"github.com/versent/saml2aws/v2/pkg/prompter"
@@ -18,9 +19,20 @@ import (
 )
 
 const (
-	jcSSOBaseURL  = "https://sso.jumpcloud.com/"
-	xsrfURL       = "https://console.jumpcloud.com/userconsole/xsrf"
-	authSubmitURL = "https://console.jumpcloud.com/userconsole/auth"
+	jcSSOBaseURL      = "https://sso.jumpcloud.com/"
+	xsrfURL           = "https://console.jumpcloud.com/userconsole/xsrf"
+	authSubmitURL     = "https://console.jumpcloud.com/userconsole/auth"
+	webauthnSubmitURL = "https://console.jumpcloud.com/userconsole/auth/webauthn"
+
+	IdentifierTotpMfa = "totp"
+	IdentifierU2F     = "webauthn"
+)
+
+var (
+	supportedMfaOptions = map[string]string{
+		IdentifierTotpMfa: "TOTP MFA authentication",
+		IdentifierU2F:     "FIDO WebAuthn authentication",
+	}
 )
 
 // Client is a wrapper representing a JumpCloud SAML client
@@ -28,6 +40,7 @@ type Client struct {
 	provider.ValidateBase
 
 	client *provider.HTTPClient
+	mfa    string
 }
 
 // XSRF is for unmarshalling the xsrf token in the response
@@ -65,6 +78,7 @@ func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 
 	return &Client{
 		client: client,
+		mfa:    idpAccount.MFA,
 	}, nil
 }
 
@@ -79,6 +93,7 @@ func (jc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 	if err != nil {
 		return samlAssertion, errors.Wrap(err, "error retieving XSRF Token")
 	}
+	defer res.Body.Close()
 
 	// Grab the web response that has the xsrf in it
 	xsrfBody, err := ioutil.ReadAll(res.Body)
@@ -119,6 +134,7 @@ func (jc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 	if err != nil {
 		return samlAssertion, errors.Wrap(err, "error retrieving login form")
 	}
+	defer res.Body.Close()
 
 	// Check if we get a 401.  If we did, and MFA is required, get the OTP and resubmit.
 	// Otherwise log the authentication message as a fatal error.
@@ -143,33 +159,11 @@ func (jc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 			return samlAssertion, errors.Wrap(err, errMsg)
 		}
 
-		// Get the user's MFA token and re-build the body
-		a.OTP = loginDetails.MFAToken
-		if a.OTP == "" {
-			a.OTP = prompter.StringRequired("MFA Token")
-		}
-
-		authBody, err = json.Marshal(a)
+		res, err = jc.verifyMFA(authSubmitURL, loginDetails, a, messageBody, x.Token)
 		if err != nil {
-			return samlAssertion, errors.Wrap(err, "error building authentication req body after getting MFA Token")
+			return samlAssertion, err
 		}
 
-		// Re-request with our OTP
-		req, err = http.NewRequest("POST", authSubmitURL, strings.NewReader(string(authBody)))
-		if err != nil {
-			return samlAssertion, errors.Wrap(err, "error building MFA authentication request")
-		}
-
-		// Re-add the necessary headers to our remade auth request
-		req.Header.Add("X-Xsrftoken", x.Token)
-		req.Header.Add("Accept", "application/json")
-		req.Header.Add("Content-Type", "application/json")
-
-		// Resubmit
-		res, err = jc.client.Do(req)
-		if err != nil {
-			return samlAssertion, errors.Wrap(err, "error submitting MFA login form")
-		}
 	}
 
 	// Check if our auth was successful
@@ -192,6 +186,7 @@ func (jc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		if err != nil {
 			return samlAssertion, errors.Wrap(err, "error submitting request for SAML value")
 		}
+		defer res.Body.Close()
 
 		//try to extract SAMLResponse
 		doc, err := goquery.NewDocumentFromReader(res.Body)
@@ -221,4 +216,129 @@ func (jc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 	}
 
 	return samlAssertion, nil
+}
+
+func (jc *Client) verifyMFA(jumpCloudOrgHost string, loginDetails *creds.LoginDetails, a AuthRequest, body []byte, xsrfToken string) (*http.Response, error) {
+	// Get the user's MFA token and re-build the body
+
+	option, err := jc.getUserOption(body)
+	if err != nil {
+		return nil, err
+	}
+
+	switch option {
+	case IdentifierTotpMfa:
+		// Re-request with our OTP
+		a.OTP = loginDetails.MFAToken
+		if a.OTP == "" {
+			a.OTP = prompter.StringRequired("MFA Token")
+		}
+		authBody, err := json.Marshal(a)
+		if err != nil {
+			return nil, errors.Wrap(err, "error building authentication req body after getting MFA Token")
+		}
+
+		req, err := http.NewRequest("POST", authSubmitURL, strings.NewReader(string(authBody)))
+		if err != nil {
+			return nil, errors.Wrap(err, "error building MFA authentication request")
+		}
+
+		// Re-add the necessary headers to our remade auth request
+		req.Header.Add("X-Xsrftoken", xsrfToken)
+		req.Header.Add("Accept", "application/json")
+		req.Header.Add("Content-Type", "application/json")
+
+		// Resubmit
+		return jc.client.Do(req)
+	case IdentifierU2F:
+		res, err := jc.client.Get(webauthnSubmitURL)
+		if err != nil {
+			return nil, errors.Wrap(err, "error submitting request for SAML value")
+		}
+		defer res.Body.Close()
+
+		respBody, err := ioutil.ReadAll(res.Body)
+		if err != nil {
+			return nil, err
+		}
+		respStr := string(respBody)
+
+		challenge := gjson.Get(respStr, "publicKey.challenge").String()
+		allowCreds := gjson.Get(respStr, "publicKey.allowCredentials").Array()
+		if len(allowCreds) < 1 {
+			return nil, errors.New("unsupported case, we expect publicKey to be an array of at least one element")
+		}
+		credsMap := allowCreds[0].Map()
+		key, ok := credsMap["id"]
+		if !ok {
+			return nil, errors.New("can't find key handle or key id in the allowed credentials map")
+		}
+
+		fidoClient, err := NewFidoClient(
+			challenge,
+			gjson.Get(respStr, "publicKey.rpId").String(),
+			key.String(),
+			gjson.Get(respStr, "token").String(),
+			new(U2FDeviceFinder),
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		signedAssertion, err := fidoClient.ChallengeU2F()
+		if err != nil {
+			return nil, err
+		}
+
+		payload, err := json.Marshal(signedAssertion)
+		if err != nil {
+			return nil, err
+		}
+		req, err := http.NewRequest("POST", webauthnSubmitURL, strings.NewReader(string(payload)))
+		if err != nil {
+			return nil, errors.Wrap(err, "error building authentication request")
+		}
+
+		req.Header.Add("X-Xsrftoken", xsrfToken)
+		req.Header.Add("Accept", "application/json")
+		req.Header.Add("Content-Type", "application/json")
+		return jc.client.Do(req)
+	}
+
+	return &http.Response{}, errors.New("no MFA method provided")
+}
+
+func (jc *Client) getUserOption(body []byte) (string, error) {
+	// data =>map[factors:[map[status:available type:totp] map[status:available type:webauthn]] message:MFA required.]
+	mfaConfigData := gjson.GetBytes(body, "factors")
+	if mfaConfigData.Index == 0 {
+		log.Fatalln("Mfa Config option not found")
+		return "", errors.New("Mfa not configured")
+	}
+	var mfaOptionsAvailableAtJumpCloud []string
+	var mfaDisplayOptions []string
+
+	for _, option := range mfaConfigData.Array() {
+		if option.Get("status").String() == "available" {
+			identifier := option.Get("type").String()
+			if _, ok := supportedMfaOptions[identifier]; ok {
+				// check if the option is supported and among jumpcloud options
+				if jc.mfa != "Auto" {
+					if strings.ToLower(jc.mfa) == identifier {
+						return identifier, nil
+					}
+				}
+				mfaOptionsAvailableAtJumpCloud = append(mfaOptionsAvailableAtJumpCloud, identifier)
+				mfaDisplayOptions = append(mfaDisplayOptions, supportedMfaOptions[identifier])
+			}
+		}
+	}
+	if len(mfaOptionsAvailableAtJumpCloud) == 0 {
+		return "", errors.New("No MFA options available")
+	} else if len(mfaOptionsAvailableAtJumpCloud) == 1 {
+		return mfaOptionsAvailableAtJumpCloud[0], nil
+	}
+
+	mfaOption := prompter.Choose("Select which MFA option to use", mfaDisplayOptions)
+	return mfaOptionsAvailableAtJumpCloud[mfaOption], nil
 }
