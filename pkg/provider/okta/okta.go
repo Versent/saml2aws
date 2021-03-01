@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"net/http/cookiejar"
 	"net/url"
 	"regexp"
 	"strings"
@@ -24,6 +25,7 @@ import (
 	"github.com/versent/saml2aws/v2/pkg/page"
 	"github.com/versent/saml2aws/v2/pkg/prompter"
 	"github.com/versent/saml2aws/v2/pkg/provider"
+	"golang.org/x/net/publicsuffix"
 )
 
 const (
@@ -87,6 +89,13 @@ func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 	// this is to avoid have explicit checks for every single response
 	client.CheckResponseStatus = provider.SuccessOrRedirectResponseValidator
 
+	// add cookie jar to keep track of cookies during okta login flow
+	jar, err := cookiejar.New(&cookiejar.Options{PublicSuffixList: publicsuffix.List})
+	if err != nil {
+		return nil, errors.Wrap(err, "error building cookie jar")
+	}
+	client.Jar = jar
+
 	return &Client{
 		client: client,
 		mfa:    idpAccount.MFA,
@@ -105,6 +114,16 @@ func (oc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 
 	oktaOrgHost := oktaURL.Host
 
+	//dummy request to set device token cookie ("dt")
+	req, err := http.NewRequest("GET", loginDetails.URL, nil)
+	if err != nil {
+		return "", errors.Wrap(err, "error building device token request")
+	}
+	_, err = oc.client.Do(req)
+	if err != nil {
+		return "", errors.Wrap(err, "error retrieving device token")
+	}
+
 	//authenticate via okta api
 	authReq := AuthRequest{Username: loginDetails.Username, Password: loginDetails.Password}
 	if loginDetails.StateToken != "" {
@@ -118,7 +137,7 @@ func (oc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 
 	authSubmitURL := fmt.Sprintf("https://%s/api/v1/authn", oktaOrgHost)
 
-	req, err := http.NewRequest("POST", authSubmitURL, authBody)
+	req, err = http.NewRequest("POST", authSubmitURL, authBody)
 	if err != nil {
 		return "", errors.Wrap(err, "error building authentication request")
 	}
