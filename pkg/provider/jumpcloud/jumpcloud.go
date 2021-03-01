@@ -1,13 +1,17 @@
 package jumpcloud
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"html"
 	"io/ioutil"
 	"log"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/pkg/errors"
@@ -23,14 +27,17 @@ const (
 	xsrfURL           = "https://console.jumpcloud.com/userconsole/xsrf"
 	authSubmitURL     = "https://console.jumpcloud.com/userconsole/auth"
 	webauthnSubmitURL = "https://console.jumpcloud.com/userconsole/auth/webauthn"
+	duoAuthSubmitURL  = "https://console.jumpcloud.com/userconsole/auth/duo"
 
 	IdentifierTotpMfa = "totp"
+	IdentifierDuoMfa  = "duo"
 	IdentifierU2F     = "webauthn"
 )
 
 var (
 	supportedMfaOptions = map[string]string{
 		IdentifierTotpMfa: "TOTP MFA authentication",
+		IdentifierDuoMfa:  "DUO MFA authentication",
 		IdentifierU2F:     "FIDO WebAuthn authentication",
 	}
 )
@@ -178,16 +185,20 @@ func (jc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		var jcrd = new(JCRedirect)
 		err = json.Unmarshal(reDirBody, &jcrd)
 		if err != nil {
-			log.Fatalf("Error unmarshalling redirectTo response! %v", err)
+			// Looks like JumpCloud handles differently DUO case and doesn't return
+			// redirect_url json payload, instead returning the SAML assertion
+			// directly. It is a strange behaviour but shoudld be handled here.
+			log.Printf("Error unmarshalling redirectTo response! %v", err)
+			log.Println("Not to worry, trying to extract assertion without the redirect URL")
+			// restore res.Body back
+			res.Body = ioutil.NopCloser(bytes.NewBuffer(reDirBody))
+		} else {
+			// Send the final GET for our SAML response
+			res, err = jc.client.Get(jcrd.Address)
+			if err != nil {
+				return samlAssertion, errors.Wrap(err, "error submitting request for SAML value")
+			}
 		}
-
-		// Send the final GET for our SAML response
-		res, err = jc.client.Get(jcrd.Address)
-		if err != nil {
-			return samlAssertion, errors.Wrap(err, "error submitting request for SAML value")
-		}
-		defer res.Body.Close()
-
 		//try to extract SAMLResponse
 		doc, err := goquery.NewDocumentFromReader(res.Body)
 		if err != nil {
@@ -210,6 +221,7 @@ func (jc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 
 		})
 
+		res.Body.Close()
 	} else {
 		errMsg := fmt.Sprintf("error when trying to auth, status code %d", res.StatusCode)
 		return samlAssertion, errors.Wrap(err, errMsg)
@@ -302,6 +314,262 @@ func (jc *Client) verifyMFA(jumpCloudOrgHost string, loginDetails *creds.LoginDe
 		req.Header.Add("X-Xsrftoken", xsrfToken)
 		req.Header.Add("Accept", "application/json")
 		req.Header.Add("Content-Type", "application/json")
+		return jc.client.Do(req)
+	case IdentifierDuoMfa:
+		// Get Duo config
+		req, err := http.NewRequest("GET", duoAuthSubmitURL, nil)
+		if err != nil {
+			return nil, errors.Wrap(err, "error building MFA authentication request")
+		}
+		// Re-add the necessary headers to our remade auth request
+		req.Header.Add("X-Xsrftoken", xsrfToken)
+		req.Header.Add("Accept", "application/json")
+		req.Header.Add("Content-Type", "application/json")
+
+		res, err := jc.client.Do(req)
+		if err != nil {
+			return nil, errors.Wrap(err, "error retrieving Duo configuration")
+		}
+		defer res.Body.Close()
+		if res.StatusCode != 200 {
+			return nil, errors.New("error retrieving Duo configuration, non 200 status returned")
+		}
+		duoResp, err := ioutil.ReadAll(res.Body)
+		if err != nil {
+			return nil, errors.Wrap(err, "error retrieving Duo configuration")
+		}
+		duoHost := gjson.GetBytes(duoResp, "api_host").String()
+		duoSignature := gjson.GetBytes(duoResp, "sig_request").String()
+		duoSignatures := strings.Split(duoSignature, ":")
+		duoToken := gjson.GetBytes(duoResp, "token").String()
+
+		duoSubmitURL := fmt.Sprintf("https://%s/frame/web/v1/auth", duoHost)
+
+		duoForm := url.Values{}
+		duoForm.Add("parent", "https://console.jumpcloud.com/duo2fa")
+		duoForm.Add("java_version", "")
+		duoForm.Add("java_version", "")
+		duoForm.Add("flash_version", "")
+		duoForm.Add("screen_resolution_width", "3008")
+		duoForm.Add("screen_resolution_height", "1692")
+		duoForm.Add("color_depth", "24")
+
+		req, err = http.NewRequest("POST", duoSubmitURL, strings.NewReader(duoForm.Encode()))
+		if err != nil {
+			return nil, errors.Wrap(err, "error building authentication request")
+		}
+		q := req.URL.Query()
+		q.Add("tx", duoSignatures[0])
+		req.URL.RawQuery = q.Encode()
+
+		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+
+		res, err = jc.client.Do(req)
+		if err != nil {
+			return nil, errors.Wrap(err, "error retrieving verify response")
+		}
+		defer res.Body.Close()
+
+		//try to extract sid
+		doc, err := goquery.NewDocumentFromReader(res.Body)
+		if err != nil {
+			return nil, errors.Wrap(err, "error parsing document")
+		}
+
+		duoSID, ok := doc.Find("input[name=\"sid\"]").Attr("value")
+		if !ok {
+			return nil, errors.Wrap(err, "unable to locate saml response")
+		}
+		duoSID = html.UnescapeString(duoSID)
+
+		//prompt for mfa type
+		//only supporting push or passcode for now
+		var token string
+
+		var duoMfaOptions = []string{
+			"Duo Push",
+			"Passcode",
+		}
+
+		duoMfaOption := 0
+
+		if loginDetails.DuoMFAOption == "Duo Push" {
+			duoMfaOption = 0
+		} else if loginDetails.DuoMFAOption == "Passcode" {
+			duoMfaOption = 1
+		} else {
+			duoMfaOption = prompter.Choose("Select a DUO MFA Option", duoMfaOptions)
+		}
+
+		if duoMfaOptions[duoMfaOption] == "Passcode" {
+			//get users DUO MFA Token
+			token = prompter.StringRequired("Enter passcode")
+		}
+
+		// send mfa auth request
+		duoSubmitURL = fmt.Sprintf("https://%s/frame/prompt", duoHost)
+
+		duoForm = url.Values{}
+		duoForm.Add("sid", duoSID)
+		duoForm.Add("device", "phone1")
+		duoForm.Add("factor", duoMfaOptions[duoMfaOption])
+		duoForm.Add("out_of_date", "false")
+		if duoMfaOptions[duoMfaOption] == "Passcode" {
+			duoForm.Add("passcode", token)
+		}
+
+		req, err = http.NewRequest("POST", duoSubmitURL, strings.NewReader(duoForm.Encode()))
+		if err != nil {
+			return nil, errors.Wrap(err, "error building authentication request")
+		}
+
+		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+
+		res, err = jc.client.Do(req)
+		if err != nil {
+			return nil, errors.Wrap(err, "error retrieving verify response")
+		}
+		defer res.Body.Close()
+
+		body, err := ioutil.ReadAll(res.Body)
+		if err != nil {
+			return nil, errors.Wrap(err, "error retrieving body from response")
+		}
+
+		resp := string(body)
+
+		duoTxStat := gjson.Get(resp, "stat").String()
+		duoTxID := gjson.Get(resp, "response.txid").String()
+		if duoTxStat != "OK" {
+			return nil, errors.Wrap(err, "error authenticating mfa device")
+		}
+
+		// get duo cookie
+		duoSubmitURL = fmt.Sprintf("https://%s/frame/status", duoHost)
+
+		duoForm = url.Values{}
+		duoForm.Add("sid", duoSID)
+		duoForm.Add("txid", duoTxID)
+
+		req, err = http.NewRequest("POST", duoSubmitURL, strings.NewReader(duoForm.Encode()))
+		if err != nil {
+			return nil, errors.Wrap(err, "error building authentication request")
+		}
+
+		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+
+		res, err = jc.client.Do(req)
+		if err != nil {
+			return nil, errors.Wrap(err, "error retrieving verify response")
+		}
+		defer res.Body.Close()
+
+		body, err = ioutil.ReadAll(res.Body)
+		if err != nil {
+			return nil, errors.Wrap(err, "error retrieving body from response")
+		}
+
+		resp = string(body)
+
+		duoTxResult := gjson.Get(resp, "response.result").String()
+		duoResultURL := gjson.Get(resp, "response.result_url").String()
+		newSID := gjson.Get(resp, "response.sid").String()
+		if newSID != "" {
+			duoSID = newSID
+		}
+
+		log.Println(gjson.Get(resp, "response.status").String())
+
+		if duoTxResult != "SUCCESS" {
+			//poll as this is likely a push request
+			for {
+				time.Sleep(3 * time.Second)
+
+				req, err = http.NewRequest("POST", duoSubmitURL, strings.NewReader(duoForm.Encode()))
+				if err != nil {
+					return nil, errors.Wrap(err, "error building authentication request")
+				}
+
+				req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+
+				res, err = jc.client.Do(req)
+				if err != nil {
+					return nil, errors.Wrap(err, "error retrieving verify response")
+				}
+				defer res.Body.Close()
+
+				body, err = ioutil.ReadAll(res.Body)
+				if err != nil {
+					return nil, errors.Wrap(err, "error retrieving body from response")
+				}
+
+				resp := string(body)
+
+				duoTxResult = gjson.Get(resp, "response.result").String()
+				duoResultURL = gjson.Get(resp, "response.result_url").String()
+				newSID = gjson.Get(resp, "response.sid").String()
+				if newSID != "" {
+					duoSID = newSID
+				}
+
+				log.Println(gjson.Get(resp, "response.status").String())
+
+				if duoTxResult == "FAILURE" {
+					return nil, errors.Wrap(err, "failed to authenticate device")
+				}
+
+				if duoTxResult == "SUCCESS" {
+					break
+				}
+			}
+		}
+
+		duoRequestURL := fmt.Sprintf("https://%s%s", duoHost, duoResultURL)
+
+		duoForm = url.Values{}
+		duoForm.Add("sid", duoSID)
+
+		req, err = http.NewRequest("POST", duoRequestURL, strings.NewReader(duoForm.Encode()))
+		if err != nil {
+			return nil, errors.Wrap(err, "error constructing request object to result url")
+		}
+
+		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+
+		res, err = jc.client.Do(req)
+		if err != nil {
+			return nil, errors.Wrap(err, "error retrieving duo result response")
+		}
+		defer res.Body.Close()
+
+		body, err = ioutil.ReadAll(res.Body)
+		if err != nil {
+			return nil, errors.Wrap(err, "duoResultSubmit: error retrieving body from response")
+		}
+
+		resp = string(body)
+
+		duoTxStat = gjson.Get(resp, "stat").String()
+		if duoTxStat != "OK" {
+			message := gjson.Get(resp, "message").String()
+			return nil, fmt.Errorf("duoResultSubmit: %s %s", duoTxStat, message)
+		}
+
+		duoTxCookie := gjson.Get(resp, "response.cookie").String()
+		if duoTxCookie == "" {
+			return nil, errors.New("duoResultSubmit: Unable to get response.cookie")
+		}
+
+		// callback to Jumpcloud with cookie
+		jumpcloudForm := url.Values{}
+		jumpcloudForm.Add("token", duoToken)
+		jumpcloudForm.Add("sig_response", fmt.Sprintf("%s:%s", duoTxCookie, duoSignatures[1]))
+
+		req, err = http.NewRequest("POST", duoAuthSubmitURL, strings.NewReader(jumpcloudForm.Encode()))
+		if err != nil {
+			return nil, errors.Wrap(err, "error building authentication request")
+		}
+		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 		return jc.client.Do(req)
 	}
 
