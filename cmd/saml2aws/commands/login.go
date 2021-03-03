@@ -87,7 +87,7 @@ func Login(loginFlags *flags.LoginExecFlags) error {
 		if valid, err := cacheProvider.IsValid(); valid {
 			samlAssertion, err = cacheProvider.Read()
 			if err != nil {
-				logger.Debug("Could not read cache:", err)
+				return errors.Wrap(err, "Could not read saml cache")
 			}
 		} else {
 			logger.Debug("Cache is invalid:", err)
@@ -103,7 +103,7 @@ func Login(loginFlags *flags.LoginExecFlags) error {
 		if account.SAMLCache {
 			err = cacheProvider.Write(samlAssertion)
 			if err != nil {
-				logger.Error("Could not write samlAssertion:", err)
+				return errors.Wrap(err, "Could not write saml cache")
 			}
 		}
 	}
