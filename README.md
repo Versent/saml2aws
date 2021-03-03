@@ -12,7 +12,7 @@ The process goes something like this:
 * Prompt user for credentials
 * Log in to Identity Provider using form based authentication
 * Build a SAML assertion containing AWS roles
-* Optionally cache the SAML assertion
+* Optionally cache the SAML assertion (the cache is not encrypted)
 * Exchange the role and SAML assertion with [AWS STS service](https://docs.aws.amazon.com/STS/latest/APIReference/Welcome.html) to get a temporary set of credentials
 * Save these credentials to an aws profile named "saml"
 
