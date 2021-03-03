@@ -33,7 +33,9 @@ func Login(loginFlags *flags.LoginExecFlags) error {
 
 	sharedCreds := awsconfig.NewSharedCredentials(account.Profile, account.CredentialsFile)
 	// creates a cacheProvider, only used when --cache is set
-	cacheProvider := samlcache.NewSAMLCacheProvider(account.Name, "")
+	cacheProvider := &samlcache.SAMLCacheProvider{
+		Account: account.Name,
+	}
 
 	logger.Debug("check if Creds Exist")
 
@@ -84,13 +86,13 @@ func Login(loginFlags *flags.LoginExecFlags) error {
 
 	var samlAssertion string
 	if account.SAMLCache {
-		if valid, err := cacheProvider.IsValid(); valid {
+		if cacheProvider.IsValid() {
 			samlAssertion, err = cacheProvider.Read()
 			if err != nil {
 				return errors.Wrap(err, "Could not read saml cache")
 			}
 		} else {
-			logger.Debug("Cache is invalid:", err)
+			logger.Debug("Cache is invalid")
 		}
 	}
 

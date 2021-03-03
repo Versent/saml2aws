@@ -32,14 +32,6 @@ type SAMLCacheProvider struct {
 	Account  string
 }
 
-func NewSAMLCacheProvider(account string, filename string) *SAMLCacheProvider {
-	p := &SAMLCacheProvider{
-		Filename: filename,
-		Account:  account,
-	}
-	return p
-}
-
 func resolveSymlink(filename string) (string, error) {
 	sympath, err := filepath.EvalSymlinks(filename)
 
@@ -54,14 +46,13 @@ func resolveSymlink(filename string) (string, error) {
 	return sympath, nil
 }
 
-func (p *SAMLCacheProvider) IsValid() (bool, error) {
+func (p *SAMLCacheProvider) IsValid() bool {
 	var cache_path string
 	var err error
 	if p.Filename == "" {
 		cache_path, err = locateCacheFile(p.Account)
 		if err != nil {
-			logger.Debug("Could not retrieve cache file path")
-			return false, err
+			return false
 		}
 	} else {
 		cache_path = p.Filename
@@ -69,14 +60,10 @@ func (p *SAMLCacheProvider) IsValid() (bool, error) {
 
 	fileInfo, err := os.Stat(cache_path)
 	if err != nil {
-		return false, errors.Wrap(err, "Could not access cache file info")
+		return false
 	}
 
-	if time.Since(fileInfo.ModTime()) < SAMLAssertionValidityTimeout {
-		return true, nil
-	} else {
-		return false, errors.New("Cache is expired")
-	}
+	return time.Since(fileInfo.ModTime()) < SAMLAssertionValidityTimeout
 }
 
 func locateCacheFile(account string) (string, error) {

@@ -91,10 +91,8 @@ func TestIsValid(t *testing.T) {
 		Filename: "example_cache",
 	}
 
-	var valid bool
-	var err error
-	if valid, err = p.IsValid(); !valid {
-		t.Error("Cache file is not valid!", err)
+	if !p.IsValid() {
+		t.Error("Cache file is not valid!")
 	}
 
 	// changing the file timestamp to validate expiry
@@ -102,7 +100,7 @@ func TestIsValid(t *testing.T) {
 	new_time := time.Now().Add(-24 * time.Hour)
 	_ = os.Chtimes("example_cache", new_time, new_time)
 
-	if valid, _ = p.IsValid(); valid {
+	if p.IsValid() {
 		t.Error("Cache file should be expired!")
 	}
 

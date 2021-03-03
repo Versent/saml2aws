@@ -25,7 +25,10 @@ func ListRoles(loginFlags *flags.LoginExecFlags) error {
 	}
 
 	// creates a cacheProvider, only used when --cache is set
-	cacheProvider := samlcache.NewSAMLCacheProvider(account.Name, "")
+	// cacheProvider := samlcache.NewSAMLCacheProvider(account.Name, "")
+	cacheProvider := &samlcache.SAMLCacheProvider{
+		Account: account.Name,
+	}
 
 	loginDetails, err := resolveLoginDetails(account, loginFlags)
 	if err != nil {
@@ -47,7 +50,7 @@ func ListRoles(loginFlags *flags.LoginExecFlags) error {
 
 	var samlAssertion string
 	if account.SAMLCache {
-		if valid, _ := cacheProvider.IsValid(); valid {
+		if cacheProvider.IsValid() {
 			samlAssertion, err = cacheProvider.Read()
 			if err != nil {
 				logger.Debug("Could not read cache:", err)
