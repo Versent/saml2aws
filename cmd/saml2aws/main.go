@@ -80,6 +80,7 @@ func main() {
 	app.Flag("aws-urn", "The URN used by SAML when you login. (env: SAML2AWS_AWS_URN)").Envar("SAML2AWS_AWS_URN").StringVar(&commonFlags.AmazonWebservicesURN)
 	app.Flag("skip-prompt", "Skip prompting for parameters during login.").BoolVar(&commonFlags.SkipPrompt)
 	app.Flag("session-duration", "The duration of your AWS Session. (env: SAML2AWS_SESSION_DURATION)").Envar("SAML2AWS_SESSION_DURATION").IntVar(&commonFlags.SessionDuration)
+	app.Flag("linux-keychain", "The linux keychain to be utilized. (env: SAML2AWS_LINUX_KEYCHAIN)").Envar("SAML2AWS_LINUX_KEYCHAIN").EnumVar(&commonFlags.LinuxKeychain, "kwallet", "pass", "secret-service")
 	app.Flag("disable-keychain", "Do not use keychain at all. This will also disable Okta sessions & remembering MFA device. (env: SAML2AWS_DISABLE_KEYCHAIN)").Envar("SAML2AWS_DISABLE_KEYCHAIN").BoolVar(&commonFlags.DisableKeychain)
 	app.Flag("region", "AWS region to use for API requests, e.g. us-east-1, us-gov-west-1, cn-north-1 (env: SAML2AWS_REGION)").Envar("SAML2AWS_REGION").Short('r').StringVar(&commonFlags.Region)
 
@@ -163,14 +164,12 @@ func main() {
 	}
 
 	errtpl := "%v\n"
-	if *verbose {
-		logrus.SetLevel(logrus.DebugLevel)
-		errtpl = "%+v\n"
-	}
-
 	if *quiet {
 		log.SetOutput(ioutil.Discard)
 		logrus.SetOutput(ioutil.Discard)
+	} else if *verbose {
+		logrus.SetLevel(logrus.DebugLevel)
+		errtpl = "%+v\n"
 	}
 
 	// Set the default transport settings so all http clients will pick them up.

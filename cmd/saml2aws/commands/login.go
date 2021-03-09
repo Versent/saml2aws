@@ -16,6 +16,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/versent/saml2aws/v2"
 	"github.com/versent/saml2aws/v2/helper/credentials"
+	"github.com/versent/saml2aws/v2/helper/linuxkeyring"
 	"github.com/versent/saml2aws/v2/pkg/awsconfig"
 	"github.com/versent/saml2aws/v2/pkg/cfg"
 	"github.com/versent/saml2aws/v2/pkg/creds"
@@ -122,6 +123,9 @@ func Login(loginFlags *flags.LoginExecFlags) error {
 	}
 
 	if !loginFlags.CommonFlags.DisableKeychain {
+		if loginFlags.CommonFlags.LinuxKeychain != "" {
+			customLinuxKeyring(loginFlags.CommonFlags.LinuxKeychain)
+		}
 		err = credentials.SaveCredentials(loginDetails.URL, loginDetails.Username, loginDetails.Password)
 		if err != nil {
 			return errors.Wrap(err, "Error storing password in keychain.")
@@ -182,6 +186,9 @@ func resolveLoginDetails(account *cfg.IDPAccount, loginFlags *flags.LoginExecFla
 
 	var err error
 	if !loginFlags.CommonFlags.DisableKeychain {
+		if loginFlags.CommonFlags.LinuxKeychain != "" {
+			customLinuxKeyring(loginFlags.CommonFlags.LinuxKeychain)
+		}
 		err = credentials.LookupCredentials(loginDetails, account.Provider)
 		if err != nil {
 			if !credentials.IsErrCredentialsNotFound(err) {
@@ -357,6 +364,22 @@ func saveCredentials(awsCreds *awsconfig.AWSCredentials, sharedCreds *awsconfig.
 	}
 
 	return nil
+}
+
+// allows for customizing the linux keyring as needed.
+// in particular this eases use on headless systems where only `pass` can be used, but
+// 99designs/keyring might incorrectly determine that something like `gnome-keyring`
+// should be used instead which requires an X11 session to unlock.
+func customLinuxKeyring(linuxKeyringName string) {
+	// short-circuit if the linux keyring has already been custom initialized
+	if credentials.CustomInit {
+		return
+	}
+
+	if keyringHelper, err := linuxkeyring.NewKeyringHelper(linuxKeyringName); err == nil {
+		credentials.CurrentHelper = keyringHelper
+		credentials.CustomInit = true
+	}
 }
 
 // CredentialsToCredentialProcess

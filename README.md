@@ -137,6 +137,8 @@ brew install awscli
 
 ## Usage
 
+<!-- this section is generated with `saml2aws --help-long` -->
+
 ```
 usage: saml2aws [<flags>] <command> [<args> ...]
 
@@ -145,9 +147,10 @@ A command line tool to help with SAML access to the AWS token service.
 Flags:
       --help                   Show context-sensitive help (also try --help-long and --help-man).
       --version                Show application version.
-      --quiet                  silences logs
       --verbose                Enable verbose logging
+      --quiet                  silences logs
   -i, --provider=PROVIDER      This flag is obsolete. See: https://github.com/Versent/saml2aws#configuring-idp-accounts
+      --config=CONFIG          Path/filename of saml2aws config file (env: SAML2AWS_CONFIGFILE)
   -a, --idp-account="default"  The name of the configured IDP account. (env: SAML2AWS_IDP_ACCOUNT)
       --idp-provider=IDP-PROVIDER
                                The configured IDP provider. (env: SAML2AWS_IDP_PROVIDER)
@@ -162,7 +165,9 @@ Flags:
       --skip-prompt            Skip prompting for parameters during login.
       --session-duration=SESSION-DURATION
                                The duration of your AWS Session. (env: SAML2AWS_SESSION_DURATION)
-      --disable-keychain       Do not use keychain at all. (env: SAML2AWS_DISABLE_KEYCHAIN)
+      --linux-keychain=LINUX-KEYCHAIN
+                               The linux keychain to be utilized. (env: SAML2AWS_LINUX_KEYCHAIN)
+      --disable-keychain       Do not use keychain at all. This will also disable Okta sessions & remembering MFA device. (env: SAML2AWS_DISABLE_KEYCHAIN)
   -r, --region=REGION          AWS region to use for API requests, e.g. us-east-1, us-gov-west-1, cn-north-1 (env: SAML2AWS_REGION)
 
 Commands:
@@ -180,7 +185,8 @@ Commands:
         --subdomain=SUBDOMAIN      OneLogin subdomain of your company account. (env: ONELOGIN_SUBDOMAIN)
     -p, --profile=PROFILE          The AWS profile to save the temporary credentials. (env: SAML2AWS_PROFILE)
         --resource-id=RESOURCE-ID  F5APM SAML resource ID of your company account. (env: SAML2AWS_F5APM_RESOURCE_ID)
-        --config=CONFIG            Path/filename of saml2aws config file (env: SAML2AWS_CONFIGFILE)
+        --credentials-file=CREDENTIALS-FILE
+                                   The file that will cache the credentials retrieved from AWS. When not specified, will use the default AWS credentials file location. (env: SAML2AWS_CREDENTIALS_FILE)
         --cache-saml               Caches the SAML response (env: SAML2AWS_CACHE_SAML)
         --cache-file=CACHE-FILE    The location of the SAML cache file (env: SAML2AWS_SAML_CACHE_FILE)
         --disable-sessions         Do not use Okta sessions. Uses Okta sessions by default. (env: SAML2AWS_OKTA_DISABLE_SESSIONS)
@@ -189,56 +195,54 @@ Commands:
   login [<flags>]
     Login to a SAML 2.0 IDP and convert the SAML assertion to an STS token.
 
-    -p, --profile=PROFILE        The AWS profile to save the temporary credentials. (env: SAML2AWS_PROFILE)
+    -p, --profile=PROFILE          The AWS profile to save the temporary credentials. (env: SAML2AWS_PROFILE)
         --duo-mfa-option=DUO-MFA-OPTION
-                                 The MFA option you want to use to authenticate with
-        --client-id=CLIENT-ID    OneLogin client id, used to generate API access token. (env: ONELOGIN_CLIENT_ID)
+                                   The MFA option you want to use to authenticate with
+        --client-id=CLIENT-ID      OneLogin client id, used to generate API access token. (env: ONELOGIN_CLIENT_ID)
         --client-secret=CLIENT-SECRET
-                                 OneLogin client secret, used to generate API access token. (env: ONELOGIN_CLIENT_SECRET)
-        --force                  Refresh credentials even if not expired.
-        --credential-process     Enables AWS Credential Process support by outputting credentials to STDOUT in a JSON message.
+                                   OneLogin client secret, used to generate API access token. (env: ONELOGIN_CLIENT_SECRET)
+        --force                    Refresh credentials even if not expired.
+        --credential-process       Enables AWS Credential Process support by outputting credentials to STDOUT in a JSON message.
         --credentials-file=CREDENTIALS-FILE
-                                 The file that will cache the credentials retrieved from AWS. When not specified, will use the default AWS credentials file location. (env: SAML2AWS_CREDENTIALS_FILE)
-        --cache-saml             Caches the SAML response (env: SAML2AWS_CACHE_SAML)
-        --cache-file=CACHE-FILE  The location of the SAML cache file (env: SAML2AWS_SAML_CACHE_FILE)
+                                   The file that will cache the credentials retrieved from AWS. When not specified, will use the default AWS credentials file location. (env: SAML2AWS_CREDENTIALS_FILE)
+        --cache-saml               Caches the SAML response (env: SAML2AWS_CACHE_SAML)
+        --cache-file=CACHE-FILE    The location of the SAML cache file (env: SAML2AWS_SAML_CACHE_FILE)
         --disable-sessions         Do not use Okta sessions. Uses Okta sessions by default. (env: SAML2AWS_OKTA_DISABLE_SESSIONS)
         --disable-remember-device  Do not remember Okta MFA device. Remembers MFA device by default. (env: SAML2AWS_OKTA_DISABLE_REMEMBER_DEVICE)
 
   exec [<flags>] [<command>...]
     Exec the supplied command with env vars from STS token.
 
-    -p, --profile=PROFILE      The AWS profile to save the temporary credentials. (env: SAML2AWS_PROFILE)
+    -p, --profile=PROFILE  The AWS profile to save the temporary credentials. (env: SAML2AWS_PROFILE)
         --exec-profile=EXEC-PROFILE
-                               The AWS profile to utilize for command execution. Useful to allow the aws cli to perform secondary role assumption. (env: SAML2AWS_EXEC_PROFILE)
+                           The AWS profile to utilize for command execution. Useful to allow the aws cli to perform secondary role assumption. (env: SAML2AWS_EXEC_PROFILE)
         --credentials-file=CREDENTIALS-FILE
-                               The file that will cache the credentials retrieved from AWS. When not specified, will use the default AWS credentials file location. (env: SAML2AWS_CREDENTIALS_FILE)
+                           The file that will cache the credentials retrieved from AWS. When not specified, will use the default AWS credentials file location. (env: SAML2AWS_CREDENTIALS_FILE)
 
   console [<flags>]
     Console will open the aws console after logging in.
 
         --exec-profile=EXEC-PROFILE
-                               The AWS profile to utilize for console execution. (env: SAML2AWS_EXEC_PROFILE)
-    -p, --profile=PROFILE      The AWS profile to save the temporary credentials. (env: SAML2AWS_PROFILE)
-        --force                Refresh credentials even if not expired.
-        --link                 Present link to AWS console instead of opening browser
+                           The AWS profile to utilize for console execution. (env: SAML2AWS_EXEC_PROFILE)
+    -p, --profile=PROFILE  The AWS profile to save the temporary credentials. (env: SAML2AWS_PROFILE)
+        --force            Refresh credentials even if not expired.
+        --link             Present link to AWS console instead of opening browser
         --credentials-file=CREDENTIALS-FILE
-                               The file that will cache the credentials retrieved from AWS. When not specified, will use the default AWS credentials file location. (env: SAML2AWS_CREDENTIALS_FILE)
+                           The file that will cache the credentials retrieved from AWS. When not specified, will use the default AWS credentials file location. (env: SAML2AWS_CREDENTIALS_FILE)
 
-  list-roles
+  list-roles [<flags>]
     List available role ARNs.
-        --cache-saml             Caches the SAML response (env: SAML2AWS_CACHE_SAML)
-        --cache-file=CACHE-FILE  The location of the SAML cache file (env: SAML2AWS_SAML_CACHE_FILE)
 
+    --cache-saml             Caches the SAML response (env: SAML2AWS_CACHE_SAML)
+    --cache-file=CACHE-FILE  The location of the SAML cache file (env: SAML2AWS_SAML_CACHE_FILE)
 
   script [<flags>]
     Emit a script that will export environment variables.
 
-    -p, --profile=PROFILE      The AWS profile to save the temporary credentials. (env: SAML2AWS_PROFILE)
-        --shell=bash           Type of shell environment. Options include: bash, powershell, fish, env
+    -p, --profile=PROFILE  The AWS profile to save the temporary credentials. (env: SAML2AWS_PROFILE)
         --credentials-file=CREDENTIALS-FILE
-                               The file that will cache the credentials retrieved from AWS. When not specified, will use the default AWS credentials file location. (env: SAML2AWS_CREDENTIALS_FILE)
-
-
+                           The file that will cache the credentials retrieved from AWS. When not specified, will use the default AWS credentials file location. (env: SAML2AWS_CREDENTIALS_FILE)
+        --shell=bash       Type of shell environment. Options include: bash, powershell, fish, env
 ```
 
 

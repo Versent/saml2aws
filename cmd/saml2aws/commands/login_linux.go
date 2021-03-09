@@ -6,7 +6,7 @@ import (
 )
 
 func init() {
-	if keyringHelper, err := linuxkeyring.NewKeyringHelper(); err == nil {
+	if keyringHelper, err := linuxkeyring.NewKeyringHelper(""); err == nil {
 		credentials.CurrentHelper = keyringHelper
 	}
 }
