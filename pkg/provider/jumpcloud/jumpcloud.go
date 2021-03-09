@@ -170,7 +170,6 @@ func (jc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		if err != nil {
 			return samlAssertion, err
 		}
-
 	}
 
 	// Check if our auth was successful
@@ -185,19 +184,13 @@ func (jc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		var jcrd = new(JCRedirect)
 		err = json.Unmarshal(reDirBody, &jcrd)
 		if err != nil {
-			// Looks like JumpCloud handles differently DUO case and doesn't return
-			// redirect_url json payload, instead returning the SAML assertion
-			// directly. It is a strange behaviour but shoudld be handled here.
-			log.Printf("Error unmarshalling redirectTo response! %v", err)
-			log.Println("Not to worry, trying to extract assertion without the redirect URL")
-			// restore res.Body back
-			res.Body = ioutil.NopCloser(bytes.NewBuffer(reDirBody))
-		} else {
-			// Send the final GET for our SAML response
-			res, err = jc.client.Get(jcrd.Address)
-			if err != nil {
-				return samlAssertion, errors.Wrap(err, "error submitting request for SAML value")
-			}
+			return samlAssertion, errors.Wrap(err, "Error unmarshalling redirectTo response!")
+		}
+
+		// Send the final GET for our SAML response
+		res, err = jc.client.Get(jcrd.Address)
+		if err != nil {
+			return samlAssertion, errors.Wrap(err, "error submitting request for SAML value")
 		}
 		//try to extract SAMLResponse
 		doc, err := goquery.NewDocumentFromReader(res.Body)
@@ -237,6 +230,8 @@ func (jc *Client) verifyMFA(jumpCloudOrgHost string, loginDetails *creds.LoginDe
 	if err != nil {
 		return nil, err
 	}
+	// make sure we set chosen option here
+	jc.mfa = option
 
 	switch option {
 	case IdentifierTotpMfa:
@@ -560,16 +555,21 @@ func (jc *Client) verifyMFA(jumpCloudOrgHost string, loginDetails *creds.LoginDe
 			return nil, errors.New("duoResultSubmit: Unable to get response.cookie")
 		}
 
-		// callback to Jumpcloud with cookie
-		jumpcloudForm := url.Values{}
-		jumpcloudForm.Add("token", duoToken)
-		jumpcloudForm.Add("sig_response", fmt.Sprintf("%s:%s", duoTxCookie, duoSignatures[1]))
+		jumpCloudJsonPayload := []byte(
+			fmt.Sprintf(`{"token":"%s","sig_response":"%s"}`,
+				duoToken,
+				fmt.Sprintf("%s:%s", duoTxCookie, duoSignatures[1])),
+		)
 
-		req, err = http.NewRequest("POST", duoAuthSubmitURL, strings.NewReader(jumpcloudForm.Encode()))
+		req, err = http.NewRequest("POST", duoAuthSubmitURL, bytes.NewBuffer(jumpCloudJsonPayload))
 		if err != nil {
 			return nil, errors.Wrap(err, "error building authentication request")
 		}
-		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+
+		req.Header.Add("X-Xsrftoken", xsrfToken)
+		req.Header.Add("Accept", "application/json")
+		req.Header.Add("Content-Type", "application/json")
+
 		return jc.client.Do(req)
 	}
 
