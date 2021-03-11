@@ -759,76 +759,83 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 		return gjson.GetBytes(body, "sessionToken").String(), nil
 
 	case IdentifierFIDOWebAuthn:
-		var authErr error
-		var signedAssertion *SignedAssertion
-		challengeResponseBody := challengeContext.challengeResponseBody
-		lastMfaOption := mfaOption
-
-		for {
-			nonce := gjson.Get(challengeResponseBody, "_embedded.factor._embedded.challenge.challenge").String()
-			credentialID := gjson.Get(challengeResponseBody, "_embedded.factor.profile.credentialId").String()
-			version := gjson.Get(challengeResponseBody, "_embedded.factor.profile.version").String()
-
-			fidoClient, err := NewFidoClient(
-				nonce,
-				oktaOrgHost,
-				version,
-				credentialID,
-				stateToken,
-				new(U2FDeviceFinder),
-			)
-
-			if err != nil {
-				return "", err
-			}
-
-			signedAssertion, authErr = fidoClient.ChallengeU2F()
-
-			if _, ok := authErr.(*u2fhost.BadKeyHandleError); ok {
-				nextMfaOption := findMfaOption(oc.mfa, mfaOptions, lastMfaOption)
-				if nextMfaOption <= lastMfaOption {
-					return "", authErr
-				}
-				lastMfaOption = nextMfaOption
-
-				nextChallengeContext, err := getMfaChallengeContext(oc, nextMfaOption, resp)
-				if err != nil {
-					return "", err
-				}
-				challengeResponseBody = nextChallengeContext.challengeResponseBody
-				continue
-			}
-
-			if err != nil {
-				return "", err
-			}
-
-			break
-		}
-
-		payload, err := json.Marshal(signedAssertion)
-		if err != nil {
-			return "", err
-		}
-
-		webauthnCallback := gjson.Get(challengeResponseBody, "_links.next.href").String()
-		req, err := http.NewRequest("POST", webauthnCallback, strings.NewReader(string(payload)))
-		if err != nil {
-			return "", errors.Wrap(err, "error building authentication request")
-		}
-		req.Header.Add("Accept", "application/json")
-		req.Header.Add("Content-Type", "application/json")
-		res, err := oc.client.Do(req)
-		if err != nil {
-			return "", errors.Wrap(err, "error retrieving verify response")
-		}
-		body, err := ioutil.ReadAll(res.Body)
-		if err != nil {
-			return "", errors.Wrap(err, "error retrieving body from response")
-		}
-		return gjson.GetBytes(body, "sessionToken").String(), nil
+		return fidoWebAuthn(oc, oktaOrgHost, challengeContext, mfaOption, stateToken, mfaOptions, resp)
 	}
 
 	// catch all
 	return "", errors.New("no mfa options provided")
+}
+
+func fidoWebAuthn(oc *Client, oktaOrgHost string, challengeContext *mfaChallengeContext, mfaOption int, stateToken string, mfaOptions []string, resp string) (string, error) {
+
+	var signedAssertion *SignedAssertion
+	challengeResponseBody := challengeContext.challengeResponseBody
+	lastMfaOption := mfaOption
+
+	for {
+		nonce := gjson.Get(challengeResponseBody, "_embedded.factor._embedded.challenge.challenge").String()
+		credentialID := gjson.Get(challengeResponseBody, "_embedded.factor.profile.credentialId").String()
+		version := gjson.Get(challengeResponseBody, "_embedded.factor.profile.version").String()
+
+		fidoClient, err := NewFidoClient(
+			nonce,
+			oktaOrgHost,
+			version,
+			credentialID,
+			stateToken,
+			new(U2FDeviceFinder),
+		)
+		if err != nil {
+			return "", err
+		}
+
+		signedAssertion, err = fidoClient.ChallengeU2F()
+		if err != nil {
+			// if this error is not a bad key error we are done
+			if _, ok := err.(*u2fhost.BadKeyHandleError); !ok {
+				return "", errors.Wrap(err, "failed to perform U2F challenge")
+			}
+
+			// check if there is another fido device and try that
+			nextMfaOption := findMfaOption(oc.mfa, mfaOptions, lastMfaOption)
+			if nextMfaOption <= lastMfaOption {
+				return "", errors.Wrap(err, "tried all MFA options")
+			}
+			lastMfaOption = nextMfaOption
+
+			nextChallengeContext, err := getMfaChallengeContext(oc, nextMfaOption, resp)
+			if err != nil {
+				return "", errors.Wrap(err, "get mfa challenge failed for U2F device")
+			}
+			challengeResponseBody = nextChallengeContext.challengeResponseBody
+			continue
+		}
+
+		break
+	}
+
+	payload, err := json.Marshal(signedAssertion)
+	if err != nil {
+		return "", err
+	}
+
+	webauthnCallback := gjson.Get(challengeResponseBody, "_links.next.href").String()
+	req, err := http.NewRequest("POST", webauthnCallback, strings.NewReader(string(payload)))
+	if err != nil {
+		return "", errors.Wrap(err, "error building authentication request")
+	}
+
+	req.Header.Add("Accept", "application/json")
+	req.Header.Add("Content-Type", "application/json")
+	res, err := oc.client.Do(req)
+	if err != nil {
+		return "", errors.Wrap(err, "error retrieving verify response")
+	}
+
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return "", errors.Wrap(err, "error retrieving body from response")
+	}
+
+	return gjson.GetBytes(body, "sessionToken").String(), nil
 }
