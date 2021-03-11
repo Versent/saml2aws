@@ -12,6 +12,7 @@ The process goes something like this:
 * Prompt user for credentials
 * Log in to Identity Provider using form based authentication
 * Build a SAML assertion containing AWS roles
+* Optionally cache the SAML assertion (the cache is not encrypted)
 * Exchange the role and SAML assertion with [AWS STS service](https://docs.aws.amazon.com/STS/latest/APIReference/Welcome.html) to get a temporary set of credentials
 * Save these credentials to an aws profile named "saml"
 
@@ -629,6 +630,14 @@ credential_process = saml2aws login --skip-prompt --quiet --credential-process -
 ```
 
 When using the aws cli with the `mybucket` profile, the authentication process will be run and the aws will then be executed based on the returned credentials.
+
+# Caching the saml2aws SAML assertion for immediate reuse
+
+You can use the flag `--cache-saml` in order to cache the SAML assertion at authentication time. The SAML assertion cache has a very short validity (5 min) and can be used to authenticate to several roles with a single MFA validation.
+
+there is a file per saml2aws profile, the cache directory is called `saml2aws` and is located in your `.aws` directory in your user homedir.
+
+You can toggle `--cache-saml` during `login` or during `list-roles`, and you can set it once during `configure` and use it implicitly.
 
 # License
 
