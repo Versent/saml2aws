@@ -157,6 +157,8 @@ Commands:
     -p, --profile=PROFILE          The AWS profile to save the temporary credentials. (env: SAML2AWS_PROFILE)
         --resource-id=RESOURCE-ID  F5APM SAML resource ID of your company account. (env: SAML2AWS_F5APM_RESOURCE_ID)
         --config=CONFIG            Path/filename of saml2aws config file (env: SAML2AWS_CONFIGFILE)
+        --cache-saml               Caches the SAML response (env: SAML2AWS_CACHE_SAML)
+        --cache-file=CACHE-FILE    The location of the SAML cache file (env: SAML2AWS_SAML_CACHE_FILE)
 
   login [<flags>]
     Login to a SAML 2.0 IDP and convert the SAML assertion to an STS token.
@@ -171,6 +173,9 @@ Commands:
         --credential-process     Enables AWS Credential Process support by outputting credentials to STDOUT in a JSON message.
         --credentials-file=CREDENTIALS-FILE
                                  The file that will cache the credentials retrieved from AWS. When not specified, will use the default AWS credentials file location. (env: SAML2AWS_CREDENTIALS_FILE)
+        --cache-saml             Caches the SAML response (env: SAML2AWS_CACHE_SAML)
+        --cache-file=CACHE-FILE  The location of the SAML cache file (env: SAML2AWS_SAML_CACHE_FILE)
+
 
   exec [<flags>] [<command>...]
     Exec the supplied command with env vars from STS token.
@@ -194,6 +199,8 @@ Commands:
 
   list-roles
     List available role ARNs.
+        --cache-saml             Caches the SAML response (env: SAML2AWS_CACHE_SAML)
+        --cache-file=CACHE-FILE  The location of the SAML cache file (env: SAML2AWS_SAML_CACHE_FILE)
 
 
   script [<flags>]
