@@ -413,7 +413,7 @@ func (kc *Client) loadChallengePage(submitURL string, referer string, authForm u
 			responseForm.Set("TrustDevice", "on")
 
 			return kc.loadResponsePage(secondActionURL, submitURL, responseForm)
-		case strings.Contains(secondActionURL, "challenge/az/"): // handle phone challenge
+		case strings.Contains(secondActionURL, "challenge/dp/"): // handle phone challenge
 
 			dataAttrs := extractDataAttributes(doc, "div[data-context]", []string{"data-context", "data-gapi-url", "data-tx-id", "data-api-key", "data-tx-lifetime"})
 
