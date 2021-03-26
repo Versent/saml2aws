@@ -73,7 +73,7 @@ saml2aws --version
 
 ### Windows
 
-If you're on Windows you can install saml2aws using chocolatey!
+If you're on Windows you can [install saml2aws using chocolatey](https://chocolatey.org/packages?q=saml2aws)!
 
 ```
 choco install saml2aws
