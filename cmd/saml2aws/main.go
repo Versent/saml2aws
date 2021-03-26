@@ -145,9 +145,9 @@ func main() {
 	cmdScript.Flag("credentials-file", "The file that will cache the credentials retrieved from AWS. When not specified, will use the default AWS credentials file location. (env: SAML2AWS_CREDENTIALS_FILE)").Envar("SAML2AWS_CREDENTIALS_FILE").StringVar(&commonFlags.CredentialsFile)
 	var shell string
 	cmdScript.
-		Flag("shell", "Type of shell environment. Options include: bash, powershell, fish").
+		Flag("shell", "Type of shell environment. Options include: bash, powershell, fish, env").
 		Default("bash").
-		EnumVar(&shell, "bash", "powershell", "fish")
+		EnumVar(&shell, "bash", "powershell", "fish", "env")
 
 	// Trigger the parsing of the command line inputs via kingpin
 	command := kingpin.MustParse(app.Parse(os.Args[1:]))

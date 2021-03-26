@@ -73,7 +73,7 @@ saml2aws --version
 
 ### Windows
 
-If you're on Windows you can install saml2aws using chocolatey!
+If you're on Windows you can [install saml2aws using chocolatey](https://chocolatey.org/packages?q=saml2aws)!
 
 ```
 choco install saml2aws
@@ -207,7 +207,7 @@ Commands:
     Emit a script that will export environment variables.
 
     -p, --profile=PROFILE      The AWS profile to save the temporary credentials. (env: SAML2AWS_PROFILE)
-        --shell=bash           Type of shell environment. Options include: bash, powershell, fish
+        --shell=bash           Type of shell environment. Options include: bash, powershell, fish, env
         --credentials-file=CREDENTIALS-FILE
                                The file that will cache the credentials retrieved from AWS. When not specified, will use the default AWS credentials file location. (env: SAML2AWS_CREDENTIALS_FILE)
 
@@ -228,6 +228,7 @@ SAML2AWS_PROFILE=saml
 ```
 
 Powershell, and fish shells are supported as well.
+Env is useful for all AWS SDK compatible tools that can source an env file. It is a powerful combo with docker and the `--env-file` parameter.
 
 If you use `eval $(saml2aws script)` frequently, you may want to create a alias for it:
 
@@ -239,6 +240,11 @@ alias s2a="function(){eval $( $(command saml2aws) script --shell=bash --profile=
 bash:
 ```
 function s2a { eval $( $(which saml2aws) script --shell=bash --profile=$@); }
+```
+
+env:
+```
+docker run -ti --env-file <(saml2aws script --shell=env) amazon/aws-cli s3 ls
 ```
 
 ### `saml2aws exec`
