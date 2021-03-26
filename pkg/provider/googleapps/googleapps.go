@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -195,7 +194,7 @@ func (kc *Client) iTermCaptchaPrompt(captchaPictureURL string) (string, error) {
 }
 
 func simpleCaptchaPrompt(captchaPictureURL string) string {
-	log.Println("Open this link in a browser:\n", captchaPictureURL)
+	fmt.Println("Open this link in a browser:\n", captchaPictureURL)
 	return prompter.String("Captcha", "")
 }
 
