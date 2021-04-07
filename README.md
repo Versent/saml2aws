@@ -25,6 +25,7 @@ The process goes something like this:
     - [OSX](#osx)
     - [Windows](#windows)
     - [Linux](#linux)
+- [Autocomplete](#autocomplete)
 - [Dependency Setup](#dependency-setup)
 - [Usage](#usage)
     - [`saml2aws script`](#saml2aws-script)
@@ -101,6 +102,24 @@ If you are on Void Linux you can use xbps to install the saml2aws package!
 
 ```
 xbps-install saml2aws
+```
+
+## Autocomplete
+
+`saml2aws` can generate completion scripts.
+
+### Bash
+
+Add the following line to your `.bash_profile` (or equivalent):
+```bash
+eval "$(saml2aws --completion-script-bash)"
+```
+
+### Zsh
+
+Add the following line to your `.zshrc` (or equivalent):
+```bash
+eval "$(saml2aws --completion-script-zsh)"
 ```
 
 ## Dependency Setup
