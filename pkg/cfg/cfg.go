@@ -30,7 +30,7 @@ const (
 
 // IDPAccount saml IDP account
 type IDPAccount struct {
-	Name                 string
+	Name                 string `ini:"name"`
 	AppID                string `ini:"app_id"` // used by OneLogin and AzureAD
 	URL                  string `ini:"url"`
 	Username             string `ini:"username"`
@@ -49,6 +49,7 @@ type IDPAccount struct {
 	HttpRetryDelay       string `ini:"http_retry_delay"`
 	CredentialsFile      string `ini:"credentials_file"`
 	SAMLCache            bool   `ini:"saml_cache"`
+	SAMLCacheFile        string `ini:"saml_cache_file"`
 }
 
 func (ia IDPAccount) String() string {

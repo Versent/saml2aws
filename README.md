@@ -25,6 +25,7 @@ The process goes something like this:
     - [OSX](#osx)
     - [Windows](#windows)
     - [Linux](#linux)
+- [Autocomplete](#autocomplete)
 - [Dependency Setup](#dependency-setup)
 - [Usage](#usage)
     - [`saml2aws script`](#saml2aws-script)
@@ -73,7 +74,7 @@ saml2aws --version
 
 ### Windows
 
-If you're on Windows you can install saml2aws using chocolatey!
+If you're on Windows you can [install saml2aws using chocolatey](https://chocolatey.org/packages?q=saml2aws)!
 
 ```
 choco install saml2aws
@@ -100,6 +101,24 @@ If you are on Void Linux you can use xbps to install the saml2aws package!
 
 ```
 xbps-install saml2aws
+```
+
+## Autocomplete
+
+`saml2aws` can generate completion scripts.
+
+### Bash
+
+Add the following line to your `.bash_profile` (or equivalent):
+```bash
+eval "$(saml2aws --completion-script-bash)"
+```
+
+### Zsh
+
+Add the following line to your `.zshrc` (or equivalent):
+```bash
+eval "$(saml2aws --completion-script-zsh)"
 ```
 
 ## Dependency Setup
@@ -156,6 +175,8 @@ Commands:
     -p, --profile=PROFILE          The AWS profile to save the temporary credentials. (env: SAML2AWS_PROFILE)
         --resource-id=RESOURCE-ID  F5APM SAML resource ID of your company account. (env: SAML2AWS_F5APM_RESOURCE_ID)
         --config=CONFIG            Path/filename of saml2aws config file (env: SAML2AWS_CONFIGFILE)
+        --cache-saml               Caches the SAML response (env: SAML2AWS_CACHE_SAML)
+        --cache-file=CACHE-FILE    The location of the SAML cache file (env: SAML2AWS_SAML_CACHE_FILE)
 
   login [<flags>]
     Login to a SAML 2.0 IDP and convert the SAML assertion to an STS token.
@@ -170,6 +191,9 @@ Commands:
         --credential-process     Enables AWS Credential Process support by outputting credentials to STDOUT in a JSON message.
         --credentials-file=CREDENTIALS-FILE
                                  The file that will cache the credentials retrieved from AWS. When not specified, will use the default AWS credentials file location. (env: SAML2AWS_CREDENTIALS_FILE)
+        --cache-saml             Caches the SAML response (env: SAML2AWS_CACHE_SAML)
+        --cache-file=CACHE-FILE  The location of the SAML cache file (env: SAML2AWS_SAML_CACHE_FILE)
+
 
   exec [<flags>] [<command>...]
     Exec the supplied command with env vars from STS token.
@@ -193,13 +217,15 @@ Commands:
 
   list-roles
     List available role ARNs.
+        --cache-saml             Caches the SAML response (env: SAML2AWS_CACHE_SAML)
+        --cache-file=CACHE-FILE  The location of the SAML cache file (env: SAML2AWS_SAML_CACHE_FILE)
 
 
   script [<flags>]
     Emit a script that will export environment variables.
 
     -p, --profile=PROFILE      The AWS profile to save the temporary credentials. (env: SAML2AWS_PROFILE)
-        --shell=bash           Type of shell environment. Options include: bash, powershell, fish
+        --shell=bash           Type of shell environment. Options include: bash, powershell, fish, env
         --credentials-file=CREDENTIALS-FILE
                                The file that will cache the credentials retrieved from AWS. When not specified, will use the default AWS credentials file location. (env: SAML2AWS_CREDENTIALS_FILE)
 
@@ -220,6 +246,7 @@ SAML2AWS_PROFILE=saml
 ```
 
 Powershell, and fish shells are supported as well.
+Env is useful for all AWS SDK compatible tools that can source an env file. It is a powerful combo with docker and the `--env-file` parameter.
 
 If you use `eval $(saml2aws script)` frequently, you may want to create a alias for it:
 
@@ -231,6 +258,11 @@ alias s2a="function(){eval $( $(command saml2aws) script --shell=bash --profile=
 bash:
 ```
 function s2a { eval $( $(which saml2aws) script --shell=bash --profile=$@); }
+```
+
+env:
+```
+docker run -ti --env-file <(saml2aws script --shell=env) amazon/aws-cli s3 ls
 ```
 
 ### `saml2aws exec`
