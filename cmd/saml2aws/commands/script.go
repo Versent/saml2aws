@@ -1,8 +1,9 @@
 package commands
 
 import (
+	"bytes"
+	"fmt"
 	"log"
-	"os"
 	"text/template"
 	"time"
 
@@ -33,6 +34,13 @@ $env:AWS_SESSION_TOKEN='{{ .AWSSessionToken }}'
 $env:AWS_SECURITY_TOKEN='{{ .AWSSecurityToken }}'
 $env:SAML2AWS_PROFILE='{{ .ProfileName }}'
 $env:AWS_CREDENTIAL_EXPIRATION='{{ .Expires.Format "2006-01-02T15:04:05Z07:00" }}'
+`
+
+const envTmpl = `AWS_ACCESS_KEY_ID={{ .AWSAccessKey }}
+AWS_SECRET_ACCESS_KEY={{ .AWSSecretKey }}
+AWS_SESSION_TOKEN={{ .AWSSessionToken }}
+AWS_SECURITY_TOKEN={{ .AWSSecurityToken }}
+SAML2AWS_PROFILE={{ .ProfileName }}
 `
 
 // Script will emit a bash script that will export environment variables
@@ -74,15 +82,16 @@ func Script(execFlags *flags.LoginExecFlags, shell string) error {
 		awsCreds,
 	}
 
-	err = buildTmpl(shell, data)
+	out, err := buildTmpl(shell, data)
 	if err != nil {
 		return errors.Wrap(err, "error generating template")
 	}
+	fmt.Println(out)
 
 	return nil
 }
 
-func buildTmpl(shell string, data interface{}) error {
+func buildTmpl(shell string, data interface{}) (string, error) {
 	t := template.New("envvar_script")
 
 	var err error
@@ -94,11 +103,18 @@ func buildTmpl(shell string, data interface{}) error {
 		t, err = t.Parse(powershellTmpl)
 	case "fish":
 		t, err = t.Parse(fishTmpl)
+	case "env":
+		t, err = t.Parse(envTmpl)
 	}
 
 	if err != nil {
-		return err
+		return "", err
 	}
 	// this is still written to stdout as per convention
-	return t.Execute(os.Stdout, data)
+	// return t.Execute(os.Stdout, data)
+
+	buf := &bytes.Buffer{}
+	err = t.Execute(buf, data)
+	return buf.String(), err
+
 }
