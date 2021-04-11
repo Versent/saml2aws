@@ -13,4 +13,6 @@ https://idp.example.com/idp/profile/SAML2/Unsolicited/SSO?providerId=urn:amazon:
 
 ## Limitations
 
-* Has only been tested with Shibboleth 3.3 with Duo MFA enabled.
+* Tested on:
+ * Shibboleth 3.3 with Duo MFA;
+ * Shibboleth 4.0.1 with Duo MFA and CSRF tokens.
