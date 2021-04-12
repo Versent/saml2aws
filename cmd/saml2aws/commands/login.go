@@ -370,7 +370,7 @@ func CredentialsToCredentialProcess(awsCreds *awsconfig.AWSCredentials) (string,
 		AccessKeyId:     awsCreds.AWSAccessKey,
 		SecretAccessKey: awsCreds.AWSSecretKey,
 		SessionToken:    awsCreds.AWSSessionToken,
-		Expiration:      awsCreds.Expires.Format("2006-01-02T15:04:05Z07:00"),
+		Expiration:      awsCreds.Expires.Format("2006-01-02T15:04:05-07:00"),
 	}
 
 	p, err := json.Marshal(cred_process)
