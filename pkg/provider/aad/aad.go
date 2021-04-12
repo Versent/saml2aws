@@ -1078,7 +1078,7 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		return samlAssertion, nil
 	}
 
-	return samlAssertion, errors.New("failed get SAMLAssersion")
+	return samlAssertion, errors.New("failed get SAMLAssertion")
 }
 
 func (ac *Client) reProcess(resBodyStr string) (*http.Response, error) {
