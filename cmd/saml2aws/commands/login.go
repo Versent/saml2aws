@@ -83,8 +83,6 @@ func Login(loginFlags *flags.LoginExecFlags) error {
 		return errors.Wrap(err, "error validating login details")
 	}
 
-	log.Printf("Authenticating as %s ...", loginDetails.Username)
-
 	var samlAssertion string
 	if account.SAMLCache {
 		if cacheProvider.IsValid() {
@@ -94,7 +92,10 @@ func Login(loginFlags *flags.LoginExecFlags) error {
 			}
 		} else {
 			logger.Debug("Cache is invalid")
+			log.Printf("Authenticating as %s ...", loginDetails.Username)
 		}
+	} else {
+		log.Printf("Authenticating as %s ...", loginDetails.Username)
 	}
 
 	if samlAssertion == "" {
@@ -369,7 +370,7 @@ func CredentialsToCredentialProcess(awsCreds *awsconfig.AWSCredentials) (string,
 		AccessKeyId:     awsCreds.AWSAccessKey,
 		SecretAccessKey: awsCreds.AWSSecretKey,
 		SessionToken:    awsCreds.AWSSessionToken,
-		Expiration:      awsCreds.Expires.Format("2006-01-02T15:04:05Z07:00"),
+		Expiration:      awsCreds.Expires.Format("2006-01-02T15:04:05-07:00"),
 	}
 
 	p, err := json.Marshal(cred_process)
