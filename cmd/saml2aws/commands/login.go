@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -370,7 +371,7 @@ func CredentialsToCredentialProcess(awsCreds *awsconfig.AWSCredentials) (string,
 		AccessKeyId:     awsCreds.AWSAccessKey,
 		SecretAccessKey: awsCreds.AWSSecretKey,
 		SessionToken:    awsCreds.AWSSessionToken,
-		Expiration:      awsCreds.Expires.Format("2006-01-02T15:04:05-07:00"),
+		Expiration:      awsCreds.Expires.Format(time.RFC3339),
 	}
 
 	p, err := json.Marshal(cred_process)
