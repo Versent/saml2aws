@@ -25,6 +25,7 @@ The process goes something like this:
     - [OSX](#osx)
     - [Windows](#windows)
     - [Linux](#linux)
+- [Autocomplete](#autocomplete)
 - [Dependency Setup](#dependency-setup)
 - [Usage](#usage)
     - [`saml2aws script`](#saml2aws-script)
@@ -85,9 +86,8 @@ saml2aws --version
 While brew is available for Linux you can also run the following without using a package manager.
 
 ```
-$ CURRENT_VERSION=2.27.1
-$ wget https://github.com/Versent/saml2aws/releases/download/v${CURRENT_VERSION}/saml2aws_${CURRENT_VERSION}_linux_amd64.tar.gz
-$ tar -xzvf saml2aws_${CURRENT_VERSION}_linux_amd64.tar.gz -C ~/.local/bin
+$ CURRENT_VERSION=$(curl -Ls https://api.github.com/repos/Versent/saml2aws/releases/latest | grep 'tag_name' | cut -d'v' -f2 | cut -d'"' -f1)
+$ wget -c https://github.com/Versent/saml2aws/releases/download/v${CURRENT_VERSION}/saml2aws_${CURRENT_VERSION}_linux_amd64.tar.gz -O - | tar -xzv -C ~/.local/bin
 $ chmod u+x ~/.local/bin/saml2aws
 $ saml2aws --version
 ```
@@ -101,6 +101,24 @@ If you are on Void Linux you can use xbps to install the saml2aws package!
 
 ```
 xbps-install saml2aws
+```
+
+## Autocomplete
+
+`saml2aws` can generate completion scripts.
+
+### Bash
+
+Add the following line to your `.bash_profile` (or equivalent):
+```bash
+eval "$(saml2aws --completion-script-bash)"
+```
+
+### Zsh
+
+Add the following line to your `.zshrc` (or equivalent):
+```bash
+eval "$(saml2aws --completion-script-zsh)"
 ```
 
 ## Dependency Setup

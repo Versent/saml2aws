@@ -58,5 +58,5 @@ func TestCredentialsToCredentialProcess(t *testing.T) {
 
 	json, err := CredentialsToCredentialProcess(aws_creds)
 	assert.Empty(t, err)
-	assert.Equal(t, json, aws_json_expected_output)
+	assert.Equal(t, aws_json_expected_output, json)
 }

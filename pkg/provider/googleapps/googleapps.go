@@ -1,6 +1,7 @@
 package googleapps
 
 import (
+	"bufio"
 	"bytes"
 	b64 "encoding/base64"
 	"encoding/json"
@@ -433,6 +434,15 @@ func (kc *Client) loadChallengePage(submitURL string, referer string, authForm u
 			// responseForm.Set("Pin", token)
 			responseForm.Set("TrustDevice", "on") // Don't ask again on this computer
 
+			return kc.loadResponsePage(secondActionURL, submitURL, responseForm)
+
+		case strings.Contains(secondActionURL, "challenge/dp/"): // handle device push challenge
+			fmt.Print("Check your phone - after you have confirmed response press ENTER to continue.")
+			_, err := bufio.NewReader(os.Stdin).ReadBytes('\n')
+			if err != nil {
+				return nil, errors.Wrap(err, "error reading new line \\n")
+			}
+			responseForm.Set("TrustDevice", "on") // Don't ask again on this computer
 			return kc.loadResponsePage(secondActionURL, submitURL, responseForm)
 
 		case strings.Contains(secondActionURL, "challenge/skotp/"): // handle one-time HOTP challenge

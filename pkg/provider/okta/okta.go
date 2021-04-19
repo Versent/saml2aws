@@ -317,7 +317,7 @@ func extractSAMLResponse(doc *goquery.Document) (v string, ok bool) {
 
 func findMfaOption(mfa string, mfaOptions []string, startAtIdx int) int {
 	for idx, val := range mfaOptions {
-		if startAtIdx >= idx {
+		if startAtIdx > idx {
 			continue
 		}
 		if strings.HasPrefix(strings.ToUpper(val), mfa) {
