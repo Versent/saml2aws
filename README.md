@@ -89,11 +89,15 @@ While brew is available for Linux you can also run the following without using a
 $ CURRENT_VERSION=$(curl -Ls https://api.github.com/repos/Versent/saml2aws/releases/latest | grep 'tag_name' | cut -d'v' -f2 | cut -d'"' -f1)
 $ wget -c https://github.com/Versent/saml2aws/releases/download/v${CURRENT_VERSION}/saml2aws_${CURRENT_VERSION}_linux_amd64.tar.gz -O - | tar -xzv -C ~/.local/bin
 $ chmod u+x ~/.local/bin/saml2aws
+$ hash -r
 $ saml2aws --version
 ```
-**Note**: You will need to logout of your current user session or force a bash reload for `saml2aws` to be useable after following the above steps.
 
-e.g. `exec -l bash`
+#### [Arch Linux](https://archlinux.org/) and its derivatives
+
+The `saml2aws` tool is available in AUR ([saml2aws-bin](https://aur.archlinux.org/packages/saml2aws-bin/)), so you can install it using an available AUR helper:
+
+* Manjaro: `$ pamac build saml2aws-bin`
 
 #### [Void Linux](https://voidlinux.org/)
 
