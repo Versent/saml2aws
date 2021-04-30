@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sort"
 
+	"github.com/versent/saml2aws/v2/pkg/provider/browser"
 	"github.com/versent/saml2aws/v2/pkg/provider/netiq"
 
 	"github.com/versent/saml2aws/v2/pkg/cfg"
@@ -45,6 +46,7 @@ var MFAsByProvider = ProviderList{
 	"Akamai":        []string{"Auto", "DUO", "SMS", "EMAIL", "TOTP"},
 	"ShibbolethECP": []string{"auto", "phone", "push", "passcode"},
 	"NetIQ":         []string{"Auto", "Privileged"},
+	"Browser":       []string{"Auto"},
 }
 
 // Names get a list of provider names
@@ -168,6 +170,8 @@ func NewSAMLClient(idpAccount *cfg.IDPAccount) (SAMLClient, error) {
 			return nil, fmt.Errorf("Invalid MFA type: %v for %v provider", idpAccount.MFA, idpAccount.Provider)
 		}
 		return netiq.New(idpAccount, idpAccount.MFA)
+	case "Browser":
+		return browser.New(idpAccount)
 	default:
 		return nil, fmt.Errorf("Invalid provider: %v", idpAccount.Provider)
 	}
