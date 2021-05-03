@@ -50,6 +50,7 @@ type IDPAccount struct {
 	CredentialsFile      string `ini:"credentials_file"`
 	SAMLCache            bool   `ini:"saml_cache"`
 	SAMLCacheFile        string `ini:"saml_cache_file"`
+	TargetURL            string `ini:"target_url"`
 }
 
 func (ia IDPAccount) String() string {
