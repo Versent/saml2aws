@@ -52,6 +52,7 @@ The process goes something like this:
   * [Akamai](pkg/provider/akamai/README.md)
   * OneLogin
   * NetIQ
+  * Browser, this uses [playwright-go](github.com/mxschmitt/playwright-go) to run a sandbox chromium window.
 * AWS SAML Provider configured
 
 ## Caveats
