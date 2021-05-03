@@ -59,8 +59,9 @@ var (
 type Client struct {
 	provider.ValidateBase
 
-	client *provider.HTTPClient
-	mfa    string
+	client    *provider.HTTPClient
+	mfa       string
+	targetURL string
 }
 
 // AuthRequest represents an mfa okta request
@@ -106,8 +107,9 @@ func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 	client.Jar = jar
 
 	return &Client{
-		client: client,
-		mfa:    idpAccount.MFA,
+		client:    client,
+		mfa:       idpAccount.MFA,
+		targetURL: idpAccount.TargetURL,
 	}, nil
 }
 
@@ -207,7 +209,7 @@ func (oc *Client) follow(ctx context.Context, req *http.Request, loginDetails *c
 
 	var handler func(context.Context, *goquery.Document) (context.Context, *http.Request, error)
 
-	if docIsFormRedirectToAWS(doc) {
+	if docIsFormRedirectToTarget(doc, oc.targetURL) {
 		logger.WithField("type", "saml-response-to-aws").Debug("doc detect")
 		if samlResponse, ok := extractSAMLResponse(doc); ok {
 			decodedSamlResponse, err := base64.StdEncoding.DecodeString(samlResponse)
@@ -297,10 +299,16 @@ func docIsFormResume(doc *goquery.Document) bool {
 	return doc.Find("input[name=\"RelayState\"]").Size() == 1
 }
 
-func docIsFormRedirectToAWS(doc *goquery.Document) bool {
-	urls := []string{"form[action=\"https://signin.aws.amazon.com/saml\"]",
-		"form[action=\"https://signin.amazonaws-us-gov.com/saml\"]",
-		"form[action=\"https://signin.amazonaws.cn/saml\"]",
+func docIsFormRedirectToTarget(doc *goquery.Document, target string) bool {
+	var urls []string
+	if target != "" {
+		url := fmt.Sprintf("form[action=\"%s\"]", target)
+		urls = []string{url}
+	} else {
+		urls = []string{"form[action=\"https://signin.aws.amazon.com/saml\"]",
+			"form[action=\"https://signin.amazonaws-us-gov.com/saml\"]",
+			"form[action=\"https://signin.amazonaws.cn/saml\"]",
+		}
 	}
 
 	for _, value := range urls {

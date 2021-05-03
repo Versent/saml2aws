@@ -548,6 +548,7 @@ Use following parameters in `~/.saml2aws` file:
 - `http_attempts_count` - configures the number of attempts to send http requests in order to authorise with saml provider. Defaults to 1
 - `http_retry_delay` - configures the duration (in seconds) of timeout between attempts to send http requests to saml provider. Defaults to 1
 - `region` - configures which region endpoints to use, See [Audience](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_providers_create_saml_assertions.html#saml_audience-restriction) and [partition](https://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html#arns-syntax)
+- `target_url` - look for a target endpoint other than signin.aws.amazon.com/saml. The Okta, Pingfed, Pingone and Shibboleth ECP providers need to either explicitly send or look for this URL in a response in order to obtain or identify an appropriate authentication response. This can be overridden here if you wish to authenticate for something other than AWS.
 
 Example: typical configuration with such parameters would look like follows:
 ```
