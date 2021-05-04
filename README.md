@@ -576,23 +576,15 @@ Then either execute
 make install
 ```
 
-if you have configured $GOPATH (which will output the binary to the `bin` directory under $GOPATH) or one of
+if you have configured $GOPATH (which will output the binary to the `bin` directory under $GOPATH) or
 
 ```
-make [windows|darwin|linux]
+make build
 ```
 
-which will compile the target OS binary to the "build" directory under this root.
+which will use [goreleaser](https://github.com/goreleaser/goreleaser) to build targets. If in Linux, goreleaser will build with both .goreleaser-non-linux.yml and goreleaser-linux.yml configurations.
+Otherwise only the .goreleaser-non-linux.yml configuration will be used. Binaries can then be found under the dist/ directory.
 
-Alternatively,
-
-```
-make compile
-```
-
-will compile for all three, windows, darwin and linux.
-
-NOTE: `make darwin` and `make compile` will only build the macOS binary on Darwin.
 
 ## Testing and coverage
 

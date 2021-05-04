@@ -8,7 +8,10 @@ on:
 jobs:
   release:
     name: release
-    runs-on: macOS-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
     steps:
 
     - name: Set up Go 1.x
@@ -19,10 +22,24 @@ jobs:
     - name: Check out code into the Go module directory
       uses: actions/checkout@v2
 
-    - name: GoReleaser
+    - name: GoReleaser in Mac
+      if: ${{ startsWith(matrix.os, 'macos') }}
       uses: goreleaser/goreleaser-action@v2
       with:
         version: latest
-        args: release --rm-dist
+        args: release --rm-dist --config .goreleaser-non-linux.yml
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Install libudev if in Linux
+      run: sudo apt-get install libudev-dev
+      if: ${{ startsWith(matrix.os, 'ubuntu') }}
+
+    - name: GoReleaser in Linux
+      if: ${{ startsWith(matrix.os, 'ubuntu') }}
+      uses: goreleaser/goreleaser-action@v2
+      with:
+        version: latest
+        args: release --rm-dist --config .goreleaser-linux.yml
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,27 @@
+---
+project_name: saml2aws
+
+builds:
+- main: ./cmd/saml2aws/main.go
+  binary: saml2aws
+  flags:
+    - -tags
+    - hidraw
+    - -trimpath
+    - -v
+  ldflags:
+    - -s -w -X main.Version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}}
+  goos:
+    - linux
+  goarch:
+    - amd64
+    - arm64
+    - arm
+archives:
+  - format: tar.gz
+    wrap_in_directory: false
+    files:
+      - LICENSE.md
+      - README.md
+checksum:
+  name_template: "{{ .ProjectName }}_{{ .Version }}_linux_checksums.txt"
