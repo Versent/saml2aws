@@ -53,6 +53,7 @@ The process goes something like this:
   * OneLogin
   * NetIQ
   * Browser, this uses [playwright-go](github.com/mxschmitt/playwright-go) to run a sandbox chromium window.
+  * [Auth0](pkg/provider/auth0/README.md) NOTE: Currently, MFA not supported
 * AWS SAML Provider configured
 
 ## Caveats
