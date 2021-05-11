@@ -14,6 +14,7 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 	"github.com/tidwall/gjson"
 	"github.com/versent/saml2aws/v2/pkg/cfg"
 	"github.com/versent/saml2aws/v2/pkg/creds"
@@ -26,6 +27,8 @@ const (
 	authOriginURLFmt       = "https://%s.auth0.com"
 	authSubmitURLFmt       = "https://%s.auth0.com/usernamepassword/login"
 )
+
+var logger = logrus.WithField("provider", "auth0")
 
 var (
 	authURLPattern        = regexp.MustCompile(`https://([^.]+)\.auth0\.com/samlp/(.+)`)
@@ -117,20 +120,24 @@ func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 
 // Authenticate logs into Auth0 and returns a SAML response
 func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error) {
+	logger.Debug("Get connections and session tokens")
 	authInfo, err := ac.buildAuthInfo(loginDetails.URL, defaultPrompter)
 	if err != nil {
 		return "", errors.Wrap(err, "error failed to build authentication info")
 	}
 
+	logger.Debug("Get SAML Assertion")
 	formHTML, err := ac.doLogin(loginDetails, authInfo)
 	if err != nil {
 		return "", errors.Wrap(err, "error failed to fetch SAML")
 	}
 
+	logger.Debug("Extract SAML Assertion")
 	samlAssertion, err := mustFindInputByName(formHTML, "SAMLResponse")
 	if err != nil {
 		return "", errors.Wrap(err, "error failed to parse SAML")
 	}
+	logger.WithField("data", samlAssertion).Debug("SAML Assertion (base64 encoded)")
 
 	return samlAssertion, nil
 }
@@ -180,6 +187,12 @@ func (ac *Client) buildAuthInfo(
 	ai.state = si.state
 	ai.csrf = si.csrf
 
+	logger.WithFields(logrus.Fields{
+		"Connection": ai.connection,
+		"StateToken": ai.state,
+		"CSRFToken": ai.csrf,
+	}).Debug("Connection and Tokens")
+
 	return &ai, nil
 }
 
@@ -200,7 +213,10 @@ func (ac *Client) fetchSessionInfo(loginURL string) (*sessionInfo, error) {
 	}
 	defer resp.Body.Close()
 
-	tokenEncoded := sessionInfoPattern.FindStringSubmatch(string(respBody))
+	respBodyStr := string(respBody)
+	logger.WithField("data", respBodyStr).Debug("Auth0 login form")
+
+	tokenEncoded := sessionInfoPattern.FindStringSubmatch(respBodyStr)
 	if len(tokenEncoded) < 1 {
 		return nil, errors.New("error response doesn't match")
 	}
@@ -239,7 +255,10 @@ func (ac *Client) getConnectionNames(connectionInfoURL string) ([]string, error)
 	}
 	defer resp.Body.Close()
 
-	match := connectionInfoPattern.FindStringSubmatch(string(respBody))
+	respBodyStr := string(respBody)
+	logger.WithField("data", respBodyStr).Debug("Tenant connection mapping")
+
+	match := connectionInfoPattern.FindStringSubmatch(respBodyStr)
 	if len(match) < 2 {
 		return nil, errors.New("cannot find connection name")
 	}
@@ -256,16 +275,19 @@ func (ac *Client) getConnectionNames(connectionInfoURL string) ([]string, error)
 }
 
 func (ac *Client) doLogin(loginDetails *creds.LoginDetails, ai *authInfo) (string, error) {
+	logger.Debug("Login to Auth0")
 	responseDoc, err := ac.loginAuth0(loginDetails, ai)
 	if err != nil {
 		return "", errors.Wrap(err, "error failed to login Auth0")
 	}
 
+	logger.Debug("Parse response HTML")
 	authCallback, err := parseResponseForm(responseDoc)
 	if err != nil {
 		return "", errors.Wrap(err, "error parse response document")
 	}
 
+	logger.Debug("Request to auth callback")
 	resp, err := ac.doAuthCallback(authCallback, ai)
 	if err != nil {
 		return "", errors.Wrap(err, "error failed to make callback")
@@ -323,8 +345,10 @@ func (ac *Client) loginAuth0(loginDetails *creds.LoginDetails, ai *authInfo) (st
 		return "", errors.Wrap(err, "error retrieving body from response")
 	}
 	defer resp.Body.Close()
+	respBodyStr := string(respBody)
+	logger.WithField("data", respBodyStr).Debug("Callback HTML")
 
-	return string(respBody), nil
+	return respBodyStr, nil
 }
 
 func (ac *Client) doAuthCallback(authCallback *authCallbackRequest, ai *authInfo) (string, error) {
@@ -346,7 +370,10 @@ func (ac *Client) doAuthCallback(authCallback *authCallbackRequest, ai *authInfo
 	}
 	defer resp.Body.Close()
 
-	return string(respBody), nil
+	respBodyStr := string(respBody)
+	logger.WithField("data", respBodyStr).Debug("Auth callback response")
+
+	return respBodyStr, nil
 }
 
 func extractClientInfo(url string) (*clientInfo, error) {
@@ -395,11 +422,14 @@ func parseResponseForm(responseForm string) (*authCallbackRequest, error) {
 		return nil, errors.New("invalid input values")
 	}
 
-	return &authCallbackRequest{
+	authCallBackReq := &authCallbackRequest{
 		method: strings.ToUpper(methodDownCase),
 		url:    authCallbackURL,
 		body:   authCallbackBody,
-	}, nil
+	}
+	logger.WithField("data", authCallBackReq).Debug("Auth callback")
+
+	return authCallBackReq, nil
 }
 
 func mustFindInputByName(formHTML string, name string) (string, error) {
