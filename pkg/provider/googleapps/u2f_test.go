@@ -5,13 +5,12 @@ import (
 
 	u2fhost "github.com/marshallbrekka/go-u2fhost"
 	"github.com/stretchr/testify/assert"
-	"github.com/versent/saml2aws/mocks"
+	"github.com/versent/saml2aws/v2/mocks"
 )
 
 type fidoClientTests struct {
-	title  string
-	client U2FClient
-	err    error
+	title string
+	err   error
 }
 
 type MockDeviceFinder struct {

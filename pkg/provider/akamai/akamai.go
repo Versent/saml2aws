@@ -12,14 +12,14 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
-	"github.com/versent/saml2aws/pkg/prompter"
+	"github.com/versent/saml2aws/v2/pkg/prompter"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/pkg/errors"
 	"github.com/tidwall/gjson"
-	"github.com/versent/saml2aws/pkg/cfg"
-	"github.com/versent/saml2aws/pkg/creds"
-	"github.com/versent/saml2aws/pkg/provider"
+	"github.com/versent/saml2aws/v2/pkg/cfg"
+	"github.com/versent/saml2aws/v2/pkg/creds"
+	"github.com/versent/saml2aws/v2/pkg/provider"
 
 	"encoding/json"
 )
@@ -49,6 +49,8 @@ type MfaUserOption struct {
 
 // Client is a wrapper representing a Akamai SAML client
 type Client struct {
+	provider.ValidateBase
+
 	client *provider.HTTPClient
 	mfa    string
 }
@@ -124,7 +126,7 @@ func (oc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		return samlAssertion, errors.Wrap(err, "error retrieving login request")
 	}
 
-	doc, err := goquery.NewDocumentFromResponse(res)
+	doc, err := goquery.NewDocumentFromReader(res.Body)
 	if err != nil {
 		return samlAssertion, errors.Wrap(err, "error parsing document")
 	}
@@ -464,7 +466,7 @@ func verifyMfa(oc *Client, akamaiOrgHost string, loginDetails *creds.LoginDetail
 		}
 
 		//try to extract sid
-		doc, err := goquery.NewDocumentFromResponse(res)
+		doc, err := goquery.NewDocumentFromReader(res.Body)
 		if err != nil {
 			return errors.Wrap(err, "error parsing document from duo")
 		}

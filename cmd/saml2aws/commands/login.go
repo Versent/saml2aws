@@ -2,20 +2,24 @@ package commands
 
 import (
 	b64 "encoding/base64"
+	"encoding/json"
+	"fmt"
 	"log"
 	"os"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sts"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"github.com/versent/saml2aws"
-	"github.com/versent/saml2aws/helper/credentials"
-	"github.com/versent/saml2aws/pkg/awsconfig"
-	"github.com/versent/saml2aws/pkg/cfg"
-	"github.com/versent/saml2aws/pkg/creds"
-	"github.com/versent/saml2aws/pkg/flags"
+	"github.com/versent/saml2aws/v2"
+	"github.com/versent/saml2aws/v2/helper/credentials"
+	"github.com/versent/saml2aws/v2/pkg/awsconfig"
+	"github.com/versent/saml2aws/v2/pkg/cfg"
+	"github.com/versent/saml2aws/v2/pkg/creds"
+	"github.com/versent/saml2aws/v2/pkg/flags"
+	"github.com/versent/saml2aws/v2/pkg/samlcache"
 )
 
 // Login login to ADFS
@@ -28,7 +32,12 @@ func Login(loginFlags *flags.LoginExecFlags) error {
 		return errors.Wrap(err, "error building login details")
 	}
 
-	sharedCreds := awsconfig.NewSharedCredentials(account.Profile)
+	sharedCreds := awsconfig.NewSharedCredentials(account.Profile, account.CredentialsFile)
+	// creates a cacheProvider, only used when --cache is set
+	cacheProvider := &samlcache.SAMLCacheProvider{
+		Account:  account.Name,
+		Filename: account.SAMLCacheFile,
+	}
 
 	logger.Debug("check if Creds Exist")
 
@@ -43,7 +52,17 @@ func Login(loginFlags *flags.LoginExecFlags) error {
 	}
 
 	if !sharedCreds.Expired() && !loginFlags.Force {
-		log.Println("credentials are not expired skipping")
+		logger.Debug("credentials are not expired skipping")
+		previousCreds, err := sharedCreds.Load()
+		if err != nil {
+			log.Println("Unable to load cached credentials")
+		}
+		if loginFlags.CredentialProcess {
+			err = PrintCredentialProcess(previousCreds)
+			if err != nil {
+				return err
+			}
+		}
 		return nil
 	}
 
@@ -53,11 +72,6 @@ func Login(loginFlags *flags.LoginExecFlags) error {
 		os.Exit(1)
 	}
 
-	err = loginDetails.Validate()
-	if err != nil {
-		return errors.Wrap(err, "error validating login details")
-	}
-
 	logger.WithField("idpAccount", account).Debug("building provider")
 
 	provider, err := saml2aws.NewSAMLClient(account)
@@ -65,18 +79,44 @@ func Login(loginFlags *flags.LoginExecFlags) error {
 		return errors.Wrap(err, "error building IdP client")
 	}
 
-	log.Printf("Authenticating as %s ...", loginDetails.Username)
-
-	samlAssertion, err := provider.Authenticate(loginDetails)
+	err = provider.Validate(loginDetails)
 	if err != nil {
-		return errors.Wrap(err, "error authenticating to IdP")
+		return errors.Wrap(err, "error validating login details")
+	}
 
+	var samlAssertion string
+	if account.SAMLCache {
+		if cacheProvider.IsValid() {
+			samlAssertion, err = cacheProvider.Read()
+			if err != nil {
+				return errors.Wrap(err, "Could not read saml cache")
+			}
+		} else {
+			logger.Debug("Cache is invalid")
+			log.Printf("Authenticating as %s ...", loginDetails.Username)
+		}
+	} else {
+		log.Printf("Authenticating as %s ...", loginDetails.Username)
+	}
+
+	if samlAssertion == "" {
+		// samlAssertion was not cached
+		samlAssertion, err = provider.Authenticate(loginDetails)
+		if err != nil {
+			return errors.Wrap(err, "error authenticating to IdP")
+		}
+		if account.SAMLCache {
+			err = cacheProvider.Write(samlAssertion)
+			if err != nil {
+				return errors.Wrap(err, "Could not write saml cache")
+			}
+		}
 	}
 
 	if samlAssertion == "" {
 		log.Println("Response did not contain a valid SAML assertion")
 		log.Println("Please check your username and password is correct")
-		log.Println("To see the output follow the instructions in https://github.com/Versent/saml2aws#debugging-issues-with-idps")
+		log.Println("To see the output follow the instructions in https://github.com/versent/saml2aws#debugging-issues-with-idps")
 		os.Exit(1)
 	}
 
@@ -99,6 +139,13 @@ func Login(loginFlags *flags.LoginExecFlags) error {
 		return errors.Wrap(err, "error logging into aws role using saml assertion")
 	}
 
+	// print credential process if needed
+	if loginFlags.CredentialProcess {
+		err = PrintCredentialProcess(awsCreds)
+		if err != nil {
+			return err
+		}
+	}
 	return saveCredentials(awsCreds, sharedCreds)
 }
 
@@ -171,9 +218,11 @@ func resolveLoginDetails(account *cfg.IDPAccount, loginFlags *flags.LoginExecFla
 		return loginDetails, nil
 	}
 
-	err = saml2aws.PromptForLoginDetails(loginDetails, account.Provider)
-	if err != nil {
-		return nil, errors.Wrap(err, "Error occurred accepting input")
+	if account.Provider != "Shell" {
+		err = saml2aws.PromptForLoginDetails(loginDetails, account.Provider)
+		if err != nil {
+			return nil, errors.Wrap(err, "Error occurred accepting input")
+		}
 	}
 
 	return loginDetails, nil
@@ -297,7 +346,48 @@ func saveCredentials(awsCreds *awsconfig.AWSCredentials, sharedCreds *awsconfig.
 	log.Println("")
 	log.Println("Your new access key pair has been stored in the AWS configuration")
 	log.Printf("Note that it will expire at %v", awsCreds.Expires)
-	log.Println("To use this credential, call the AWS CLI with the --profile option (e.g. aws --profile", sharedCreds.Profile, "ec2 describe-instances).")
+	if sharedCreds.Profile != "default" {
+		log.Println("To use this credential, call the AWS CLI with the --profile option (e.g. aws --profile", sharedCreds.Profile, "ec2 describe-instances).")
+	}
 
 	return nil
+}
+
+// CredentialsToCredentialProcess
+// Returns a Json output that is compatible with the AWS credential_process
+// https://github.com/awslabs/awsprocesscreds
+func CredentialsToCredentialProcess(awsCreds *awsconfig.AWSCredentials) (string, error) {
+
+	type AWSCredentialProcess struct {
+		Version         int
+		AccessKeyId     string
+		SecretAccessKey string
+		SessionToken    string
+		Expiration      string
+	}
+
+	cred_process := AWSCredentialProcess{
+		Version:         1,
+		AccessKeyId:     awsCreds.AWSAccessKey,
+		SecretAccessKey: awsCreds.AWSSecretKey,
+		SessionToken:    awsCreds.AWSSessionToken,
+		Expiration:      awsCreds.Expires.Format(time.RFC3339),
+	}
+
+	p, err := json.Marshal(cred_process)
+	if err != nil {
+		return "", errors.Wrap(err, "Error while Marshalling the Credential Process")
+	}
+	return string(p), nil
+
+}
+
+// PrintCredentialProcess Prints a Json output that is compatible with the AWS credential_process
+// https://github.com/awslabs/awsprocesscreds
+func PrintCredentialProcess(awsCreds *awsconfig.AWSCredentials) error {
+	jsonData, err := CredentialsToCredentialProcess(awsCreds)
+	if err == nil {
+		fmt.Println(jsonData)
+	}
+	return err
 }

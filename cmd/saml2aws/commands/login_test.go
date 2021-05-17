@@ -2,12 +2,14 @@ package commands
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/versent/saml2aws"
-	"github.com/versent/saml2aws/pkg/cfg"
-	"github.com/versent/saml2aws/pkg/creds"
-	"github.com/versent/saml2aws/pkg/flags"
+	"github.com/versent/saml2aws/v2"
+	"github.com/versent/saml2aws/v2/pkg/awsconfig"
+	"github.com/versent/saml2aws/v2/pkg/cfg"
+	"github.com/versent/saml2aws/v2/pkg/creds"
+	"github.com/versent/saml2aws/v2/pkg/flags"
 )
 
 func TestResolveLoginDetailsWithFlags(t *testing.T) {
@@ -42,4 +44,19 @@ func TestResolveRoleSingleEntry(t *testing.T) {
 	got, err := resolveRole(awsRoles, "", cfg.NewIDPAccount())
 	assert.Empty(t, err)
 	assert.Equal(t, got, adminRole)
+}
+
+func TestCredentialsToCredentialProcess(t *testing.T) {
+
+	aws_creds := &awsconfig.AWSCredentials{
+		AWSAccessKey:    "someawsaccesskey",
+		AWSSecretKey:    "somesecretkey",
+		AWSSessionToken: "somesessiontoken",
+		Expires:         time.Date(2020, time.January, 20, 22, 50, 0, 0, time.UTC),
+	}
+	aws_json_expected_output := "{\"Version\":1,\"AccessKeyId\":\"someawsaccesskey\",\"SecretAccessKey\":\"somesecretkey\",\"SessionToken\":\"somesessiontoken\",\"Expiration\":\"2020-01-20T22:50:00Z\"}"
+
+	json, err := CredentialsToCredentialProcess(aws_creds)
+	assert.Empty(t, err)
+	assert.Equal(t, aws_json_expected_output, json)
 }

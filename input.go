@@ -6,9 +6,9 @@ import (
 	"sort"
 
 	"github.com/pkg/errors"
-	"github.com/versent/saml2aws/pkg/cfg"
-	"github.com/versent/saml2aws/pkg/creds"
-	"github.com/versent/saml2aws/pkg/prompter"
+	"github.com/versent/saml2aws/v2/pkg/cfg"
+	"github.com/versent/saml2aws/v2/pkg/creds"
+	"github.com/versent/saml2aws/v2/pkg/prompter"
 )
 
 // PromptForConfigurationDetails prompt the user to present their hostname, username and mfa
@@ -27,6 +27,7 @@ func PromptForConfigurationDetails(idpAccount *cfg.IDPAccount) error {
 
 	// only prompt for MFA if there is more than one option
 	if len(mfas) > 1 {
+
 		idpAccount.MFA, err = prompter.ChooseWithDefault("Please choose an MFA", idpAccount.MFA, mfas)
 		if err != nil {
 			return errors.Wrap(err, "error selecting mfa")

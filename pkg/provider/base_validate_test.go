@@ -1,9 +1,9 @@
-package saml2aws
+package provider
 
 import (
 	"testing"
 
-	"github.com/versent/saml2aws/pkg/creds"
+	"github.com/versent/saml2aws/v2/pkg/creds"
 )
 
 func TestLoginDetails_Validate(t *testing.T) {
@@ -30,7 +30,8 @@ func TestLoginDetails_Validate(t *testing.T) {
 				Password: tt.fields.Password,
 				URL:      tt.fields.URL,
 			}
-			if err := ld.Validate(); (err != nil) != tt.wantErr {
+			providerstub := &ValidateBase{}
+			if err := providerstub.Validate(ld); (err != nil) != tt.wantErr {
 				t.Errorf("LoginDetails.Validate() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})

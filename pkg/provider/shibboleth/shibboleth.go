@@ -15,14 +15,16 @@ import (
 	"github.com/PuerkitoBio/goquery"
 	"github.com/pkg/errors"
 	"github.com/tidwall/gjson"
-	"github.com/versent/saml2aws/pkg/cfg"
-	"github.com/versent/saml2aws/pkg/creds"
-	"github.com/versent/saml2aws/pkg/prompter"
-	"github.com/versent/saml2aws/pkg/provider"
+	"github.com/versent/saml2aws/v2/pkg/cfg"
+	"github.com/versent/saml2aws/v2/pkg/creds"
+	"github.com/versent/saml2aws/v2/pkg/prompter"
+	"github.com/versent/saml2aws/v2/pkg/provider"
 )
 
 // Client wrapper around Shibboleth enabling authentication and retrieval of assertions
 type Client struct {
+	provider.ValidateBase
+
 	client     *provider.HTTPClient
 	idpAccount *cfg.IDPAccount
 }
@@ -59,7 +61,7 @@ func (sc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		return samlAssertion, errors.Wrap(err, "error retrieving form")
 	}
 
-	doc, err := goquery.NewDocumentFromResponse(res)
+	doc, err := goquery.NewDocumentFromReader(res.Body)
 	if err != nil {
 		return samlAssertion, errors.Wrap(err, "failed to build document from response")
 	}
@@ -143,7 +145,7 @@ func updateFormData(authForm url.Values, s *goquery.Selection, user *creds.Login
 
 func verifyMfa(oc *Client, shibbolethHost string, resp string) (*http.Response, error) {
 
-	duoHost, postAction, tx, app := parseTokens(resp)
+	duoHost, postAction, tx, app, csrfToken := parseTokens(resp)
 
 	parent := fmt.Sprintf(shibbolethHost + postAction)
 
@@ -155,6 +157,7 @@ func verifyMfa(oc *Client, shibbolethHost string, resp string) (*http.Response, 
 	idpForm := url.Values{}
 	idpForm.Add("_eventId", "proceed")
 	idpForm.Add("sig_response", duoTxCookie+":"+app)
+	idpForm.Add("csrf_token", csrfToken)
 
 	req, err := http.NewRequest("POST", parent, strings.NewReader(idpForm.Encode()))
 	if err != nil {
@@ -200,7 +203,7 @@ func verifyDuoMfa(oc *Client, duoHost string, parent string, tx string) (string,
 	}
 
 	// retrieve response from post
-	doc, err := goquery.NewDocumentFromResponse(res)
+	doc, err := goquery.NewDocumentFromReader(res.Body)
 	if err != nil {
 		return "", errors.Wrap(err, "error parsing document")
 	}
@@ -374,17 +377,25 @@ func verifyDuoMfa(oc *Client, duoHost string, parent string, tx string) (string,
 	return duoTxCookie, nil
 }
 
-func parseTokens(blob string) (string, string, string, string) {
+func parseTokens(blob string) (string, string, string, string, string) {
 	hostRgx := regexp.MustCompile(`data-host=\"(.*?)\"`)
 	sigRgx := regexp.MustCompile(`data-sig-request=\"(.*?)\"`)
 	dpaRgx := regexp.MustCompile(`data-post-action=\"(.*?)\"`)
+	csrfRgx := regexp.MustCompile(`name=\"csrf_token\" value=\"(.*?)\"`)
 
 	dataSigRequest := sigRgx.FindStringSubmatch(blob)
 	duoHost := hostRgx.FindStringSubmatch(blob)
 	postAction := dpaRgx.FindStringSubmatch(blob)
 
+	// extract the Shibboleth v4 CSRF token, if present
+	csrfToken := ""
+	csrfTokenMatch := csrfRgx.FindStringSubmatch(blob)
+	if len(csrfTokenMatch) != 0 {
+		csrfToken = csrfTokenMatch[1]
+	}
+
 	duoSignatures := strings.Split(dataSigRequest[1], ":")
-	return duoHost[1], postAction[1], duoSignatures[0], duoSignatures[1]
+	return duoHost[1], postAction[1], duoSignatures[0], duoSignatures[1], csrfToken
 }
 
 func extractSamlResponse(res *http.Response) (string, error) {

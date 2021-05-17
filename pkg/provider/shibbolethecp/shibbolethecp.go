@@ -16,10 +16,10 @@ import (
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"github.com/versent/saml2aws/pkg/cfg"
-	"github.com/versent/saml2aws/pkg/creds"
-	"github.com/versent/saml2aws/pkg/prompter"
-	"github.com/versent/saml2aws/pkg/provider"
+	"github.com/versent/saml2aws/v2/pkg/cfg"
+	"github.com/versent/saml2aws/v2/pkg/creds"
+	"github.com/versent/saml2aws/v2/pkg/prompter"
+	"github.com/versent/saml2aws/v2/pkg/provider"
 )
 
 const SAML_SUCCESS = "urn:oasis:names:tc:SAML:2.0:status:Success"
@@ -28,6 +28,8 @@ const SHIB_DUO_PASSCODE = "X-Shibboleth-Duo-Passcode"
 
 // Client wrapper around shibbolethecp enabling authentication and retrieval of assertions
 type Client struct {
+	provider.ValidateBase
+
 	client     *provider.HTTPClient
 	idpAccount *cfg.IDPAccount
 }
@@ -83,7 +85,7 @@ func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 // Authenticate authenticates to a Shibboleth ECP profile and return the data from the body of the SAML assertion.
 func (c *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error) {
 	// Step 1: Request resource from IdP, indicate we are ECP capable
-	ar, err := authnRequest(c.idpAccount.AmazonWebservicesURN)
+	ar, err := authnRequest(c.idpAccount.AmazonWebservicesURN, c.idpAccount.TargetURL)
 	if err != nil {
 		return "", err
 	}
@@ -107,7 +109,9 @@ func (c *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error) 
 	}
 
 	res, err := c.client.Do(req)
-	defer res.Body.Close()
+	defer func() {
+		_ = res.Body.Close()
+	}()
 
 	if err != nil {
 		return "", errors.Wrap(err, "Sending initial SOAP authnRequest")
@@ -136,16 +140,19 @@ func (c *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error) 
 }
 
 // authnRequest creates a SOAP-XML AuthnRequest from EntityID
-func authnRequest(entityID string) (io.Reader, error) {
+func authnRequest(entityID string, target string) (io.Reader, error) {
 	// create authnRequest from template, due to fragility in xml/encoding when handling namespaces
 	t, err := template.New("authnRequest").Parse(authnRequestTpl)
 	if err != nil {
 		return nil, errors.Wrap(err, "Error parsing authnRequest template")
 	}
+	if target == "" {
+		target = "https://signin.aws.amazon.com/saml"
+	}
 	ard := authnRequestData{
 		ID:                          uuid.New().String(),
 		IssueInstant:                time.Now().Format(time.RFC3339),
-		AssertionConsumerServiceURL: "https://signin.aws.amazon.com/saml",
+		AssertionConsumerServiceURL: target,
 		EntityID:                    entityID,
 	}
 

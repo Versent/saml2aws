@@ -87,9 +87,19 @@ func ExtractDestinationURL(data []byte) (string, error) {
 		return "", ErrMissingElement{Tag: responseTag}
 	}
 
-	destination := rootElement.SelectAttrValue("Destination","none")
+	destination := rootElement.SelectAttrValue("Destination", "none")
 	if destination == "none" {
-		return "", ErrMissingElement{Tag: responseTag}
+		// If Destination attribute is not found in Response (root) element,
+		// get the Recipient attribute from the SubjectConfirmationData element.
+		subjectConfirmationDataElement := doc.FindElement(".//SubjectConfirmationData")
+		if subjectConfirmationDataElement == nil {
+			return "", ErrMissingElement{Tag: responseTag}
+		}
+
+		destination = subjectConfirmationDataElement.SelectAttrValue("Recipient", "none")
+		if destination == "none" {
+			return "", ErrMissingElement{Tag: responseTag}
+		}
 	}
 
 	return destination, nil

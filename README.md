@@ -1,4 +1,4 @@
-# saml2aws [![Build Status](https://travis-ci.org/Versent/saml2aws.svg?branch=master)](https://travis-ci.org/Versent/saml2aws) [![Build status - Windows](https://ci.appveyor.com/api/projects/status/ptpi18kci16o4i82/branch/master?svg=true)](https://ci.appveyor.com/project/davidobrien1985/saml2aws/branch/master)
+# saml2aws [![GitHub Actions status](https://github.com/Versent/saml2aws/workflows/Go/badge.svg?branch=master)](https://github.com/Versent/saml2aws/actions?query=workflow%3AGo) [![Build status - Windows](https://ci.appveyor.com/api/projects/status/ptpi18kci16o4i82/branch/master?svg=true)](https://ci.appveyor.com/project/davidobrien1985/saml2aws/branch/master)
 
 CLI tool which enables you to login and retrieve [AWS](https://aws.amazon.com/) temporary credentials using 
 with [ADFS](https://msdn.microsoft.com/en-us/library/bb897402.aspx) or [PingFederate](https://www.pingidentity.com/en/products/pingfederate.html) Identity Providers.
@@ -12,6 +12,7 @@ The process goes something like this:
 * Prompt user for credentials
 * Log in to Identity Provider using form based authentication
 * Build a SAML assertion containing AWS roles
+* Optionally cache the SAML assertion (the cache is not encrypted)
 * Exchange the role and SAML assertion with [AWS STS service](https://docs.aws.amazon.com/STS/latest/APIReference/Welcome.html) to get a temporary set of credentials
 * Save these credentials to an aws profile named "saml"
 
@@ -24,6 +25,7 @@ The process goes something like this:
     - [OSX](#osx)
     - [Windows](#windows)
     - [Linux](#linux)
+- [Autocomplete](#autocomplete)
 - [Dependency Setup](#dependency-setup)
 - [Usage](#usage)
     - [`saml2aws script`](#saml2aws-script)
@@ -40,6 +42,7 @@ The process goes something like this:
 
 * One of the supported Identity Providers
   * ADFS (2.x or 3.x)
+  * [AzureAD](doc/provider/aad/README.md)
   * PingFederate + PingId
   * [Okta](pkg/provider/okta/README.md)
   * KeyCloak + (TOTP)
@@ -49,6 +52,7 @@ The process goes something like this:
   * [Akamai](pkg/provider/akamai/README.md)
   * OneLogin
   * NetIQ
+  * Browser, this uses [playwright-go](github.com/mxschmitt/playwright-go) to run a sandbox chromium window.
 * AWS SAML Provider configured
 
 ## Caveats
@@ -65,13 +69,13 @@ Aside from Okta, most of the providers in this project are using screen scraping
 If you're on OSX you can install saml2aws using homebrew!
 
 ```
-brew tap versent/homebrew-taps
 brew install saml2aws
+saml2aws --version
 ```
 
 ### Windows
 
-If you're on Windows you can install saml2aws using chocolatey!
+If you're on Windows you can [install saml2aws using chocolatey](https://chocolatey.org/packages?q=saml2aws)!
 
 ```
 choco install saml2aws
@@ -83,14 +87,18 @@ saml2aws --version
 While brew is available for Linux you can also run the following without using a package manager.
 
 ```
-$ CURRENT_VERSION=2.26.1
-$ wget https://github.com/Versent/saml2aws/releases/download/v${CURRENT_VERSION}/saml2aws_${CURRENT_VERSION}_linux_amd64.tar.gz
-$ tar -xzvf saml2aws_${CURRENT_VERSION}_linux_amd64.tar.gz -C ~/.local/bin
+$ CURRENT_VERSION=$(curl -Ls https://api.github.com/repos/Versent/saml2aws/releases/latest | grep 'tag_name' | cut -d'v' -f2 | cut -d'"' -f1)
+$ wget -c https://github.com/Versent/saml2aws/releases/download/v${CURRENT_VERSION}/saml2aws_${CURRENT_VERSION}_linux_amd64.tar.gz -O - | tar -xzv -C ~/.local/bin
 $ chmod u+x ~/.local/bin/saml2aws
+$ hash -r
+$ saml2aws --version
 ```
-**Note**: You will need to logout of your current user session or force a bash reload for `saml2aws` to be useable after following the above steps.
 
-e.g. `exec -l bash`
+#### [Arch Linux](https://archlinux.org/) and its derivatives
+
+The `saml2aws` tool is available in AUR ([saml2aws-bin](https://aur.archlinux.org/packages/saml2aws-bin/)), so you can install it using an available AUR helper:
+
+* Manjaro: `$ pamac build saml2aws-bin`
 
 #### [Void Linux](https://voidlinux.org/)
 
@@ -98,6 +106,24 @@ If you are on Void Linux you can use xbps to install the saml2aws package!
 
 ```
 xbps-install saml2aws
+```
+
+## Autocomplete
+
+`saml2aws` can generate completion scripts.
+
+### Bash
+
+Add the following line to your `.bash_profile` (or equivalent):
+```bash
+eval "$(saml2aws --completion-script-bash)"
+```
+
+### Zsh
+
+Add the following line to your `.zshrc` (or equivalent):
+```bash
+eval "$(saml2aws --completion-script-zsh)"
 ```
 
 ## Dependency Setup
@@ -118,6 +144,7 @@ A command line tool to help with SAML access to the AWS token service.
 Flags:
       --help                   Show context-sensitive help (also try --help-long and --help-man).
       --version                Show application version.
+      --quiet                  silences logs
       --verbose                Enable verbose logging
   -i, --provider=PROVIDER      This flag is obsolete. See: https://github.com/Versent/saml2aws#configuring-idp-accounts
   -a, --idp-account="default"  The name of the configured IDP account. (env: SAML2AWS_IDP_ACCOUNT)
@@ -153,42 +180,59 @@ Commands:
     -p, --profile=PROFILE          The AWS profile to save the temporary credentials. (env: SAML2AWS_PROFILE)
         --resource-id=RESOURCE-ID  F5APM SAML resource ID of your company account. (env: SAML2AWS_F5APM_RESOURCE_ID)
         --config=CONFIG            Path/filename of saml2aws config file (env: SAML2AWS_CONFIGFILE)
+        --cache-saml               Caches the SAML response (env: SAML2AWS_CACHE_SAML)
+        --cache-file=CACHE-FILE    The location of the SAML cache file (env: SAML2AWS_SAML_CACHE_FILE)
 
   login [<flags>]
     Login to a SAML 2.0 IDP and convert the SAML assertion to an STS token.
 
-    -p, --profile=PROFILE      The AWS profile to save the temporary credentials. (env: SAML2AWS_PROFILE)
+    -p, --profile=PROFILE        The AWS profile to save the temporary credentials. (env: SAML2AWS_PROFILE)
         --duo-mfa-option=DUO-MFA-OPTION
-                               The MFA option you want to use to authenticate with
-        --client-id=CLIENT-ID  OneLogin client id, used to generate API access token. (env: ONELOGIN_CLIENT_ID)
+                                 The MFA option you want to use to authenticate with
+        --client-id=CLIENT-ID    OneLogin client id, used to generate API access token. (env: ONELOGIN_CLIENT_ID)
         --client-secret=CLIENT-SECRET
-                               OneLogin client secret, used to generate API access token. (env: ONELOGIN_CLIENT_SECRET)
-        --force                Refresh credentials even if not expired.
+                                 OneLogin client secret, used to generate API access token. (env: ONELOGIN_CLIENT_SECRET)
+        --force                  Refresh credentials even if not expired.
+        --credential-process     Enables AWS Credential Process support by outputting credentials to STDOUT in a JSON message.
+        --credentials-file=CREDENTIALS-FILE
+                                 The file that will cache the credentials retrieved from AWS. When not specified, will use the default AWS credentials file location. (env: SAML2AWS_CREDENTIALS_FILE)
+        --cache-saml             Caches the SAML response (env: SAML2AWS_CACHE_SAML)
+        --cache-file=CACHE-FILE  The location of the SAML cache file (env: SAML2AWS_SAML_CACHE_FILE)
+
 
   exec [<flags>] [<command>...]
     Exec the supplied command with env vars from STS token.
 
-    -p, --profile=PROFILE  The AWS profile to save the temporary credentials. (env: SAML2AWS_PROFILE)
+    -p, --profile=PROFILE      The AWS profile to save the temporary credentials. (env: SAML2AWS_PROFILE)
         --exec-profile=EXEC-PROFILE
-                           The AWS profile to utilize for command execution. Useful to allow the aws cli to perform secondary role assumption. (env: SAML2AWS_EXEC_PROFILE)
+                               The AWS profile to utilize for command execution. Useful to allow the aws cli to perform secondary role assumption. (env: SAML2AWS_EXEC_PROFILE)
+        --credentials-file=CREDENTIALS-FILE
+                               The file that will cache the credentials retrieved from AWS. When not specified, will use the default AWS credentials file location. (env: SAML2AWS_CREDENTIALS_FILE)
 
   console [<flags>]
     Console will open the aws console after logging in.
 
         --exec-profile=EXEC-PROFILE
-                           The AWS profile to utilize for console execution. (env: SAML2AWS_EXEC_PROFILE)
-    -p, --profile=PROFILE  The AWS profile to save the temporary credentials. (env: SAML2AWS_PROFILE)
-        --force            Refresh credentials even if not expired.
+                               The AWS profile to utilize for console execution. (env: SAML2AWS_EXEC_PROFILE)
+    -p, --profile=PROFILE      The AWS profile to save the temporary credentials. (env: SAML2AWS_PROFILE)
+        --force                Refresh credentials even if not expired.
+        --link                 Present link to AWS console instead of opening browser
+        --credentials-file=CREDENTIALS-FILE
+                               The file that will cache the credentials retrieved from AWS. When not specified, will use the default AWS credentials file location. (env: SAML2AWS_CREDENTIALS_FILE)
 
   list-roles
     List available role ARNs.
+        --cache-saml             Caches the SAML response (env: SAML2AWS_CACHE_SAML)
+        --cache-file=CACHE-FILE  The location of the SAML cache file (env: SAML2AWS_SAML_CACHE_FILE)
 
 
   script [<flags>]
     Emit a script that will export environment variables.
 
-    -p, --profile=PROFILE  The AWS profile to save the temporary credentials. (env: SAML2AWS_PROFILE)
-        --shell=bash       Type of shell environment. Options include: bash, powershell, fish
+    -p, --profile=PROFILE      The AWS profile to save the temporary credentials. (env: SAML2AWS_PROFILE)
+        --shell=bash           Type of shell environment. Options include: bash, powershell, fish, env
+        --credentials-file=CREDENTIALS-FILE
+                               The file that will cache the credentials retrieved from AWS. When not specified, will use the default AWS credentials file location. (env: SAML2AWS_CREDENTIALS_FILE)
 
 
 ```
@@ -207,6 +251,7 @@ SAML2AWS_PROFILE=saml
 ```
 
 Powershell, and fish shells are supported as well.
+Env is useful for all AWS SDK compatible tools that can source an env file. It is a powerful combo with docker and the `--env-file` parameter.
 
 If you use `eval $(saml2aws script)` frequently, you may want to create a alias for it:
 
@@ -218,6 +263,11 @@ alias s2a="function(){eval $( $(command saml2aws) script --shell=bash --profile=
 bash:
 ```
 function s2a { eval $( $(which saml2aws) script --shell=bash --profile=$@); }
+```
+
+env:
+```
+docker run -ti --env-file <(saml2aws script --shell=env) amazon/aws-cli s3 ls
 ```
 
 ### `saml2aws exec`
@@ -498,6 +548,7 @@ Use following parameters in `~/.saml2aws` file:
 - `http_attempts_count` - configures the number of attempts to send http requests in order to authorise with saml provider. Defaults to 1
 - `http_retry_delay` - configures the duration (in seconds) of timeout between attempts to send http requests to saml provider. Defaults to 1
 - `region` - configures which region endpoints to use, See [Audience](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_providers_create_saml_assertions.html#saml_audience-restriction) and [partition](https://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html#arns-syntax)
+- `target_url` - look for a target endpoint other than signin.aws.amazon.com/saml. The Okta, Pingfed, Pingone and Shibboleth ECP providers need to either explicitly send or look for this URL in a response in order to obtain or identify an appropriate authentication response. This can be overridden here if you wish to authenticate for something other than AWS.
 
 Example: typical configuration with such parameters would look like follows:
 ```
@@ -534,6 +585,12 @@ Then to test the software just run.
 
 ```
 make test
+```
+
+Before raising a PR please run the linter.
+
+```
+make lint-fix
 ```
 
 ## Environment vars
@@ -594,6 +651,30 @@ The second emits the content of requests and responses, this includes authentica
 ```
 DUMP_CONTENT=true saml2aws login --verbose
 ```
+# Using saml2aws as credential process
+
+[Credential Process](https://github.com/awslabs/awsprocesscreds) is a convenient way of interfacing credential providers with the AWS Cli.
+
+You can use `saml2aws` as a credential provider by simply configuring it and then adding a profile to the AWS configuration. `saml2aws` has a flag `--credential-process` generating an output with the right JSON format, as well as a flag `--quiet` that will block the logging from being displayed.
+The AWS credential file (typically ~/.aws/credentials) has precedence over the credential_process provider. That means that if credentials are present in the file, the credential process will not trigger. To counter that you can override the aws credential location of `saml2aws` to another file using `--credential-file` or specifying it during `configure`.
+
+An example of the aws configuration (`~/.aws/config`):
+
+```
+[profile mybucket]
+region = us-west-1
+credential_process = saml2aws login --skip-prompt --quiet --credential-process --role <ROLE> --profile mybucket
+```
+
+When using the aws cli with the `mybucket` profile, the authentication process will be run and the aws will then be executed based on the returned credentials.
+
+# Caching the saml2aws SAML assertion for immediate reuse
+
+You can use the flag `--cache-saml` in order to cache the SAML assertion at authentication time. The SAML assertion cache has a very short validity (5 min) and can be used to authenticate to several roles with a single MFA validation.
+
+there is a file per saml2aws profile, the cache directory is called `saml2aws` and is located in your `.aws` directory in your user homedir.
+
+You can toggle `--cache-saml` during `login` or during `list-roles`, and you can set it once during `configure` and use it implicitly.
 
 # License
 

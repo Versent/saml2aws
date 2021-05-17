@@ -2,14 +2,16 @@ package commands
 
 import (
 	b64 "encoding/base64"
+	"fmt"
 	"log"
 	"os"
 
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"github.com/versent/saml2aws"
-	"github.com/versent/saml2aws/helper/credentials"
-	"github.com/versent/saml2aws/pkg/flags"
+	"github.com/versent/saml2aws/v2"
+	"github.com/versent/saml2aws/v2/helper/credentials"
+	"github.com/versent/saml2aws/v2/pkg/flags"
+	"github.com/versent/saml2aws/v2/pkg/samlcache"
 )
 
 // ListRoles will list available role ARNs
@@ -22,15 +24,16 @@ func ListRoles(loginFlags *flags.LoginExecFlags) error {
 		return errors.Wrap(err, "error building login details")
 	}
 
+	// creates a cacheProvider, only used when --cache is set
+	cacheProvider := &samlcache.SAMLCacheProvider{
+		Account:  account.Name,
+		Filename: account.SAMLCacheFile,
+	}
+
 	loginDetails, err := resolveLoginDetails(account, loginFlags)
 	if err != nil {
 		log.Printf("%+v", err)
 		os.Exit(1)
-	}
-
-	err = loginDetails.Validate()
-	if err != nil {
-		return errors.Wrap(err, "error validating login details")
 	}
 
 	logger.WithField("idpAccount", account).Debug("building provider")
@@ -40,16 +43,39 @@ func ListRoles(loginFlags *flags.LoginExecFlags) error {
 		return errors.Wrap(err, "error building IdP client")
 	}
 
-	samlAssertion, err := provider.Authenticate(loginDetails)
+	err = provider.Validate(loginDetails)
 	if err != nil {
-		return errors.Wrap(err, "error authenticating to IdP")
+		return errors.Wrap(err, "error validating login details")
+	}
 
+	var samlAssertion string
+	if account.SAMLCache {
+		if cacheProvider.IsValid() {
+			samlAssertion, err = cacheProvider.Read()
+			if err != nil {
+				logger.Debug("Could not read cache:", err)
+			}
+		}
+	}
+
+	if samlAssertion == "" {
+		// samlAssertion was not cached
+		samlAssertion, err = provider.Authenticate(loginDetails)
+		if err != nil {
+			return errors.Wrap(err, "error authenticating to IdP")
+		}
+		if account.SAMLCache {
+			err = cacheProvider.Write(samlAssertion)
+			if err != nil {
+				logger.Error("Could not write samlAssertion:", err)
+			}
+		}
 	}
 
 	if samlAssertion == "" {
 		log.Println("Response did not contain a valid SAML assertion")
 		log.Println("Please check your username and password is correct")
-		log.Println("To see the output follow the instructions in https://github.com/Versent/saml2aws#debugging-issues-with-idps")
+		log.Println("To see the output follow the instructions in https://github.com/versent/saml2aws#debugging-issues-with-idps")
 		os.Exit(1)
 	}
 
@@ -116,11 +142,11 @@ func listRoles(awsRoles []*saml2aws.AWSRole, samlAssertion string, loginFlags *f
 
 	log.Println("")
 	for _, account := range awsAccounts {
-		log.Println(account.Name)
+		fmt.Println(account.Name)
 		for _, role := range account.Roles {
-			log.Println(role.RoleARN)
+			fmt.Println(role.RoleARN)
 		}
-		log.Println("")
+		fmt.Println("")
 	}
 
 	return nil

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	u2fhost "github.com/marshallbrekka/go-u2fhost"
+	"github.com/marshallbrekka/go-u2fhost"
 )
 
 const (

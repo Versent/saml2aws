@@ -14,10 +14,10 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/tidwall/gjson"
-	"github.com/versent/saml2aws/pkg/cfg"
-	"github.com/versent/saml2aws/pkg/creds"
-	"github.com/versent/saml2aws/pkg/prompter"
-	"github.com/versent/saml2aws/pkg/provider"
+	"github.com/versent/saml2aws/v2/pkg/cfg"
+	"github.com/versent/saml2aws/v2/pkg/creds"
+	"github.com/versent/saml2aws/v2/pkg/prompter"
+	"github.com/versent/saml2aws/v2/pkg/provider"
 )
 
 // MFA identifier constants.
@@ -49,6 +49,8 @@ var (
 
 // Client is a wrapper representing a OneLogin SAML client.
 type Client struct {
+	provider.ValidateBase
+
 	// AppID represents the OneLogin connector id.
 	AppID string
 	// Client is the HTTP client for accessing the IDP provider's APIs.
@@ -282,7 +284,10 @@ func verifyMFA(oc *Client, oauthToken, appID, resp string) (string, error) {
 	case IdentifierSmsMfa, IdentifierTotpMfa, IdentifierYubiKey:
 		verifyCode := prompter.StringRequired("Enter verification code")
 		var verifyBody bytes.Buffer
-		json.NewEncoder(&verifyBody).Encode(VerifyRequest{AppID: appID, DeviceID: mfaDeviceID, StateToken: stateToken, OTPToken: verifyCode})
+		err := json.NewEncoder(&verifyBody).Encode(VerifyRequest{AppID: appID, DeviceID: mfaDeviceID, StateToken: stateToken, OTPToken: verifyCode})
+		if err != nil {
+			return "", errors.Wrap(err, "error encoding body")
+		}
 		req, err := http.NewRequest("POST", callbackURL, &verifyBody)
 		if err != nil {
 			return "", errors.Wrap(err, "error building token post request")

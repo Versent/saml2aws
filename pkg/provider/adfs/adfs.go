@@ -11,14 +11,16 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/pkg/errors"
-	"github.com/versent/saml2aws/pkg/cfg"
-	"github.com/versent/saml2aws/pkg/creds"
-	"github.com/versent/saml2aws/pkg/prompter"
-	"github.com/versent/saml2aws/pkg/provider"
+	"github.com/versent/saml2aws/v2/pkg/cfg"
+	"github.com/versent/saml2aws/v2/pkg/creds"
+	"github.com/versent/saml2aws/v2/pkg/prompter"
+	"github.com/versent/saml2aws/v2/pkg/provider"
 )
 
 // Client wrapper around ADFS enabling authentication and retrieval of assertions
 type Client struct {
+	provider.ValidateBase
+
 	client     *provider.HTTPClient
 	idpAccount *cfg.IDPAccount
 }
@@ -201,7 +203,7 @@ func checkResponse(doc *goquery.Document) (AuthResponseType, string, error) {
 		if name == "AuthMethod" {
 			val, _ := s.Attr("value")
 			switch val {
-			case "VIPAuthenticationProviderWindowsAccountName":
+			case "VIPAuthenticationProviderWindowsAccountName", "VIPAuthenticationProviderUPN", "Defender AD FS Adapter":
 				responseType = MFA_PROMPT
 			case "AzureMfaAuthentication":
 				responseType = AZURE_MFA_WAIT
@@ -252,6 +254,8 @@ func updateOTPFormData(otpForm url.Values, s *goquery.Selection, token string) {
 	if strings.Contains(lname, "security_code") {
 		otpForm.Add(name, token)
 	} else if strings.Contains(lname, "verificationcode") {
+		otpForm.Add(name, token)
+	} else if strings.Contains(lname, "challengequestionanswer") {
 		otpForm.Add(name, token)
 	} else {
 		updatePassthroughFormData(otpForm, s)

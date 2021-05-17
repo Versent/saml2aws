@@ -11,14 +11,16 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/pkg/errors"
-	"github.com/versent/saml2aws/pkg/cfg"
-	"github.com/versent/saml2aws/pkg/creds"
-	"github.com/versent/saml2aws/pkg/prompter"
-	"github.com/versent/saml2aws/pkg/provider"
+	"github.com/versent/saml2aws/v2/pkg/cfg"
+	"github.com/versent/saml2aws/v2/pkg/creds"
+	"github.com/versent/saml2aws/v2/pkg/prompter"
+	"github.com/versent/saml2aws/v2/pkg/provider"
 )
 
 // Client wrapper around KeyCloak.
 type Client struct {
+	provider.ValidateBase
+
 	client *provider.HTTPClient
 }
 
@@ -70,23 +72,7 @@ func (kc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		}
 	}
 
-	var samlAssertion string
-
-	doc.Find("input").Each(func(i int, s *goquery.Selection) {
-		name, ok := s.Attr("name")
-		if !ok {
-			log.Fatalf("unable to locate IDP authentication form submit URL")
-		}
-		if name == "SAMLResponse" {
-			val, ok := s.Attr("value")
-			if !ok {
-				log.Fatalf("unable to locate saml assertion value")
-			}
-			samlAssertion = val
-		}
-	})
-
-	return samlAssertion, nil
+	return extractSamlResponse(doc), nil
 }
 
 func (kc *Client) getLoginForm(loginDetails *creds.LoginDetails) (string, url.Values, error) {
@@ -96,9 +82,18 @@ func (kc *Client) getLoginForm(loginDetails *creds.LoginDetails) (string, url.Va
 		return "", nil, errors.Wrap(err, "error retrieving form")
 	}
 
-	doc, err := goquery.NewDocumentFromResponse(res)
+	doc, err := goquery.NewDocumentFromReader(res.Body)
 	if err != nil {
 		return "", nil, errors.Wrap(err, "failed to build document from response")
+	}
+
+	if res.StatusCode == http.StatusUnauthorized {
+		authSubmitURL, err := extractSubmitURL(doc)
+		if err != nil {
+			return "", nil, errors.Wrap(err, "unable to locate IDP authentication form submit URL")
+		}
+		loginDetails.URL = authSubmitURL
+		return kc.getLoginForm(loginDetails)
 	}
 
 	authForm := url.Values{}
@@ -161,7 +156,7 @@ func (kc *Client) postTotpForm(totpSubmitURL string, mfaToken string, doc *goque
 		return nil, errors.Wrap(err, "error retrieving content")
 	}
 
-	doc, err = goquery.NewDocumentFromResponse(res)
+	doc, err = goquery.NewDocumentFromReader(res.Body)
 	if err != nil {
 		return nil, errors.Wrap(err, "error reading totp form response")
 	}
@@ -188,6 +183,27 @@ func extractSubmitURL(doc *goquery.Document) (string, error) {
 	return submitURL, nil
 }
 
+func extractSamlResponse(doc *goquery.Document) string {
+	var samlAssertion string
+
+	doc.Find("input").Each(func(i int, s *goquery.Selection) {
+		name, ok := s.Attr("name")
+		if ok && name == "SAMLResponse" {
+			val, ok := s.Attr("value")
+			if !ok {
+				log.Fatalf("unable to locate saml assertion value")
+			}
+			samlAssertion = val
+		}
+	})
+
+	if samlAssertion == "" {
+		log.Fatalf("unable to locate saml response field")
+	}
+
+	return samlAssertion
+}
+
 func containsTotpForm(doc *goquery.Document) bool {
 	// search totp field at Keycloak < 8.0.1
 	totpIndex := doc.Find("input#totp").Index()
@@ -199,11 +215,7 @@ func containsTotpForm(doc *goquery.Document) bool {
 	// search otp field at Keycloak >= 8.0.1
 	totpIndex = doc.Find("input#otp").Index()
 
-	if totpIndex != -1 {
-		return true
-	}
-
-	return false
+	return totpIndex != -1
 }
 
 func updateKeyCloakFormData(authForm url.Values, s *goquery.Selection, user *creds.LoginDetails) {

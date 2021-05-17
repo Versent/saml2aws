@@ -1,7 +1,7 @@
 package flags
 
 import (
-	"github.com/versent/saml2aws/pkg/cfg"
+	"github.com/versent/saml2aws/v2/pkg/cfg"
 )
 
 // CommonFlags flags common to all of the `saml2aws` commands (except `help`)
@@ -27,14 +27,18 @@ type CommonFlags struct {
 	ResourceID           string
 	DisableKeychain      bool
 	Region               string
+	CredentialsFile      string
+	SAMLCache            bool
+	SAMLCacheFile        string
 }
 
 // LoginExecFlags flags for the Login / Exec commands
 type LoginExecFlags struct {
-	CommonFlags  *CommonFlags
-	Force        bool
-	DuoMFAOption string
-	ExecProfile  string
+	CommonFlags       *CommonFlags
+	Force             bool
+	DuoMFAOption      string
+	ExecProfile       string
+	CredentialProcess bool
 }
 
 type ConsoleFlags struct {
@@ -92,5 +96,14 @@ func ApplyFlagOverrides(commonFlags *CommonFlags, account *cfg.IDPAccount) {
 	}
 	if commonFlags.Region != "" {
 		account.Region = commonFlags.Region
+	}
+	if commonFlags.CredentialsFile != "" {
+		account.CredentialsFile = commonFlags.CredentialsFile
+	}
+	if commonFlags.SAMLCache {
+		account.SAMLCache = commonFlags.SAMLCache
+	}
+	if commonFlags.SAMLCacheFile != "" {
+		account.SAMLCacheFile = commonFlags.SAMLCacheFile
 	}
 }

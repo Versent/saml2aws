@@ -1,12 +1,12 @@
 package googleapps
 
 import (
+	"bufio"
 	"bytes"
 	b64 "encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -15,16 +15,18 @@ import (
 	"github.com/PuerkitoBio/goquery"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"github.com/versent/saml2aws/pkg/cfg"
-	"github.com/versent/saml2aws/pkg/creds"
-	"github.com/versent/saml2aws/pkg/prompter"
-	"github.com/versent/saml2aws/pkg/provider"
+	"github.com/versent/saml2aws/v2/pkg/cfg"
+	"github.com/versent/saml2aws/v2/pkg/creds"
+	"github.com/versent/saml2aws/v2/pkg/prompter"
+	"github.com/versent/saml2aws/v2/pkg/provider"
 )
 
 var logger = logrus.WithField("provider", "googleapps")
 
 // Client wrapper around Google Apps.
 type Client struct {
+	provider.ValidateBase
+
 	client *provider.HTTPClient
 }
 
@@ -193,7 +195,7 @@ func (kc *Client) iTermCaptchaPrompt(captchaPictureURL string) (string, error) {
 }
 
 func simpleCaptchaPrompt(captchaPictureURL string) string {
-	log.Println("Open this link in a browser:\n", captchaPictureURL)
+	fmt.Println("Open this link in a browser:\n", captchaPictureURL)
 	return prompter.String("Captcha", "")
 }
 
@@ -391,9 +393,7 @@ func (kc *Client) loadChallengePage(submitURL string, referer string, authForm u
 		case strings.Contains(secondActionURL, "challenge/sk/"): // handle u2f challenge
 			facetComponents, err := url.Parse(secondActionURL)
 			if err != nil {
-				if err != nil {
-					return nil, errors.Wrap(err, "unable to parse action URL for U2F challenge")
-				}
+				return nil, errors.Wrap(err, "unable to parse action URL for U2F challenge")
 			}
 			facet := facetComponents.Scheme + "://" + facetComponents.Host
 			challengeNonce := responseForm.Get("id-challenge")
@@ -405,7 +405,7 @@ func (kc *Client) loadChallengePage(submitURL string, referer string, authForm u
 
 			response, err := u2fClient.ChallengeU2F()
 			if err != nil {
-				errors.Wrap(err, "Second factor failed.")
+				logger.WithError(err).Error("Second factor failed.")
 				return kc.skipChallengePage(doc, submitURL, secondActionURL, loginDetails)
 			}
 
@@ -433,6 +433,15 @@ func (kc *Client) loadChallengePage(submitURL string, referer string, authForm u
 			// responseForm.Set("Pin", token)
 			responseForm.Set("TrustDevice", "on") // Don't ask again on this computer
 
+			return kc.loadResponsePage(secondActionURL, submitURL, responseForm)
+
+		case strings.Contains(secondActionURL, "challenge/dp/"): // handle device push challenge
+			fmt.Print("Check your phone - after you have confirmed response press ENTER to continue.")
+			_, err := bufio.NewReader(os.Stdin).ReadBytes('\n')
+			if err != nil {
+				return nil, errors.Wrap(err, "error reading new line \\n")
+			}
+			responseForm.Set("TrustDevice", "on") // Don't ask again on this computer
 			return kc.loadResponsePage(secondActionURL, submitURL, responseForm)
 
 		case strings.Contains(secondActionURL, "challenge/skotp/"): // handle one-time HOTP challenge
@@ -695,8 +704,7 @@ func extractKeyHandles(doc *goquery.Document, challengeTxt string) (string, []st
 			firstIdx := strings.Index(val, "{")
 			lastIdx := strings.LastIndex(val, "}")
 			obj := []byte(val[firstIdx : lastIdx+1])
-			json.Unmarshal(obj, &result)
-
+			_ = json.Unmarshal(obj, &result) // ignore the error and continue
 			// Key handles
 			for _, val := range result {
 				list, ok := val.([]interface{})

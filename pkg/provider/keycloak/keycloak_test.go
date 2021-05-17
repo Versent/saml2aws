@@ -11,10 +11,10 @@ import (
 	"github.com/PuerkitoBio/goquery"
 
 	"github.com/stretchr/testify/require"
-	"github.com/versent/saml2aws/mocks"
-	"github.com/versent/saml2aws/pkg/creds"
-	"github.com/versent/saml2aws/pkg/prompter"
-	"github.com/versent/saml2aws/pkg/provider"
+	"github.com/versent/saml2aws/v2/mocks"
+	"github.com/versent/saml2aws/v2/pkg/creds"
+	"github.com/versent/saml2aws/v2/pkg/prompter"
+	"github.com/versent/saml2aws/v2/pkg/provider"
 )
 
 const (
@@ -27,7 +27,7 @@ func TestClient_getLoginForm(t *testing.T) {
 	require.Nil(t, err)
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write(data)
+		_, _ = w.Write(data)
 	}))
 	defer ts.Close()
 
@@ -45,13 +45,48 @@ func TestClient_getLoginForm(t *testing.T) {
 	}, authForm)
 }
 
+func TestClient_getLoginFormRedirect(t *testing.T) {
+
+	redirectData, err := ioutil.ReadFile("example/redirect.html")
+	require.Nil(t, err)
+
+	data, err := ioutil.ReadFile("example/loginpage.html")
+	require.Nil(t, err)
+
+	count := 0
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if count > 0 {
+			_, _ = w.Write(data)
+		} else {
+			w.WriteHeader(http.StatusUnauthorized)
+			_, _ = w.Write(bytes.Replace(redirectData, []byte(exampleLoginURL), []byte("http://"+r.Host), 1))
+		}
+		count++
+	}))
+	defer ts.Close()
+
+	opts := &provider.HTTPClientOptions{IsWithRetries: false}
+	kc := Client{client: &provider.HTTPClient{Client: http.Client{}, Options: opts}}
+	loginDetails := &creds.LoginDetails{URL: ts.URL, Username: "test", Password: "test123"}
+
+	submitURL, authForm, err := kc.getLoginForm(loginDetails)
+	require.Nil(t, err)
+	require.Equal(t, 2, count)
+	require.Equal(t, exampleLoginURL, submitURL)
+	require.Equal(t, url.Values{
+		"username": []string{"test"},
+		"password": []string{"test123"},
+		"login":    []string{"Log in"},
+	}, authForm)
+}
+
 func TestClient_postLoginForm(t *testing.T) {
 
 	data, err := ioutil.ReadFile("example/mfapage.html")
 	require.Nil(t, err)
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write(data)
+		_, _ = w.Write(data)
 	}))
 	defer ts.Close()
 
@@ -75,7 +110,7 @@ func TestClient_postTotpForm(t *testing.T) {
 	require.Nil(t, err)
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write(data)
+		_, _ = w.Write(data)
 	}))
 	defer ts.Close()
 
@@ -91,7 +126,8 @@ func TestClient_postTotpForm(t *testing.T) {
 	opts := &provider.HTTPClientOptions{IsWithRetries: false}
 	kc := Client{client: &provider.HTTPClient{Client: http.Client{}, Options: opts}}
 
-	kc.postTotpForm(ts.URL, mfaToken, doc)
+	_, err = kc.postTotpForm(ts.URL, mfaToken, doc)
+	require.Nil(t, err)
 
 	pr.Mock.AssertCalled(t, "RequestSecurityCode", "000000")
 }
@@ -102,7 +138,7 @@ func TestClient_postTotpFormWithProvidedMFAToken(t *testing.T) {
 	require.Nil(t, err)
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write(data)
+		_, _ = w.Write(data)
 	}))
 	defer ts.Close()
 
@@ -116,9 +152,19 @@ func TestClient_postTotpFormWithProvidedMFAToken(t *testing.T) {
 	opts := &provider.HTTPClientOptions{IsWithRetries: false}
 	kc := Client{client: &provider.HTTPClient{Client: http.Client{}, Options: opts}}
 
-	kc.postTotpForm(ts.URL, mfaToken, doc)
-
+	_, err = kc.postTotpForm(ts.URL, mfaToken, doc)
+	require.Nil(t, err)
 	pr.Mock.AssertNumberOfCalls(t, "RequestSecurityCode", 0)
+}
+
+func TestClient_extractSamlResponse(t *testing.T) {
+	data, err := ioutil.ReadFile("example/assertion.html")
+	require.Nil(t, err)
+
+	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(data))
+	require.Nil(t, err)
+
+	require.Equal(t, extractSamlResponse(doc), "abc123")
 }
 
 func TestClient_containsTotpForm(t *testing.T) {
