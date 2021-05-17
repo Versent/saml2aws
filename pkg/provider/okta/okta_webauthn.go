@@ -3,6 +3,7 @@ package okta
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/marshallbrekka/go-u2fhost"
@@ -122,7 +123,14 @@ func (d *FidoClient) ChallengeU2F() (*SignedAssertion, error) {
 					prompted = true
 				}
 			default:
-				return responsePayload, err
+				errString := fmt.Sprintf("%s", err)
+				if strings.Contains(errString, "U2FHIDError") {
+					fmt.Println("err: %s. Let's keep looping till times out", err)
+				} else if strings.Contains(errString, "hidapi: hid_error is not implemented yet") {
+					fmt.Println("err: %s. Let's keep looping till times out", err)
+				} else {
+					return responsePayload, err
+				}
 			}
 		}
 	}
