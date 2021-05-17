@@ -125,10 +125,13 @@ func (d *FidoClient) ChallengeU2F() (*SignedAssertion, error) {
 			default:
 				errString := fmt.Sprintf("%s", err)
 				if strings.Contains(errString, "U2FHIDError") {
-					fmt.Println("err: %s. Let's keep looping till times out", err)
+					fmt.Printf("Let's keep looping till times out. err: %s \n", err)
 				} else if strings.Contains(errString, "hidapi: hid_error is not implemented yet") {
-					fmt.Println("err: %s. Let's keep looping till times out", err)
+					fmt.Printf("Let's keep looping till times out. err: %s \n", err)
+				/*} else if strings.Contains(errString, "The provided key handle is not present on the device"){
+					fmt.Printf("Let's keep looping till times out. err: %s \n", err)*/
 				} else {
+					fmt.Printf("other errors? err: %s \n", err)
 					return responsePayload, err
 				}
 			}
@@ -150,6 +153,7 @@ func (*U2FDeviceFinder) findDevice() (u2fhost.Device, error) {
 
 	for i, device := range allDevices {
 		err = device.Open()
+		fmt.Printf("========> Devices: %s \n", *device)
 		if err != nil {
 			device.Close()
 

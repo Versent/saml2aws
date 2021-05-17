@@ -324,15 +324,30 @@ func extractSAMLResponse(doc *goquery.Document) (v string, ok bool) {
 }
 
 func findMfaOption(mfa string, mfaOptions []string, startAtIdx int) int {
+	fmt.Printf("========> mfaOptions: %s \n", mfaOptions)
+	fmt.Printf("========> mfa: %s \n", mfa)
+	fmt.Printf("========> startAtIdx: %s \n", startAtIdx)
 	for idx, val := range mfaOptions {
 		if startAtIdx > idx {
 			continue
 		}
 		if strings.HasPrefix(strings.ToUpper(val), mfa) {
+			fmt.Printf("========> return idx: %i \n", idx)
 			return idx
 		}
 	}
 	return 0
+}
+
+func findAllMatchingMFA(mfa string, mfaOptions []string) []string {
+	var matchingMfas []string
+
+	for _, val := range mfaOptions {
+		if strings.HasPrefix(strings.ToUpper(val), mfa) {
+			matchingMfas = append(matchingMfas, val)
+		}
+	}
+	return matchingMfas
 }
 
 func getMfaChallengeContext(oc *Client, mfaOption int, resp string) (*mfaChallengeContext, error) {
@@ -393,6 +408,7 @@ func getMfaChallengeContext(oc *Client, mfaOption int, resp string) (*mfaChallen
 }
 
 func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails, resp string) (string, error) {
+	fmt.Printf("=========> resp with MFAs: %s \n", resp)
 	stateToken := gjson.Get(resp, "stateToken").String()
 
 	// choose an mfa option if there are multiple enabled
@@ -400,6 +416,7 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 	var mfaOptions []string
 	for i := range gjson.Get(resp, "_embedded.factors").Array() {
 		identifier := parseMfaIdentifer(resp, i)
+		fmt.Println("=====> MFA: %s ", identifier)
 		if val, ok := supportedMfaOptions[identifier]; ok {
 			mfaOptions = append(mfaOptions, val)
 		} else {
@@ -407,8 +424,14 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 		}
 	}
 
+
 	if strings.ToUpper(oc.mfa) != "AUTO" {
-		mfaOption = findMfaOption(oc.mfa, mfaOptions, 0)
+		matchingMfaOptions := findAllMatchingMFA(oc.mfa, mfaOptions)
+		if len(matchingMfaOptions) > 1 {
+			mfaOption = prompter.Choose("Select which MFA option to use", matchingMfaOptions)
+		} else {
+			mfaOption = findMfaOption(oc.mfa, mfaOptions, 0)
+		}
 	} else if len(mfaOptions) > 1 {
 		mfaOption = prompter.Choose("Select which MFA option to use", mfaOptions)
 	}
@@ -798,6 +821,7 @@ func fidoWebAuthn(oc *Client, oktaOrgHost string, challengeContext *mfaChallenge
 		}
 
 		signedAssertion, err = fidoClient.ChallengeU2F()
+		fmt.Printf("=======> signedAssertion: %s \n", signedAssertion)
 		if err != nil {
 			// if this error is not a bad key error we are done
 			if _, ok := err.(*u2fhost.BadKeyHandleError); !ok {
@@ -805,7 +829,10 @@ func fidoWebAuthn(oc *Client, oktaOrgHost string, challengeContext *mfaChallenge
 			}
 
 			// check if there is another fido device and try that
+			fmt.Printf("=======> lastMfaOption: %s \n", lastMfaOption)
 			nextMfaOption := findMfaOption(oc.mfa, mfaOptions, lastMfaOption)
+			fmt.Printf("=======> nextMfaOption: %s \n", nextMfaOption)
+			fmt.Printf("=======> mfa options: %s \n", mfaOptions)
 			if nextMfaOption <= lastMfaOption {
 				return "", errors.Wrap(err, "tried all MFA options")
 			}
