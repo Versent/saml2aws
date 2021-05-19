@@ -412,7 +412,7 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 	var mfaOptions []string
 	var profiles []string
 	for i := range gjson.Get(resp, "_embedded.factors").Array() {
-		identifier,profile := parseMfaIdentifer(resp, i)
+		identifier, profile := parseMfaIdentifer(resp, i)
 		if val, ok := supportedMfaOptions[identifier]; ok {
 			mfaOptions = append(mfaOptions, val)
 		} else {
@@ -420,7 +420,6 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 		}
 		profiles = append(profiles, profile)
 	}
-
 
 	if strings.ToUpper(oc.mfa) != "AUTO" {
 		allMatchingMfaOptinos := findAllMatchingMFA(oc.mfa, profiles)
