@@ -272,10 +272,11 @@ func getStateTokenFromOktaPageBody(responseBody string) (string, error) {
 	return strings.Replace(match[1], `\x2D`, "-", -1), nil
 }
 
-func parseMfaIdentifer(json string, arrayPosition int) string {
+func parseMfaIdentifer(json string, arrayPosition int) (string, string) {
 	mfaProvider := gjson.Get(json, fmt.Sprintf("_embedded.factors.%d.provider", arrayPosition)).String()
 	factorType := strings.ToUpper(gjson.Get(json, fmt.Sprintf("_embedded.factors.%d.factorType", arrayPosition)).String())
-	return fmt.Sprintf("%s %s", mfaProvider, factorType)
+	profile := gjson.Get(json, fmt.Sprintf("_embedded.factors.%d.profile", arrayPosition)).String()
+	return fmt.Sprintf("%s %s", mfaProvider, factorType), fmt.Sprintf("%s %s -- %s", mfaProvider, factorType, profile)
 }
 
 func (oc *Client) handleFormRedirect(ctx context.Context, doc *goquery.Document) (context.Context, *http.Request, error) {
@@ -324,15 +325,11 @@ func extractSAMLResponse(doc *goquery.Document) (v string, ok bool) {
 }
 
 func findMfaOption(mfa string, mfaOptions []string, startAtIdx int) int {
-	fmt.Printf("========> mfaOptions: %s \n", mfaOptions)
-	fmt.Printf("========> mfa: %s \n", mfa)
-	fmt.Printf("========> startAtIdx: %s \n", startAtIdx)
 	for idx, val := range mfaOptions {
 		if startAtIdx > idx {
 			continue
 		}
 		if strings.HasPrefix(strings.ToUpper(val), mfa) {
-			fmt.Printf("========> return idx: %i \n", idx)
 			return idx
 		}
 	}
@@ -354,7 +351,7 @@ func getMfaChallengeContext(oc *Client, mfaOption int, resp string) (*mfaChallen
 	stateToken := gjson.Get(resp, "stateToken").String()
 	factorID := gjson.Get(resp, fmt.Sprintf("_embedded.factors.%d.id", mfaOption)).String()
 	oktaVerify := gjson.Get(resp, fmt.Sprintf("_embedded.factors.%d._links.verify.href", mfaOption)).String()
-	mfaIdentifer := parseMfaIdentifer(resp, mfaOption)
+	mfaIdentifer, _ := parseMfaIdentifer(resp, mfaOption)
 
 	logger.WithField("factorID", factorID).WithField("oktaVerify", oktaVerify).WithField("mfaIdentifer", mfaIdentifer).Debug("MFA")
 
@@ -408,29 +405,27 @@ func getMfaChallengeContext(oc *Client, mfaOption int, resp string) (*mfaChallen
 }
 
 func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails, resp string) (string, error) {
-	fmt.Printf("=========> resp with MFAs: %s \n", resp)
 	stateToken := gjson.Get(resp, "stateToken").String()
 
 	// choose an mfa option if there are multiple enabled
 	mfaOption := 0
 	var mfaOptions []string
+	var profiles []string
 	for i := range gjson.Get(resp, "_embedded.factors").Array() {
-		identifier := parseMfaIdentifer(resp, i)
-		fmt.Println("=====> MFA: %s ", identifier)
+		identifier,profile := parseMfaIdentifer(resp, i)
 		if val, ok := supportedMfaOptions[identifier]; ok {
 			mfaOptions = append(mfaOptions, val)
 		} else {
 			mfaOptions = append(mfaOptions, "UNSUPPORTED: "+identifier)
 		}
+		profiles = append(profiles, profile)
 	}
 
 
 	if strings.ToUpper(oc.mfa) != "AUTO" {
-		matchingMfaOptions := findAllMatchingMFA(oc.mfa, mfaOptions)
-		if len(matchingMfaOptions) > 1 {
-			mfaOption = prompter.Choose("Select which MFA option to use", matchingMfaOptions)
-		} else {
-			mfaOption = findMfaOption(oc.mfa, mfaOptions, 0)
+		allMatchingMfaOptinos := findAllMatchingMFA(oc.mfa, profiles)
+		if len(allMatchingMfaOptinos) > 1 {
+			mfaOption = prompter.Choose("Select which MFA option to use", allMatchingMfaOptinos)
 		}
 	} else if len(mfaOptions) > 1 {
 		mfaOption = prompter.Choose("Select which MFA option to use", mfaOptions)
@@ -821,7 +816,6 @@ func fidoWebAuthn(oc *Client, oktaOrgHost string, challengeContext *mfaChallenge
 		}
 
 		signedAssertion, err = fidoClient.ChallengeU2F()
-		fmt.Printf("=======> signedAssertion: %s \n", signedAssertion)
 		if err != nil {
 			// if this error is not a bad key error we are done
 			if _, ok := err.(*u2fhost.BadKeyHandleError); !ok {
@@ -829,10 +823,7 @@ func fidoWebAuthn(oc *Client, oktaOrgHost string, challengeContext *mfaChallenge
 			}
 
 			// check if there is another fido device and try that
-			fmt.Printf("=======> lastMfaOption: %s \n", lastMfaOption)
 			nextMfaOption := findMfaOption(oc.mfa, mfaOptions, lastMfaOption)
-			fmt.Printf("=======> nextMfaOption: %s \n", nextMfaOption)
-			fmt.Printf("=======> mfa options: %s \n", mfaOptions)
 			if nextMfaOption <= lastMfaOption {
 				return "", errors.Wrap(err, "tried all MFA options")
 			}

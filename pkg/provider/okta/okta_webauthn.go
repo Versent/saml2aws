@@ -153,7 +153,6 @@ func (*U2FDeviceFinder) findDevice() (u2fhost.Device, error) {
 
 	for i, device := range allDevices {
 		err = device.Open()
-		fmt.Printf("========> Devices: %s \n", *device)
 		if err != nil {
 			device.Close()
 
