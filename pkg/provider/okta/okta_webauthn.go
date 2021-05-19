@@ -128,8 +128,6 @@ func (d *FidoClient) ChallengeU2F() (*SignedAssertion, error) {
 					fmt.Printf("Let's keep looping till times out. err: %s \n", err)
 				} else if strings.Contains(errString, "hidapi: hid_error is not implemented yet") {
 					fmt.Printf("Let's keep looping till times out. err: %s \n", err)
-				/*} else if strings.Contains(errString, "The provided key handle is not present on the device"){
-					fmt.Printf("Let's keep looping till times out. err: %s \n", err)*/
 				} else {
 					fmt.Printf("other errors? err: %s \n", err)
 					return responsePayload, err
