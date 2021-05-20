@@ -272,10 +272,11 @@ func getStateTokenFromOktaPageBody(responseBody string) (string, error) {
 	return strings.Replace(match[1], `\x2D`, "-", -1), nil
 }
 
-func parseMfaIdentifer(json string, arrayPosition int) string {
+func parseMfaIdentifer(json string, arrayPosition int) (string, string) {
 	mfaProvider := gjson.Get(json, fmt.Sprintf("_embedded.factors.%d.provider", arrayPosition)).String()
 	factorType := strings.ToUpper(gjson.Get(json, fmt.Sprintf("_embedded.factors.%d.factorType", arrayPosition)).String())
-	return fmt.Sprintf("%s %s", mfaProvider, factorType)
+	profile := gjson.Get(json, fmt.Sprintf("_embedded.factors.%d.profile", arrayPosition)).String()
+	return fmt.Sprintf("%s %s", mfaProvider, factorType), fmt.Sprintf("%s %s -- %s", mfaProvider, factorType, profile)
 }
 
 func (oc *Client) handleFormRedirect(ctx context.Context, doc *goquery.Document) (context.Context, *http.Request, error) {
@@ -335,11 +336,22 @@ func findMfaOption(mfa string, mfaOptions []string, startAtIdx int) int {
 	return 0
 }
 
+func findAllMatchingMFA(mfa string, mfaOptions []string) []string {
+	var matchingMfas []string
+
+	for _, val := range mfaOptions {
+		if strings.HasPrefix(strings.ToUpper(val), mfa) {
+			matchingMfas = append(matchingMfas, val)
+		}
+	}
+	return matchingMfas
+}
+
 func getMfaChallengeContext(oc *Client, mfaOption int, resp string) (*mfaChallengeContext, error) {
 	stateToken := gjson.Get(resp, "stateToken").String()
 	factorID := gjson.Get(resp, fmt.Sprintf("_embedded.factors.%d.id", mfaOption)).String()
 	oktaVerify := gjson.Get(resp, fmt.Sprintf("_embedded.factors.%d._links.verify.href", mfaOption)).String()
-	mfaIdentifer := parseMfaIdentifer(resp, mfaOption)
+	mfaIdentifer, _ := parseMfaIdentifer(resp, mfaOption)
 
 	logger.WithField("factorID", factorID).WithField("oktaVerify", oktaVerify).WithField("mfaIdentifer", mfaIdentifer).Debug("MFA")
 
@@ -398,17 +410,22 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 	// choose an mfa option if there are multiple enabled
 	mfaOption := 0
 	var mfaOptions []string
+	var profiles []string
 	for i := range gjson.Get(resp, "_embedded.factors").Array() {
-		identifier := parseMfaIdentifer(resp, i)
+		identifier, profile := parseMfaIdentifer(resp, i)
 		if val, ok := supportedMfaOptions[identifier]; ok {
 			mfaOptions = append(mfaOptions, val)
 		} else {
 			mfaOptions = append(mfaOptions, "UNSUPPORTED: "+identifier)
 		}
+		profiles = append(profiles, profile)
 	}
 
 	if strings.ToUpper(oc.mfa) != "AUTO" {
-		mfaOption = findMfaOption(oc.mfa, mfaOptions, 0)
+		allMatchingMfaOptinos := findAllMatchingMFA(oc.mfa, profiles)
+		if len(allMatchingMfaOptinos) > 1 {
+			mfaOption = prompter.Choose("Select which MFA option to use", allMatchingMfaOptinos)
+		}
 	} else if len(mfaOptions) > 1 {
 		mfaOption = prompter.Choose("Select which MFA option to use", mfaOptions)
 	}
