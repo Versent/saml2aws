@@ -161,7 +161,7 @@ Flags:
       --skip-prompt            Skip prompting for parameters during login.
       --session-duration=SESSION-DURATION
                                The duration of your AWS Session. (env: SAML2AWS_SESSION_DURATION)
-      --disable-keychain       Do not use keychain at all.
+      --disable-keychain       Do not use keychain at all. (env: SAML2AWS_DISABLE_KEYCHAIN)
   -r, --region=REGION          AWS region to use for API requests, e.g. us-east-1, us-gov-west-1, cn-north-1 (env: SAML2AWS_REGION)
 
 Commands:
