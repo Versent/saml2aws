@@ -3,13 +3,13 @@ package auth0
 import (
 	"encoding/base64"
 	"fmt"
-	"github.com/versent/saml2aws/v2/pkg/cfg"
-	"github.com/versent/saml2aws/v2/pkg/creds"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
 	"testing"
 
+	"github.com/versent/saml2aws/v2/pkg/cfg"
+	"github.com/versent/saml2aws/v2/pkg/creds"
 	"github.com/versent/saml2aws/v2/pkg/provider"
 )
 
@@ -42,8 +42,8 @@ func Test_defaultAuthInfoOptions(t *testing.T) {
 			name: "standard case",
 			want: authInfo{
 				connectionInfoURLFmt: connectionInfoJSURLFmt,
-				authOriginURLFmt: authOriginURLFmt,
-				authSubmitURLFmt: authSubmitURLFmt,
+				authOriginURLFmt:     authOriginURLFmt,
+				authSubmitURLFmt:     authSubmitURLFmt,
 			},
 		},
 	}
@@ -100,7 +100,7 @@ func TestClient_fetchSessionInfo(t *testing.T) {
 					w.WriteHeader(http.StatusOK)
 					jsonStr := `{"invalid": "response"}`
 					base64Encoded := base64.StdEncoding.EncodeToString([]byte(jsonStr))
-					_, _ = w.Write([]byte(fmt.Sprintf(`%s`, base64Encoded)))
+					_, _ = w.Write([]byte(base64Encoded))
 				},
 			},
 			wantErr: true,
@@ -111,7 +111,10 @@ func TestClient_fetchSessionInfo(t *testing.T) {
 				mockServerHandlerFunc: func(w http.ResponseWriter, r *http.Request) {
 					w.WriteHeader(http.StatusOK)
 					jsonStr := `{"invalid": "response"}`
-					w.Write([]byte(fmt.Sprintf(`window.atob('%s')`, jsonStr)))
+					_, err := w.Write([]byte(fmt.Sprintf(`window.atob('%s')`, jsonStr)))
+					if err != nil {
+						return
+					}
 				},
 			},
 			wantErr: true,
@@ -123,7 +126,10 @@ func TestClient_fetchSessionInfo(t *testing.T) {
 					w.WriteHeader(http.StatusOK)
 					jsonStr := `{"invalid": "response"}`
 					base64Encoded := base64.StdEncoding.EncodeToString([]byte(jsonStr))
-					w.Write([]byte(fmt.Sprintf(`window.atob('%s')`, base64Encoded)))
+					_, err := w.Write([]byte(fmt.Sprintf(`window.atob('%s')`, base64Encoded)))
+					if err != nil {
+						return
+					}
 				},
 			},
 			wantErr: true,
@@ -163,11 +169,14 @@ func TestClient_getConnectionNames(t *testing.T) {
 			fields: fields{
 				mockServerHandlerFunc: func(w http.ResponseWriter, r *http.Request) {
 					w.WriteHeader(http.StatusOK)
-					w.Write([]byte(
+					_, err := w.Write([]byte(
 						`Auth0.setClient({"strategies":[{"name":"user_pool_name","connections":[` +
-						`{"name":"connection-name1","display_name":"Connection name 1"}]}` +
-						`]});`),
+							`{"name":"connection-name1","display_name":"Connection name 1"}]}` +
+							`]});`),
 					)
+					if err != nil {
+						return
+					}
 				},
 			},
 			want: []string{
@@ -179,11 +188,14 @@ func TestClient_getConnectionNames(t *testing.T) {
 			fields: fields{
 				mockServerHandlerFunc: func(w http.ResponseWriter, r *http.Request) {
 					w.WriteHeader(http.StatusOK)
-					w.Write([]byte(
+					_, err := w.Write([]byte(
 						`Auth0.setClient({"strategies":[{"name":"user_pool_name","connections":[` +
 							`{"name":"connection-name1","display_name":"Connection name 1"},` +
 							`{"name":"connection-name2","display_name":"Connection name 2"}` +
 							`]});`))
+					if err != nil {
+						return
+					}
 				},
 			},
 			want: []string{
@@ -205,7 +217,10 @@ func TestClient_getConnectionNames(t *testing.T) {
 			fields: fields{
 				mockServerHandlerFunc: func(w http.ResponseWriter, r *http.Request) {
 					w.WriteHeader(http.StatusOK)
-					w.Write([]byte(`invalid`))
+					_, err := w.Write([]byte(`invalid`))
+					if err != nil {
+						return
+					}
 				},
 			},
 			wantErr: true,
@@ -236,7 +251,7 @@ func TestClient_doLogin(t *testing.T) {
 	}
 	type args struct {
 		loginDetails *creds.LoginDetails
-		ai     *authInfo
+		ai           *authInfo
 	}
 	testArgs := args{
 		loginDetails: &creds.LoginDetails{
@@ -270,12 +285,18 @@ func TestClient_doLogin(t *testing.T) {
 				mockServerHandlerFunc: func(w http.ResponseWriter, r *http.Request) {
 					switch r.RequestURI {
 					case "/tenant":
-						callbackURL := "http://" + r.Host + r.RequestURI +  "/saml"
+						callbackURL := "http://" + r.Host + r.RequestURI + "/saml"
 						w.WriteHeader(http.StatusOK)
-						w.Write([]byte(fmt.Sprintf(testSAMLFormHTMLFmt, callbackURL, "SAMLBase64Encoded")))
+						_, err := w.Write([]byte(fmt.Sprintf(testSAMLFormHTMLFmt, callbackURL, "SAMLBase64Encoded")))
+						if err != nil {
+							return
+						}
 					case "/tenant/saml":
 						w.WriteHeader(http.StatusOK)
-						w.Write([]byte(`response`))
+						_, err := w.Write([]byte(`response`))
+						if err != nil {
+							return
+						}
 					default:
 						w.WriteHeader(http.StatusBadRequest)
 					}
@@ -291,7 +312,7 @@ func TestClient_doLogin(t *testing.T) {
 					w.WriteHeader(http.StatusBadRequest)
 				},
 			},
-			args: testArgs,
+			args:    testArgs,
 			wantErr: true,
 		},
 		{
@@ -299,10 +320,13 @@ func TestClient_doLogin(t *testing.T) {
 			fields: fields{
 				mockServerHandlerFunc: func(w http.ResponseWriter, r *http.Request) {
 					w.WriteHeader(http.StatusOK)
-					w.Write([]byte(`invalid response for parseResponseForm`))
+					_, err := w.Write([]byte(`invalid response for parseResponseForm`))
+					if err != nil {
+						return
+					}
 				},
 			},
-			args: testArgs,
+			args:    testArgs,
 			wantErr: true,
 		},
 		{
@@ -311,15 +335,18 @@ func TestClient_doLogin(t *testing.T) {
 				mockServerHandlerFunc: func(w http.ResponseWriter, r *http.Request) {
 					switch r.RequestURI {
 					case "/tenant":
-						callbackURL := "http://" + r.Host + r.RequestURI +  "/saml"
+						callbackURL := "http://" + r.Host + r.RequestURI + "/saml"
 						w.WriteHeader(http.StatusOK)
-						w.Write([]byte(fmt.Sprintf(testSAMLFormHTMLFmt, callbackURL, "SAMLBase64Encoded")))
+						_, err := w.Write([]byte(fmt.Sprintf(testSAMLFormHTMLFmt, callbackURL, "SAMLBase64Encoded")))
+						if err != nil {
+							return
+						}
 					default:
 						w.WriteHeader(http.StatusBadRequest)
 					}
 				},
 			},
-			args: testArgs,
+			args:    testArgs,
 			wantErr: true,
 		},
 	}
@@ -364,7 +391,10 @@ func TestClient_loginAuth0(t *testing.T) {
 			fields: fields{
 				mockServerHandlerFunc: func(w http.ResponseWriter, r *http.Request) {
 					w.WriteHeader(http.StatusOK)
-					w.Write([]byte(`response`))
+					_, err := w.Write([]byte(`response`))
+					if err != nil {
+						return
+					}
 				},
 			},
 			args: args{
@@ -458,7 +488,10 @@ func TestClient_doAuthCallback(t *testing.T) {
 			fields: fields{
 				mockServerHandlerFunc: func(w http.ResponseWriter, r *http.Request) {
 					w.WriteHeader(http.StatusOK)
-					w.Write([]byte("authCallbackResponse"))
+					_, err := w.Write([]byte("authCallbackResponse"))
+					if err != nil {
+						return
+					}
 				},
 			},
 			args: args{
@@ -477,7 +510,10 @@ func TestClient_doAuthCallback(t *testing.T) {
 			fields: fields{
 				mockServerHandlerFunc: func(w http.ResponseWriter, r *http.Request) {
 					w.WriteHeader(http.StatusOK)
-					w.Write([]byte("authCallbackResponse"))
+					_, err := w.Write([]byte("authCallbackResponse"))
+					if err != nil {
+						return
+					}
 				},
 			},
 			args: args{
@@ -586,8 +622,8 @@ func Test_parseResponseForm(t *testing.T) {
 			},
 			want: &authCallbackRequest{
 				method: "POST",
-				url: "https://example.com/saml",
-				body: "RelayState=&SAMLResponse=SAMLBase64Encoded",
+				url:    "https://example.com/saml",
+				body:   "RelayState=&SAMLResponse=SAMLBase64Encoded",
 			},
 		},
 		{
@@ -641,7 +677,7 @@ func Test_mustFindInputByName(t *testing.T) {
 			name: "standard case",
 			args: args{
 				formHTML: fmt.Sprintf(testSAMLFormHTMLFmt, "https://example.com/saml", "SAMLBase64Encoded"),
-				name: "SAMLResponse",
+				name:     "SAMLResponse",
 			},
 			want: "SAMLBase64Encoded",
 		},
@@ -649,7 +685,7 @@ func Test_mustFindInputByName(t *testing.T) {
 			name: "error case: SAML value is empty",
 			args: args{
 				formHTML: fmt.Sprintf(testSAMLFormHTMLFmt, "https://example.com/saml", ""),
-				name: "SAMLResponse",
+				name:     "SAMLResponse",
 			},
 			wantErr: true,
 		},

@@ -190,7 +190,7 @@ func (ac *Client) buildAuthInfo(
 	logger.WithFields(logrus.Fields{
 		"Connection": ai.connection,
 		"StateToken": ai.state,
-		"CSRFToken": ai.csrf,
+		"CSRFToken":  ai.csrf,
 	}).Debug("Connection and Tokens")
 
 	return &ai, nil
