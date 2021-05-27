@@ -1,6 +1,6 @@
 # saml2aws [![GitHub Actions status](https://github.com/Versent/saml2aws/workflows/Go/badge.svg?branch=master)](https://github.com/Versent/saml2aws/actions?query=workflow%3AGo) [![Build status - Windows](https://ci.appveyor.com/api/projects/status/ptpi18kci16o4i82/branch/master?svg=true)](https://ci.appveyor.com/project/davidobrien1985/saml2aws/branch/master)
 
-CLI tool which enables you to login and retrieve [AWS](https://aws.amazon.com/) temporary credentials using 
+CLI tool which enables you to login and retrieve [AWS](https://aws.amazon.com/) temporary credentials using
 with [ADFS](https://msdn.microsoft.com/en-us/library/bb897402.aspx) or [PingFederate](https://www.pingidentity.com/en/products/pingfederate.html) Identity Providers.
 
 This is based on python code from [
@@ -162,7 +162,7 @@ Flags:
       --skip-prompt            Skip prompting for parameters during login.
       --session-duration=SESSION-DURATION
                                The duration of your AWS Session. (env: SAML2AWS_SESSION_DURATION)
-      --disable-keychain       Do not use keychain at all.
+      --disable-keychain       Do not use keychain at all. (env: SAML2AWS_DISABLE_KEYCHAIN)
   -r, --region=REGION          AWS region to use for API requests, e.g. us-east-1, us-gov-west-1, cn-north-1 (env: SAML2AWS_REGION)
 
 Commands:
@@ -492,7 +492,7 @@ saml2aws exec --exec-profile roleIn2ndAwsAccount aws sts get-caller-identity
 {
     "UserId": "YOOYOOYOOYOOYOOA:/myAccountName",
     "Account": "123456789012",
-    "Arn": "arn:aws:sts::123456789012:assumed-role/myAccountName" 
+    "Arn": "arn:aws:sts::123456789012:assumed-role/myAccountName"
 }
 ```
 
@@ -527,7 +527,7 @@ saml2aws exec --exec-profile roleIn2ndAwsAccount $SHELL  # Get a new shell with 
 
 # Note that we do not need a --profile flag because our environment variables were set up for this access when we obtained a new shell with the --exec-profile flag
 
-aws s3 ls  
+aws s3 ls
 2019-07-30 01:32:59 264998d7606497040-sampleBucket
 
 aws iam list-groups
