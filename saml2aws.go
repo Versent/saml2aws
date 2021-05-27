@@ -4,19 +4,19 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/versent/saml2aws/v2/pkg/provider/browser"
-	"github.com/versent/saml2aws/v2/pkg/provider/netiq"
-
 	"github.com/versent/saml2aws/v2/pkg/cfg"
 	"github.com/versent/saml2aws/v2/pkg/creds"
 	"github.com/versent/saml2aws/v2/pkg/provider/aad"
 	"github.com/versent/saml2aws/v2/pkg/provider/adfs"
 	"github.com/versent/saml2aws/v2/pkg/provider/adfs2"
 	"github.com/versent/saml2aws/v2/pkg/provider/akamai"
+	"github.com/versent/saml2aws/v2/pkg/provider/auth0"
+	"github.com/versent/saml2aws/v2/pkg/provider/browser"
 	"github.com/versent/saml2aws/v2/pkg/provider/f5apm"
 	"github.com/versent/saml2aws/v2/pkg/provider/googleapps"
 	"github.com/versent/saml2aws/v2/pkg/provider/jumpcloud"
 	"github.com/versent/saml2aws/v2/pkg/provider/keycloak"
+	"github.com/versent/saml2aws/v2/pkg/provider/netiq"
 	"github.com/versent/saml2aws/v2/pkg/provider/okta"
 	"github.com/versent/saml2aws/v2/pkg/provider/onelogin"
 	"github.com/versent/saml2aws/v2/pkg/provider/pingfed"
@@ -47,6 +47,7 @@ var MFAsByProvider = ProviderList{
 	"ShibbolethECP": []string{"auto", "phone", "push", "passcode"},
 	"NetIQ":         []string{"Auto", "Privileged"},
 	"Browser":       []string{"Auto"},
+	"Auth0":         []string{"Auto"},
 }
 
 // Names get a list of provider names
@@ -172,6 +173,11 @@ func NewSAMLClient(idpAccount *cfg.IDPAccount) (SAMLClient, error) {
 		return netiq.New(idpAccount, idpAccount.MFA)
 	case "Browser":
 		return browser.New(idpAccount)
+	case "Auth0":
+		if invalidMFA(idpAccount.Provider, idpAccount.MFA) {
+			return nil, fmt.Errorf("Invalid MFA type: %v for %v provider", idpAccount.MFA, idpAccount.Provider)
+		}
+		return auth0.New(idpAccount)
 	default:
 		return nil, fmt.Errorf("Invalid provider: %v", idpAccount.Provider)
 	}
