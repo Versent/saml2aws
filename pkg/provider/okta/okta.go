@@ -21,6 +21,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/tidwall/gjson"
+	"github.com/versent/saml2aws/v2/helper/credentials"
 	"github.com/versent/saml2aws/v2/pkg/cfg"
 	"github.com/versent/saml2aws/v2/pkg/creds"
 	"github.com/versent/saml2aws/v2/pkg/page"
@@ -73,8 +74,14 @@ type AuthRequest struct {
 
 // VerifyRequest represents an mfa verify request
 type VerifyRequest struct {
-	StateToken string `json:"stateToken"`
-	PassCode   string `json:"passCode,omitempty"`
+	StateToken     string `json:"stateToken"`
+	PassCode       string `json:"passCode,omitempty"`
+	RememberDevice string `json:"rememberDevice,omitempty"`
+} //https://developer.okta.com/docs/reference/api/authn/#verify-security-question-factor
+
+// SessionRequst holds the SessionToken used to create an Okta Session
+type SessionRequst struct {
+	SessionToken string `json:"sessionToken"`
 }
 
 // mfaChallengeContext is used to hold MFA challenge context in a simple struct.
@@ -115,8 +122,250 @@ func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 
 type ctxKey string
 
+func (oc *Client) validateSession(loginDetails *creds.LoginDetails) error {
+	logger.Debug("validate session func called")
+
+	if loginDetails == nil {
+		logger.Debugf("unable to validate the okta session, nil input | loginDetails: %v ", loginDetails)
+		return fmt.Errorf("unable to validate the okta session, nil input")
+	}
+
+	sessionCookie := loginDetails.OktaSessionCookie
+
+	oktaURL, err := url.Parse(loginDetails.URL)
+	if err != nil {
+		return errors.Wrap(err, "error building oktaURL")
+	}
+
+	oktaOrgHost := oktaURL.Host
+
+	sessionReqURL := fmt.Sprintf("https://%s/api/v1/sessions/me", oktaOrgHost)
+	sessionReqBody := new(bytes.Buffer)
+
+	req, err := http.NewRequest("GET", sessionReqURL, sessionReqBody)
+	if err != nil {
+		return errors.Wrap(err, "error building new session request")
+	}
+	req.Header.Add("Content-Type", "application/json")
+	req.Header.Add("Accept", "application/json")
+	req.Header.Add("Cookie", fmt.Sprintf("sid=%s", sessionCookie))
+
+	res, err := oc.client.Do(req)
+	if err != nil {
+		return errors.Wrap(err, "error retrieving session response")
+	}
+
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return errors.Wrap(err, "error retrieving body from response")
+	}
+
+	resp := string(body)
+
+	if res.StatusCode != 200 {
+		logger.Debug("invalid okta session")
+		return fmt.Errorf("invalid okta session")
+	} else {
+		sessionResponseStatus := gjson.Get(resp, "status").String()
+		switch sessionResponseStatus {
+		case "ACTIVE":
+			logger.Debug("okta session established")
+		case "MFA_REQUIRED":
+			_, err := verifyMfa(oc, oktaOrgHost, loginDetails, resp)
+			if err != nil {
+				return errors.Wrap(err, "error verifying MFA")
+			}
+		case "MFA_ENROLL":
+			// Not yet fully implemented, so just return the status as the error string...
+			return fmt.Errorf("MFA_ENROLL")
+		}
+	}
+
+	logger.Debug("valid okta session")
+	return nil
+}
+
+func (oc *Client) createSession(loginDetails *creds.LoginDetails, sessionToken string) (string, string, error) {
+	logger.Debug("create session func called")
+	if loginDetails == nil || sessionToken == "" {
+		logger.Debugf("unable to create an Okta session, nil input | loginDetails: %v | sessionToken: %s", loginDetails, sessionToken)
+		return "", "", fmt.Errorf("unable to create an okta session, nil input")
+	}
+
+	oktaURL, err := url.Parse(loginDetails.URL)
+	if err != nil {
+		return "", "", errors.Wrap(err, "error building okta url")
+	}
+
+	oktaOrgHost := oktaURL.Host
+
+	//authenticate via okta api
+	sessionReq := SessionRequst{SessionToken: sessionToken}
+	sessionReqBody := new(bytes.Buffer)
+	err = json.NewEncoder(sessionReqBody).Encode(sessionReq)
+	if err != nil {
+		return "", "", errors.Wrap(err, "error encoding session req")
+	}
+
+	sessionReqURL := fmt.Sprintf("https://%s/api/v1/sessions", oktaOrgHost)
+
+	req, err := http.NewRequest("POST", sessionReqURL, sessionReqBody)
+	if err != nil {
+		return "", "", errors.Wrap(err, "error building new session request")
+	}
+
+	req.Header.Add("Content-Type", "application/json")
+	req.Header.Add("Accept", "application/json")
+
+	res, err := oc.client.Do(req)
+	if err != nil {
+		return "", "", errors.Wrap(err, "error retrieving session response")
+	}
+
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return "", "", errors.Wrap(err, "error retrieving body from response")
+	}
+
+	if res.StatusCode == 401 { // https://developer.okta.com/docs/reference/api/sessions/#response-parameters
+		return "", "", fmt.Errorf("unable to create an Okta session, invalid sessionToken")
+	}
+
+	resp := string(body)
+
+	oktaSessionExpiresAtStr := gjson.Get(resp, "expiresAt").String()
+	logger.Debugf("okta session expires at: %s", oktaSessionExpiresAtStr)
+
+	oktaSessionCookie := gjson.Get(resp, "id").String()
+
+	err = credentials.SaveCredentials(loginDetails.URL+"/sessionCookie", loginDetails.Username, oktaSessionCookie)
+	if err != nil {
+		log.Printf("error storing okta session token | err: %v", err) //TODO: handle this properly instead of dumping to stdout
+	}
+	oktaSessionToken := gjson.Get(resp, "sessionToken").String()
+	sessionResponseStatus := gjson.Get(resp, "status").String()
+	switch sessionResponseStatus {
+	case "ACTIVE":
+		logger.Debug("okta session established")
+	case "MFA_REQUIRED":
+		oktaSessionToken, err = verifyMfa(oc, oktaOrgHost, loginDetails, resp)
+		if err != nil {
+			return "", "", errors.Wrap(err, "error verifying MFA")
+		}
+	case "MFA_ENROLL":
+		// Not yet fully implemented, so just return the status as the error string...
+		return "", "", fmt.Errorf("MFA_ENROLL")
+	}
+
+	return oktaSessionCookie, oktaSessionToken, nil
+}
+
+func (oc *Client) authWithSession(loginDetails *creds.LoginDetails) (string, error) {
+	logger.Debug("auth with session func called")
+	sessionCookie := loginDetails.OktaSessionCookie
+	err := oc.validateSession(loginDetails)
+	if err != nil {
+		modifiedLoginDetails := loginDetails
+		modifiedLoginDetails.OktaSessionCookie = ""
+		return oc.Authenticate(modifiedLoginDetails)
+	}
+
+	req, err := http.NewRequest("GET", loginDetails.URL, nil)
+	if err != nil {
+		return "", errors.Wrap(err, "error building authWithSession request")
+	}
+
+	req.Header.Add("Content-Type", "application/json")
+	req.Header.Add("Accept", "application/json")
+	req.Header.Add("Cookie", fmt.Sprintf("sid=%s", sessionCookie))
+
+	ctx := context.WithValue(context.Background(), ctxKey("authWithSession"), loginDetails)
+
+	res, err := oc.client.Do(req)
+	if err != nil {
+		logger.Debugf("error authing with session: %v", err)
+	}
+
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		logger.Debugf("error reading body for auth with session: %v", err)
+	}
+
+	if strings.Contains(string(body), "/login/step-up/") { // https://developer.okta.com/docs/reference/api/authn/#step-up-authentication-with-okta-session
+		logger.Debug("okta step-up prompted, need mfa...")
+		stateToken, err := getStateTokenFromOktaPageBody(string(body))
+		if err != nil {
+			return "", errors.Wrap(err, "error retrieving saml response")
+		}
+		loginDetails.StateToken = stateToken
+		return oc.Authenticate(loginDetails)
+	}
+
+	// fmt.Println(resp)
+	// os.Exit(0)
+	return oc.follow(ctx, req, loginDetails)
+}
+
+// https://devforum.okta.com/t/how-per-device-remember-me-api-works/3955/3
+
+// func (oc *Client) getDeviceTokenFromOkta(loginDetails *creds.LoginDetails) (string, error) {
+// 	//dummy request to set device token cookie ("dt")
+// 	req, err := http.NewRequest("GET", loginDetails.URL, nil)
+// 	if err != nil {
+// 		return "", errors.Wrap(err, "error building device token request")
+// 	}
+// 	resp, err := oc.client.Do(req)
+// 	if err != nil {
+// 		return "", errors.Wrap(err, "error retrieving device token")
+// 	}
+
+// 	for _, c := range resp.Cookies() {
+// 		if c.Name == "DT" { // Device token
+// 			return c.Value, nil
+// 		}
+// 	}
+
+// 	return "", fmt.Errorf("unable to get a device token from okta")
+// }
+
+func (oc *Client) setDeviceTokenCookie(loginDetails *creds.LoginDetails) error {
+
+	oktaURL, err := url.Parse(loginDetails.URL)
+	if err != nil {
+		return errors.Wrap(err, "error building oktaURL to set device token")
+	}
+	oktaURLScheme := oktaURL.Scheme
+	oktaURLHost := oktaURL.Host
+	baseURL := &url.URL{Scheme: oktaURLScheme, Host: oktaURLHost, Path: "/"}
+
+	var cookies []*http.Cookie
+	cookie := http.Cookie{
+		Name:    "DT",
+		Secure:  true,
+		Expires: time.Now().Add(time.Hour * 24 * 30), // 30 Days
+		Value:   fmt.Sprintf("okta_%s_saml2aws", loginDetails.Username),
+	}
+	cookies = append(cookies, &cookie)
+	oc.client.Jar.SetCookies(baseURL, cookies)
+
+	return nil
+}
+
 // Authenticate logs into Okta and returns a SAML response
 func (oc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error) {
+	// Get Okta session cookie (sid) from login details (if found via login.go)
+	oktaSessionCookie := loginDetails.OktaSessionCookie
+
+	// Set Okta device token
+	err := oc.setDeviceTokenCookie(loginDetails)
+	if err != nil {
+		return "", errors.Wrap(err, "error setting device token in cookie jar")
+	}
+
+	// If Okta session cookie is not empty
+	if oktaSessionCookie != "" && loginDetails.StateToken == "" {
+		return oc.authWithSession(loginDetails)
+	}
 
 	oktaURL, err := url.Parse(loginDetails.URL)
 	if err != nil {
@@ -125,15 +374,21 @@ func (oc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 
 	oktaOrgHost := oktaURL.Host
 
-	//dummy request to set device token cookie ("dt")
-	req, err := http.NewRequest("GET", loginDetails.URL, nil)
-	if err != nil {
-		return "", errors.Wrap(err, "error building device token request")
-	}
-	_, err = oc.client.Do(req)
-	if err != nil {
-		return "", errors.Wrap(err, "error retrieving device token")
-	}
+	// // Get the current list of cookies (if any)
+	// currentCookies := oc.client.Jar.Cookies(oktaURL)
+	// // Create Okta session cookie containing sid
+	// osc := http.Cookie{
+	// 	Name:     "sid",
+	// 	Value:    oktaSessionCookie,
+	// 	Raw:      fmt.Sprintf("sid=%s", oktaSessionCookie),
+	// 	Path:     "/",
+	// 	HttpOnly: true,
+	// 	Secure:   true,
+	// }
+	// // Add the session cookie to cookie jar
+	// currentCookies = append(currentCookies, &osc)
+	// // Set the cookie jar back to the http client
+	// oc.client.Jar.SetCookies(oktaURL, currentCookies)
 
 	//authenticate via okta api
 	authReq := AuthRequest{Username: loginDetails.Username, Password: loginDetails.Password}
@@ -148,7 +403,7 @@ func (oc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 
 	authSubmitURL := fmt.Sprintf("https://%s/api/v1/authn", oktaOrgHost)
 
-	req, err = http.NewRequest("POST", authSubmitURL, authBody)
+	req, err := http.NewRequest("POST", authSubmitURL, authBody)
 	if err != nil {
 		return "", errors.Wrap(err, "error building authentication request")
 	}
@@ -179,35 +434,66 @@ func (oc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		}
 	}
 
-	//now call saml endpoint
-	oktaSessionRedirectURL := fmt.Sprintf("https://%s/login/sessionCookieRedirect", oktaOrgHost)
-
-	req, err = http.NewRequest("GET", oktaSessionRedirectURL, nil)
-	if err != nil {
-		return "", errors.Wrap(err, "error building authentication request")
+	if oktaSessionCookie == "" {
+		oktaSessionCookie, _, err = oc.createSession(loginDetails, oktaSessionToken)
+		if err != nil {
+			return "", err
+		}
+		loginDetails.OktaSessionCookie = oktaSessionCookie
 	}
-	q := req.URL.Query()
-	q.Add("checkAccountSetupComplete", "true")
-	q.Add("token", oktaSessionToken)
-	q.Add("redirectUrl", loginDetails.URL)
-	req.URL.RawQuery = q.Encode()
 
-	ctx := context.WithValue(context.Background(), ctxKey("login"), loginDetails)
-	return oc.follow(ctx, req, loginDetails)
+	return oc.authWithSession(loginDetails)
+
+	// //now call saml endpoint
+	// oktaSessionRedirectURL := fmt.Sprintf("https://%s/login/sessionCookieRedirect", oktaOrgHost)
+
+	// req, err = http.NewRequest("GET", oktaSessionRedirectURL, nil)
+	// if err != nil {
+	// 	return "", errors.Wrap(err, "error building authentication request")
+	// }
+	// q := req.URL.Query()
+	// q.Add("checkAccountSetupComplete", "true")
+	// q.Add("token", oktaSessionToken)
+	// q.Add("redirectUrl", loginDetails.URL)
+	// req.URL.RawQuery = q.Encode()
+
+	// ctx := context.WithValue(context.Background(), ctxKey("login"), loginDetails)
+	// return oc.follow(ctx, req, loginDetails)
 }
 
 func (oc *Client) follow(ctx context.Context, req *http.Request, loginDetails *creds.LoginDetails) (string, error) {
+	if ctx.Value(ctxKey("follow")) != nil {
+		logger.Debug("follow func called from itself")
+	}
+
+	if ctx.Value(ctxKey("authWithSession")) != nil {
+		logger.Debug("follow func called from auth with session func")
+		// oc.client.DisableFollowRedirect()
+	}
 
 	res, err := oc.client.Do(req)
 	if err != nil {
+		logger.Debug("ERROR FOLLOWING")
 		return "", errors.Wrap(err, "error following")
 	}
 	doc, err := goquery.NewDocumentFromReader(res.Body)
 	if err != nil {
+		logger.Debug("FAILED TO BUILD DOC FROM RESP")
 		return "", errors.Wrap(err, "failed to build document from response")
 	}
 
 	var handler func(context.Context, *goquery.Document) (context.Context, *http.Request, error)
+
+	// if ctx.Value(ctxKey("authWithSession")) != nil {
+	// 	logger.Debug("follow func called from auth with session func")
+	// 	handler = oc.handleFormRedirect
+	// 	modifiedCtx := context.WithValue(context.Background(), ctxKey("follow"), loginDetails)
+	// 	modifiedCtx, req, err = handler(modifiedCtx, doc)
+	// 	if err != nil {
+	// 		return "", err
+	// 	}
+	// 	return oc.follow(modifiedCtx, req, loginDetails)
+	// }
 
 	if docIsFormRedirectToTarget(doc, oc.targetURL) {
 		logger.WithField("type", "saml-response-to-aws").Debug("doc detect")
@@ -348,7 +634,7 @@ func getMfaChallengeContext(oc *Client, mfaOption int, resp string) (*mfaChallen
 	}
 
 	// get signature & callback
-	verifyReq := VerifyRequest{StateToken: stateToken}
+	verifyReq := VerifyRequest{StateToken: stateToken, RememberDevice: "true"}
 	verifyBody := new(bytes.Buffer)
 
 	// Login flow is different for YubiKeys ( of course )
@@ -392,6 +678,7 @@ func getMfaChallengeContext(oc *Client, mfaOption int, resp string) (*mfaChallen
 	}, nil
 }
 
+// TODO: set device token https://developer.okta.com/docs/reference/api/authn/#context-object
 func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails, resp string) (string, error) {
 	stateToken := gjson.Get(resp, "stateToken").String()
 
@@ -426,7 +713,7 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 		if verifyCode == "" {
 			verifyCode = prompter.StringRequired("Enter verification code")
 		}
-		tokenReq := VerifyRequest{StateToken: stateToken, PassCode: verifyCode}
+		tokenReq := VerifyRequest{StateToken: stateToken, PassCode: verifyCode, RememberDevice: "true"}
 		tokenBody := new(bytes.Buffer)
 		err = json.NewEncoder(tokenBody).Encode(tokenReq)
 		if err != nil {
@@ -465,6 +752,7 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 			// on 'success' status
 			if gjson.Get(body, "status").String() == "SUCCESS" {
 				fmt.Printf(" Approved\n\n")
+				fmt.Println(gjson.Get(body, "expiresAt").String()) // DEBUG
 				return gjson.Get(body, "sessionToken").String(), nil
 			}
 
@@ -738,7 +1026,7 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 
 		// extract okta session token
 
-		verifyReq := VerifyRequest{StateToken: stateToken}
+		verifyReq := VerifyRequest{StateToken: stateToken, RememberDevice: "true"}
 		verifyBody := new(bytes.Buffer)
 		err = json.NewEncoder(verifyBody).Encode(verifyReq)
 		if err != nil {
