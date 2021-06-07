@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -186,6 +187,11 @@ func resolveLoginDetails(account *cfg.IDPAccount, loginFlags *flags.LoginExecFla
 			if !credentials.IsErrCredentialsNotFound(err) {
 				return nil, errors.Wrap(err, "error loading saved password")
 			}
+		}
+	} else { // if user disabled keychain, dont use Okta sessions & dont remember Okta MFA device
+		if strings.ToLower(account.Provider) == "okta" {
+			account.DisableSessions = true
+			account.DisableRememberDevice = true
 		}
 	}
 

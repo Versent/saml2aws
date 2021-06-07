@@ -6,30 +6,32 @@ import (
 
 // CommonFlags flags common to all of the `saml2aws` commands (except `help`)
 type CommonFlags struct {
-	AppID                string
-	ClientID             string
-	ClientSecret         string
-	ConfigFile           string
-	IdpAccount           string
-	IdpProvider          string
-	MFA                  string
-	MFAToken             string
-	URL                  string
-	Username             string
-	Password             string
-	RoleArn              string
-	AmazonWebservicesURN string
-	SessionDuration      int
-	SkipPrompt           bool
-	SkipVerify           bool
-	Profile              string
-	Subdomain            string
-	ResourceID           string
-	DisableKeychain      bool
-	Region               string
-	CredentialsFile      string
-	SAMLCache            bool
-	SAMLCacheFile        string
+	AppID                 string
+	ClientID              string
+	ClientSecret          string
+	ConfigFile            string
+	IdpAccount            string
+	IdpProvider           string
+	MFA                   string
+	MFAToken              string
+	URL                   string
+	Username              string
+	Password              string
+	RoleArn               string
+	AmazonWebservicesURN  string
+	SessionDuration       int
+	SkipPrompt            bool
+	SkipVerify            bool
+	Profile               string
+	Subdomain             string
+	ResourceID            string
+	DisableKeychain       bool
+	Region                string
+	CredentialsFile       string
+	SAMLCache             bool
+	SAMLCacheFile         string
+	DisableRememberDevice bool
+	DisableSessions       bool
 }
 
 // LoginExecFlags flags for the Login / Exec commands
@@ -105,5 +107,11 @@ func ApplyFlagOverrides(commonFlags *CommonFlags, account *cfg.IDPAccount) {
 	}
 	if commonFlags.SAMLCacheFile != "" {
 		account.SAMLCacheFile = commonFlags.SAMLCacheFile
+	}
+	if commonFlags.DisableRememberDevice {
+		account.DisableRememberDevice = commonFlags.DisableRememberDevice
+	}
+	if commonFlags.DisableSessions {
+		account.DisableSessions = commonFlags.DisableSessions
 	}
 }
