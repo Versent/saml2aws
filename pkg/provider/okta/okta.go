@@ -185,7 +185,7 @@ func (oc *Client) createSession(loginDetails *creds.LoginDetails, sessionToken s
 		return "", "", errors.Wrap(err, "error retrieving body from response")
 	}
 
-	if res.StatusCode == 200 { // https://developer.okta.com/docs/reference/api/sessions/#response-parameters
+	if res.StatusCode != 200 { // https://developer.okta.com/docs/reference/api/sessions/#response-parameters
 		if res.StatusCode == 401 {
 			return "", "", fmt.Errorf("unable to create an Okta session, invalid sessionToken")
 		}
