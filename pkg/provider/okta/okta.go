@@ -791,7 +791,7 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 			// on 'success' status
 			if gjson.Get(body, "status").String() == "SUCCESS" {
 				fmt.Printf(" Approved\n\n")
-				fmt.Println(gjson.Get(body, "expiresAt").String()) // DEBUG
+				logger.Debugf("func verifyMfa | okta exiry: %s", gjson.Get(body, "expiresAt").String()) // DEBUG
 				return gjson.Get(body, "sessionToken").String(), nil
 			}
 
