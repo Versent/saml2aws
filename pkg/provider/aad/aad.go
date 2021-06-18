@@ -689,8 +689,15 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 	resBody, _ = ioutil.ReadAll(res.Body)
 	resBodyStr = string(resBody)
 
-	// MFA has been skipped
-	if !strings.HasPrefix(resBodyStr, "<html><head><title>Working...</title>") {
+	isSkippedMFA := !strings.HasPrefix(resBodyStr, "<html><head><title>Working...</title>")
+	/**
+	 * If conditional access is enabled, we will get a response like:
+	 *
+	 * <html><head><title>Working...</title></head><body><form method="POST" name="hiddenform" action="https://login.microsoftonline.com:443/common/DeviceAuthTls/reprocess"><input type="hidden" name="ctx" value="***" /><input type="hidden" name="flowtoken" value="***" /><noscript><p>Script is disabled. Click Submit to continue.</p><input type="submit" value="Submit" /></noscript></form><script language="javascript">document.forms[0].submit();</script></body></html>
+	 */
+	isEnabledConditonalAccess := strings.HasPrefix(resBodyStr, "<html><head><title>Working...</title>") && strings.Contains(resBodyStr, "name=\"flowtoken\"")
+
+	if isSkippedMFA || isEnabledConditonalAccess {
 		// require reprocess
 		if strings.Contains(resBodyStr, "<form") {
 			res, err = ac.reProcess(resBodyStr)
