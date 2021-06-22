@@ -10,7 +10,7 @@ https://idp.example.com/idp/profile/SAML2/Unsolicited/SSO?providerId=urn:amazon:
 
 * Prompts for Duo MFA when logging in when "mfa" is set to Auto. Options are Duo Push, Phone Call, and Passcode.
 * Supports Duo MFA authorized networks bypass - 2 factor authentication is skipped if invoked from an authorized network
-* Ability to disable MFA. Set 'None' istead of 'Auto'
+* Ability to disable MFA. Set 'None' istead of 'Auto'.
 
 ## Limitations
 
