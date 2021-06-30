@@ -30,32 +30,35 @@ const (
 
 // IDPAccount saml IDP account
 type IDPAccount struct {
-	Name                 string `ini:"name"`
-	AppID                string `ini:"app_id"` // used by OneLogin and AzureAD
-	URL                  string `ini:"url"`
-	Username             string `ini:"username"`
-	Provider             string `ini:"provider"`
-	MFA                  string `ini:"mfa"`
-	SkipVerify           bool   `ini:"skip_verify"`
-	Timeout              int    `ini:"timeout"`
-	AmazonWebservicesURN string `ini:"aws_urn"`
-	SessionDuration      int    `ini:"aws_session_duration"`
-	Profile              string `ini:"aws_profile"`
-	ResourceID           string `ini:"resource_id"` // used by F5APM
-	Subdomain            string `ini:"subdomain"`   // used by OneLogin
-	RoleARN              string `ini:"role_arn"`
-	Region               string `ini:"region"`
-	HttpAttemptsCount    string `ini:"http_attempts_count"`
-	HttpRetryDelay       string `ini:"http_retry_delay"`
-	CredentialsFile      string `ini:"credentials_file"`
-	SAMLCache            bool   `ini:"saml_cache"`
-	SAMLCacheFile        string `ini:"saml_cache_file"`
-	TargetURL            string `ini:"target_url"`
+	Name                  string `ini:"name"`
+	AppID                 string `ini:"app_id"` // used by OneLogin and AzureAD
+	URL                   string `ini:"url"`
+	Username              string `ini:"username"`
+	Provider              string `ini:"provider"`
+	MFA                   string `ini:"mfa"`
+	SkipVerify            bool   `ini:"skip_verify"`
+	Timeout               int    `ini:"timeout"`
+	AmazonWebservicesURN  string `ini:"aws_urn"`
+	SessionDuration       int    `ini:"aws_session_duration"`
+	Profile               string `ini:"aws_profile"`
+	ResourceID            string `ini:"resource_id"` // used by F5APM
+	Subdomain             string `ini:"subdomain"`   // used by OneLogin
+	RoleARN               string `ini:"role_arn"`
+	Region                string `ini:"region"`
+	HttpAttemptsCount     string `ini:"http_attempts_count"`
+	HttpRetryDelay        string `ini:"http_retry_delay"`
+	CredentialsFile       string `ini:"credentials_file"`
+	SAMLCache             bool   `ini:"saml_cache"`
+	SAMLCacheFile         string `ini:"saml_cache_file"`
+	TargetURL             string `ini:"target_url"`
+	DisableRememberDevice bool   `ini:"disable_remember_device"` // used by Okta
+	DisableSessions       bool   `ini:"disable_sessions"`        // used by Okta
 }
 
 func (ia IDPAccount) String() string {
 	var appID string
 	var policyID string
+	var oktaCfg string
 	switch ia.Provider {
 	case "OneLogin":
 		appID = fmt.Sprintf(`
@@ -66,9 +69,13 @@ func (ia IDPAccount) String() string {
 	case "AzureAD":
 		appID = fmt.Sprintf(`
   AppID: %s`, ia.AppID)
+	case "Okta":
+		oktaCfg = fmt.Sprintf(`
+  DisableSessions: %v
+  DisableRememberDevice: %v`, ia.DisableSessions, ia.DisableSessions)
 	}
 
-	return fmt.Sprintf(`account {%s%s
+	return fmt.Sprintf(`account {%s%s%s
   URL: %s
   Username: %s
   Provider: %s
@@ -79,7 +86,7 @@ func (ia IDPAccount) String() string {
   Profile: %s
   RoleARN: %s
   Region: %s
-}`, appID, policyID, ia.URL, ia.Username, ia.Provider, ia.MFA, ia.SkipVerify, ia.AmazonWebservicesURN, ia.SessionDuration, ia.Profile, ia.RoleARN, ia.Region)
+}`, appID, policyID, oktaCfg, ia.URL, ia.Username, ia.Provider, ia.MFA, ia.SkipVerify, ia.AmazonWebservicesURN, ia.SessionDuration, ia.Profile, ia.RoleARN, ia.Region)
 }
 
 // Validate validate the required / expected fields are set

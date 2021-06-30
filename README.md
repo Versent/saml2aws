@@ -88,11 +88,11 @@ saml2aws --version
 While brew is available for Linux you can also run the following without using a package manager.
 
 ```
-$ CURRENT_VERSION=$(curl -Ls https://api.github.com/repos/Versent/saml2aws/releases/latest | grep 'tag_name' | cut -d'v' -f2 | cut -d'"' -f1)
-$ wget -c https://github.com/Versent/saml2aws/releases/download/v${CURRENT_VERSION}/saml2aws_${CURRENT_VERSION}_linux_amd64.tar.gz -O - | tar -xzv -C ~/.local/bin
-$ chmod u+x ~/.local/bin/saml2aws
-$ hash -r
-$ saml2aws --version
+CURRENT_VERSION=$(curl -Ls https://api.github.com/repos/Versent/saml2aws/releases/latest | grep 'tag_name' | cut -d'v' -f2 | cut -d'"' -f1)
+wget -c https://github.com/Versent/saml2aws/releases/download/v${CURRENT_VERSION}/saml2aws_${CURRENT_VERSION}_linux_amd64.tar.gz -O - | tar -xzv -C ~/.local/bin
+chmod u+x ~/.local/bin/saml2aws
+hash -r
+saml2aws --version
 ```
 
 #### [Arch Linux](https://archlinux.org/) and its derivatives
@@ -183,6 +183,8 @@ Commands:
         --config=CONFIG            Path/filename of saml2aws config file (env: SAML2AWS_CONFIGFILE)
         --cache-saml               Caches the SAML response (env: SAML2AWS_CACHE_SAML)
         --cache-file=CACHE-FILE    The location of the SAML cache file (env: SAML2AWS_SAML_CACHE_FILE)
+        --disable-sessions         Do not use Okta sessions. Uses Okta sessions by default. (env: SAML2AWS_OKTA_DISABLE_SESSIONS)
+        --disable-remember-device  Do not remember Okta MFA device. Remembers MFA device by default. (env: SAML2AWS_OKTA_DISABLE_REMEMBER_DEVICE)
 
   login [<flags>]
     Login to a SAML 2.0 IDP and convert the SAML assertion to an STS token.
@@ -199,7 +201,8 @@ Commands:
                                  The file that will cache the credentials retrieved from AWS. When not specified, will use the default AWS credentials file location. (env: SAML2AWS_CREDENTIALS_FILE)
         --cache-saml             Caches the SAML response (env: SAML2AWS_CACHE_SAML)
         --cache-file=CACHE-FILE  The location of the SAML cache file (env: SAML2AWS_SAML_CACHE_FILE)
-
+        --disable-sessions         Do not use Okta sessions. Uses Okta sessions by default. (env: SAML2AWS_OKTA_DISABLE_SESSIONS)
+        --disable-remember-device  Do not remember Okta MFA device. Remembers MFA device by default. (env: SAML2AWS_OKTA_DISABLE_REMEMBER_DEVICE)
 
   exec [<flags>] [<command>...]
     Exec the supplied command with env vars from STS token.
@@ -676,6 +679,23 @@ You can use the flag `--cache-saml` in order to cache the SAML assertion at auth
 there is a file per saml2aws profile, the cache directory is called `saml2aws` and is located in your `.aws` directory in your user homedir.
 
 You can toggle `--cache-saml` during `login` or during `list-roles`, and you can set it once during `configure` and use it implicitly.
+
+# Okta Sessions
+
+This requires the use of the keychain (local credentials store). If you disabled the keychain using `--disable-keychain`, Okta sessions will also be disabled.
+
+Okta sessions are enabled by default. This will store the Okta session locally and save your device for MFA. This means that if the session has not yet expired, you will not be prompted for MFA.
+
+* To disable remembering the device, you can toggle `--disable-remember-device` during `login` or `configure` commands.
+* To disable using Okta sessions, you can toggle `--disable-sessions` during `login` or `configure` commands.
+  * This will also disable the Okta MFA remember device feature
+
+Use the `--force` flag during `login` command to prompt for AWS role selection.
+
+If Okta sessions are disabled via any of the methods mentioned above, the login process will default to the standard authentication process (without using sessions).
+
+Please note that your Okta session duration and MFA policies are governed by your Okta host organization.
+
 
 # License
 
