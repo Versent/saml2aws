@@ -17,6 +17,14 @@ func LookupCredentials(loginDetails *creds.LoginDetails, provider string) error 
 	loginDetails.Username = username
 	loginDetails.Password = password
 
+	// If the provider is Okta, check for existing Okta Session Cookie (sid)
+	if provider == "Okta" {
+		_, oktaSessionCookie, err := CurrentHelper.Get(loginDetails.URL + "/sessionCookie")
+		if err == nil {
+			loginDetails.OktaSessionCookie = oktaSessionCookie
+		}
+	}
+
 	if provider == "OneLogin" {
 		id, secret, err := CurrentHelper.Get(path.Join(loginDetails.URL, "/auth/oauth2/v2/token"))
 		if err != nil {

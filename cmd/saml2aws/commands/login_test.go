@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -27,6 +28,39 @@ func TestResolveLoginDetailsWithFlags(t *testing.T) {
 
 	assert.Empty(t, err)
 	assert.Equal(t, &creds.LoginDetails{Username: "wolfeidau", Password: "testtestlol", URL: "https://id.example.com", MFAToken: "123456"}, loginDetails)
+}
+
+func TestOktaResolveLoginDetailsWithFlags(t *testing.T) {
+
+	// Default state - user did not supply values for DisableSessions and DisableSessions
+	commonFlags := &flags.CommonFlags{URL: "https://id.example.com", Username: "testuser", Password: "testtestlol", MFAToken: "123456", SkipPrompt: true}
+	loginFlags := &flags.LoginExecFlags{CommonFlags: commonFlags}
+
+	idpa := &cfg.IDPAccount{
+		URL:      "https://id.example.com",
+		MFA:      "none",
+		Provider: "Okta",
+		Username: "testuser",
+	}
+	loginDetails, err := resolveLoginDetails(idpa, loginFlags)
+
+	assert.Nil(t, err)
+	assert.False(t, idpa.DisableSessions, fmt.Errorf("default state, DisableSessions should be false"))
+	assert.False(t, idpa.DisableRememberDevice, fmt.Errorf("default state, DisableRememberDevice should be false"))
+	assert.Equal(t, &creds.LoginDetails{Username: "testuser", Password: "testtestlol", URL: "https://id.example.com", MFAToken: "123456"}, loginDetails)
+
+	// User disabled keychain, resolveLoginDetails should set the account's DisableSessions and DisableSessions fields to true
+
+	commonFlags = &flags.CommonFlags{URL: "https://id.example.com", Username: "testuser", Password: "testtestlol", MFAToken: "123456", SkipPrompt: true, DisableKeychain: true}
+	loginFlags = &flags.LoginExecFlags{CommonFlags: commonFlags}
+
+	loginDetails, err = resolveLoginDetails(idpa, loginFlags)
+
+	assert.Nil(t, err)
+	assert.True(t, idpa.DisableSessions, fmt.Errorf("user disabled keychain, DisableSessions should be true"))
+	assert.True(t, idpa.DisableRememberDevice, fmt.Errorf("user disabled keychain, DisableRememberDevice should be true"))
+	assert.Equal(t, &creds.LoginDetails{Username: "testuser", Password: "testtestlol", URL: "https://id.example.com", MFAToken: "123456"}, loginDetails)
+
 }
 
 func TestResolveRoleSingleEntry(t *testing.T) {
