@@ -157,6 +157,9 @@ func (kc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 
 	samlAssertion := mustFindInputByName(responseDoc, "SAMLResponse")
 	if samlAssertion == "" {
+		if responseDoc.Selection.Find("#passwordError").Text() != "" {
+			return "", errors.New("Password error")
+		}
 		return "", errors.New("page is missing saml assertion")
 	}
 
