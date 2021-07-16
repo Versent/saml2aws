@@ -122,8 +122,10 @@ func (ia *IDPAccount) Validate() error {
 		return errors.New("Provider empty in idp account")
 	}
 
-	if ia.MFA == "" {
-		return errors.New("MFA empty in idp account")
+	if ia.Provider != "Browser" {
+		if ia.MFA == "" {
+			return errors.New("MFA empty in idp account")
+		}
 	}
 
 	if ia.Profile == "" {
