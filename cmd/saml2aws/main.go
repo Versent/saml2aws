@@ -63,7 +63,7 @@ func main() {
 	verbose := app.Flag("verbose", "Enable verbose logging").Bool()
 	quiet := app.Flag("quiet", "silences logs").Bool()
 
-	provider := app.Flag("provider", "This flag is obsolete. See: https://github.com/versent/saml2aws/v2#configuring-idp-accounts").Short('i').Enum("Akamai", "AzureAD", "ADFS", "ADFS2", "Ping", "JumpCloud", "Okta", "OneLogin", "PSU", "KeyCloak")
+	provider := app.Flag("provider", "This flag is obsolete. See: https://github.com/Versent/saml2aws#configuring-idp-accounts").Short('i').Enum("Akamai", "AzureAD", "ADFS", "ADFS2", "Ping", "JumpCloud", "Okta", "OneLogin", "PSU", "KeyCloak")
 
 	// Common (to all commands) settings
 	commonFlags := new(flags.CommonFlags)
