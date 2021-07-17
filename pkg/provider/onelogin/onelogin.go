@@ -330,7 +330,7 @@ func verifyMFA(oc *Client, oauthToken, appID, resp string) (string, error) {
 		addContentHeaders(req)
 		addAuthHeader(req, oauthToken)
 
-		fmt.Printf("\nWaiting for approval, please check your OneLogin Protect app ...")
+		log.Println("Waiting for approval, please check your OneLogin Protect app ...")
 		started := time.Now()
 		// loop until success, error, or timeout
 		for {
@@ -360,7 +360,7 @@ func verifyMFA(oc *Client, oauthToken, appID, resp string) (string, error) {
 			switch gjson.Get(string(body), "status.type").String() {
 			case TypePending:
 				time.Sleep(time.Second)
-				fmt.Print(".")
+				logger.Debug("Waiting for user to authorize login")
 
 			case TypeSuccess:
 				log.Println(" Approved")

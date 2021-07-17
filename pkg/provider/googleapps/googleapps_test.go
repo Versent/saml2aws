@@ -107,3 +107,13 @@ func TestExtractDataAttributes(t *testing.T) {
 
 	require.Equal(t, "https://apis.google.com/js/base.js", dataAttrs["data-gapi-url"])
 }
+
+func TestWrongPassword(t *testing.T) {
+	passwordErrorId := "passwordError"
+	html := `<html><body><span class="Qx8Abe" id="` + passwordErrorId + `">Wrong password. Try again or click Forgot password to reset it.</span></body></html>`
+
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(html))
+	require.Nil(t, err)
+	txt := doc.Selection.Find("#" + passwordErrorId).Text()
+	require.NotEqual(t, "", txt)
+}
