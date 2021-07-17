@@ -158,6 +158,9 @@ func (kc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 
 	samlAssertion := mustFindInputByName(responseDoc, "SAMLResponse")
 	if samlAssertion == "" {
+		if responseDoc.Selection.Find("#passwordError").Text() != "" {
+			return "", errors.New("Password error")
+		}
 		return "", errors.New("page is missing saml assertion")
 	}
 
@@ -457,6 +460,8 @@ func (kc *Client) loadChallengePage(submitURL string, referer string, authForm u
 
 		return kc.skipChallengePage(doc, submitURL, secondActionURL, loginDetails)
 
+	} else if extractNodeText(doc, "h2", "To sign in to your Google Account, choose a task from the list below.") != "" {
+		return kc.loadChallengeEntryPage(doc, submitURL, loginDetails)
 	}
 
 	return doc, nil
@@ -504,6 +509,10 @@ func (kc *Client) loadAlternateChallengePage(submitURL string, referer string, a
 		return nil, errors.Wrap(err, "failed to define URL for html doc")
 	}
 
+	return kc.loadChallengeEntryPage(doc, submitURL, loginDetails)
+}
+
+func (kc *Client) loadChallengeEntryPage(doc *goquery.Document, submitURL string, loginDetails *creds.LoginDetails) (*goquery.Document, error) {
 	var challengeEntry string
 
 	doc.Find("form[data-challengeentry]").EachWithBreak(func(i int, s *goquery.Selection) bool {
