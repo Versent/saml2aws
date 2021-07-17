@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/marshallbrekka/go-u2fhost"
@@ -140,14 +141,14 @@ func (d *FidoClient) ChallengeU2F() (*JumpCloudResponse, error) {
 					},
 					Token: d.token,
 				}
-				fmt.Printf("  ==> Touch accepted. Proceeding with authentication\n")
+				log.Println("  ==> Touch accepted. Proceeding with authentication")
 				return responsePayload, nil
 			}
 
 			switch err.(type) {
 			case *u2fhost.TestOfUserPresenceRequiredError:
 				if !prompted {
-					fmt.Printf("\nTouch the flashing U2F device to authenticate...\n")
+					log.Println("Touch the flashing U2F device to authenticate...")
 					prompted = true
 				}
 			default:
