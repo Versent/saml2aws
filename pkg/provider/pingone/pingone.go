@@ -30,18 +30,6 @@ type Client struct {
 	idpAccount *cfg.IDPAccount
 }
 
-// SuccessOrRedirectOrUnauthorizedResponseValidator also allows 401
-func SuccessOrRedirectOrUnauthorizedResponseValidator(req *http.Request, resp *http.Response) error {
-
-	validatorResponse := provider.SuccessOrRedirectResponseValidator(req, resp)
-
-	if validatorResponse == nil || resp.StatusCode == 401 {
-		return nil
-	}
-
-	return validatorResponse
-}
-
 // New create a new PingOne client
 func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 
@@ -54,7 +42,7 @@ func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 
 	// assign a response validator to ensure all responses are either success or a redirect
 	// this is to avoid have explicit checks for every single response
-	client.CheckResponseStatus = SuccessOrRedirectOrUnauthorizedResponseValidator
+	client.CheckResponseStatus = provider.SuccessOrRedirectOrUnauthorizedResponseValidator
 
 	return &Client{
 		client:     client,

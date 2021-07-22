@@ -42,7 +42,7 @@ func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 
 	// assign a response validator to ensure all responses are either success or a redirect
 	// this is to avoid have explicit checks for every single response
-	client.CheckResponseStatus = provider.SuccessOrRedirectResponseValidator
+	client.CheckResponseStatus = provider.SuccessOrRedirectOrUnauthorizedResponseValidator
 
 	return &Client{
 		client:     client,
@@ -109,6 +109,9 @@ func (ac *Client) follow(ctx context.Context, req *http.Request) (string, error)
 	} else if docIsWebAuthn(doc) {
 		logger.WithField("type", "webauthn").Debug("doc detect")
 		handler = ac.handleWebAuthn
+	} else if docIsRefresh(doc) {
+		logger.WithField("type", "refresh").Debug("doc detect")
+		handler = ac.handleRefresh
 	}
 	if handler == nil {
 		html, _ := doc.Selection.Html()
@@ -205,6 +208,21 @@ func (ac *Client) handleSwipe(ctx context.Context, doc *goquery.Document) (conte
 	return ctx, req, err
 }
 
+func (ac *Client) handleRefresh(ctx context.Context, doc *goquery.Document) (context.Context, *http.Request, error) {
+	loginDetails, ok := ctx.Value(ctxKey("login")).(*creds.LoginDetails)
+	if !ok {
+		return ctx, nil, fmt.Errorf("no context value for login")
+	}
+
+	u := fmt.Sprintf("%s/idp/startSSO.ping?PartnerSpId=%s", loginDetails.URL, ac.idpAccount.AmazonWebservicesURN)
+	req, err := http.NewRequest("GET", u, nil)
+	if err != nil {
+		return ctx, nil, errors.Wrap(err, "error building request")
+	}
+
+	return ctx, req, err
+}
+
 func (ac *Client) handleFormRedirect(ctx context.Context, doc *goquery.Document) (context.Context, *http.Request, error) {
 	form, err := page.NewFormFromDocument(doc, "")
 	if err != nil {
@@ -262,6 +280,10 @@ func docIsFormRedirectToTarget(doc *goquery.Document, target string) bool {
 	}
 	urlForm := fmt.Sprintf("form[action=\"%s\"]", target)
 	return doc.Find(urlForm).Size() == 1
+}
+
+func docIsRefresh(doc *goquery.Document) bool {
+	return doc.Has("meta[http-equiv=\"refresh\"]").Size() == 1
 }
 
 func extractSAMLResponse(doc *goquery.Document) (v string, ok bool) {
