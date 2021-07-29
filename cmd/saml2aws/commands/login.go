@@ -30,7 +30,7 @@ func Login(loginFlags *flags.LoginExecFlags) error {
 
 	account, err := buildIdpAccount(loginFlags)
 	if err != nil {
-		return errors.Wrap(err, "error building login details")
+		return errors.Wrap(err, "Error building login details.")
 	}
 
 	sharedCreds := awsconfig.NewSharedCredentials(account.Profile, account.CredentialsFile)
@@ -40,7 +40,7 @@ func Login(loginFlags *flags.LoginExecFlags) error {
 		Filename: account.SAMLCacheFile,
 	}
 
-	logger.Debug("check if Creds Exist")
+	logger.Debug("Check if creds exist.")
 
 	// this checks if the credentials file has been created yet
 	exist, err := sharedCreds.CredsExists()
@@ -104,7 +104,7 @@ func Login(loginFlags *flags.LoginExecFlags) error {
 		// samlAssertion was not cached
 		samlAssertion, err = provider.Authenticate(loginDetails)
 		if err != nil {
-			return errors.Wrap(err, "Crror authenticating to IdP.")
+			return errors.Wrap(err, "Error authenticating to IdP.")
 		}
 		if account.SAMLCache {
 			err = cacheProvider.Write(samlAssertion)
@@ -116,7 +116,7 @@ func Login(loginFlags *flags.LoginExecFlags) error {
 
 	if samlAssertion == "" {
 		log.Println("Response did not contain a valid SAML assertion.")
-		log.Println("Please check your username and password is correct.")
+		log.Println("Please check that your username and password is correct.")
 		log.Println("To see the output follow the instructions in https://github.com/versent/saml2aws#debugging-issues-with-idps")
 		os.Exit(1)
 	}
@@ -158,7 +158,7 @@ func buildIdpAccount(loginFlags *flags.LoginExecFlags) (*cfg.IDPAccount, error) 
 
 	account, err := cfgm.LoadIDPAccount(loginFlags.CommonFlags.IdpAccount)
 	if err != nil {
-		return nil, errors.Wrap(err, "Failed to load idp account.")
+		return nil, errors.Wrap(err, "Failed to load IdP account.")
 	}
 
 	// update username and hostname if supplied
@@ -178,7 +178,7 @@ func resolveLoginDetails(account *cfg.IDPAccount, loginFlags *flags.LoginExecFla
 
 	loginDetails := &creds.LoginDetails{URL: account.URL, Username: account.Username, MFAToken: loginFlags.CommonFlags.MFAToken, DuoMFAOption: loginFlags.DuoMFAOption}
 
-	log.Printf("Using IDP Account %s to access %s %s", loginFlags.CommonFlags.IdpAccount, account.Provider, account.URL)
+	log.Printf("Using IdP Account %s to access %s %s", loginFlags.CommonFlags.IdpAccount, account.Provider, account.URL)
 
 	var err error
 	if !loginFlags.CommonFlags.DisableKeychain {
@@ -324,7 +324,7 @@ func loginToStsUsingRole(account *cfg.IDPAccount, role *saml2aws.AWSRole, samlAs
 		DurationSeconds: aws.Int64(int64(account.SessionDuration)),
 	}
 
-	log.Println("Requesting AWS credentials using SAML assertion")
+	log.Println("Requesting AWS credentials using SAML assertion.")
 
 	resp, err := svc.AssumeRoleWithSAML(params)
 	if err != nil {
