@@ -16,16 +16,15 @@ require (
 	github.com/danieljoos/wincred v1.1.0
 	github.com/dvsekhvalnov/jose2go v1.5.0 // indirect
 	github.com/godbus/dbus v4.1.0+incompatible // indirect
-	github.com/google/uuid v1.2.0
+	github.com/google/uuid v1.3.0
 	github.com/keybase/go-keychain v0.0.0-20190712205309-48d3d31d256d
 	github.com/kr/text v0.2.0 // indirect
-	github.com/magefile/mage v1.11.0 // indirect
 	github.com/marshallbrekka/go-u2fhost v0.0.0-20210111072507-3ccdec8c8105
 	github.com/mattn/go-colorable v0.1.8 // indirect
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/mxschmitt/playwright-go v0.1100.0
 	github.com/pkg/errors v0.9.1
-	github.com/sirupsen/logrus v1.7.1
+	github.com/sirupsen/logrus v1.8.1
 	github.com/skratchdot/open-golang v0.0.0-20200116055534-eef842397966
 	github.com/smartystreets/assertions v1.0.0 // indirect
 	github.com/smartystreets/goconvey v1.6.4 // indirect
