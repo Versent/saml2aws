@@ -315,7 +315,7 @@ func (jc *Client) verifyMFA(jumpCloudOrgHost string, loginDetails *creds.LoginDe
 		return jc.client.Do(req)
 
 	case IdentifierJumpCloudProtect:
-		return jc.jumpCloudProtectAuth(xsrfToken)
+		return jc.jumpCloudProtectAuth(jumpCloudProtectSubmitURL, xsrfToken)
 	case IdentifierDuoMfa:
 		// Get Duo config
 		req, err := http.NewRequest("GET", duoAuthSubmitURL, nil)
