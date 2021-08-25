@@ -23,22 +23,25 @@ import (
 )
 
 const (
-	jcSSOBaseURL      = "https://sso.jumpcloud.com/"
-	xsrfURL           = "https://console.jumpcloud.com/userconsole/xsrf"
-	authSubmitURL     = "https://console.jumpcloud.com/userconsole/auth"
-	webauthnSubmitURL = "https://console.jumpcloud.com/userconsole/auth/webauthn"
-	duoAuthSubmitURL  = "https://console.jumpcloud.com/userconsole/auth/duo"
+	jcSSOBaseURL              = "https://sso.jumpcloud.com/"
+	xsrfURL                   = "https://console.jumpcloud.com/userconsole/xsrf"
+	authSubmitURL             = "https://console.jumpcloud.com/userconsole/auth"
+	webauthnSubmitURL         = "https://console.jumpcloud.com/userconsole/auth/webauthn"
+	duoAuthSubmitURL          = "https://console.jumpcloud.com/userconsole/auth/duo"
+	jumpCloudProtectSubmitURL = "https://console.jumpcloud.com/userconsole/auth/push"
 
-	IdentifierTotpMfa = "totp"
-	IdentifierDuoMfa  = "duo"
-	IdentifierU2F     = "webauthn"
+	IdentifierTotpMfa          = "totp"
+	IdentifierDuoMfa           = "duo"
+	IdentifierU2F              = "webauthn"
+	IdentifierJumpCloudProtect = "push"
 )
 
 var (
 	supportedMfaOptions = map[string]string{
-		IdentifierTotpMfa: "TOTP MFA authentication",
-		IdentifierDuoMfa:  "DUO MFA authentication",
-		IdentifierU2F:     "FIDO WebAuthn authentication",
+		IdentifierTotpMfa:          "TOTP MFA authentication",
+		IdentifierDuoMfa:           "DUO MFA authentication",
+		IdentifierU2F:              "FIDO WebAuthn authentication",
+		IdentifierJumpCloudProtect: "PUSH MFA authentication (JumpCloud Protect)",
 	}
 )
 
@@ -310,6 +313,9 @@ func (jc *Client) verifyMFA(jumpCloudOrgHost string, loginDetails *creds.LoginDe
 		req.Header.Add("Accept", "application/json")
 		req.Header.Add("Content-Type", "application/json")
 		return jc.client.Do(req)
+
+	case IdentifierJumpCloudProtect:
+		return jc.jumpCloudProtectAuth(xsrfToken)
 	case IdentifierDuoMfa:
 		// Get Duo config
 		req, err := http.NewRequest("GET", duoAuthSubmitURL, nil)
@@ -577,7 +583,6 @@ func (jc *Client) verifyMFA(jumpCloudOrgHost string, loginDetails *creds.LoginDe
 }
 
 func (jc *Client) getUserOption(body []byte) (string, error) {
-	// data =>map[factors:[map[status:available type:totp] map[status:available type:webauthn]] message:MFA required.]
 	mfaConfigData := gjson.GetBytes(body, "factors")
 	if mfaConfigData.Index == 0 {
 		log.Fatalln("Mfa Config option not found")
