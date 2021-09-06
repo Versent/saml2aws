@@ -17,7 +17,7 @@ require (
 	github.com/dvsekhvalnov/jose2go v1.5.0 // indirect
 	github.com/godbus/dbus v4.1.0+incompatible // indirect
 	github.com/google/uuid v1.2.0
-	github.com/keybase/go-keychain v0.0.0-20190712205309-48d3d31d256d
+	github.com/keybase/go-keychain v0.0.0-20201121013009-976c83ec27a6
 	github.com/kr/text v0.2.0 // indirect
 	github.com/marshallbrekka/go-u2fhost v0.0.0-20210111072507-3ccdec8c8105
 	github.com/mattn/go-colorable v0.1.8 // indirect
@@ -40,4 +40,4 @@ require (
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 )
 
-// replace github.com/keybase/go-keychain => github.com/wolfeidau/go-keychain v0.0.0-20210215232950-1e19148f864f
+replace github.com/keybase/go-keychain => github.com/99designs/go-keychain v0.0.0-20191008050251-8e49817e8af4
