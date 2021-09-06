@@ -103,7 +103,7 @@ func main() {
 	loginFlags := new(flags.LoginExecFlags)
 	loginFlags.CommonFlags = commonFlags
 	cmdLogin.Flag("profile", "The AWS profile to save the temporary credentials. (env: SAML2AWS_PROFILE)").Short('p').Envar("SAML2AWS_PROFILE").StringVar(&commonFlags.Profile)
-	cmdLogin.Flag("duo-mfa-option", "The MFA option you want to use to authenticate with").Envar("SAML2AWS_DUO_MFA_OPTION").EnumVar(&loginFlags.DuoMFAOption, "Passcode", "Duo Push")
+	cmdLogin.Flag("duo-mfa-option", "The MFA option you want to use to authenticate with").Envar("SAML2AWS_DUO_MFA_OPTION").EnumVar(&loginFlags.DuoMFAOption, "Passcode", "Phone Call", "Duo Push")
 	cmdLogin.Flag("client-id", "OneLogin client id, used to generate API access token. (env: ONELOGIN_CLIENT_ID)").Envar("ONELOGIN_CLIENT_ID").StringVar(&commonFlags.ClientID)
 	cmdLogin.Flag("client-secret", "OneLogin client secret, used to generate API access token. (env: ONELOGIN_CLIENT_SECRET)").Envar("ONELOGIN_CLIENT_SECRET").StringVar(&commonFlags.ClientSecret)
 	cmdLogin.Flag("force", "Refresh credentials even if not expired.").BoolVar(&loginFlags.Force)

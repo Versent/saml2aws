@@ -2,19 +2,23 @@ package keycloak
 
 import (
 	"bytes"
+	"encoding/base64"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
+	"github.com/marshallbrekka/go-u2fhost"
 	"github.com/pkg/errors"
 	"github.com/versent/saml2aws/v2/pkg/cfg"
 	"github.com/versent/saml2aws/v2/pkg/creds"
 	"github.com/versent/saml2aws/v2/pkg/prompter"
 	"github.com/versent/saml2aws/v2/pkg/provider"
+	"github.com/versent/saml2aws/v2/pkg/provider/okta"
 )
 
 // Client wrapper around KeyCloak.
@@ -70,9 +74,61 @@ func (kc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		if err != nil {
 			return "", errors.Wrap(err, "error posting totp form")
 		}
+	} else if containsWebauthnForm(doc) {
+		credentialIDs, challenge, rpId, err := extractWebauthnParameters(doc)
+		if err != nil {
+			return "", errors.Wrap(err, "could not extract Webauthn parameters")
+		}
+
+		webauthnSubmitURL, err := extractSubmitURL(doc)
+		if err != nil {
+			return "", errors.Wrap(err, "unable to locate IDP Webauthn form submit URL")
+		}
+
+		doc, err = kc.postWebauthnForm(webauthnSubmitURL, credentialIDs, challenge, rpId)
+		if err != nil {
+			return "", errors.Wrap(err, "error posting Webauthn form")
+		}
 	}
 
 	return extractSamlResponse(doc), nil
+}
+
+func extractWebauthnParameters(doc *goquery.Document) (credentialIDs []string, challenge string, rpID string, err error) {
+	doc.Find("input[name=authn_use_chk]").Each(func(i int, s *goquery.Selection) {
+		value, ok := s.Attr("value")
+		if !ok {
+			return
+		}
+		credentialIDs = append(credentialIDs, value)
+	})
+	if len(credentialIDs) == 0 {
+		return nil, "", "", errors.New("no credentialID found on page")
+	}
+
+	challengeRE, err := regexp.Compile(`let challenge = "(.+)";`)
+	if err != nil {
+		return nil, "", "", errors.Wrap(err, "could not compile regular expression")
+	}
+
+	rpIDRE, err := regexp.Compile(`let rpId = "(.+)"`)
+	if err != nil {
+		return nil, "", "", errors.Wrap(err, "could not compile regular expression")
+	}
+	doc.Find("script").Each(func(i int, s *goquery.Selection) {
+		content := s.Text()
+		challengeSubmatch := challengeRE.FindStringSubmatch(content)
+		if challengeSubmatch == nil {
+			return
+		}
+		challenge = challengeSubmatch[1]
+		rpIDSubmatch := rpIDRE.FindStringSubmatch(content)
+		if rpIDSubmatch == nil {
+			return
+		}
+		rpID = rpIDSubmatch[1]
+	})
+	return credentialIDs, challenge, rpID, nil
 }
 
 func (kc *Client) getLoginForm(loginDetails *creds.LoginDetails) (string, url.Values, error) {
@@ -164,6 +220,82 @@ func (kc *Client) postTotpForm(totpSubmitURL string, mfaToken string, doc *goque
 	return doc, nil
 }
 
+func (kc *Client) postWebauthnForm(webauthnSubmitURL string, credentialIDs []string, challenge, rpId string) (*goquery.Document, error) {
+	webauthnForm := url.Values{}
+
+	var assertion *okta.SignedAssertion
+	var pickedCredentialID string
+	for i, credentialID := range credentialIDs {
+		fidoClient, err := okta.NewFidoClient(
+			challenge,
+			rpId,
+			"",
+			credentialID,
+			"",
+			new(okta.U2FDeviceFinder),
+		)
+		if err != nil {
+			return nil, errors.Wrap(err, "error connecting to Webauthn device")
+		}
+
+		assertion, err = fidoClient.ChallengeU2F()
+		if _, ok := err.(*u2fhost.BadKeyHandleError); ok && i < len(credentialIDs)-1 {
+			log.Println("Device does not have key handle, trying next ...")
+			continue
+		}
+		if err != nil {
+			return nil, errors.Wrap(err, "error while getting Webauthn challenge")
+		}
+		pickedCredentialID = credentialID
+		break
+	}
+	if assertion == nil {
+		return nil, errors.New("tried all Webauthn devices, none was recognized")
+	}
+
+	signature, err := reencodeAsURLEncoding(assertion.SignatureData)
+	if err != nil {
+		return nil, errors.Wrap(err, "unexpected format for Webauthn signature data")
+	}
+	authenticatorData, err := reencodeAsURLEncoding(assertion.AuthenticatorData)
+	if err != nil {
+		return nil, errors.Wrap(err, "unexpected format for Webauthn authenticator data")
+	}
+	webauthnForm.Set("clientDataJSON", assertion.ClientData)
+	webauthnForm.Set("authenticatorData", authenticatorData)
+	webauthnForm.Set("signature", signature)
+	webauthnForm.Set("credentialId", pickedCredentialID)
+	webauthnForm.Set("userHandle", "")
+	webauthnForm.Set("error", "")
+
+	req, err := http.NewRequest("POST", webauthnSubmitURL, strings.NewReader(webauthnForm.Encode()))
+	if err != nil {
+		return nil, errors.Wrap(err, "error building MFA request")
+	}
+
+	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+
+	res, err := kc.client.Do(req)
+	if err != nil {
+		return nil, errors.Wrap(err, "error retrieving content")
+	}
+
+	doc, err := goquery.NewDocumentFromReader(res.Body)
+	if err != nil {
+		return nil, errors.Wrap(err, "error reading webauthn form response")
+	}
+
+	return doc, nil
+}
+
+func reencodeAsURLEncoding(data string) (string, error) {
+	decodedSignature, err := base64.StdEncoding.DecodeString(data)
+	if err != nil {
+		return "", errors.Wrap(err, "invalid base64 encoding")
+	}
+	return base64.RawURLEncoding.EncodeToString(decodedSignature), nil
+}
+
 func extractSubmitURL(doc *goquery.Document) (string, error) {
 
 	var submitURL string
@@ -216,6 +348,10 @@ func containsTotpForm(doc *goquery.Document) bool {
 	totpIndex = doc.Find("input#otp").Index()
 
 	return totpIndex != -1
+}
+
+func containsWebauthnForm(doc *goquery.Document) bool {
+	return doc.Find("form#webauth").Index() != -1
 }
 
 func updateKeyCloakFormData(authForm url.Values, s *goquery.Selection, user *creds.LoginDetails) {
