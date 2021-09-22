@@ -176,3 +176,19 @@ func TestClient_containsTotpForm(t *testing.T) {
 
 	require.True(t, containsTotpForm(doc))
 }
+
+func TestClient_extractWebauthnParameters(t *testing.T) {
+	data, err := ioutil.ReadFile("example/webauthnPage.html")
+	require.Nil(t, err)
+
+	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(data))
+	require.Nil(t, err)
+
+	credentialIDs, challenge, rpID, err := extractWebauthnParameters(doc)
+	require.Nil(t, err)
+
+	expectedCredentialIDs := []string{"pcFg5E6QIk0ZFfJxmf8cfUcb3hirl5Knl8aJ-mjC6MRjVu1dOiBBs51wtjS_O1eP2uiJfGiSL3D8R2cBLnoZyw", "pcFg5E6QIk0ZFfJxmf8efUcb3hirl5Knl8aJ-mjC6MRjVu1dOaBBs51wtjS_O1eP2uiJfGiSL3D8R2cBLnoZyw"}
+	require.Equal(t, expectedCredentialIDs, credentialIDs)
+	require.Equal(t, "J3NKWZPkSmqXuoKLtzzshg", challenge)
+	require.Equal(t, "localhost", rpID)
+}

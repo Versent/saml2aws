@@ -102,7 +102,7 @@ func (sc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 	case "Auto":
 		b, _ := ioutil.ReadAll(res.Body)
 
-		mfaRes, err := verifyMfa(sc, loginDetails.URL, string(b))
+		mfaRes, err := verifyMfa(sc, loginDetails, loginDetails.URL, string(b))
 		if err != nil {
 			return mfaRes.Status, errors.Wrap(err, "error verifying MFA")
 		}
@@ -143,13 +143,13 @@ func updateFormData(authForm url.Values, s *goquery.Selection, user *creds.Login
 	}
 }
 
-func verifyMfa(oc *Client, shibbolethHost string, resp string) (*http.Response, error) {
+func verifyMfa(oc *Client, loginDetails *creds.LoginDetails, shibbolethHost string, resp string) (*http.Response, error) {
 
 	duoHost, postAction, tx, app, csrfToken := parseTokens(resp)
 
 	parent := fmt.Sprintf(shibbolethHost + postAction)
 
-	duoTxCookie, err := verifyDuoMfa(oc, duoHost, parent, tx)
+	duoTxCookie, err := verifyDuoMfa(oc, loginDetails, duoHost, parent, tx)
 	if err != nil {
 		return nil, errors.Wrap(err, "error when interacting with Duo iframe")
 	}
@@ -174,7 +174,7 @@ func verifyMfa(oc *Client, shibbolethHost string, resp string) (*http.Response, 
 	return res, nil
 }
 
-func verifyDuoMfa(oc *Client, duoHost string, parent string, tx string) (string, error) {
+func verifyDuoMfa(oc *Client, loginDetails *creds.LoginDetails, duoHost string, parent string, tx string) (string, error) {
 	// initiate duo mfa to get sid
 	duoSubmitURL := fmt.Sprintf("https://%s/frame/web/v1/auth", duoHost)
 
@@ -235,7 +235,17 @@ func verifyDuoMfa(oc *Client, duoHost string, parent string, tx string) (string,
 		"Passcode",
 	}
 
-	duoMfaOption := prompter.Choose("Select a DUO MFA Option", duoMfaOptions)
+	duoMfaOption := 0
+
+	if loginDetails.DuoMFAOption == "Duo Push" {
+		duoMfaOption = 0
+	} else if loginDetails.DuoMFAOption == "Phone Call" {
+		duoMfaOption = 1
+	} else if loginDetails.DuoMFAOption == "Passcode" {
+		duoMfaOption = 2
+	} else {
+		duoMfaOption = prompter.Choose("Select a DUO MFA Option", duoMfaOptions)
+	}
 
 	if duoMfaOptions[duoMfaOption] == "Passcode" {
 		//get users DUO MFA Token
