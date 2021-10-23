@@ -1,4 +1,4 @@
-// +build darwin,cgo
+// +build darwin
 
 // Copyright (c) 2016 David Calavera
 
