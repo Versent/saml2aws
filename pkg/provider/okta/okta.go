@@ -66,6 +66,7 @@ type Client struct {
 	targetURL       string
 	disableSessions bool
 	rememberDevice  bool
+	appID           string
 }
 
 // AuthRequest represents an mfa okta request
@@ -122,6 +123,7 @@ func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 
 	disableSessions := idpAccount.DisableSessions
 	rememberDevice := !idpAccount.DisableRememberDevice
+	appID := idpAccount.AppID
 
 	if idpAccount.DisableSessions { // if user disabled sessions, also dont remember device
 		rememberDevice = false
@@ -130,6 +132,7 @@ func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 	// Debug the disableSessions and rememberDevice values
 	logger.Debugf("okta | disableSessions: %v", disableSessions)
 	logger.Debugf("okta | rememberDevice: %v", rememberDevice)
+	logger.Debugf("okta | AppID: %v", appID)
 
 	return &Client{
 		client:          client,
@@ -137,6 +140,7 @@ func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 		targetURL:       idpAccount.TargetURL,
 		disableSessions: disableSessions,
 		rememberDevice:  rememberDevice,
+		appID:			 appID,
 	}, nil
 }
 
@@ -298,7 +302,7 @@ func (oc *Client) authWithSession(loginDetails *creds.LoginDetails) (string, err
 		return oc.Authenticate(modifiedLoginDetails)
 	}
 
-	req, err := http.NewRequest("GET", loginDetails.URL, nil)
+	req, err := http.NewRequest("GET", loginDetails.URL + oc.appID, nil)
 	if err != nil {
 		return "", errors.Wrap(err, "error building authWithSession request")
 	}
@@ -338,7 +342,7 @@ func (oc *Client) authWithSession(loginDetails *creds.LoginDetails) (string, err
 // This function is not currently used and but can be used in the future
 func (oc *Client) getDeviceTokenFromOkta(loginDetails *creds.LoginDetails) (string, error) {
 	//dummy request to set device token cookie ("dt")
-	req, err := http.NewRequest("GET", loginDetails.URL, nil)
+	req, err := http.NewRequest("GET", loginDetails.URL + oc.appID, nil)
 	if err != nil {
 		return "", errors.Wrap(err, "error building device token request")
 	}
@@ -555,7 +559,7 @@ func (oc *Client) follow(ctx context.Context, req *http.Request, loginDetails *c
 		logger.WithField("type", "saml-response").Debug("doc detect")
 		handler = oc.handleFormRedirect
 	} else {
-		req, err = http.NewRequest("GET", loginDetails.URL, nil)
+		req, err = http.NewRequest("GET", loginDetails.URL + oc.appID, nil)
 		if err != nil {
 			return "", errors.Wrap(err, "error building app request")
 		}
