@@ -196,7 +196,7 @@ func (cm *ConfigManager) SaveIDPAccount(idpAccountName string, account *IDPAccou
 // LoadIDPAccount load the idp account and default to an empty one if it doesn't exist
 func (cm *ConfigManager) LoadIDPAccount(idpAccountName string) (*IDPAccount, error) {
 
-	cfg, err := ini.LoadSources(ini.LoadOptions{Loose: true}, cm.configPath)
+	cfg, err := ini.LoadSources(ini.LoadOptions{Loose: true, SpaceBeforeInlineComment: true}, cm.configPath)
 	if err != nil {
 		return nil, errors.Wrap(err, "Unable to load configuration file")
 	}
