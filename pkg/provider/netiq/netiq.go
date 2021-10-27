@@ -2,6 +2,11 @@ package netiq
 
 import (
 	"fmt"
+	"net/http"
+	"net/url"
+	"regexp"
+	"strings"
+
 	"github.com/PuerkitoBio/goquery"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -10,15 +15,13 @@ import (
 	"github.com/versent/saml2aws/v2/pkg/page"
 	"github.com/versent/saml2aws/v2/pkg/prompter"
 	"github.com/versent/saml2aws/v2/pkg/provider"
-	"net/http"
-	"net/url"
-	"regexp"
-	"strings"
 )
 
 var logger = logrus.WithField("provider", "NetIQ")
 
 type Client struct {
+	provider.ValidateBase
+
 	client *provider.HTTPClient
 	MFA    string
 }

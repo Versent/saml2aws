@@ -21,7 +21,7 @@ func TestClient_getLoginForm(t *testing.T) {
 	require.Nil(t, err)
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write(data)
+		_, _ = w.Write(data)
 	}))
 	defer ts.Close()
 
@@ -48,7 +48,7 @@ func TestClient_postLoginForm(t *testing.T) {
 	require.Nil(t, err)
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write(data)
+		_, _ = w.Write(data)
 	}))
 	defer ts.Close()
 

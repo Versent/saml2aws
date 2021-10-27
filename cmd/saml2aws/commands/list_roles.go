@@ -11,6 +11,7 @@ import (
 	"github.com/versent/saml2aws/v2"
 	"github.com/versent/saml2aws/v2/helper/credentials"
 	"github.com/versent/saml2aws/v2/pkg/flags"
+	"github.com/versent/saml2aws/v2/pkg/samlcache"
 )
 
 // ListRoles will list available role ARNs
@@ -23,15 +24,16 @@ func ListRoles(loginFlags *flags.LoginExecFlags) error {
 		return errors.Wrap(err, "error building login details")
 	}
 
+	// creates a cacheProvider, only used when --cache is set
+	cacheProvider := &samlcache.SAMLCacheProvider{
+		Account:  account.Name,
+		Filename: account.SAMLCacheFile,
+	}
+
 	loginDetails, err := resolveLoginDetails(account, loginFlags)
 	if err != nil {
 		log.Printf("%+v", err)
 		os.Exit(1)
-	}
-
-	err = loginDetails.Validate()
-	if err != nil {
-		return errors.Wrap(err, "error validating login details")
 	}
 
 	logger.WithField("idpAccount", account).Debug("building provider")
@@ -41,10 +43,33 @@ func ListRoles(loginFlags *flags.LoginExecFlags) error {
 		return errors.Wrap(err, "error building IdP client")
 	}
 
-	samlAssertion, err := provider.Authenticate(loginDetails)
+	err = provider.Validate(loginDetails)
 	if err != nil {
-		return errors.Wrap(err, "error authenticating to IdP")
+		return errors.Wrap(err, "error validating login details")
+	}
 
+	var samlAssertion string
+	if account.SAMLCache {
+		if cacheProvider.IsValid() {
+			samlAssertion, err = cacheProvider.Read()
+			if err != nil {
+				logger.Debug("Could not read cache:", err)
+			}
+		}
+	}
+
+	if samlAssertion == "" {
+		// samlAssertion was not cached
+		samlAssertion, err = provider.Authenticate(loginDetails)
+		if err != nil {
+			return errors.Wrap(err, "error authenticating to IdP")
+		}
+		if account.SAMLCache {
+			err = cacheProvider.Write(samlAssertion)
+			if err != nil {
+				logger.Error("Could not write samlAssertion:", err)
+			}
+		}
 	}
 
 	if samlAssertion == "" {

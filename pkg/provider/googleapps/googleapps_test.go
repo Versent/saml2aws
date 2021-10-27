@@ -83,7 +83,7 @@ func TestChallengePage(t *testing.T) {
 	require.Nil(t, err)
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write(data)
+		_, _ = w.Write(data)
 	}))
 	defer ts.Close()
 
@@ -106,4 +106,14 @@ func TestExtractDataAttributes(t *testing.T) {
 	dataAttrs := extractDataAttributes(doc, "div[data-context]", []string{"data-context", "data-gapi-url", "data-tx-id", "data-tx-lifetime"})
 
 	require.Equal(t, "https://apis.google.com/js/base.js", dataAttrs["data-gapi-url"])
+}
+
+func TestWrongPassword(t *testing.T) {
+	passwordErrorId := "passwordError"
+	html := `<html><body><span class="Qx8Abe" id="` + passwordErrorId + `">Wrong password. Try again or click Forgot password to reset it.</span></body></html>`
+
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(html))
+	require.Nil(t, err)
+	txt := doc.Selection.Find("#" + passwordErrorId).Text()
+	require.NotEqual(t, "", txt)
 }

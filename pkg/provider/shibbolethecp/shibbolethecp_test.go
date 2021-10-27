@@ -14,7 +14,7 @@ import (
 func TestAuthnRequest(t *testing.T) {
 	input := "foo"
 
-	result, err := authnRequest(input)
+	result, err := authnRequest(input, "")
 	assert.NoError(t, err)
 
 	doc := etree.NewDocument()

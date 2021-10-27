@@ -49,6 +49,8 @@ type MfaUserOption struct {
 
 // Client is a wrapper representing a Akamai SAML client
 type Client struct {
+	provider.ValidateBase
+
 	client *provider.HTTPClient
 	mfa    string
 }
@@ -124,7 +126,7 @@ func (oc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		return samlAssertion, errors.Wrap(err, "error retrieving login request")
 	}
 
-	doc, err := goquery.NewDocumentFromResponse(res)
+	doc, err := goquery.NewDocumentFromReader(res.Body)
 	if err != nil {
 		return samlAssertion, errors.Wrap(err, "error parsing document")
 	}
@@ -166,8 +168,7 @@ func (oc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 	authStatus := gjson.Get(resp, "status").String()
 	if authStatus != "200" {
 		authFailReason := gjson.Get(resp, "msg").String()
-		fmt.Printf("Login Failed %s\n", authFailReason)
-		logger.Debug("Login Failed:", authFailReason)
+		log.Printf("Login Failed %s", authFailReason)
 		return samlAssertion, errors.Wrap(err, "Login Failure")
 	}
 
@@ -205,8 +206,7 @@ func (oc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 			return samlAssertion, errors.Wrap(err, "error verifying MFA")
 		}
 	} else if mfaStatus == "register" {
-		fmt.Printf("MFA is enabled but not registered for user. Register MFA by accessing EAA IDP from Browser\n")
-		logger.Debug("MFA is enabled but not registered for user")
+		log.Println("MFA is enabled but not registered for user. Register MFA by accessing EAA IDP from Browser")
 		return samlAssertion, errors.Wrap(err, "register mfa by logging to IDP")
 	}
 
@@ -464,7 +464,7 @@ func verifyMfa(oc *Client, akamaiOrgHost string, loginDetails *creds.LoginDetail
 		}
 
 		//try to extract sid
-		doc, err := goquery.NewDocumentFromResponse(res)
+		doc, err := goquery.NewDocumentFromReader(res.Body)
 		if err != nil {
 			return errors.Wrap(err, "error parsing document from duo")
 		}

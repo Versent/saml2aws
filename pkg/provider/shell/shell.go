@@ -1,6 +1,8 @@
 package shell
 
 import (
+	"errors"
+	os "os"
 	"os/exec"
 
 	"github.com/sirupsen/logrus"
@@ -27,4 +29,17 @@ func (oc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 	cmd := exec.Command("sh", "-c", loginDetails.URL)
 	samlResponse, err := cmd.Output()
 	return string(samlResponse), err
+}
+
+func (oc *Client) Validate(ld *creds.LoginDetails) error {
+	if ld.URL == "" {
+		return errors.New("Empty URL")
+	}
+
+	const executableBits = 0o111
+	if stat, err := os.Stat(ld.URL); os.IsNotExist(err) || ((stat.Mode() & executableBits) == 0) {
+		return errors.New("URL for shell provider does not point to a valid executable")
+	}
+
+	return nil
 }

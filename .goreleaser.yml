@@ -1,0 +1,29 @@
+---
+project_name: saml2aws
+
+builds:
+- main: ./cmd/saml2aws/main.go
+  binary: saml2aws
+  flags:
+    - -trimpath
+    - -v
+  ldflags:
+    - -s -w -X main.Version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}}
+  goos:
+    - windows
+    - darwin
+    - linux
+  goarch:
+    - amd64
+    - arm64
+    - arm
+archives:
+  - format: tar.gz
+    wrap_in_directory: false
+    format_overrides:
+      - goos: windows
+        format: zip
+    # remove README and LICENSE
+    files:
+      - LICENSE.md
+      - README.md

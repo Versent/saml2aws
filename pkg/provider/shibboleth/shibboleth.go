@@ -23,6 +23,8 @@ import (
 
 // Client wrapper around Shibboleth enabling authentication and retrieval of assertions
 type Client struct {
+	provider.ValidateBase
+
 	client     *provider.HTTPClient
 	idpAccount *cfg.IDPAccount
 }
@@ -59,7 +61,7 @@ func (sc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		return samlAssertion, errors.Wrap(err, "error retrieving form")
 	}
 
-	doc, err := goquery.NewDocumentFromResponse(res)
+	doc, err := goquery.NewDocumentFromReader(res.Body)
 	if err != nil {
 		return samlAssertion, errors.Wrap(err, "failed to build document from response")
 	}
@@ -100,7 +102,7 @@ func (sc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 	case "Auto":
 		b, _ := ioutil.ReadAll(res.Body)
 
-		mfaRes, err := verifyMfa(sc, loginDetails.URL, string(b))
+		mfaRes, err := verifyMfa(sc, loginDetails, loginDetails.URL, string(b))
 		if err != nil {
 			return mfaRes.Status, errors.Wrap(err, "error verifying MFA")
 		}
@@ -141,13 +143,13 @@ func updateFormData(authForm url.Values, s *goquery.Selection, user *creds.Login
 	}
 }
 
-func verifyMfa(oc *Client, shibbolethHost string, resp string) (*http.Response, error) {
+func verifyMfa(oc *Client, loginDetails *creds.LoginDetails, shibbolethHost string, resp string) (*http.Response, error) {
 
-	duoHost, postAction, tx, app := parseTokens(resp)
+	duoHost, postAction, tx, app, csrfToken := parseTokens(resp)
 
 	parent := fmt.Sprintf(shibbolethHost + postAction)
 
-	duoTxCookie, err := verifyDuoMfa(oc, duoHost, parent, tx)
+	duoTxCookie, err := verifyDuoMfa(oc, loginDetails, duoHost, parent, tx)
 	if err != nil {
 		return nil, errors.Wrap(err, "error when interacting with Duo iframe")
 	}
@@ -155,6 +157,7 @@ func verifyMfa(oc *Client, shibbolethHost string, resp string) (*http.Response, 
 	idpForm := url.Values{}
 	idpForm.Add("_eventId", "proceed")
 	idpForm.Add("sig_response", duoTxCookie+":"+app)
+	idpForm.Add("csrf_token", csrfToken)
 
 	req, err := http.NewRequest("POST", parent, strings.NewReader(idpForm.Encode()))
 	if err != nil {
@@ -171,7 +174,7 @@ func verifyMfa(oc *Client, shibbolethHost string, resp string) (*http.Response, 
 	return res, nil
 }
 
-func verifyDuoMfa(oc *Client, duoHost string, parent string, tx string) (string, error) {
+func verifyDuoMfa(oc *Client, loginDetails *creds.LoginDetails, duoHost string, parent string, tx string) (string, error) {
 	// initiate duo mfa to get sid
 	duoSubmitURL := fmt.Sprintf("https://%s/frame/web/v1/auth", duoHost)
 
@@ -200,7 +203,7 @@ func verifyDuoMfa(oc *Client, duoHost string, parent string, tx string) (string,
 	}
 
 	// retrieve response from post
-	doc, err := goquery.NewDocumentFromResponse(res)
+	doc, err := goquery.NewDocumentFromReader(res.Body)
 	if err != nil {
 		return "", errors.Wrap(err, "error parsing document")
 	}
@@ -232,7 +235,17 @@ func verifyDuoMfa(oc *Client, duoHost string, parent string, tx string) (string,
 		"Passcode",
 	}
 
-	duoMfaOption := prompter.Choose("Select a DUO MFA Option", duoMfaOptions)
+	duoMfaOption := 0
+
+	if loginDetails.DuoMFAOption == "Duo Push" {
+		duoMfaOption = 0
+	} else if loginDetails.DuoMFAOption == "Phone Call" {
+		duoMfaOption = 1
+	} else if loginDetails.DuoMFAOption == "Passcode" {
+		duoMfaOption = 2
+	} else {
+		duoMfaOption = prompter.Choose("Select a DUO MFA Option", duoMfaOptions)
+	}
 
 	if duoMfaOptions[duoMfaOption] == "Passcode" {
 		//get users DUO MFA Token
@@ -374,17 +387,25 @@ func verifyDuoMfa(oc *Client, duoHost string, parent string, tx string) (string,
 	return duoTxCookie, nil
 }
 
-func parseTokens(blob string) (string, string, string, string) {
+func parseTokens(blob string) (string, string, string, string, string) {
 	hostRgx := regexp.MustCompile(`data-host=\"(.*?)\"`)
 	sigRgx := regexp.MustCompile(`data-sig-request=\"(.*?)\"`)
 	dpaRgx := regexp.MustCompile(`data-post-action=\"(.*?)\"`)
+	csrfRgx := regexp.MustCompile(`name=\"csrf_token\" value=\"(.*?)\"`)
 
 	dataSigRequest := sigRgx.FindStringSubmatch(blob)
 	duoHost := hostRgx.FindStringSubmatch(blob)
 	postAction := dpaRgx.FindStringSubmatch(blob)
 
+	// extract the Shibboleth v4 CSRF token, if present
+	csrfToken := ""
+	csrfTokenMatch := csrfRgx.FindStringSubmatch(blob)
+	if len(csrfTokenMatch) != 0 {
+		csrfToken = csrfTokenMatch[1]
+	}
+
 	duoSignatures := strings.Split(dataSigRequest[1], ":")
-	return duoHost[1], postAction[1], duoSignatures[0], duoSignatures[1]
+	return duoHost[1], postAction[1], duoSignatures[0], duoSignatures[1], csrfToken
 }
 
 func extractSamlResponse(res *http.Response) (string, error) {

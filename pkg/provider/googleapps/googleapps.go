@@ -1,6 +1,7 @@
 package googleapps
 
 import (
+	"bufio"
 	"bytes"
 	b64 "encoding/base64"
 	"encoding/json"
@@ -25,6 +26,8 @@ var logger = logrus.WithField("provider", "googleapps")
 
 // Client wrapper around Google Apps.
 type Client struct {
+	provider.ValidateBase
+
 	client *provider.HTTPClient
 }
 
@@ -155,6 +158,9 @@ func (kc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 
 	samlAssertion := mustFindInputByName(responseDoc, "SAMLResponse")
 	if samlAssertion == "" {
+		if responseDoc.Selection.Find("#passwordError").Text() != "" {
+			return "", errors.New("Password error")
+		}
 		return "", errors.New("page is missing saml assertion")
 	}
 
@@ -173,7 +179,7 @@ func (kc *Client) tryDisplayCaptcha(captchaPictureURL string) (string, error) {
 }
 
 func (kc *Client) iTermCaptchaPrompt(captchaPictureURL string) (string, error) {
-	fmt.Printf("Detected iTerm, displaying URL: %s\n", captchaPictureURL)
+	log.Printf("Detected iTerm, displaying URL: %s\n", captchaPictureURL)
 	imgResp, err := kc.client.Get(captchaPictureURL)
 	if err != nil {
 		return "", errors.Wrap(err, "unable to fetch captcha image")
@@ -184,7 +190,7 @@ func (kc *Client) iTermCaptchaPrompt(captchaPictureURL string) (string, error) {
 	_ = b64Encoder.Close()
 
 	if os.Getenv("TERM") == "screen" {
-		fmt.Println("Detected tmux, using specific workaround...")
+		log.Println("Detected tmux, using specific workaround...")
 		fmt.Printf("\033Ptmux;\033\033]1337;File=width=40;preserveAspectRatio=1;inline=1;:%s\a\033\\\n", buf.String())
 	} else {
 		fmt.Printf("\033]1337;File=width=40;preserveAspectRatio=1;inline=1;:%s\a\n", buf.String())
@@ -403,7 +409,7 @@ func (kc *Client) loadChallengePage(submitURL string, referer string, authForm u
 
 			response, err := u2fClient.ChallengeU2F()
 			if err != nil {
-				errors.Wrap(err, "Second factor failed.")
+				logger.WithError(err).Error("Second factor failed.")
 				return kc.skipChallengePage(doc, submitURL, secondActionURL, loginDetails)
 			}
 
@@ -421,7 +427,7 @@ func (kc *Client) loadChallengePage(submitURL string, referer string, authForm u
 				"txId": dataAttrs["data-tx-id"],
 			}
 
-			fmt.Println("Open the Google App, and tap 'Yes' on the prompt to sign in")
+			log.Println("Open the Google App, and tap 'Yes' on the prompt to sign in")
 
 			_, err := kc.postJSON(fmt.Sprintf("https://content.googleapis.com/cryptauth/v1/authzen/awaittx?alt=json&key=%s", dataAttrs["data-api-key"]), waitValues, submitURL)
 			if err != nil {
@@ -433,8 +439,17 @@ func (kc *Client) loadChallengePage(submitURL string, referer string, authForm u
 
 			return kc.loadResponsePage(secondActionURL, submitURL, responseForm)
 
+		case strings.Contains(secondActionURL, "challenge/dp/"): // handle device push challenge
+			log.Print("Check your phone - after you have confirmed response press ENTER to continue.")
+			_, err := bufio.NewReader(os.Stdin).ReadBytes('\n')
+			if err != nil {
+				return nil, errors.Wrap(err, "error reading new line \\n")
+			}
+			responseForm.Set("TrustDevice", "on") // Don't ask again on this computer
+			return kc.loadResponsePage(secondActionURL, submitURL, responseForm)
+
 		case strings.Contains(secondActionURL, "challenge/skotp/"): // handle one-time HOTP challenge
-			fmt.Println("Get a one-time code by visiting https://g.co/sc on another device where you can use your security key")
+			log.Println("Get a one-time code by visiting https://g.co/sc on another device where you can use your security key")
 			var token = prompter.RequestSecurityCode("000 000")
 
 			responseForm.Set("Pin", token)
@@ -445,6 +460,8 @@ func (kc *Client) loadChallengePage(submitURL string, referer string, authForm u
 
 		return kc.skipChallengePage(doc, submitURL, secondActionURL, loginDetails)
 
+	} else if extractNodeText(doc, "h2", "To sign in to your Google Account, choose a task from the list below.") != "" {
+		return kc.loadChallengeEntryPage(doc, submitURL, loginDetails)
 	}
 
 	return doc, nil
@@ -492,6 +509,10 @@ func (kc *Client) loadAlternateChallengePage(submitURL string, referer string, a
 		return nil, errors.Wrap(err, "failed to define URL for html doc")
 	}
 
+	return kc.loadChallengeEntryPage(doc, submitURL, loginDetails)
+}
+
+func (kc *Client) loadChallengeEntryPage(doc *goquery.Document, submitURL string, loginDetails *creds.LoginDetails) (*goquery.Document, error) {
 	var challengeEntry string
 
 	doc.Find("form[data-challengeentry]").EachWithBreak(func(i int, s *goquery.Selection) bool {
@@ -693,7 +714,7 @@ func extractKeyHandles(doc *goquery.Document, challengeTxt string) (string, []st
 			firstIdx := strings.Index(val, "{")
 			lastIdx := strings.LastIndex(val, "}")
 			obj := []byte(val[firstIdx : lastIdx+1])
-			json.Unmarshal(obj, &result)
+			_ = json.Unmarshal(obj, &result) // ignore the error and continue
 			// Key handles
 			for _, val := range result {
 				list, ok := val.([]interface{})

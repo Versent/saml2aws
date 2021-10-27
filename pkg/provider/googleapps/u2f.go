@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"log"
 	"time"
 
 	u2fhost "github.com/marshallbrekka/go-u2fhost"
@@ -98,14 +99,14 @@ func (d *U2FClient) ChallengeU2F() (string, error) {
 				if err != nil {
 					return "", err
 				}
-				fmt.Printf("  ==> Touch accepted. Proceeding with authentication\n")
+				log.Println("  ==> Touch accepted. Proceeding with authentication")
 				return string(responseJSON), nil
 			}
 
 			switch err.(type) {
 			case *u2fhost.TestOfUserPresenceRequiredError:
 				if !prompted {
-					fmt.Printf("\nTouch the flashing U2F device to authenticate...\n")
+					log.Println("Touch the flashing U2F device to authenticate...")
 					prompted = true
 				}
 			default:

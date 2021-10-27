@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 
+	"github.com/versent/saml2aws/v2/pkg/provider"
+
 	"golang.org/x/net/publicsuffix"
 
 	"github.com/Azure/go-ntlmssp"
@@ -19,6 +21,8 @@ var logger = logrus.WithField("provider", "adfs2")
 
 // Client client for adfs2
 type Client struct {
+	provider.ValidateBase
+
 	idpAccount *cfg.IDPAccount
 	client     *http.Client
 }

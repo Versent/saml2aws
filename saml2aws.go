@@ -2,7 +2,6 @@ package saml2aws
 
 import (
 	"fmt"
-	"github.com/versent/saml2aws/v2/pkg/provider/netiq"
 	"sort"
 
 	"github.com/versent/saml2aws/v2/pkg/cfg"
@@ -11,10 +10,13 @@ import (
 	"github.com/versent/saml2aws/v2/pkg/provider/adfs"
 	"github.com/versent/saml2aws/v2/pkg/provider/adfs2"
 	"github.com/versent/saml2aws/v2/pkg/provider/akamai"
+	"github.com/versent/saml2aws/v2/pkg/provider/auth0"
+	"github.com/versent/saml2aws/v2/pkg/provider/browser"
 	"github.com/versent/saml2aws/v2/pkg/provider/f5apm"
 	"github.com/versent/saml2aws/v2/pkg/provider/googleapps"
 	"github.com/versent/saml2aws/v2/pkg/provider/jumpcloud"
 	"github.com/versent/saml2aws/v2/pkg/provider/keycloak"
+	"github.com/versent/saml2aws/v2/pkg/provider/netiq"
 	"github.com/versent/saml2aws/v2/pkg/provider/okta"
 	"github.com/versent/saml2aws/v2/pkg/provider/onelogin"
 	"github.com/versent/saml2aws/v2/pkg/provider/pingfed"
@@ -30,20 +32,22 @@ type ProviderList map[string][]string
 // MFAsByProvider a list of providers with their respective supported MFAs
 var MFAsByProvider = ProviderList{
 	"AzureAD":       []string{"Auto", "PhoneAppOTP", "PhoneAppNotification", "OneWaySMS"},
-	"ADFS":          []string{"Auto", "VIP", "Azure"},
+	"ADFS":          []string{"Auto", "VIP", "Azure", "Defender"},
 	"ADFS2":         []string{"Auto", "RSA"}, // nothing automatic about ADFS 2.x
 	"Ping":          []string{"Auto"},        // automatically detects PingID
 	"PingOne":       []string{"Auto"},        // automatically detects PingID
-	"JumpCloud":     []string{"Auto"},
+	"JumpCloud":     []string{"Auto", "TOTP", "WEBAUTHN", "DUO", "PUSH"},
 	"Okta":          []string{"Auto", "PUSH", "DUO", "SMS", "TOTP", "OKTA", "FIDO", "YUBICO TOKEN:HARDWARE"}, // automatically detects DUO, SMS, ToTP, and FIDO
 	"OneLogin":      []string{"Auto", "OLP", "SMS", "TOTP", "YUBIKEY"},                                       // automatically detects OneLogin Protect, SMS and ToTP
 	"KeyCloak":      []string{"Auto"},                                                                        // automatically detects ToTP
 	"GoogleApps":    []string{"Auto"},                                                                        // automatically detects ToTP
-	"Shibboleth":    []string{"Auto"},
+	"Shibboleth":    []string{"Auto", "None"},
 	"F5APM":         []string{"Auto"},
 	"Akamai":        []string{"Auto", "DUO", "SMS", "EMAIL", "TOTP"},
 	"ShibbolethECP": []string{"auto", "phone", "push", "passcode"},
 	"NetIQ":         []string{"Auto", "Privileged"},
+	"Browser":       []string{"Auto"},
+	"Auth0":         []string{"Auto"},
 }
 
 // Names get a list of provider names
@@ -84,6 +88,7 @@ func invalidMFA(provider string, mfa string) bool {
 // SAMLClient client interface
 type SAMLClient interface {
 	Authenticate(loginDetails *creds.LoginDetails) (string, error)
+	Validate(loginDetails *creds.LoginDetails) error
 }
 
 // NewSAMLClient create a new SAML client
@@ -166,6 +171,13 @@ func NewSAMLClient(idpAccount *cfg.IDPAccount) (SAMLClient, error) {
 			return nil, fmt.Errorf("Invalid MFA type: %v for %v provider", idpAccount.MFA, idpAccount.Provider)
 		}
 		return netiq.New(idpAccount, idpAccount.MFA)
+	case "Browser":
+		return browser.New(idpAccount)
+	case "Auth0":
+		if invalidMFA(idpAccount.Provider, idpAccount.MFA) {
+			return nil, fmt.Errorf("Invalid MFA type: %v for %v provider", idpAccount.MFA, idpAccount.Provider)
+		}
+		return auth0.New(idpAccount)
 	default:
 		return nil, fmt.Errorf("Invalid provider: %v", idpAccount.Provider)
 	}

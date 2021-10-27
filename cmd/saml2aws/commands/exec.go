@@ -28,7 +28,7 @@ func Exec(execFlags *flags.LoginExecFlags, cmdline []string) error {
 		return errors.Wrap(err, "error building login details")
 	}
 
-	sharedCreds := awsconfig.NewSharedCredentials(account.Profile)
+	sharedCreds := awsconfig.NewSharedCredentials(account.Profile, account.CredentialsFile)
 
 	// this checks if the credentials file has been created yet
 	// can only really be triggered if saml2aws exec is run on a new
@@ -47,7 +47,7 @@ func Exec(execFlags *flags.LoginExecFlags, cmdline []string) error {
 		return errors.Wrap(err, "error loading credentials")
 	}
 
-	if awsCreds.Expires.Sub(time.Now()) < 0 {
+	if time.Until(awsCreds.Expires) < 0 {
 		return errors.New("error aws credentials have expired")
 	}
 

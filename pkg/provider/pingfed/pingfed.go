@@ -24,6 +24,8 @@ var logger = logrus.WithField("provider", "pingfed")
 
 // Client wrapper around PingFed + PingId enabling authentication and retrieval of assertions
 type Client struct {
+	provider.ValidateBase
+
 	client     *provider.HTTPClient
 	idpAccount *cfg.IDPAccount
 }
@@ -40,7 +42,7 @@ func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 
 	// assign a response validator to ensure all responses are either success or a redirect
 	// this is to avoid have explicit checks for every single response
-	client.CheckResponseStatus = provider.SuccessOrRedirectResponseValidator
+	client.CheckResponseStatus = provider.SuccessOrRedirectOrUnauthorizedResponseValidator
 
 	return &Client{
 		client:     client,
@@ -66,14 +68,14 @@ func (ac *Client) follow(ctx context.Context, req *http.Request) (string, error)
 	if err != nil {
 		return "", errors.Wrap(err, "error following")
 	}
-	doc, err := goquery.NewDocumentFromResponse(res)
+	doc, err := goquery.NewDocumentFromReader(res.Body)
 	if err != nil {
 		return "", errors.Wrap(err, "failed to build document from response")
 	}
 
 	var handler func(context.Context, *goquery.Document) (context.Context, *http.Request, error)
 
-	if docIsFormRedirectToAWS(doc) {
+	if docIsFormRedirectToTarget(doc, ac.idpAccount.TargetURL) {
 		logger.WithField("type", "saml-response-to-aws").Debug("doc detect")
 		if samlResponse, ok := extractSAMLResponse(doc); ok {
 			decodedSamlResponse, err := base64.StdEncoding.DecodeString(samlResponse)
@@ -107,6 +109,9 @@ func (ac *Client) follow(ctx context.Context, req *http.Request) (string, error)
 	} else if docIsWebAuthn(doc) {
 		logger.WithField("type", "webauthn").Debug("doc detect")
 		handler = ac.handleWebAuthn
+	} else if docIsRefresh(doc) {
+		logger.WithField("type", "refresh").Debug("doc detect")
+		handler = ac.handleRefresh
 	}
 	if handler == nil {
 		html, _ := doc.Selection.Html()
@@ -134,6 +139,8 @@ func (ac *Client) handleLogin(ctx context.Context, doc *goquery.Document) (conte
 
 	form.Values.Set("pf.username", loginDetails.Username)
 	form.Values.Set("pf.pass", loginDetails.Password)
+	form.Values.Set("USER", loginDetails.Username)
+	form.Values.Set("PASSWORD", loginDetails.Password)
 	form.URL = makeAbsoluteURL(form.URL, loginDetails.URL)
 
 	req, err := form.BuildRequest()
@@ -201,6 +208,21 @@ func (ac *Client) handleSwipe(ctx context.Context, doc *goquery.Document) (conte
 	return ctx, req, err
 }
 
+func (ac *Client) handleRefresh(ctx context.Context, doc *goquery.Document) (context.Context, *http.Request, error) {
+	loginDetails, ok := ctx.Value(ctxKey("login")).(*creds.LoginDetails)
+	if !ok {
+		return ctx, nil, fmt.Errorf("no context value for login")
+	}
+
+	u := fmt.Sprintf("%s/idp/startSSO.ping?PartnerSpId=%s", loginDetails.URL, ac.idpAccount.AmazonWebservicesURN)
+	req, err := http.NewRequest("GET", u, nil)
+	if err != nil {
+		return ctx, nil, errors.Wrap(err, "error building request")
+	}
+
+	return ctx, req, err
+}
+
 func (ac *Client) handleFormRedirect(ctx context.Context, doc *goquery.Document) (context.Context, *http.Request, error) {
 	form, err := page.NewFormFromDocument(doc, "")
 	if err != nil {
@@ -221,7 +243,7 @@ func (ac *Client) handleWebAuthn(ctx context.Context, doc *goquery.Document) (co
 }
 
 func docIsLogin(doc *goquery.Document) bool {
-	return doc.Has("input[name=\"pf.pass\"]").Size() == 1
+	return doc.Has("input[name=\"pf.pass\"]").Size() == 1 || doc.Has("input[name=\"PASSWORD\"]").Size() == 1
 }
 
 func docIsOTP(doc *goquery.Document) bool {
@@ -252,8 +274,16 @@ func docIsFormResume(doc *goquery.Document) bool {
 	return doc.Find("input[name=\"RelayState\"]").Size() == 1
 }
 
-func docIsFormRedirectToAWS(doc *goquery.Document) bool {
-	return doc.Find("form[action=\"https://signin.aws.amazon.com/saml\"]").Size() == 1
+func docIsFormRedirectToTarget(doc *goquery.Document, target string) bool {
+	if target == "" {
+		target = "https://signin.aws.amazon.com/saml"
+	}
+	urlForm := fmt.Sprintf("form[action=\"%s\"]", target)
+	return doc.Find(urlForm).Size() == 1
+}
+
+func docIsRefresh(doc *goquery.Document) bool {
+	return doc.Has("meta[http-equiv=\"refresh\"]").Size() == 1
 }
 
 func extractSAMLResponse(doc *goquery.Document) (v string, ok bool) {

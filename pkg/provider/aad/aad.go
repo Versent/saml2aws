@@ -19,10 +19,13 @@ import (
 	"github.com/versent/saml2aws/v2/pkg/creds"
 	"github.com/versent/saml2aws/v2/pkg/prompter"
 	"github.com/versent/saml2aws/v2/pkg/provider"
+	"golang.org/x/net/html"
 )
 
 // Client wrapper around AzureAD enabling authentication and retrieval of assertions
 type Client struct {
+	provider.ValidateBase
+
 	client     *provider.HTTPClient
 	idpAccount *cfg.IDPAccount
 }
@@ -204,12 +207,7 @@ type startSAMLResponse struct {
 // Autogenerate password login response
 // some case, some fields is not exists
 type passwordLoginResponse struct {
-	ArrUserProofs []struct {
-		AuthMethodID string `json:"authMethodId"`
-		Data         string `json:"data"`
-		Display      string `json:"display"`
-		IsDefault    bool   `json:"isDefault"`
-	} `json:"arrUserProofs"`
+	ArrUserProofs                       []userProof        `json:"arrUserProofs"`
 	FHideIHaveCodeLink                  bool               `json:"fHideIHaveCodeLink"`
 	OPerAuthPollingInterval             map[string]float64 `json:"oPerAuthPollingInterval"`
 	FProofIndexedByType                 bool               `json:"fProofIndexedByType"`
@@ -606,6 +604,14 @@ type processAuthResponse struct {
 	FTrimChromeBssoURL         bool   `json:"fTrimChromeBssoUrl"`
 }
 
+// A given method for a user to prove their indentity
+type userProof struct {
+	AuthMethodID string `json:"authMethodId"`
+	Data         string `json:"data"`
+	Display      string `json:"display"`
+	IsDefault    bool   `json:"isDefault"`
+}
+
 // New create a new AzureAD client
 func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 
@@ -643,13 +649,10 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 
 	// data is embedded javascript object
 	// <script><![CDATA[  $Config=......; ]]>
-	resBody, _ := ioutil.ReadAll(res.Body)
-	resBodyStr := string(resBody)
+	resBodyStr, _ := ac.responseBodyAsString(res.Body)
 	var startSAMLJson string
 	if strings.Contains(resBodyStr, "$Config") {
-		startIndex := strings.Index(resBodyStr, "$Config=") + 8
-		endIndex := startIndex + strings.Index(resBodyStr[startIndex:], ";")
-		startSAMLJson = resBodyStr[startIndex:endIndex]
+		startSAMLJson = ac.getJsonFromConfig(resBodyStr)
 	}
 	var startSAMLResp startSAMLResponse
 	if err := json.Unmarshal([]byte(startSAMLJson), &startSAMLResp); err != nil {
@@ -682,239 +685,42 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 	if err != nil {
 		return samlAssertion, errors.Wrap(err, "error retrieving login results")
 	}
-	resBody, _ = ioutil.ReadAll(res.Body)
-	resBodyStr = string(resBody)
 
-	// require reprocess
-	if strings.Contains(resBodyStr, "<form") {
-		res, err = ac.reProcess(resBodyStr)
-		if err != nil {
-			return samlAssertion, errors.Wrap(err, "error retrieving login reprocess results")
-		}
-		resBody, _ = ioutil.ReadAll(res.Body)
-		resBodyStr = string(resBody)
-	}
+	resBodyStr, _ = ac.responseBodyAsString(res.Body)
 
-	// data is embedded javascript object
-	// <script><![CDATA[  $Config=......; ]]>
-	var loginPasswordJson string
-	if strings.Contains(resBodyStr, "$Config") {
-		startIndex := strings.Index(resBodyStr, "$Config=") + 8
-		endIndex := startIndex + strings.Index(resBodyStr[startIndex:], ";")
-		loginPasswordJson = resBodyStr[startIndex:endIndex]
-	}
-	var loginPasswordResp passwordLoginResponse
-	var loginPasswordSkipMfaResp SkipMfaResponse
+	isSkippedMFA := !strings.HasPrefix(resBodyStr, "<html><head><title>Working...</title>")
+	/**
+	 * If conditional access is enabled, we will get a response like:
+	 *
+	 * <html><head><title>Working...</title></head><body><form method="POST" name="hiddenform" action="https://login.microsoftonline.com:443/common/DeviceAuthTls/reprocess"><input type="hidden" name="ctx" value="***" /><input type="hidden" name="flowtoken" value="***" /><noscript><p>Script is disabled. Click Submit to continue.</p><input type="submit" value="Submit" /></noscript></form><script language="javascript">document.forms[0].submit();</script></body></html>
+	 */
+	isEnabledConditonalAccess := strings.HasPrefix(resBodyStr, "<html><head><title>Working...</title>") && strings.Contains(resBodyStr, "name=\"flowtoken\"")
 
-	if err := json.Unmarshal([]byte(loginPasswordJson), &loginPasswordResp); err != nil {
-		return samlAssertion, errors.Wrap(err, "loginPassword response unmarshal error")
-	}
-	if err := json.Unmarshal([]byte(loginPasswordJson), &loginPasswordSkipMfaResp); err != nil {
-		return samlAssertion, errors.Wrap(err, "loginPassword response unmarshal error")
-	}
-	var restartSAMLResp startSAMLResponse
-	if err := json.Unmarshal([]byte(loginPasswordJson), &restartSAMLResp); err != nil {
-		return samlAssertion, errors.Wrap(err, "startSAML response unmarshal error")
-	}
-
-	mfas := loginPasswordResp.ArrUserProofs
-
-	// If there's an explicit option to skip MFA, do so
-	if loginPasswordSkipMfaResp.URLSkipMfaRegistration != "" {
-		res, err = ac.client.Get(loginPasswordSkipMfaResp.URLSkipMfaRegistration)
-		if err != nil {
-			return samlAssertion, errors.Wrap(err, "error retrieving skip mfa results")
-		}
-	} else if len(mfas) != 0 {
-		// There's no explicit option to skip MFA, and MFA options are available
-		// Start MFA
-		if len(mfas) == 0 {
-			return samlAssertion, errors.Wrap(err, "mfa not found")
-		}
-		mfa := mfas[0]
-		switch ac.idpAccount.MFA {
-
-		case "Auto":
-			for _, v := range mfas {
-				if v.IsDefault {
-					mfa = v
-					break
-				}
+	if isSkippedMFA || isEnabledConditonalAccess {
+		// require reprocess
+		if strings.Contains(resBodyStr, "<form") {
+			res, err = ac.reProcess(resBodyStr)
+			if err != nil {
+				return samlAssertion, errors.Wrap(err, "error retrieving login reprocess results")
 			}
-		default:
-			for _, v := range mfas {
-				if v.AuthMethodID == ac.idpAccount.MFA {
-					mfa = v
-					break
-				}
-			}
+			resBodyStr, _ = ac.responseBodyAsString(res.Body)
 		}
-		mfaReq := mfaRequest{AuthMethodID: mfa.AuthMethodID, Method: "BeginAuth", Ctx: loginPasswordResp.SCtx, FlowToken: loginPasswordResp.SFT}
-		mfaReqJson, err := json.Marshal(mfaReq)
+
+		// data is embedded javascript object
+		// <script><![CDATA[  $Config=......; ]]>
+		var loginPasswordJson string
+		if strings.Contains(resBodyStr, "$Config") {
+			loginPasswordJson = ac.getJsonFromConfig(resBodyStr)
+		}
+		resBodyStr, err = ac.processAuth(loginPasswordJson, res)
 		if err != nil {
 			return samlAssertion, err
 		}
-		mfaBeginRequest, err := http.NewRequest("POST", loginPasswordResp.URLBeginAuth, strings.NewReader(string(mfaReqJson)))
-		if err != nil {
-			return samlAssertion, errors.Wrap(err, "error retrieving begin mfa")
-		}
-		mfaBeginRequest.Header.Add("Content-Type", "application/json")
-		res, err = ac.client.Do(mfaBeginRequest)
-		if err != nil {
-			return samlAssertion, errors.Wrap(err, "error retrieving begin mfa")
-		}
-		mfaBeginJson := make([]byte, res.ContentLength)
-		if n, err := res.Body.Read(mfaBeginJson); err != nil && err != io.EOF || n != int(res.ContentLength) {
-			return samlAssertion, errors.Wrap(err, "mfa BeginAuth response error")
-		}
-		var mfaResp mfaResponse
-		if err := json.Unmarshal(mfaBeginJson, &mfaResp); err != nil {
-			return samlAssertion, errors.Wrap(err, "mfa BeginAuth  response unmarshal error")
-		}
-		if !mfaResp.Success {
-			return samlAssertion, fmt.Errorf("mfa BeginAuth is not success %v", mfaResp.Message)
-		}
-
-		//  mfa end
-		for i := 0; ; i++ {
-			mfaReq = mfaRequest{
-				AuthMethodID: mfaResp.AuthMethodID,
-				Method:       "EndAuth",
-				Ctx:          mfaResp.Ctx,
-				FlowToken:    mfaResp.FlowToken,
-				SessionID:    mfaResp.SessionID,
-			}
-			if mfaReq.AuthMethodID == "PhoneAppOTP" || mfaReq.AuthMethodID == "OneWaySMS" {
-				verifyCode := prompter.StringRequired("Enter verification code")
-				mfaReq.AdditionalAuthData = verifyCode
-			}
-			if mfaReq.AuthMethodID == "PhoneAppNotification" && i == 0 {
-				log.Println("Phone approval required.")
-			}
-			mfaReqJson, err := json.Marshal(mfaReq)
-			if err != nil {
-				return samlAssertion, err
-			}
-			mfaEndRequest, err := http.NewRequest("POST", loginPasswordResp.URLEndAuth, strings.NewReader(string(mfaReqJson)))
-			if err != nil {
-				return samlAssertion, errors.Wrap(err, "error retrieving begin mfa")
-			}
-			mfaEndRequest.Header.Add("Content-Type", "application/json")
-			res, err = ac.client.Do(mfaEndRequest)
-			if err != nil {
-				return samlAssertion, errors.Wrap(err, "error retrieving begin mfa")
-			}
-			mfaJson := make([]byte, res.ContentLength)
-			if n, err := res.Body.Read(mfaJson); err != nil && err != io.EOF || n != int(res.ContentLength) {
-				return samlAssertion, errors.Wrap(err, "mfa EndAuth response error")
-			}
-			if err := json.Unmarshal(mfaJson, &mfaResp); err != nil {
-				return samlAssertion, errors.Wrap(err, "mfa EndAuth  response unmarshal error")
-			}
-			if mfaResp.ErrCode != 0 {
-				return samlAssertion, fmt.Errorf("error mfa fail errcode: %d, message: %v", mfaResp.ErrCode, mfaResp.Message)
-			}
-			if mfaResp.Success {
-				break
-			}
-			if !mfaResp.Retry {
-				break
-			}
-			// if mfaResp.Retry == true then
-			// must exist loginPasswordResp.OPerAuthPollingInterval[mfaResp.AuthMethodID]
-			time.Sleep(time.Duration(loginPasswordResp.OPerAuthPollingInterval[mfaResp.AuthMethodID]) * time.Second)
-		}
-		if !mfaResp.Success {
-			return samlAssertion, fmt.Errorf("error mfa fail")
-		}
-
-		// ProcessAuth
-		ProcessAuthValues := url.Values{}
-		ProcessAuthValues.Set(startSAMLResp.SFTName, mfaResp.FlowToken)
-		ProcessAuthValues.Set("request", mfaResp.Ctx)
-		ProcessAuthValues.Set("login", loginDetails.Username)
-
-		ProcessAuthRequest, err := http.NewRequest("POST", loginPasswordResp.URLPost, strings.NewReader(ProcessAuthValues.Encode()))
-		if err != nil {
-			return samlAssertion, errors.Wrap(err, "error retrieving process auth results")
-		}
-		ProcessAuthRequest.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-		res, err = ac.client.Do(ProcessAuthRequest)
-		if err != nil {
-			return samlAssertion, errors.Wrap(err, "error retrieving process auth results")
-		}
-		// data is embeded javascript object
-		// <script><![CDATA[  $Config=......; ]]>
-		resBody, _ = ioutil.ReadAll(res.Body)
-		resBodyStr = string(resBody)
-		// reset res.Body so it can be read again later if required
-		res.Body = ioutil.NopCloser(bytes.NewBuffer(resBody))
-
-		// After performing MFA we may be prompted with KMSI (Keep Me Signed In) page
-		// Ref: https://docs.microsoft.com/ja-jp/azure/active-directory/fundamentals/keep-me-signed-in
-		if strings.Contains(resBodyStr, "$Config") {
-			startIndex := strings.Index(resBodyStr, "$Config=") + 8
-			endIndex := startIndex + strings.Index(resBodyStr[startIndex:], ";")
-			ProcessAuthJson := resBodyStr[startIndex:endIndex]
-
-			var processAuthResp processAuthResponse
-			if err := json.Unmarshal([]byte(ProcessAuthJson), &processAuthResp); err != nil {
-				return samlAssertion, errors.Wrap(err, "ProcessAuth response unmarshal error")
-			}
-
-			KmsiURL := res.Request.URL.Scheme + "://" + res.Request.URL.Host + processAuthResp.URLPost
-			KmsiValues := url.Values{}
-			KmsiValues.Set("flowToken", processAuthResp.SFT)
-			KmsiValues.Set("ctx", processAuthResp.SCtx)
-			KmsiValues.Set("LoginOptions", "1")
-			KmsiRequest, err := http.NewRequest("POST", KmsiURL, strings.NewReader(KmsiValues.Encode()))
-			if err != nil {
-				return samlAssertion, errors.Wrap(err, "error retrieving kmsi results")
-			}
-			KmsiRequest.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-			ac.client.DisableFollowRedirect()
-			res, err = ac.client.Do(KmsiRequest)
-			if err != nil {
-				return samlAssertion, errors.Wrap(err, "error retrieving kmsi results")
-			}
-			ac.client.EnableFollowRedirect()
-		}
-	} else {
-		// There was no explicit link to skip MFA
-		// and there were no MFA options available for us to process
-		// This can happen if MFA is enabled, but we're accessing from a MFA trusted IP
-		// See https://docs.microsoft.com/en-us/azure/active-directory/authentication/howto-mfa-mfasettings#targetText=MFA%20service%20settings,-Settings%20for%20app&targetText=Service%20settings%20can%20be%20accessed,Additional%20cloud-based%20MFA%20settings.
-		// Proceed with login as normal
 	}
 
-	// If we've been prompted with KMSI despite not going via MFA flow
-	// Azure can do this if MFA is enabled but
-	//  - we're accessing from an MFA whitelisted / trusted IP
-	//  - we've been exempted from a Conditional Access Policy
-	if loginPasswordResp.URLPost == "/kmsi" {
-		KmsiURL := res.Request.URL.Scheme + "://" + res.Request.URL.Host + loginPasswordResp.URLPost
-		KmsiValues := url.Values{}
-		KmsiValues.Set("flowToken", loginPasswordResp.SFT)
-		KmsiValues.Set("ctx", loginPasswordResp.SCtx)
-		KmsiValues.Set("LoginOptions", "1")
-		KmsiRequest, err := http.NewRequest("POST", KmsiURL, strings.NewReader(KmsiValues.Encode()))
-		if err != nil {
-			return samlAssertion, errors.Wrap(err, "error retrieving kmsi results")
-		}
-		KmsiRequest.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-		ac.client.DisableFollowRedirect()
-		res, err = ac.client.Do(KmsiRequest)
-		if err != nil {
-			return samlAssertion, errors.Wrap(err, "error retrieving kmsi results")
-		}
-		ac.client.EnableFollowRedirect()
-	}
+	node, _ := html.Parse(strings.NewReader(resBodyStr))
+	doc := goquery.NewDocumentFromNode(node)
 
-	//  oidc
-	doc, err := goquery.NewDocumentFromResponse(res)
-	if err != nil {
-		return samlAssertion, errors.Wrap(err, "failed to build document from response")
-	}
 	// data in input tag
 	authForm := url.Values{}
 	var authSubmitURL string
@@ -995,34 +801,21 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 
 	// if mfa skipped then get $Config and urlSkipMfaRegistration
 	// get urlSkipMfaRegistraition to return saml assertion
-	resBody, err = ioutil.ReadAll(res.Body)
+	resBodyStr, err = ac.responseBodyAsString(res.Body)
 	if err != nil {
 		return samlAssertion, errors.Wrap(err, "error oidc login response read")
 	}
-	resBodyStr = string(resBody)
-	if strings.Contains(resBodyStr, "urlSkipMfaRegistration") {
-		var samlAssertionSkipMfaResp SkipMfaResponse
-		var skipMfaJson string
-		responseList := strings.Split(resBodyStr, "<")
-		for _, line := range responseList {
-
-			if strings.Contains(line, "$Config") {
-				skipMfaJson = line[strings.Index(line, "$Config=")+8 : strings.LastIndex(line, ";")]
-				break
-			}
+	if strings.Contains(resBodyStr, "arrUserProofs") {
+		// data is embedded javascript object
+		// <script><![CDATA[  $Config=......; ]]>
+		var loginPasswordJson string
+		if strings.Contains(resBodyStr, "$Config") {
+			loginPasswordJson = ac.getJsonFromConfig(resBodyStr)
 		}
-		if err := json.Unmarshal([]byte(skipMfaJson), &samlAssertionSkipMfaResp); err != nil {
-			return samlAssertion, errors.Wrap(err, "SAMLAssertion skip mfa response unmarshal error")
-		}
-		res, err = ac.client.Get(samlAssertionSkipMfaResp.URLSkipMfaRegistration)
+		resBodyStr, err = ac.processAuth(loginPasswordJson, res)
 		if err != nil {
-			return samlAssertion, errors.Wrap(err, "SAMLAssertion skip mfa url get  error")
+			return samlAssertion, err
 		}
-		resBody, err = ioutil.ReadAll(res.Body)
-		if err != nil {
-			return samlAssertion, errors.Wrap(err, "SAMLAssertion skip mfa request error")
-		}
-		resBodyStr = string(resBody)
 	}
 
 	// data in input tag
@@ -1036,12 +829,10 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		if !ok {
 			return
 		}
-		if attrName == "SAMLResponse" {
-			samlAssertion, ok = s.Attr("value")
-			if !ok {
-				return
-			}
+		if attrName != "SAMLResponse" {
+			return
 		}
+		samlAssertion, _ = s.Attr("value")
 	})
 	if samlAssertion != "" {
 		return samlAssertion, nil
@@ -1050,29 +841,29 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 	if err != nil {
 		return samlAssertion, errors.Wrap(err, "failed to saml request reprocess")
 	}
-	resBody, _ = ioutil.ReadAll(res.Body)
-	resBodyStr = string(resBody)
+	resBodyStr, _ = ac.responseBodyAsString(res.Body)
 	doc, err = goquery.NewDocumentFromReader(strings.NewReader(resBodyStr))
 	if err != nil {
 		return samlAssertion, errors.Wrap(err, "failed to build document from result body")
 	}
+
 	doc.Find("input").Each(func(i int, s *goquery.Selection) {
 		attrName, ok := s.Attr("name")
 		if !ok {
 			return
 		}
-		if attrName == "SAMLResponse" {
-			samlAssertion, ok = s.Attr("value")
-			if !ok {
-				return
-			}
+
+		if attrName != "SAMLResponse" {
+			return
 		}
+
+		samlAssertion, _ = s.Attr("value")
 	})
 	if samlAssertion != "" {
 		return samlAssertion, nil
 	}
 
-	return samlAssertion, errors.New("failed get SAMLAssersion")
+	return samlAssertion, errors.New("failed get SAMLAssertion")
 }
 
 func (ac *Client) reProcess(resBodyStr string) (*http.Response, error) {
@@ -1111,4 +902,246 @@ func (ac *Client) reProcess(resBodyStr string) (*http.Response, error) {
 		return res, errors.Wrap(err, "error reprocess results")
 	}
 	return res, nil
+}
+
+func (ac *Client) buildMfaRequestJson(mfas []userProof, flowToken string, ctx string) ([]byte, error) {
+	mfa := mfas[0]
+	switch ac.idpAccount.MFA {
+
+	case "Auto":
+		for _, v := range mfas {
+			if v.IsDefault {
+				mfa = v
+				break
+			}
+		}
+	default:
+		for _, v := range mfas {
+			if v.AuthMethodID == ac.idpAccount.MFA {
+				mfa = v
+				break
+			}
+		}
+	}
+	mfaReq := mfaRequest{AuthMethodID: mfa.AuthMethodID, Method: "BeginAuth", Ctx: ctx, FlowToken: flowToken}
+	return json.Marshal(mfaReq)
+}
+
+func (ac *Client) getJsonFromConfig(resBodyStr string) string {
+	startIndex := strings.Index(resBodyStr, "$Config=") + 8
+	endIndex := startIndex + strings.Index(resBodyStr[startIndex:], ";")
+	return resBodyStr[startIndex:endIndex]
+}
+
+func (ac *Client) getMfaFlowToken(mfas []userProof, loginPasswordResp passwordLoginResponse) (mfaResponse, error) {
+	var mfaResp mfaResponse
+	if len(mfas) == 0 {
+		return mfaResp, fmt.Errorf("mfa not found")
+	}
+	mfaReqJson, err := ac.buildMfaRequestJson(mfas, loginPasswordResp.SFT, loginPasswordResp.SCtx)
+	if err != nil {
+		return mfaResp, err
+	}
+	mfaBeginRequest, err := http.NewRequest("POST", loginPasswordResp.URLBeginAuth, strings.NewReader(string(mfaReqJson)))
+	if err != nil {
+		return mfaResp, errors.Wrap(err, "error retrieving begin mfa")
+	}
+	mfaBeginRequest.Header.Add("Content-Type", "application/json")
+	res, err := ac.client.Do(mfaBeginRequest)
+	if err != nil {
+		return mfaResp, errors.Wrap(err, "error retrieving begin mfa")
+	}
+	mfaBeginJson := make([]byte, res.ContentLength)
+	if n, err := res.Body.Read(mfaBeginJson); err != nil && err != io.EOF || n != int(res.ContentLength) {
+		return mfaResp, errors.Wrap(err, "mfa BeginAuth response error")
+	}
+
+	if err := json.Unmarshal(mfaBeginJson, &mfaResp); err != nil {
+		return mfaResp, errors.Wrap(err, "mfa BeginAuth  response unmarshal error")
+	}
+	if !mfaResp.Success {
+		return mfaResp, fmt.Errorf("mfa BeginAuth is not success %v", mfaResp.Message)
+	}
+
+	//  mfa end
+	for i := 0; ; i++ {
+		mfaReq := mfaRequest{
+			AuthMethodID: mfaResp.AuthMethodID,
+			Method:       "EndAuth",
+			Ctx:          mfaResp.Ctx,
+			FlowToken:    mfaResp.FlowToken,
+			SessionID:    mfaResp.SessionID,
+		}
+		if mfaReq.AuthMethodID == "PhoneAppOTP" || mfaReq.AuthMethodID == "OneWaySMS" {
+			verifyCode := prompter.StringRequired("Enter verification code")
+			mfaReq.AdditionalAuthData = verifyCode
+		}
+		if mfaReq.AuthMethodID == "PhoneAppNotification" && i == 0 {
+			log.Println("Phone approval required.")
+		}
+		mfaReqJson, err := json.Marshal(mfaReq)
+		if err != nil {
+			return mfaResp, err
+		}
+		mfaEndRequest, err := http.NewRequest("POST", loginPasswordResp.URLEndAuth, strings.NewReader(string(mfaReqJson)))
+		if err != nil {
+			return mfaResp, errors.Wrap(err, "error retrieving begin mfa")
+		}
+		mfaEndRequest.Header.Add("Content-Type", "application/json")
+		res, err = ac.client.Do(mfaEndRequest)
+		if err != nil {
+			return mfaResp, errors.Wrap(err, "error retrieving begin mfa")
+		}
+		mfaJson := make([]byte, res.ContentLength)
+		if n, err := res.Body.Read(mfaJson); err != nil && err != io.EOF || n != int(res.ContentLength) {
+			return mfaResp, errors.Wrap(err, "mfa EndAuth response error")
+		}
+		if err := json.Unmarshal(mfaJson, &mfaResp); err != nil {
+			return mfaResp, errors.Wrap(err, "mfa EndAuth  response unmarshal error")
+		}
+		if mfaResp.ErrCode != 0 {
+			return mfaResp, fmt.Errorf("error mfa fail errcode: %d, message: %v", mfaResp.ErrCode, mfaResp.Message)
+		}
+		if mfaResp.Success {
+			break
+		}
+		if !mfaResp.Retry {
+			break
+		}
+		// if mfaResp.Retry == true then
+		// must exist loginPasswordResp.OPerAuthPollingInterval[mfaResp.AuthMethodID]
+		time.Sleep(time.Duration(loginPasswordResp.OPerAuthPollingInterval[mfaResp.AuthMethodID]) * time.Second)
+	}
+	if !mfaResp.Success {
+		return mfaResp, fmt.Errorf("error mfa fail")
+	}
+	return mfaResp, nil
+}
+
+func (ac *Client) kmsiRequest(scheme string, host string, urlPost string, flowToken string, ctx string) (*http.Response, error) {
+	var res *http.Response
+	KmsiURL := scheme + "://" + host + urlPost
+	KmsiValues := url.Values{}
+	KmsiValues.Set("flowToken", flowToken)
+	KmsiValues.Set("ctx", ctx)
+	KmsiValues.Set("LoginOptions", "1")
+	KmsiRequest, err := http.NewRequest("POST", KmsiURL, strings.NewReader(KmsiValues.Encode()))
+	if err != nil {
+		return res, errors.Wrap(err, "error retrieving kmsi results")
+	}
+	KmsiRequest.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	ac.client.DisableFollowRedirect()
+	res, err = ac.client.Do(KmsiRequest)
+	if err != nil {
+		return res, errors.Wrap(err, "error retrieving kmsi results")
+	}
+	ac.client.EnableFollowRedirect()
+	return res, nil
+}
+
+func (ac *Client) processAuth(loginPasswordJson string, res *http.Response) (string, error) {
+	var err error
+	var loginPasswordResp passwordLoginResponse
+	var loginPasswordSkipMfaResp SkipMfaResponse
+	var restartSAMLResp startSAMLResponse
+	var resBodyStr string
+
+	if err := json.Unmarshal([]byte(loginPasswordJson), &loginPasswordResp); err != nil {
+		return resBodyStr, errors.Wrap(err, "loginPassword response unmarshal error")
+	}
+	if err := json.Unmarshal([]byte(loginPasswordJson), &loginPasswordSkipMfaResp); err != nil {
+		return resBodyStr, errors.Wrap(err, "loginPassword response unmarshal error")
+	}
+	if err := json.Unmarshal([]byte(loginPasswordJson), &restartSAMLResp); err != nil {
+		return resBodyStr, errors.Wrap(err, "startSAML response unmarshal error")
+	}
+
+	mfas := loginPasswordResp.ArrUserProofs
+
+	// If there's an explicit option to skip MFA, do so
+	if loginPasswordSkipMfaResp.URLSkipMfaRegistration != "" {
+		res, err = ac.client.Get(loginPasswordSkipMfaResp.URLSkipMfaRegistration)
+		if err != nil {
+			return resBodyStr, errors.Wrap(err, "error retrieving skip mfa results")
+		}
+	} else if len(mfas) != 0 {
+		// There's no explicit option to skip MFA, and MFA options are available
+		// Start MFA
+		mfaResp, err := ac.getMfaFlowToken(mfas, loginPasswordResp)
+		if err != nil {
+			return resBodyStr, err
+		}
+
+		// ProcessAuth
+		res, err = ac.processMfaAuth(mfaResp, loginPasswordResp, restartSAMLResp)
+		if err != nil {
+			return resBodyStr, err
+		}
+	}
+	// There was no explicit link to skip MFA
+	// and there were no MFA options available for us to process
+	// This can happen if MFA is enabled, but we're accessing from a MFA trusted IP
+	// See https://docs.microsoft.com/en-us/azure/active-directory/authentication/howto-mfa-mfasettings#targetText=MFA%20service%20settings,-Settings%20for%20app&targetText=Service%20settings%20can%20be%20accessed,Additional%20cloud-based%20MFA%20settings.
+	// Proceed with login as normal
+
+	// If we've been prompted with KMSI despite not going via MFA flow
+	// Azure can do this if MFA is enabled but
+	//  - we're accessing from an MFA whitelisted / trusted IP
+	//  - we've been exempted from a Conditional Access Policy
+	if loginPasswordResp.URLPost == "/kmsi" {
+		res, err = ac.kmsiRequest(
+			res.Request.URL.Scheme, res.Request.URL.Host, loginPasswordResp.URLPost, loginPasswordResp.SFT, loginPasswordResp.SCtx)
+		if err != nil {
+			return resBodyStr, err
+		}
+	}
+
+	return ac.responseBodyAsString(res.Body)
+}
+
+func (ac *Client) processMfaAuth(mfaResp mfaResponse, loginPasswordResp passwordLoginResponse, restartSAMLResp startSAMLResponse) (*http.Response, error) {
+	var res *http.Response
+	ProcessAuthValues := url.Values{}
+	ProcessAuthValues.Set(restartSAMLResp.SFTName, mfaResp.FlowToken)
+	ProcessAuthValues.Set("request", mfaResp.Ctx)
+	ProcessAuthValues.Set("login", loginPasswordResp.SPOSTUsername)
+
+	ProcessAuthRequest, err := http.NewRequest("POST", loginPasswordResp.URLPost, strings.NewReader(ProcessAuthValues.Encode()))
+	if err != nil {
+		return res, errors.Wrap(err, "error retrieving process auth results")
+	}
+	ProcessAuthRequest.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	res, err = ac.client.Do(ProcessAuthRequest)
+	if err != nil {
+		return res, errors.Wrap(err, "error retrieving process auth results")
+	}
+	// data is embeded javascript object
+	// <script><![CDATA[  $Config=......; ]]>
+	resBody, _ := ioutil.ReadAll(res.Body)
+	resBodyStr := string(resBody)
+	// reset res.Body so it can be read again later if required
+	res.Body = ioutil.NopCloser(bytes.NewBuffer(resBody))
+
+	// After performing MFA we may be prompted with KMSI (Keep Me Signed In) page
+	// Ref: https://docs.microsoft.com/ja-jp/azure/active-directory/fundamentals/keep-me-signed-in
+	if strings.Contains(resBodyStr, "$Config") {
+		ProcessAuthJson := ac.getJsonFromConfig(resBodyStr)
+
+		var processAuthResp processAuthResponse
+		if err := json.Unmarshal([]byte(ProcessAuthJson), &processAuthResp); err != nil {
+			return res, errors.Wrap(err, "ProcessAuth response unmarshal error")
+		}
+
+		res, err = ac.kmsiRequest(
+			res.Request.URL.Scheme, res.Request.URL.Host, processAuthResp.URLPost, processAuthResp.SFT, processAuthResp.SCtx)
+		if err != nil {
+			return res, err
+		}
+	}
+	return res, nil
+}
+
+func (ac *Client) responseBodyAsString(body io.ReadCloser) (string, error) {
+	resBody, err := ioutil.ReadAll(body)
+	return string(resBody), err
 }

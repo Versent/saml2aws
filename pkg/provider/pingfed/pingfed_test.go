@@ -80,7 +80,7 @@ func TestHandleLogin(t *testing.T) {
 	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(data))
 	require.Nil(t, err)
 
-	ctx, req, err := ac.handleLogin(ctx, doc)
+	_, req, err := ac.handleLogin(ctx, doc)
 	require.Nil(t, err)
 
 	b, err := ioutil.ReadAll(req.Body)

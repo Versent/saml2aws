@@ -168,6 +168,18 @@ func SuccessOrRedirectResponseValidator(req *http.Request, resp *http.Response) 
 	return errors.Errorf("request for url: %s failed status: %s", req.URL.String(), resp.Status)
 }
 
+// SuccessOrRedirectOrUnauthorizedResponseValidator also allows 401
+func SuccessOrRedirectOrUnauthorizedResponseValidator(req *http.Request, resp *http.Response) error {
+
+	validatorResponse := SuccessOrRedirectResponseValidator(req, resp)
+
+	if validatorResponse == nil || resp.StatusCode == 401 {
+		return nil
+	}
+
+	return validatorResponse
+}
+
 func (hc *HTTPClient) logHTTPRequest(req *http.Request) {
 
 	if dump.ContentEnable() {
