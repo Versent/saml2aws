@@ -977,7 +977,7 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 
 			defer res.Body.Close()
 
-			body, err = ioutil.ReadAll(res.Body)
+			body, err := ioutil.ReadAll(res.Body)
 			if err != nil {
 				return "", errors.Wrap(err, "error retrieving body from response")
 			}
@@ -1173,13 +1173,13 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 		duoForm.Add("sid", duoSID)
 		duoForm.Add("out_of_date", "false")
 
-		if duoMfaOption > 0 {
+		switch duoMfaOptions[duoMfaOption] {
+		case "Passcode":
+			duoForm.Add("passcode", token)
+		case "Duo Push":
 			duoForm.Add("device", "phone1")
-			duoForm.Add("factor", duoMfaOptions[duoMfaOption])
-			if duoMfaOptions[duoMfaOption] == "Passcode" {
-				duoForm.Add("passcode", token)
-			}
-		} else {
+			duoForm.Add("factor", "Duo Push")
+		case "U2F Key":
 			duoForm.Add("device", "u2f_token")
 			duoForm.Add("factor", "U2F Token")
 		}
