@@ -6,6 +6,7 @@ import (
 
 	"github.com/mitchellh/go-homedir"
 	"github.com/pkg/errors"
+	"github.com/versent/saml2aws/v2/pkg/prompter"
 	ini "gopkg.in/ini.v1"
 )
 
@@ -53,6 +54,7 @@ type IDPAccount struct {
 	TargetURL             string `ini:"target_url"`
 	DisableRememberDevice bool   `ini:"disable_remember_device"` // used by Okta
 	DisableSessions       bool   `ini:"disable_sessions"`        // used by Okta
+	Prompter              string `ini:"prompter"`
 }
 
 func (ia IDPAccount) String() string {
@@ -130,6 +132,10 @@ func (ia *IDPAccount) Validate() error {
 
 	if ia.Profile == "" {
 		return errors.New("Profile empty in idp account")
+	}
+
+	if err := prompter.ValidateAndSetPrompter(ia.Prompter); err != nil {
+		return err
 	}
 
 	return nil

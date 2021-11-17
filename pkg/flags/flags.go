@@ -32,6 +32,7 @@ type CommonFlags struct {
 	SAMLCacheFile         string
 	DisableRememberDevice bool
 	DisableSessions       bool
+	Prompter              string
 }
 
 // LoginExecFlags flags for the Login / Exec commands
@@ -113,5 +114,13 @@ func ApplyFlagOverrides(commonFlags *CommonFlags, account *cfg.IDPAccount) {
 	}
 	if commonFlags.DisableSessions {
 		account.DisableSessions = commonFlags.DisableSessions
+	}
+	if commonFlags.Prompter != "" {
+		account.Prompter = commonFlags.Prompter
+	}
+
+	// select the prompter
+	if commonFlags.Prompter != "" {
+		account.Prompter = commonFlags.Prompter
 	}
 }
