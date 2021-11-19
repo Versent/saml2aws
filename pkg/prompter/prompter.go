@@ -8,12 +8,6 @@ import (
 // ActivePrompter is by default the survey cli prompter
 var ActivePrompter Prompter = NewCli()
 
-var validPromptersRegex []string = []string{
-	"default",
-	"survey",
-	"pinentry(-.*)?",
-}
-
 // Prompter handles prompting user for input
 type Prompter interface {
 	RequestSecurityCode(string) string
