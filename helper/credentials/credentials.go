@@ -8,6 +8,9 @@ var (
 	// CurrentHelper the currently configured credentials helper
 	CurrentHelper Helper = &defaultHelper{}
 
+	// CustomInit is a flag to avoid re-initializing a custom initialized keyring
+	CustomInit bool = false
+
 	// ErrCredentialsNotFound returned when the credential can't be located in the native store.
 	ErrCredentialsNotFound = errors.New("credentials not found in native keychain")
 )

@@ -25,6 +25,7 @@ type CommonFlags struct {
 	Profile               string
 	Subdomain             string
 	ResourceID            string
+	LinuxKeychain         string
 	DisableKeychain       bool
 	Region                string
 	CredentialsFile       string

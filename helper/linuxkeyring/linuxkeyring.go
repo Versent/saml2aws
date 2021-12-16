@@ -14,13 +14,30 @@ type KeyringHelper struct {
 	keyring keyring.Keyring
 }
 
-func NewKeyringHelper() (*KeyringHelper, error) {
-	kr, err := keyring.Open(keyring.Config{
-		AllowedBackends: []keyring.BackendType{
+func NewKeyringHelper(linuxKeyringName string) (*KeyringHelper, error) {
+	// enable debug logging from 99designs/keyring when we have debug logging enabled
+	logLevel := logrus.GetLevel()
+	keyring.Debug = (logLevel == logrus.DebugLevel || logLevel == logrus.TraceLevel)
+
+	var backends []keyring.BackendType
+
+	switch linuxKeyringName {
+	case "kwallet":
+		backends = []keyring.BackendType{keyring.KWalletBackend}
+	case "pass":
+		backends = []keyring.BackendType{keyring.PassBackend}
+	case "secret-service":
+		backends = []keyring.BackendType{keyring.SecretServiceBackend}
+	default:
+		backends = []keyring.BackendType{
 			keyring.KWalletBackend,
 			keyring.SecretServiceBackend,
 			keyring.PassBackend,
-		},
+		}
+	}
+
+	kr, err := keyring.Open(keyring.Config{
+		AllowedBackends:         backends,
 		LibSecretCollectionName: "login",
 		PassPrefix:              "saml2aws",
 	})
