@@ -175,6 +175,10 @@ func (jc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		}
 	}
 
+	if res == nil {
+		return samlAssertion, fmt.Errorf("mfa timed out or denied")
+	}
+
 	// Check if our auth was successful
 	if res.StatusCode == 200 {
 		// Grab the body from the response that has the redirect in it.
