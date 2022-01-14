@@ -1,15 +1,13 @@
 package credentials
 
 import (
-	"path"
-
 	"github.com/versent/saml2aws/v2/pkg/creds"
 )
 
 // LookupCredentials lookup an existing set of credentials and validate it.
-func LookupCredentials(loginDetails *creds.LoginDetails, provider string) error {
+func LookupCredentials(loginDetails *creds.LoginDetails) error {
 
-	username, password, err := CurrentHelper.Get(loginDetails.URL)
+	username, password, err := CurrentHelper.Get(loginDetails.IdpName)
 	if err != nil {
 		return err
 	}
@@ -18,15 +16,17 @@ func LookupCredentials(loginDetails *creds.LoginDetails, provider string) error 
 	loginDetails.Password = password
 
 	// If the provider is Okta, check for existing Okta Session Cookie (sid)
-	if provider == "Okta" {
-		_, oktaSessionCookie, err := CurrentHelper.Get(loginDetails.URL + "/sessionCookie")
+	if loginDetails.IdpProvider == "Okta" {
+		// load up the Okta token from a different secret (idp name + Okta suffix)
+		_, oktaSessionCookie, err := CurrentHelper.Get(loginDetails.IdpName + OktaSessionCookieSuffix)
 		if err == nil {
 			loginDetails.OktaSessionCookie = oktaSessionCookie
 		}
 	}
 
-	if provider == "OneLogin" {
-		id, secret, err := CurrentHelper.Get(path.Join(loginDetails.URL, "/auth/oauth2/v2/token"))
+	if loginDetails.IdpProvider == "OneLogin" {
+		// load up the one login token from a different secret (idp name + one login suffix)
+		id, secret, err := CurrentHelper.Get(loginDetails.IdpName + OneLoginTokenSuffix)
 		if err != nil {
 			return err
 		}
@@ -37,9 +37,10 @@ func LookupCredentials(loginDetails *creds.LoginDetails, provider string) error 
 }
 
 // SaveCredentials save the user credentials.
-func SaveCredentials(url, username, password string) error {
+func SaveCredentials(idpName, url, username, password string) error {
 
 	creds := &Credentials{
+		IdpName:   idpName,
 		ServerURL: url,
 		Username:  username,
 		Secret:    password,

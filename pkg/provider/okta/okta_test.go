@@ -209,6 +209,7 @@ func setupTestClient(t *testing.T, ts *httptest.Server, mfa string) (*Client, *c
 
 func TestSetDeviceTokenCookie(t *testing.T) {
 	idpAccount := cfg.NewIDPAccount()
+	idpAccount.Name = "myOktaProvider"
 	idpAccount.URL = "https://idp.example.com/abcd"
 	idpAccount.Username = "user@example.com"
 

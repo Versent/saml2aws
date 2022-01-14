@@ -6,7 +6,7 @@ import (
 	"path"
 
 	"github.com/pkg/errors"
-	"github.com/versent/saml2aws/v2"
+	saml2aws "github.com/versent/saml2aws/v2"
 	"github.com/versent/saml2aws/v2/helper/credentials"
 	"github.com/versent/saml2aws/v2/pkg/cfg"
 	"github.com/versent/saml2aws/v2/pkg/flags"
@@ -68,14 +68,14 @@ func storeCredentials(configFlags *flags.CommonFlags, account *cfg.IDPAccount) e
 		return nil
 	}
 	if configFlags.Password != "" {
-		if err := credentials.SaveCredentials(account.URL, account.Username, configFlags.Password); err != nil {
+		if err := credentials.SaveCredentials(account.Name, account.URL, account.Username, configFlags.Password); err != nil {
 			return errors.Wrap(err, "error storing password in keychain")
 		}
 	} else {
 		password := prompter.Password("Password")
 		if password != "" {
 			if confirmPassword := prompter.Password("Confirm"); confirmPassword == password {
-				if err := credentials.SaveCredentials(account.URL, account.Username, password); err != nil {
+				if err := credentials.SaveCredentials(account.Name, account.URL, account.Username, password); err != nil {
 					return errors.Wrap(err, "error storing password in keychain")
 				}
 			} else {
@@ -91,7 +91,8 @@ func storeCredentials(configFlags *flags.CommonFlags, account *cfg.IDPAccount) e
 			log.Println("OneLogin provider requires --client-id and --client-secret flags to be set.")
 			os.Exit(1)
 		}
-		if err := credentials.SaveCredentials(path.Join(account.URL, OneLoginOAuthPath), configFlags.ClientID, configFlags.ClientSecret); err != nil {
+		// we store the OneLogin token in a different secret (idpName + the one login suffix)
+		if err := credentials.SaveCredentials(account.Name+credentials.OneLoginTokenSuffix, path.Join(account.URL, OneLoginOAuthPath), configFlags.ClientID, configFlags.ClientSecret); err != nil {
 			return errors.Wrap(err, "error storing client_id and client_secret in keychain")
 		}
 	}

@@ -8,7 +8,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"github.com/versent/saml2aws/v2"
+	saml2aws "github.com/versent/saml2aws/v2"
 	"github.com/versent/saml2aws/v2/helper/credentials"
 	"github.com/versent/saml2aws/v2/pkg/flags"
 	"github.com/versent/saml2aws/v2/pkg/samlcache"
@@ -83,7 +83,7 @@ func ListRoles(loginFlags *flags.LoginExecFlags) error {
 	}
 
 	if !loginFlags.CommonFlags.DisableKeychain {
-		err = credentials.SaveCredentials(loginDetails.URL, loginDetails.Username, loginDetails.Password)
+		err = credentials.SaveCredentials(loginDetails.IdpName, loginDetails.URL, loginDetails.Username, loginDetails.Password)
 		if err != nil {
 			return errors.Wrap(err, "error storing password in keychain")
 		}

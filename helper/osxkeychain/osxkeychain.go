@@ -19,14 +19,15 @@ type Osxkeychain struct{}
 
 // Add adds new credentials to the keychain.
 func (h Osxkeychain) Add(creds *credentials.Credentials) error {
-	err := h.Delete(creds.ServerURL)
+	err := h.Delete(creds.IdpName)
 	if err != nil {
 		logger.WithError(err).Debug("delete of existing keychain entry failed")
 	}
 
 	item := keychain.NewItem()
 	item.SetSecClass(keychain.SecClassInternetPassword)
-	item.SetLabel(credentials.CredsLabel)
+	item.SetLabel(credentials.GetKeyFromAccount(creds.IdpName))
+	item.SetString("Purpose", credentials.CredsLabel)
 	item.SetAccount(creds.Username)
 	item.SetData([]byte(creds.Secret))
 	err = splitServer3(creds.ServerURL, item)
@@ -44,36 +45,24 @@ func (h Osxkeychain) Add(creds *credentials.Credentials) error {
 }
 
 // Delete removes credentials from the keychain.
-func (h Osxkeychain) Delete(serverURL string) error {
+func (h Osxkeychain) Delete(idpName string) error {
 
 	item := keychain.NewItem()
 	item.SetSecClass(keychain.SecClassInternetPassword)
-	err := splitServer3(serverURL, item)
-	if err != nil {
-		return err
-	}
-
-	err = keychain.DeleteItem(item)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	item.SetLabel(credentials.GetKeyFromAccount(idpName))
+	return keychain.DeleteItem(item)
 }
 
 // Get returns the username and secret to use for a given registry server URL.
-func (h Osxkeychain) Get(serverURL string) (string, string, error) {
+func (h Osxkeychain) Get(idpName string) (string, string, error) {
 
-	logger.WithField("serverURL", serverURL).Debug("Get credentials")
+	logger.WithField("Credential Key", idpName).Debug("Get credentials")
 
 	query := keychain.NewItem()
 	query.SetSecClass(keychain.SecClassInternetPassword)
 
-	err := splitServer3(serverURL, query)
-	if err != nil {
-		return "", "", err
-	}
-
+	// only search on the idp name
+	query.SetLabel(credentials.GetKeyFromAccount(idpName))
 	query.SetMatchLimit(keychain.MatchLimitOne)
 	query.SetReturnAttributes(true)
 	query.SetReturnData(true)

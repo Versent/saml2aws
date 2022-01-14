@@ -34,11 +34,13 @@ import (
 
 func TestOSXKeychainHelper(t *testing.T) {
 	creds := &credentials.Credentials{
+		IdpName:   "creds_idpName",
 		ServerURL: "https://foobar.docker.io:2376/v1",
 		Username:  "foobar",
 		Secret:    "foobarbaz",
 	}
 	creds1 := &credentials.Credentials{
+		IdpName:   "creds1_idpName",
 		ServerURL: "https://foobar.docker.io:2376/v2",
 		Username:  "foobarbaz",
 		Secret:    "foobar",
@@ -48,7 +50,7 @@ func TestOSXKeychainHelper(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	username, secret, err := helper.Get(creds.ServerURL)
+	username, secret, err := helper.Get(creds.IdpName)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -65,10 +67,10 @@ func TestOSXKeychainHelper(t *testing.T) {
 	require.Nil(t, err)
 
 	defer func() {
-		_ = helper.Delete(creds1.ServerURL)
+		_ = helper.Delete(creds1.IdpName)
 	}()
 
-	if err := helper.Delete(creds.ServerURL); err != nil {
+	if err := helper.Delete(creds.IdpName); err != nil {
 		t.Fatal(err)
 	}
 }

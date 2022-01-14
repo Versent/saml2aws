@@ -14,7 +14,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/sts"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"github.com/versent/saml2aws/v2"
+	saml2aws "github.com/versent/saml2aws/v2"
 	"github.com/versent/saml2aws/v2/helper/credentials"
 	"github.com/versent/saml2aws/v2/pkg/awsconfig"
 	"github.com/versent/saml2aws/v2/pkg/cfg"
@@ -122,7 +122,7 @@ func Login(loginFlags *flags.LoginExecFlags) error {
 	}
 
 	if !loginFlags.CommonFlags.DisableKeychain {
-		err = credentials.SaveCredentials(loginDetails.URL, loginDetails.Username, loginDetails.Password)
+		err = credentials.SaveCredentials(loginDetails.IdpName, loginDetails.URL, loginDetails.Username, loginDetails.Password)
 		if err != nil {
 			return errors.Wrap(err, "Error storing password in keychain.")
 		}
@@ -174,15 +174,20 @@ func buildIdpAccount(loginFlags *flags.LoginExecFlags) (*cfg.IDPAccount, error) 
 
 func resolveLoginDetails(account *cfg.IDPAccount, loginFlags *flags.LoginExecFlags) (*creds.LoginDetails, error) {
 
-	// log.Printf("loginFlags %+v", loginFlags)
-
-	loginDetails := &creds.LoginDetails{URL: account.URL, Username: account.Username, MFAToken: loginFlags.CommonFlags.MFAToken, DuoMFAOption: loginFlags.DuoMFAOption}
+	loginDetails := &creds.LoginDetails{
+		URL:          account.URL,
+		Username:     account.Username,
+		MFAToken:     loginFlags.CommonFlags.MFAToken,
+		DuoMFAOption: loginFlags.DuoMFAOption,
+		IdpName:      account.Name,
+		IdpProvider:  account.Provider,
+	}
 
 	log.Printf("Using IdP Account %s to access %s %s", loginFlags.CommonFlags.IdpAccount, account.Provider, account.URL)
 
 	var err error
 	if !loginFlags.CommonFlags.DisableKeychain {
-		err = credentials.LookupCredentials(loginDetails, account.Provider)
+		err = credentials.LookupCredentials(loginDetails)
 		if err != nil {
 			if !credentials.IsErrCredentialsNotFound(err) {
 				return nil, errors.Wrap(err, "Error loading saved password.")

@@ -52,19 +52,19 @@ func (kr *KeyringHelper) Add(creds *credentials.Credentials) error {
 	}
 
 	return kr.keyring.Set(keyring.Item{
-		Key:                         creds.ServerURL,
+		Key:                         credentials.GetKeyFromAccount(creds.IdpName),
 		Label:                       credentials.CredsLabel,
 		Data:                        encoded,
 		KeychainNotTrustApplication: false,
 	})
 }
 
-func (kr *KeyringHelper) Delete(serverURL string) error {
-	return kr.keyring.Remove(serverURL)
+func (kr *KeyringHelper) Delete(idpName string) error {
+	return kr.keyring.Remove(credentials.GetKeyFromAccount(idpName))
 }
 
-func (kr *KeyringHelper) Get(serverURL string) (string, string, error) {
-	item, err := kr.keyring.Get(serverURL)
+func (kr *KeyringHelper) Get(idpName string) (string, string, error) {
+	item, err := kr.keyring.Get(credentials.GetKeyFromAccount(idpName))
 	if err != nil {
 		logger.WithField("err", err).Error("keychain Get returned error")
 		return "", "", credentials.ErrCredentialsNotFound
