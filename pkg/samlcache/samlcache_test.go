@@ -10,10 +10,6 @@ import (
 	"time"
 )
 
-const (
-	AssertionCacheValidityTemplateFileName = "testdata/assertion_validity_template.gotmpl"
-)
-
 func TestLocateCacheDefault(t *testing.T) {
 
 	cache_location, err := locateCacheFile("")
