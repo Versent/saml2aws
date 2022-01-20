@@ -52,9 +52,12 @@ func Login(loginFlags *flags.LoginExecFlags) error {
 		return nil
 	}
 
-	expired, expireTime := sharedCreds.Expired()
-	if !expired && !loginFlags.Force {
-		logger.Debug("Credentials are not expired. It will expire at ", expireTime, ". Skipping.")
+	if !sharedCreds.Expired() && !loginFlags.Force {
+		logger.Debug("Credentials are not expired. Skipping.")
+		expiredAt := sharedCreds.ExpiredAt()
+		if expiredAt != nil {
+			logger.Debug("Credentials will expire at ", expiredAt)
+		}
 		previousCreds, err := sharedCreds.Load()
 		if err != nil {
 			log.Println("Unable to load cached credentials.")

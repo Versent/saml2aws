@@ -113,13 +113,22 @@ func (p *CredentialsProvider) Load() (*AWSCredentials, error) {
 }
 
 // Expired checks if the current credentials are expired
-func (p *CredentialsProvider) Expired() (bool, *time.Time) {
+func (p *CredentialsProvider) Expired() bool {
 	creds, err := p.Load()
 	if err != nil {
-		return true, nil
+		return true
 	}
 
-	return time.Now().After(creds.Expires), &creds.Expires
+	return time.Now().After(creds.Expires)
+}
+
+func (p *CredentialsProvider) ExpiredAt() *time.Time {
+	creds, err := p.Load()
+	if err != nil {
+		return nil
+	}
+
+	return &creds.Expires
 }
 
 // ensureConfigExists verify that the config file exists
