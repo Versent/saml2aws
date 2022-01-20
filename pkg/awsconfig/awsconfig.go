@@ -122,15 +122,6 @@ func (p *CredentialsProvider) Expired() bool {
 	return time.Now().After(creds.Expires)
 }
 
-func (p *CredentialsProvider) ExpiredAt() *time.Time {
-	creds, err := p.Load()
-	if err != nil {
-		return nil
-	}
-
-	return &creds.Expires
-}
-
 // ensureConfigExists verify that the config file exists
 func (p *CredentialsProvider) ensureConfigExists() error {
 	filename, err := p.resolveFilename()
