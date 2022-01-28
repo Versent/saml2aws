@@ -2,6 +2,7 @@ package linuxkeyring
 
 import (
 	"encoding/json"
+	"os"
 
 	"github.com/99designs/keyring"
 	"github.com/sirupsen/logrus"
@@ -23,6 +24,7 @@ func NewKeyringHelper() (*KeyringHelper, error) {
 		},
 		LibSecretCollectionName: "login",
 		PassPrefix:              "saml2aws",
+		PassDir:                 os.Getenv("PASSWORD_STORE_DIR"),
 	})
 
 	if err != nil {
