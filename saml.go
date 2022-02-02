@@ -3,6 +3,7 @@ package saml2aws
 import (
 	"fmt"
 	"strconv"
+	"time"
 
 	"github.com/beevik/etree"
 )
@@ -103,6 +104,33 @@ func ExtractDestinationURL(data []byte) (string, error) {
 	}
 
 	return destination, nil
+}
+
+// ExtractMFATokenExpiryTime returns the duration of MFA token
+// This is done by looking at the SubjectConfirmationData's NotOnOrAfter attribute
+func ExtractMFATokenExpiryTime(data []byte) (time.Time, error) {
+	var t time.Time
+
+	doc := etree.NewDocument()
+	if err := doc.ReadFromBytes(data); err != nil {
+		return t, err
+	}
+
+	rootElement := doc.Root()
+	if rootElement == nil {
+		return t, ErrMissingElement{Tag: responseTag}
+	}
+
+	subjectConfirmationDataElement := doc.FindElement(".//SubjectConfirmationData")
+	if subjectConfirmationDataElement == nil {
+		return t, ErrMissingElement{Tag: responseTag}
+	}
+
+	// The field NotOnOrAfter holds the timestamp past which the token is invalid
+	ValidUntilString := subjectConfirmationDataElement.SelectAttrValue("NotOnOrAfter", "")
+
+	// return time.Parse("", ValidUntilString)
+	return time.Parse(time.RFC3339, ValidUntilString)
 }
 
 // ExtractAwsRoles given an assertion document extract the aws roles

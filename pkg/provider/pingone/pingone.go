@@ -30,18 +30,6 @@ type Client struct {
 	idpAccount *cfg.IDPAccount
 }
 
-// SuccessOrRedirectOrUnauthorizedResponseValidator also allows 401
-func SuccessOrRedirectOrUnauthorizedResponseValidator(req *http.Request, resp *http.Response) error {
-
-	validatorResponse := provider.SuccessOrRedirectResponseValidator(req, resp)
-
-	if validatorResponse == nil || resp.StatusCode == 401 {
-		return nil
-	}
-
-	return validatorResponse
-}
-
 // New create a new PingOne client
 func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 
@@ -54,7 +42,7 @@ func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 
 	// assign a response validator to ensure all responses are either success or a redirect
 	// this is to avoid have explicit checks for every single response
-	client.CheckResponseStatus = SuccessOrRedirectOrUnauthorizedResponseValidator
+	client.CheckResponseStatus = provider.SuccessOrRedirectOrUnauthorizedResponseValidator
 
 	return &Client{
 		client:     client,
@@ -87,7 +75,7 @@ func (ac *Client) follow(ctx context.Context, req *http.Request) (string, error)
 
 	var handler func(context.Context, *goquery.Document, *http.Response) (context.Context, *http.Request, error)
 
-	if docIsFormRedirectToAWS(doc) {
+	if docIsFormRedirectToTarget(doc, ac.idpAccount.TargetURL) {
 		logger.WithField("type", "saml-response-to-aws").Debug("doc detect")
 		if samlResponse, ok := extractSAMLResponse(doc); ok {
 			decodedSamlResponse, err := base64.StdEncoding.DecodeString(samlResponse)
@@ -318,8 +306,12 @@ func docIsFormResume(doc *goquery.Document) bool {
 	return doc.Find("input[name=\"RelayState\"]").Size() == 1 || doc.Find("input[name=\"Resume\"]").Size() == 1
 }
 
-func docIsFormRedirectToAWS(doc *goquery.Document) bool {
-	return doc.Find("form[action=\"https://signin.aws.amazon.com/saml\"]").Size() == 1
+func docIsFormRedirectToTarget(doc *goquery.Document, target string) bool {
+	if target == "" {
+		target = "https://signin.aws.amazon.com/saml"
+	}
+	urlForm := fmt.Sprintf("form[action=\"%s\"]", target)
+	return doc.Find(urlForm).Size() == 1
 }
 
 func docIsFormSelectDevice(doc *goquery.Document) bool {

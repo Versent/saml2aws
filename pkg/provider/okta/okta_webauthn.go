@@ -3,6 +3,8 @@ package okta
 import (
 	"errors"
 	"fmt"
+	"log"
+	"strings"
 	"time"
 
 	"github.com/marshallbrekka/go-u2fhost"
@@ -111,18 +113,22 @@ func (d *FidoClient) ChallengeU2F() (*SignedAssertion, error) {
 					SignatureData:     response.SignatureData,
 					AuthenticatorData: response.AuthenticatorData,
 				}
-				fmt.Printf("  ==> Touch accepted. Proceeding with authentication\n")
+				log.Println("  ==> Touch accepted. Proceeding with authentication")
 				return responsePayload, nil
 			}
 
 			switch err.(type) {
 			case *u2fhost.TestOfUserPresenceRequiredError:
 				if !prompted {
-					fmt.Printf("\nTouch the flashing U2F device to authenticate...\n")
+					log.Println("Touch the flashing U2F device to authenticate...")
 					prompted = true
 				}
 			default:
-				return responsePayload, err
+				errString := fmt.Sprintf("%s", err)
+				if !strings.Contains(errString, "U2FHIDError") &&
+					!strings.Contains(errString, "hidapi: hid_error is not implemented yet") {
+					return responsePayload, err
+				}
 			}
 		}
 	}

@@ -28,7 +28,7 @@ func TestNewConfigManagerLoad(t *testing.T) {
 	require.Nil(t, err)
 	require.Equal(t, &IDPAccount{
 		Name:                 "test123",
-		URL:                  "https://id.whatever.com",
+		URL:                  "https://id.whatever.com/#/hash",
 		Username:             "abc@whatever.com",
 		Provider:             "keycloak",
 		MFA:                  "sms",

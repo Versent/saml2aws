@@ -1,0 +1,152 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" class="login-pf">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta name="robots" content="noindex, nofollow">
+
+            <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <title>Sign in to Keycloak</title>
+    <link rel="icon" href="/auth/resources/22oyv/login/keycloak/img/favicon.ico" />
+            <link href="/auth/resources/22oyv/common/keycloak/web_modules/@patternfly/react-core/dist/styles/base.css" rel="stylesheet" />
+            <link href="/auth/resources/22oyv/common/keycloak/web_modules/@patternfly/react-core/dist/styles/app.css" rel="stylesheet" />
+            <link href="/auth/resources/22oyv/common/keycloak/node_modules/patternfly/dist/css/patternfly.min.css" rel="stylesheet" />
+            <link href="/auth/resources/22oyv/common/keycloak/node_modules/patternfly/dist/css/patternfly-additions.min.css" rel="stylesheet" />
+            <link href="/auth/resources/22oyv/common/keycloak/lib/pficon/pficon.css" rel="stylesheet" />
+            <link href="/auth/resources/22oyv/login/keycloak/css/login.css" rel="stylesheet" />
+            <link href="/auth/resources/22oyv/login/keycloak/css/tile.css" rel="stylesheet" />
+</head>
+
+<body class="">
+<div class="login-pf-page">
+    <div id="kc-header" class="login-pf-page-header">
+        <div id="kc-header-wrapper"
+             class="">Keycloak</div>
+    </div>
+    <div class="card-pf">
+        <header class="login-pf-header">
+                <div id="kc-username" class="form-group">
+                    <label id="kc-attempted-username">gosseng</label>
+                    <a id="reset-login" href="/auth/realms/users/login-actions/restart?client_id=urn%3Aamazon%3Awebservices&amp;tab_id=_MjbKy0M1eA">
+                        <div class="kc-login-tooltip">
+                            <i class="pficon pficon-arrow fa"></i>
+                            <span class="kc-tooltip-text">Restart login</span>
+                        </div>
+                    </a>
+                </div>
+      </header>
+      <div id="kc-content">
+        <div id="kc-content-wrapper">
+
+
+
+    <form id="webauth" class="form-horizontal" action="http://localhost:18080/auth/realms/users/login-actions/authenticate?session_code=cAvKCM1_ncyromQzW3CdxxpRwCh3cVKhFztJ-i5WUjY&amp;execution=1d68fdff-aa94-4e0e-9fd5-852e8002ae92&amp;client_id=urn%3Aamazon%3Awebservices&amp;tab_id=_MjbKy0M1eA" method="post">
+        <div class="form-group">
+            <input type="hidden" id="clientDataJSON" name="clientDataJSON"/>
+            <input type="hidden" id="authenticatorData" name="authenticatorData"/>
+            <input type="hidden" id="signature" name="signature"/>
+            <input type="hidden" id="credentialId" name="credentialId"/>
+            <input type="hidden" id="userHandle" name="userHandle"/>
+            <input type="hidden" id="error" name="error"/>
+        </div>
+    </form>
+
+        <form id="authn_select" class="form-horizontal">
+                <input type="hidden" name="authn_use_chk" value="pcFg5E6QIk0ZFfJxmf8cfUcb3hirl5Knl8aJ-mjC6MRjVu1dOiBBs51wtjS_O1eP2uiJfGiSL3D8R2cBLnoZyw"/>
+                <input type="hidden" name="authn_use_chk" value="pcFg5E6QIk0ZFfJxmf8efUcb3hirl5Knl8aJ-mjC6MRjVu1dOaBBs51wtjS_O1eP2uiJfGiSL3D8R2cBLnoZyw"/>
+        </form>
+
+    <script type="text/javascript" src="/auth/resources/22oyv/common/keycloak/node_modules/jquery/dist/jquery.min.js"></script>
+    <script type="text/javascript" src="/auth/resources/22oyv/login/keycloak/js/base64url.js"></script>
+    <script type="text/javascript">
+
+        window.onload = () => {
+            let isUserIdentified = true;
+            if (!isUserIdentified) {
+                doAuthenticate([]);
+                return;
+            }
+            checkAllowCredentials();
+        };
+
+        function checkAllowCredentials() {
+            let allowCredentials = [];
+            let authn_use = document.forms['authn_select'].authn_use_chk;
+
+            if (authn_use !== undefined) {
+                if (authn_use.length === undefined) {
+                    allowCredentials.push({
+                        id: base64url.decode(authn_use.value, {loose: true}),
+                        type: 'public-key',
+                    });
+                } else {
+                    for (let i = 0; i < authn_use.length; i++) {
+                        allowCredentials.push({
+                            id: base64url.decode(authn_use[i].value, {loose: true}),
+                            type: 'public-key',
+                        });
+                    }
+                }
+            }
+            doAuthenticate(allowCredentials);
+        }
+
+
+    function doAuthenticate(allowCredentials) {
+
+        // Check if WebAuthn is supported by this browser
+        if (!window.PublicKeyCredential) {
+            $("#error").val("WebAuthn is not supported by this browser. Try another one or contact your administrator.");
+            $("#webauth").submit();
+            return;
+        }
+
+        let challenge = "J3NKWZPkSmqXuoKLtzzshg";
+        let userVerification = "discouraged";
+        let rpId = "localhost";
+        let publicKey = {
+            rpId : rpId,
+            challenge: base64url.decode(challenge, { loose: true })
+        };
+
+        if (allowCredentials.length) {
+            publicKey.allowCredentials = allowCredentials;
+        }
+
+        if (userVerification !== 'not specified') publicKey.userVerification = userVerification;
+
+        navigator.credentials.get({publicKey})
+            .then((result) => {
+                window.result = result;
+
+                let clientDataJSON = result.response.clientDataJSON;
+                let authenticatorData = result.response.authenticatorData;
+                let signature = result.response.signature;
+
+                $("#clientDataJSON").val(base64url.encode(new Uint8Array(clientDataJSON), { pad: false }));
+                $("#authenticatorData").val(base64url.encode(new Uint8Array(authenticatorData), { pad: false }));
+                $("#signature").val(base64url.encode(new Uint8Array(signature), { pad: false }));
+                $("#credentialId").val(result.id);
+                if(result.response.userHandle) {
+                    $("#userHandle").val(base64url.encode(new Uint8Array(result.response.userHandle), { pad: false }));
+                }
+                $("#webauth").submit();
+            })
+            .catch((err) => {
+                $("#error").val(err);
+                $("#webauth").submit();
+            })
+        ;
+    }
+
+    </script>
+
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+</body>
+</html>

@@ -1,6 +1,6 @@
 # saml2aws [![GitHub Actions status](https://github.com/Versent/saml2aws/workflows/Go/badge.svg?branch=master)](https://github.com/Versent/saml2aws/actions?query=workflow%3AGo) [![Build status - Windows](https://ci.appveyor.com/api/projects/status/ptpi18kci16o4i82/branch/master?svg=true)](https://ci.appveyor.com/project/davidobrien1985/saml2aws/branch/master)
 
-CLI tool which enables you to login and retrieve [AWS](https://aws.amazon.com/) temporary credentials using 
+CLI tool which enables you to login and retrieve [AWS](https://aws.amazon.com/) temporary credentials using
 with [ADFS](https://msdn.microsoft.com/en-us/library/bb897402.aspx) or [PingFederate](https://www.pingidentity.com/en/products/pingfederate.html) Identity Providers.
 
 This is based on python code from [
@@ -52,6 +52,8 @@ The process goes something like this:
   * [Akamai](pkg/provider/akamai/README.md)
   * OneLogin
   * NetIQ
+  * Browser, this uses [playwright-go](github.com/mxschmitt/playwright-go) to run a sandbox chromium window.
+  * [Auth0](pkg/provider/auth0/README.md) NOTE: Currently, MFA not supported
 * AWS SAML Provider configured
 
 ## Caveats
@@ -86,14 +88,18 @@ saml2aws --version
 While brew is available for Linux you can also run the following without using a package manager.
 
 ```
-$ CURRENT_VERSION=$(curl -Ls https://api.github.com/repos/Versent/saml2aws/releases/latest | grep 'tag_name' | cut -d'v' -f2 | cut -d'"' -f1)
-$ wget -c https://github.com/Versent/saml2aws/releases/download/v${CURRENT_VERSION}/saml2aws_${CURRENT_VERSION}_linux_amd64.tar.gz -O - | tar -xzv -C ~/.local/bin
-$ chmod u+x ~/.local/bin/saml2aws
-$ saml2aws --version
+CURRENT_VERSION=$(curl -Ls https://api.github.com/repos/Versent/saml2aws/releases/latest | grep 'tag_name' | cut -d'v' -f2 | cut -d'"' -f1)
+wget -c https://github.com/Versent/saml2aws/releases/download/v${CURRENT_VERSION}/saml2aws_${CURRENT_VERSION}_linux_amd64.tar.gz -O - | tar -xzv -C ~/.local/bin
+chmod u+x ~/.local/bin/saml2aws
+hash -r
+saml2aws --version
 ```
-**Note**: You will need to logout of your current user session or force a bash reload for `saml2aws` to be useable after following the above steps.
 
-e.g. `exec -l bash`
+#### [Arch Linux](https://archlinux.org/) and its derivatives
+
+The `saml2aws` tool is available in AUR ([saml2aws-bin](https://aur.archlinux.org/packages/saml2aws-bin/)), so you can install it using an available AUR helper:
+
+* Manjaro: `$ pamac build saml2aws-bin`
 
 #### [Void Linux](https://voidlinux.org/)
 
@@ -156,7 +162,7 @@ Flags:
       --skip-prompt            Skip prompting for parameters during login.
       --session-duration=SESSION-DURATION
                                The duration of your AWS Session. (env: SAML2AWS_SESSION_DURATION)
-      --disable-keychain       Do not use keychain at all.
+      --disable-keychain       Do not use keychain at all. (env: SAML2AWS_DISABLE_KEYCHAIN)
   -r, --region=REGION          AWS region to use for API requests, e.g. us-east-1, us-gov-west-1, cn-north-1 (env: SAML2AWS_REGION)
 
 Commands:
@@ -177,6 +183,8 @@ Commands:
         --config=CONFIG            Path/filename of saml2aws config file (env: SAML2AWS_CONFIGFILE)
         --cache-saml               Caches the SAML response (env: SAML2AWS_CACHE_SAML)
         --cache-file=CACHE-FILE    The location of the SAML cache file (env: SAML2AWS_SAML_CACHE_FILE)
+        --disable-sessions         Do not use Okta sessions. Uses Okta sessions by default. (env: SAML2AWS_OKTA_DISABLE_SESSIONS)
+        --disable-remember-device  Do not remember Okta MFA device. Remembers MFA device by default. (env: SAML2AWS_OKTA_DISABLE_REMEMBER_DEVICE)
 
   login [<flags>]
     Login to a SAML 2.0 IDP and convert the SAML assertion to an STS token.
@@ -193,7 +201,8 @@ Commands:
                                  The file that will cache the credentials retrieved from AWS. When not specified, will use the default AWS credentials file location. (env: SAML2AWS_CREDENTIALS_FILE)
         --cache-saml             Caches the SAML response (env: SAML2AWS_CACHE_SAML)
         --cache-file=CACHE-FILE  The location of the SAML cache file (env: SAML2AWS_SAML_CACHE_FILE)
-
+        --disable-sessions         Do not use Okta sessions. Uses Okta sessions by default. (env: SAML2AWS_OKTA_DISABLE_SESSIONS)
+        --disable-remember-device  Do not remember Okta MFA device. Remembers MFA device by default. (env: SAML2AWS_OKTA_DISABLE_REMEMBER_DEVICE)
 
   exec [<flags>] [<command>...]
     Exec the supplied command with env vars from STS token.
@@ -486,7 +495,7 @@ saml2aws exec --exec-profile roleIn2ndAwsAccount aws sts get-caller-identity
 {
     "UserId": "YOOYOOYOOYOOYOOA:/myAccountName",
     "Account": "123456789012",
-    "Arn": "arn:aws:sts::123456789012:assumed-role/myAccountName" 
+    "Arn": "arn:aws:sts::123456789012:assumed-role/myAccountName"
 }
 ```
 
@@ -521,7 +530,7 @@ saml2aws exec --exec-profile roleIn2ndAwsAccount $SHELL  # Get a new shell with 
 
 # Note that we do not need a --profile flag because our environment variables were set up for this access when we obtained a new shell with the --exec-profile flag
 
-aws s3 ls  
+aws s3 ls
 2019-07-30 01:32:59 264998d7606497040-sampleBucket
 
 aws iam list-groups
@@ -543,6 +552,7 @@ Use following parameters in `~/.saml2aws` file:
 - `http_attempts_count` - configures the number of attempts to send http requests in order to authorise with saml provider. Defaults to 1
 - `http_retry_delay` - configures the duration (in seconds) of timeout between attempts to send http requests to saml provider. Defaults to 1
 - `region` - configures which region endpoints to use, See [Audience](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_providers_create_saml_assertions.html#saml_audience-restriction) and [partition](https://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html#arns-syntax)
+- `target_url` - look for a target endpoint other than signin.aws.amazon.com/saml. The Okta, Pingfed, Pingone and Shibboleth ECP providers need to either explicitly send or look for this URL in a response in order to obtain or identify an appropriate authentication response. This can be overridden here if you wish to authenticate for something other than AWS.
 
 Example: typical configuration with such parameters would look like follows:
 ```
@@ -669,6 +679,23 @@ You can use the flag `--cache-saml` in order to cache the SAML assertion at auth
 there is a file per saml2aws profile, the cache directory is called `saml2aws` and is located in your `.aws` directory in your user homedir.
 
 You can toggle `--cache-saml` during `login` or during `list-roles`, and you can set it once during `configure` and use it implicitly.
+
+# Okta Sessions
+
+This requires the use of the keychain (local credentials store). If you disabled the keychain using `--disable-keychain`, Okta sessions will also be disabled.
+
+Okta sessions are enabled by default. This will store the Okta session locally and save your device for MFA. This means that if the session has not yet expired, you will not be prompted for MFA.
+
+* To disable remembering the device, you can toggle `--disable-remember-device` during `login` or `configure` commands.
+* To disable using Okta sessions, you can toggle `--disable-sessions` during `login` or `configure` commands.
+  * This will also disable the Okta MFA remember device feature
+
+Use the `--force` flag during `login` command to prompt for AWS role selection.
+
+If Okta sessions are disabled via any of the methods mentioned above, the login process will default to the standard authentication process (without using sessions).
+
+Please note that your Okta session duration and MFA policies are governed by your Okta host organization.
+
 
 # License
 
