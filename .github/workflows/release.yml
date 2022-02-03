@@ -41,7 +41,7 @@ jobs:
         VER=${{ github.ref }}
         VERSION=${VER//v}
         echo "VERSION=$VERSION" >> $GITHUB_ENV
-        echo "ASSET=saml2aws_${VERSION}_windows_amd64.zip" >> $GITHUB_EVENT
+        echo "ASSET=saml2aws_${VERSION}_windows_amd64.zip" >> $GITHUB_ENV
 
     - name: Set up Go 1.x
       uses: actions/setup-go@v2
