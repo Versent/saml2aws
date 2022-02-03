@@ -47,7 +47,7 @@ jobs:
     steps:
     - name: Normalize tag values
       run: |
-        if [[ "${{ github.event_name }}" == "workflow_dispatch "]] ; then
+        if [[ "${{ github.event_name }}" == "workflow_dispatch" ]] ; then
             VER=${{ github.event.inputs.tag }}
         else
             VER=${GITHUB_REF/refs\/tags\//}
