@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: The tag to run against. If release exists, only the MSI builder runs.
+        description: The tag to run against. This trigger only runs the MSI builder.
         required: true
 
 jobs:
