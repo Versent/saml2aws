@@ -33,8 +33,8 @@ jobs:
     runs-on: ubuntu-latest
     # needs: [release]
     env:
-      INSTALLER: .github/win-msi
-      BIN: .github/win-msi/src/bin
+      INSTALLER: ${{ github.workspace }}/.github/win-msi
+      BIN: ${{ github.workspace }}/.github/win-msi/src/bin
       WIXIMG: dactiv/wix@sha256:17d232708589641f5632f9a1ff9463ad087b192cea7b8e6012d2b47ec6af5f6c
     steps:
     - name: Strip v from version tag
@@ -44,11 +44,6 @@ jobs:
         echo "VER_TAG=$VER" >> $GITHUB_ENV
         echo "VERSION=$VERSION" >> $GITHUB_ENV
         echo "ASSET=saml2aws_${VERSION}_windows_amd64.zip" >> $GITHUB_ENV
-
-    - name: Set up Go 1.x
-      uses: actions/setup-go@v2
-      with:
-        go-version: 1.17.x
 
     - name: Check out code
       uses: actions/checkout@v2
