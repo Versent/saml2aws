@@ -56,7 +56,7 @@ jobs:
       uses: robinraju/release-downloader@4bdb8ee081c9ee08a35320794dd461312ac9e4ad  # v1.3
       with:
         repository: ${{ github.repository }}
-        tag: ${{ env:VER }}
+        tag: ${{ env.VER }}
         fileName: ${{ env.ASSET }}
         out-file-path: ${{ env.BIN }}
 
