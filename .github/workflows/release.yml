@@ -45,10 +45,16 @@ jobs:
       BIN: ${{ github.workspace }}/.github/win-msi/src/bin
       WIXIMG: dactiv/wix@sha256:17d232708589641f5632f9a1ff9463ad087b192cea7b8e6012d2b47ec6af5f6c
     steps:
-    - name: Strip v from version tag
+    - name: Normalize tag values
       run: |
-        VER=${GITHUB_REF/refs\/tags\//}
+        if [[ "${{ github.event_name }}" == "workflow_dispatch "]] ; then
+            VER=${{ github.event.inputs.tag }}
+        else
+            VER=${GITHUB_REF/refs\/tags\//}
+        fi
+
         VERSION=${VER//v}
+
         echo "VER_TAG=$VER" >> $GITHUB_ENV
         echo "VERSION=$VERSION" >> $GITHUB_ENV
         echo "ASSET=saml2aws_${VERSION}_windows_amd64.zip" >> $GITHUB_ENV
@@ -79,4 +85,5 @@ jobs:
     - name: Upload the asset to the release
       uses: softprops/action-gh-release@1e07f4398721186383de40550babbdf2b84acfc5  # v0.1.14 / v1
       with:
+        tag_name: ${{ env.VER_TAG }}
         files: ${{ env.INSTALLER }}/out/*.msi
