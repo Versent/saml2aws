@@ -32,8 +32,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: [release]
     env:
-      INSTALLER: win-msi
-      BIN: win-msi/src/bin
+      INSTALLER: .github/win-msi
+      BIN: .github/win-msi/src/bin
       WIXIMG: dactiv/wix@sha256:17d232708589641f5632f9a1ff9463ad087b192cea7b8e6012d2b47ec6af5f6c
     steps:
     - name: Strip v from version tag
