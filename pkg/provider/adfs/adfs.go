@@ -60,6 +60,7 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 	var authSubmitURL string
 	var samlAssertion string
 	var instructions string
+	var validEntropyNumber string
 
 	awsURN := url.QueryEscape(ac.idpAccount.AmazonWebservicesURN)
 
@@ -123,12 +124,22 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 				updatePassthroughFormData(azureForm, s)
 			})
 			sel := doc.Find("p#instructions")
+
 			if sel.Index() != -1 {
 				if instructions != sel.Text() {
 					instructions = sel.Text()
 					log.Println(instructions)
 				}
 			}
+			sel = doc.Find("p#validEntropyNumber")
+
+			if sel.Index() != -1 {
+				if validEntropyNumber != sel.Text() {
+					validEntropyNumber = sel.Text()
+					log.Println("Number Match: ", validEntropyNumber)
+				}
+			}
+
 			time.Sleep(1 * time.Second)
 			doc, err = ac.submit(authSubmitURL, azureForm)
 			if err != nil {
