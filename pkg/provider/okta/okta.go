@@ -85,6 +85,12 @@ type mfaChallengeContext struct {
 	challengeResponseBody string
 }
 
+// mfaOption store the mfa position in response and mfa description
+type mfaOption struct {
+	position  int
+	mfaString string
+}
+
 // New creates a new Okta client
 func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 
@@ -336,13 +342,14 @@ func findMfaOption(mfa string, mfaOptions []string, startAtIdx int) int {
 	return 0
 }
 
-func findAllMatchingMFA(mfa string, mfaOptions []string) []string {
-	var matchingMfas []string
+func findAllMatchingMFA(mfa string, mfaOptions []string) []mfaOption {
+	var matchingMfas []mfaOption
 
-	for _, val := range mfaOptions {
-		if strings.HasPrefix(strings.ToUpper(val), mfa) {
-			matchingMfas = append(matchingMfas, val)
+	for i, val := range mfaOptions {
+		if strings.Contains(strings.ToUpper(val), mfa) {
+			matchingMfas = append(matchingMfas, mfaOption{position: i, mfaString: val})
 		}
+
 	}
 	return matchingMfas
 }
@@ -422,9 +429,14 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 	}
 
 	if strings.ToUpper(oc.mfa) != "AUTO" {
-		allMatchingMfaOptinos := findAllMatchingMFA(oc.mfa, profiles)
-		if len(allMatchingMfaOptinos) > 1 {
-			mfaOption = prompter.Choose("Select which MFA option to use", allMatchingMfaOptinos)
+		allMatchingMfaOptions := findAllMatchingMFA(oc.mfa, profiles)
+		if len(allMatchingMfaOptions) > 1 {
+			pickedOption := prompter.Choose("Select which MFA option to use", getMfaStringArr(allMatchingMfaOptions))
+			mfaOption = allMatchingMfaOptions[pickedOption].position
+		} else if len(allMatchingMfaOptions) == 1 {
+			mfaOption = allMatchingMfaOptions[0].position
+		} else {
+			return "", errors.New("No Matching MFA registered on OKTA. Here are your registered MFAs: " + fmt.Sprintf("%v\n", profiles))
 		}
 	} else if len(mfaOptions) > 1 {
 		mfaOption = prompter.Choose("Select which MFA option to use", mfaOptions)
@@ -789,6 +801,14 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 
 	// catch all
 	return "", errors.New("no mfa options provided")
+}
+
+func getMfaStringArr(options []mfaOption) []string {
+	var list []string
+	for _, option := range options {
+		list = append(list, option.mfaString)
+	}
+	return list
 }
 
 func fidoWebAuthn(oc *Client, oktaOrgHost string, challengeContext *mfaChallengeContext, mfaOption int, stateToken string, mfaOptions []string, resp string) (string, error) {

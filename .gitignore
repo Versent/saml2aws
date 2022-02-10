@@ -19,3 +19,5 @@ bin/
 
 # direnv
 .envrc
+
+saml2aws.iml
