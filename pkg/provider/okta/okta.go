@@ -85,8 +85,9 @@ type mfaChallengeContext struct {
 	challengeResponseBody string
 }
 
+// mfaOption store the mfa position in response and mfa description
 type mfaOption struct {
-	position int
+	position  int
 	mfaString string
 }
 
@@ -281,7 +282,7 @@ func parseMfaIdentifer(json string, arrayPosition int) (string, string) {
 	mfaProvider := gjson.Get(json, fmt.Sprintf("_embedded.factors.%d.provider", arrayPosition)).String()
 	factorType := strings.ToUpper(gjson.Get(json, fmt.Sprintf("_embedded.factors.%d.factorType", arrayPosition)).String())
 	profile := gjson.Get(json, fmt.Sprintf("_embedded.factors.%d.profile", arrayPosition)).String()
-	return fmt.Sprintf(  "%s %s", mfaProvider, factorType), fmt.Sprintf("%s %s -- %s", mfaProvider, factorType, profile)
+	return fmt.Sprintf("%s %s", mfaProvider, factorType), fmt.Sprintf("%s %s -- %s", mfaProvider, factorType, profile)
 }
 
 func (oc *Client) handleFormRedirect(ctx context.Context, doc *goquery.Document) (context.Context, *http.Request, error) {
