@@ -121,9 +121,7 @@ func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 
 type ctxKey string
 
-// Authenticate logs into Okta and returns a SAML response
-func (oc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error) {
-
+func (oc *Client) InitSession(loginDetails *creds.LoginDetails) (string, error) {
 	oktaURL, err := url.Parse(loginDetails.URL)
 	if err != nil {
 		return "", errors.Wrap(err, "error building oktaURL")
@@ -185,10 +183,31 @@ func (oc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		}
 	}
 
+	return oktaSessionToken, err
+}
+
+// Authenticate logs into Okta and returns a SAML response
+// Legacy method that should not be used anymore
+func (oc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error) {
+	oktaSessionToken, err := oc.InitSession(loginDetails)
+	if err != nil {
+		return "", errors.Wrap(err, "error authenticating with okta")
+	}
+
+	return oc.AuthenticateWithService(oktaSessionToken, loginDetails)
+}
+
+func (oc *Client) AuthenticateWithService(oktaSessionToken string, loginDetails *creds.LoginDetails) (string, error) {
+	oktaURL, err := url.Parse(loginDetails.URL)
+	if err != nil {
+		return "", errors.Wrap(err, "error building oktaURL")
+	}
+
+	oktaOrgHost := oktaURL.Host
 	//now call saml endpoint
 	oktaSessionRedirectURL := fmt.Sprintf("https://%s/login/sessionCookieRedirect", oktaOrgHost)
 
-	req, err = http.NewRequest("GET", oktaSessionRedirectURL, nil)
+	req, err := http.NewRequest("GET", oktaSessionRedirectURL, nil)
 	if err != nil {
 		return "", errors.Wrap(err, "error building authentication request")
 	}
@@ -215,7 +234,16 @@ func (oc *Client) follow(ctx context.Context, req *http.Request, loginDetails *c
 
 	var handler func(context.Context, *goquery.Document) (context.Context, *http.Request, error)
 
-	if docIsFormRedirectToTarget(doc, oc.targetURL) {
+	if pageIsJfrog(res) {
+		logger.WithField("type", "saml-response-to-jfrog").Debug("doc detect")
+
+		var apiKey, err = oc.fetchArtifactoryApiKey()
+		if err != nil {
+			return "", err
+		}
+		return apiKey, nil
+
+	} else if docIsFormRedirectToTarget(doc, oc.targetURL) {
 		logger.WithField("type", "saml-response-to-aws").Debug("doc detect")
 		if samlResponse, ok := extractSAMLResponse(doc); ok {
 			decodedSamlResponse, err := base64.StdEncoding.DecodeString(samlResponse)
@@ -228,11 +256,11 @@ func (oc *Client) follow(ctx context.Context, req *http.Request, loginDetails *c
 	} else if docIsFormSamlRequest(doc) {
 		logger.WithField("type", "saml-request").Debug("doc detect")
 		handler = oc.handleFormRedirect
-	} else if docIsFormResume(doc) {
-		logger.WithField("type", "resume").Debug("doc detect")
-		handler = oc.handleFormRedirect
 	} else if docIsFormSamlResponse(doc) {
 		logger.WithField("type", "saml-response").Debug("doc detect")
+		handler = oc.handleFormRedirect
+	} else if docIsFormResume(doc) {
+		logger.WithField("type", "resume").Debug("doc detect")
 		handler = oc.handleFormRedirect
 	} else {
 		req, err = http.NewRequest("GET", loginDetails.URL, nil)
@@ -248,6 +276,7 @@ func (oc *Client) follow(ctx context.Context, req *http.Request, loginDetails *c
 			return "", errors.Wrap(err, "error retrieving body from response")
 		}
 		stateToken, err := getStateTokenFromOktaPageBody(string(body))
+
 		if err != nil {
 			return "", errors.Wrap(err, "error retrieving saml response")
 		}
@@ -294,6 +323,10 @@ func (oc *Client) handleFormRedirect(ctx context.Context, doc *goquery.Document)
 	return ctx, req, err
 }
 
+func pageIsJfrog(res *http.Response) bool {
+	return res.Request.URL.String() == "https://sonder.jfrog.io/ui/login/"
+}
+
 func docIsFormSamlRequest(doc *goquery.Document) bool {
 	return doc.Find("input[name=\"SAMLRequest\"]").Size() == 1
 }
@@ -328,6 +361,84 @@ func docIsFormRedirectToTarget(doc *goquery.Document, target string) bool {
 
 func extractSAMLResponse(doc *goquery.Document) (v string, ok bool) {
 	return doc.Find("input[name=\"SAMLResponse\"]").Attr("value")
+}
+
+func (oc *Client) fetchArtifactoryApiKey() (string, error) {
+	// Fetch the current user email, needed for the subsequent requests
+	req, err := http.NewRequest("GET", "https://sonder.jfrog.io/ui/api/v1/ui/auth/current", nil)
+	req.Header.Set("X-Requested-With", "XMLHttpRequest")
+
+	if err != nil {
+		return "", err
+	}
+
+	res, err := oc.client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	var body struct {
+		Name string `json:"name"`
+	}
+	err = json.NewDecoder(res.Body).Decode(&body)
+	if err != nil {
+		return "", err
+	}
+
+	logger.WithField("user", body.Name).Debug("Authenticated as")
+
+	// Force initializing the user profile to get a USER_PROFILE_TOKEN set in the cookies
+	var jsonData = []byte(`{}`)
+	req, _ = http.NewRequest("POST", "https://sonder.jfrog.io/ui/api/v1/ui/userProfile", bytes.NewBuffer(jsonData))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Requested-With", "XMLHttpRequest")
+
+	_, err = oc.client.Do(req)
+	if err != nil {
+		logger.WithField("error", err).Debug("there was an error")
+		return "", err
+	}
+
+	userApiKeyURL := "https://sonder.jfrog.io/ui/api/v1/ui/userApiKey/" + body.Name
+	// Attempt to get the api key from the call.
+	req, _ = http.NewRequest("GET", userApiKeyURL, nil)
+
+	apiKey, _ := oc.getApiKey(req)
+	if apiKey != "" {
+		return apiKey, nil
+	}
+	// Fallback and create the API key if not existing
+	req, _ = http.NewRequest("POST", userApiKeyURL, nil)
+	req.Header.Set("X-Requested-With", "XMLHttpRequest")
+	basicAuth := base64.StdEncoding.EncodeToString([]byte(body.Name + ":"))
+	req.Header.Set("X-JFrog-Reauthentication", "Basic "+basicAuth)
+
+	apiKey, err = oc.getApiKey(req)
+
+	if apiKey != "" {
+		return apiKey, nil
+	}
+	return "", err
+}
+
+func (oc *Client) getApiKey(req *http.Request) (string, error) {
+	var apiKeyBody struct {
+		ApiKey string `json:"apiKey,omitempty"`
+	}
+	res, err := oc.client.Do(req)
+
+	if err != nil {
+		return "", err
+	}
+
+	err = json.NewDecoder(res.Body).Decode(&apiKeyBody)
+	if err != nil {
+		return "", err
+	}
+
+	if apiKeyBody.ApiKey != "" {
+		return apiKeyBody.ApiKey, nil
+	}
+	return "", err
 }
 
 func findMfaOption(mfa string, mfaOptions []string, startAtIdx int) int {

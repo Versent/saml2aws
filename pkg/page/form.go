@@ -46,6 +46,7 @@ func NewFormFromDocument(doc *goquery.Document, formFilter string) (*Form, error
 	if formFilter == "" {
 		formFilter = "form[action]"
 	}
+
 	formSelection := doc.Find(formFilter).First()
 	if formSelection.Size() != 1 {
 		return nil, fmt.Errorf("could not find form")
