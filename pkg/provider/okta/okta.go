@@ -237,11 +237,11 @@ func (oc *Client) follow(ctx context.Context, req *http.Request, loginDetails *c
 	if pageIsJfrog(res) {
 		logger.WithField("type", "saml-response-to-jfrog").Debug("doc detect")
 
-		var apiKey, err = oc.fetchArtifactoryApiKey()
+		var apiKey, userName, err = oc.fetchArtifactoryAuth()
 		if err != nil {
 			return "", err
 		}
-		return apiKey, nil
+		return userName + ":" + apiKey, nil
 
 	} else if docIsFormRedirectToTarget(doc, oc.targetURL) {
 		logger.WithField("type", "saml-response-to-aws").Debug("doc detect")
@@ -363,25 +363,25 @@ func extractSAMLResponse(doc *goquery.Document) (v string, ok bool) {
 	return doc.Find("input[name=\"SAMLResponse\"]").Attr("value")
 }
 
-func (oc *Client) fetchArtifactoryApiKey() (string, error) {
+func (oc *Client) fetchArtifactoryAuth() (string, string, error) {
 	// Fetch the current user email, needed for the subsequent requests
 	req, err := http.NewRequest("GET", "https://sonder.jfrog.io/ui/api/v1/ui/auth/current", nil)
 	req.Header.Set("X-Requested-With", "XMLHttpRequest")
 
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	res, err := oc.client.Do(req)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	var body struct {
 		Name string `json:"name"`
 	}
 	err = json.NewDecoder(res.Body).Decode(&body)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	logger.WithField("user", body.Name).Debug("Authenticated as")
@@ -395,7 +395,7 @@ func (oc *Client) fetchArtifactoryApiKey() (string, error) {
 	_, err = oc.client.Do(req)
 	if err != nil {
 		logger.WithField("error", err).Debug("there was an error")
-		return "", err
+		return "", "", err
 	}
 
 	userApiKeyURL := "https://sonder.jfrog.io/ui/api/v1/ui/userApiKey/" + body.Name
@@ -404,7 +404,7 @@ func (oc *Client) fetchArtifactoryApiKey() (string, error) {
 
 	apiKey, _ := oc.getApiKey(req)
 	if apiKey != "" {
-		return apiKey, nil
+		return apiKey, body.Name, nil
 	}
 	// Fallback and create the API key if not existing
 	req, _ = http.NewRequest("POST", userApiKeyURL, nil)
@@ -415,9 +415,9 @@ func (oc *Client) fetchArtifactoryApiKey() (string, error) {
 	apiKey, err = oc.getApiKey(req)
 
 	if apiKey != "" {
-		return apiKey, nil
+		return apiKey, body.Name, nil
 	}
-	return "", err
+	return "", "", err
 }
 
 func (oc *Client) getApiKey(req *http.Request) (string, error) {
