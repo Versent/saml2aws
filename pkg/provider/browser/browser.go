@@ -14,29 +14,51 @@ var logger = logrus.WithField("provider", "browser")
 
 // Client client for browser based Identity Provider
 type Client struct {
+	persistentDataDir string
 }
 
 // New create new browser based client
 func New(idpAccount *cfg.IDPAccount) (*Client, error) {
-	return &Client{}, nil
+	return &Client{
+		persistentDataDir: idpAccount.PersistentDataDir,
+	}, nil
 }
 
 func (cl *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error) {
 
-	pw, err := playwright.Run()
+	pw, err := playwright.Run(&playwright.RunOptions{
+		Browsers: []string{"chromium"},
+	})
 	if err != nil {
 		return "", err
-	}
-
-	// TODO: provide some overrides for this window
-	launchOptions := playwright.BrowserTypeLaunchOptions{
-		Headless: playwright.Bool(false),
 	}
 
 	// currently using Chromium as it is widely supported for Identity providers
 	//
 	// this is a sandboxed browser window so password managers and addons are separate
-	browser, err := pw.Chromium.Launch(launchOptions)
+	var browser playwright.BrowserContext
+
+	if cl.persistentDataDir != "" {
+		// TODO: provide some overrides for this window
+		launchOptions := playwright.BrowserTypeLaunchPersistentContextOptions{
+			Headless: playwright.Bool(false),
+		}
+
+		browser, err = pw.Chromium.LaunchPersistentContext(cl.persistentDataDir, launchOptions)
+	} else {
+		// TODO: provide some overrides for this window
+		launchOptions := playwright.BrowserTypeLaunchOptions{
+			Headless: playwright.Bool(false),
+		}
+
+		browserNoCtx, err := pw.Chromium.Launch(launchOptions)
+		if err != nil {
+			return "", err
+		}
+
+		browser, err = browserNoCtx.NewContext()
+	}
+
 	if err != nil {
 		return "", err
 	}

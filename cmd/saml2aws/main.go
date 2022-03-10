@@ -97,6 +97,7 @@ func main() {
 	cmdConfigure.Flag("cache-file", "The location of the SAML cache file (env: SAML2AWS_SAML_CACHE_FILE)").Envar("SAML2AWS_SAML_CACHE_FILE").StringVar(&commonFlags.SAMLCacheFile)
 	cmdConfigure.Flag("disable-sessions", "Do not use Okta sessions. Uses Okta sessions by default. (env: SAML2AWS_OKTA_DISABLE_SESSIONS)").Envar("SAML2AWS_OKTA_DISABLE_SESSIONS").BoolVar(&commonFlags.DisableSessions)
 	cmdConfigure.Flag("disable-remember-device", "Do not remember Okta MFA device. Remembers MFA device by default. (env: SAML2AWS_OKTA_DISABLE_REMEMBER_DEVICE)").Envar("SAML2AWS_OKTA_DISABLE_REMEMBER_DEVICE").BoolVar(&commonFlags.DisableRememberDevice)
+	cmdConfigure.Flag("persistent-data-dir", "Persistent storage for the browser provider. Allows saving passwords and sessions between uses. (env: SAML2AWS_PERSISTENT_DATA_DIR)").Envar("SAML2AWS_PERSISTENT_DATA_DIR").StringVar(&commonFlags.PersistentDataDir)
 	configFlags := commonFlags
 
 	// `login` command and settings
