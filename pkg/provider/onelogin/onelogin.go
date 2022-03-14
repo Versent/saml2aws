@@ -288,7 +288,13 @@ func verifyMFA(oc *Client, oauthToken, appID, resp string) (string, error) {
 
 	switch mfaIdentifer {
 	case IdentifierSmsMfa, IdentifierTotpMfa, IdentifierYubiKey:
-		verifyCode := prompter.StringRequired("Enter verification code")
+		var verifyCode = ""
+		if mfaIdentifer == IdentifierYubiKey {
+			verifyCode = prompter.RequestSecurityCode("Yubikey")
+		} else {
+			verifyCode = prompter.RequestSecurityCode("000000")
+		}
+
 		var verifyBody bytes.Buffer
 		err := json.NewEncoder(&verifyBody).Encode(VerifyRequest{AppID: appID, DeviceID: mfaDeviceID, StateToken: stateToken, OTPToken: verifyCode})
 		if err != nil {
