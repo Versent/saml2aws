@@ -51,10 +51,13 @@ func ListRoles(loginFlags *flags.LoginExecFlags) error {
 	var samlAssertion string
 	if account.SAMLCache {
 		if cacheProvider.IsValid() {
-			samlAssertion, err = cacheProvider.Read()
+			samlAssertion, err = cacheProvider.ReadRaw()
 			if err != nil {
 				logger.Debug("Could not read cache:", err)
 			}
+		} else {
+			logger.Debug("Cache is invalid")
+			log.Printf("Authenticating as %s ...", loginDetails.Username)
 		}
 	}
 
@@ -65,7 +68,7 @@ func ListRoles(loginFlags *flags.LoginExecFlags) error {
 			return errors.Wrap(err, "error authenticating to IdP")
 		}
 		if account.SAMLCache {
-			err = cacheProvider.Write(samlAssertion)
+			err = cacheProvider.WriteRaw(samlAssertion)
 			if err != nil {
 				logger.Error("Could not write samlAssertion:", err)
 			}

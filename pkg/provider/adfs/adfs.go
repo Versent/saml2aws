@@ -200,6 +200,9 @@ func checkResponse(doc *goquery.Document) (AuthResponseType, string, error) {
 			samlAssertion = val
 			responseType = SAML_RESPONSE
 		}
+		if name == "OathCode" {
+			responseType = MFA_PROMPT
+		}
 		if name == "AuthMethod" {
 			val, _ := s.Attr("value")
 			switch val {
@@ -256,6 +259,8 @@ func updateOTPFormData(otpForm url.Values, s *goquery.Selection, token string) {
 	} else if strings.Contains(lname, "verificationcode") {
 		otpForm.Add(name, token)
 	} else if strings.Contains(lname, "challengequestionanswer") {
+		otpForm.Add(name, token)
+	} else if strings.Contains(lname, "oathcode") {
 		otpForm.Add(name, token)
 	} else {
 		updatePassthroughFormData(otpForm, s)
