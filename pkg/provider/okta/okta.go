@@ -799,6 +799,12 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 			switch gjson.Get(body, "factorResult").String() {
 
 			case "WAITING":
+				correctAnswer := gjson.Get(body, "_embedded.factor._embedded.challenge.correctAnswer")
+				displayedAnswer := false
+				if !displayedAnswer && correctAnswer.Exists() {
+					log.Printf("Number Challenge Value is %d", correctAnswer.Int())
+					displayedAnswer = true
+				}
 				time.Sleep(3 * time.Second)
 				logger.Debug("Waiting for user to authorize login")
 				updatedContext, err := getMfaChallengeContext(oc, mfaOption, resp)
