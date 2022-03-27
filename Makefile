@@ -4,7 +4,7 @@ VERSION=2.28.0
 ITERATION := 1
 
 GOLANGCI_VERSION = 1.32.0
-GORELEASER_VERSION = 0.157.0
+GORELEASER_VERSION = 1.6.3
 
 SOURCE_FILES?=$$(go list ./... | grep -v /vendor/)
 TEST_PATTERN?=.
@@ -20,11 +20,9 @@ $(BIN_DIR)/golangci-lint-${GOLANGCI_VERSION}:
 	@curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | BINARY=golangci-lint bash -s -- v${GOLANGCI_VERSION}
 	@mv $(BIN_DIR)/golangci-lint $@
 
-$(BIN_DIR)/goreleaser: $(BIN_DIR)/goreleaser-${GORELEASER_VERSION}
-	@ln -sf goreleaser-${GORELEASER_VERSION} $(BIN_DIR)/goreleaser
-$(BIN_DIR)/goreleaser-${GORELEASER_VERSION}:
-	@curl -sfL https://install.goreleaser.com/github.com/goreleaser/goreleaser.sh | BINARY=goreleaser bash -s -- v${GORELEASER_VERSION}
-	@mv $(BIN_DIR)/goreleaser $@
+$(BIN_DIR)/goreleaser:
+	@GOBIN=$(BIN_DIR) go install github.com/goreleaser/goreleaser@v${GORELEASER_VERSION}
+.PHONY: $(BIN_DIR)/goreleaser
 
 mod:
 	@go mod download
