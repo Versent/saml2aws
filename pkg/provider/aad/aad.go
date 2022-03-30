@@ -539,6 +539,10 @@ func (ac *Client) processADFSAuthentication(federationUrl string, loginDetails *
 		}
 	}
 
+	if !strings.Contains(resBodyStr, "$Config") {
+		return authenticationResponse, res, fmt.Errorf("ADFS login error")
+	}
+
 	if err := json.Unmarshal([]byte(ac.getJsonFromConfig(resBodyStr)), &authenticationResponse); err != nil {
 		return authenticationResponse, res, errors.Wrap(err, "ADFS login response unmarshal error")
 	}
