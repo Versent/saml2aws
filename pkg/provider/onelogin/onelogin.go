@@ -216,9 +216,15 @@ func verifyMFA(oc *Client, oauthToken, appID, resp string) (string, error) {
 	var option int
 	var mfaOptions []string
 	var preselected bool
+	mfaOptionsCounter := make(map[string]int)
 	for n, id := range gjson.Get(resp, "data.0.devices.#.device_type").Array() {
 		identifier := id.String()
-		if val, ok := supportedMfaOptions[identifier]; ok {
+		if v, ok := supportedMfaOptions[identifier]; ok {
+			val := v
+			if mfaOptionsCounter[v] != 0 {
+				val = fmt.Sprintf("%s%d", v, mfaOptionsCounter[v])
+			}
+			mfaOptionsCounter[v]++
 			mfaOptions = append(mfaOptions, val)
 			// If there is pre-selected MFA option (thorugh the --mfa flag), then set MFA option index and break early.
 			if val == oc.MFA {
