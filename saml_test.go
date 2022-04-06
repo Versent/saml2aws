@@ -3,6 +3,7 @@ package saml2aws
 import (
 	"io/ioutil"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -41,4 +42,23 @@ func TestExtractDestinationURL2(t *testing.T) {
 	destination, err := ExtractDestinationURL(data)
 	assert.Nil(t, err)
 	assert.Equal(t, "https://signin.aws.amazon.com/saml", destination)
+}
+
+func TestExtractMFATokenDuration(t *testing.T) {
+	data, err := ioutil.ReadFile("testdata/assertion.xml")
+	assert.Nil(t, err)
+
+	timeObject, err := ExtractMFATokenExpiryTime(data)
+
+	assert.Nil(t, err)
+	assert.Equal(t, "2016-09-10T02:59:39Z", timeObject.Format(time.RFC3339))
+}
+
+func TestExtractMFATokenDuration2(t *testing.T) {
+	data, err := ioutil.ReadFile("testdata/assertion_invalid_date.xml")
+	assert.Nil(t, err)
+
+	_, err = ExtractMFATokenExpiryTime(data)
+	t.Log(err)
+	assert.NotNil(t, err)
 }
