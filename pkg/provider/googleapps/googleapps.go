@@ -238,7 +238,7 @@ func (kc *Client) loadFirstPage(loginDetails *creds.LoginDetails) (string, url.V
 	if loginPageV1 {
 		// Login page v1
 		postForm = url.Values{
-			"bgresponse":               []string{"js_disabled"},
+			"bgresponse":               []string{"js_enabled"},
 			"checkConnection":          []string{""},
 			"checkedDomains":           []string{"youtube"},
 			"continue":                 []string{authForm.Get("continue")},
@@ -277,7 +277,7 @@ func (kc *Client) loadFirstPage(loginDetails *creds.LoginDetails) (string, url.V
 			"Email":           []string{""},
 			"Passwd":          []string{""},
 			"TrustDevice":     []string{"on"},
-			"bgresponse":      []string{"js_disabled"},
+			"bgresponse":      []string{"js_enabled"},
 		}
 		for _, k := range []string{"TL", "gxf"} {
 			if v, ok := authForm[k]; ok {
