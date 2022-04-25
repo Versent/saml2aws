@@ -68,7 +68,7 @@ func (ac *Client) follow(ctx context.Context, req *http.Request) (string, error)
 	if err != nil {
 		return "", errors.Wrap(err, "error following")
 	}
-	doc, err := goquery.NewDocumentFromReader(res.Body)
+	doc, err := goquery.NewDocumentFromResponse(res)
 	if err != nil {
 		return "", errors.Wrap(err, "failed to build document from response")
 	}
@@ -151,6 +151,13 @@ func (ac *Client) handleOTP(ctx context.Context, doc *goquery.Document) (context
 	form, err := page.NewFormFromDocument(doc, "#otp-form")
 	if err != nil {
 		return ctx, nil, errors.Wrap(err, "error extracting OTP form")
+	}
+
+	for _, v := range ac.client.Jar.Cookies(doc.Url) {
+		if v.Name == ".csrf" {
+			form.Values.Set("csrfToken", v.Value)
+			break
+		}
 	}
 
 	token := prompter.StringRequired("Enter passcode")
