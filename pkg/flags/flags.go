@@ -12,6 +12,7 @@ type CommonFlags struct {
 	ConfigFile            string
 	IdpAccount            string
 	IdpProvider           string
+	BrowserType           string
 	MFA                   string
 	MFAToken              string
 	URL                   string
@@ -69,6 +70,10 @@ func ApplyFlagOverrides(commonFlags *CommonFlags, account *cfg.IDPAccount) {
 
 	if commonFlags.IdpProvider != "" {
 		account.Provider = commonFlags.IdpProvider
+	}
+
+	if commonFlags.IdpProvider == "Browser" && commonFlags.BrowserType != "" {
+		account.BrowserType = commonFlags.BrowserType
 	}
 
 	if commonFlags.MFA != "" {

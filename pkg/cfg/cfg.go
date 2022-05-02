@@ -36,6 +36,7 @@ type IDPAccount struct {
 	URL                   string `ini:"url"`
 	Username              string `ini:"username"`
 	Provider              string `ini:"provider"`
+	BrowserType           string `ini:"browser_type"` // used by 'Browser' Provider
 	MFA                   string `ini:"mfa"`
 	SkipVerify            bool   `ini:"skip_verify"`
 	Timeout               int    `ini:"timeout"`

@@ -2,6 +2,7 @@ package browser
 
 import (
 	"errors"
+	"fmt"
 	"net/url"
 
 	"github.com/mxschmitt/playwright-go"
@@ -14,11 +15,12 @@ var logger = logrus.WithField("provider", "browser")
 
 // Client client for browser based Identity Provider
 type Client struct {
+	idpAccount *cfg.IDPAccount
 }
 
 // New create new browser based client
 func New(idpAccount *cfg.IDPAccount) (*Client, error) {
-	return &Client{}, nil
+	return &Client{idpAccount: idpAccount}, nil
 }
 
 func (cl *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error) {
@@ -31,6 +33,11 @@ func (cl *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 	// TODO: provide some overrides for this window
 	launchOptions := playwright.BrowserTypeLaunchOptions{
 		Headless: playwright.Bool(false),
+	}
+
+	if cl.idpAccount.BrowserType != "" {
+		logger.Info(fmt.Sprintf("Setting browser type: %s", cl.idpAccount.BrowserType))
+		launchOptions.Channel = playwright.String(cl.idpAccount.BrowserType)
 	}
 
 	// currently using Chromium as it is widely supported for Identity providers
