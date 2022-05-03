@@ -60,7 +60,7 @@ jobs:
         echo "ASSET=saml2aws_${VERSION}_windows_amd64.zip" >> $GITHUB_ENV
 
     - name: Check out code
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
     - name: Retrieve the release asset
       id: asset
