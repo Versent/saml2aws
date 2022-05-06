@@ -196,6 +196,7 @@ func verifyDuoMfa(oc *Client, loginDetails *creds.LoginDetails, duoHost string, 
 	req.URL.RawQuery = q.Encode()
 
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Add("Accept-Language", "en-us,en;q=0.5")
 
 	res, err := oc.client.Do(req)
 	if err != nil {
