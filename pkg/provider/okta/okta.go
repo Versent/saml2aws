@@ -778,6 +778,14 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 		}
 
 		resp = string(body)
+		sessionToken := gjson.Get(resp, "sessionToken").String()
+		if sessionToken == "" {
+			status := gjson.Get(resp, "status").String()
+			if status != "" {
+				return "", errors.Errorf("response does not contain session token, received status is: %q", status)
+			}
+			return "", errors.Errorf("response does not contain session token")
+		}
 
 		return gjson.Get(resp, "sessionToken").String(), nil
 
