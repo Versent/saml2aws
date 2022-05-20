@@ -2,7 +2,6 @@ package aad
 
 import (
 	"encoding/json"
-	"github.com/sirupsen/logrus"
 	"testing"
 )
 
@@ -12,8 +11,7 @@ func TestAad_UnmarshallMfaResponseWithEntropy(t *testing.T) {
 	var mfaResp mfaResponse
 
 	if err := json.Unmarshal(mfaBeginJsonWithEntropy, &mfaResp); err != nil {
-		logrus.Error("Found an error while unmarshalling")
-		t.Fail()
+		t.Error("Found an error while unmarshalling")
 	}
 
 	if mfaResp.Entropy != 88 {
@@ -27,8 +25,7 @@ func TestAad_UnmarshallMfaResponseWithoutEntropy(t *testing.T) {
 	var mfaResp mfaResponse
 
 	if err := json.Unmarshal(mfaBeginJsonWithEntropy, &mfaResp); err != nil {
-		logrus.Error("Found an error while unmarshalling")
-		t.Fail()
+		t.Error("Found an error while unmarshalling")
 	}
 
 	if mfaResp.Entropy != 0 {
