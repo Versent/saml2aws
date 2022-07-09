@@ -86,6 +86,19 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		authSubmitURL = action
 	})
 
+	// Trim whitespace and discard empty values from Kmsi field
+	if val, ok := authForm["Kmsi"]; ok {
+		var trimmedKmsi []string
+		var t string
+		for _, s := range val {
+			t = strings.TrimSpace(s)
+			if len(t) > 0 {
+				trimmedKmsi = append(trimmedKmsi, t)
+			}
+		}
+		authForm["Kmsi"] = trimmedKmsi
+	}
+
 	if authSubmitURL == "" {
 		return samlAssertion, fmt.Errorf("unable to locate IDP authentication form submit URL")
 	}
