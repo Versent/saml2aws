@@ -253,9 +253,9 @@ func getTxResultJson(httpClient *provider.HTTPClient, duoHost string, sid string
 }
 
 func VerifyDuoMfa(httpClient *provider.HTTPClient, loginDetails *creds.LoginDetails, parent string, duoHost string, duoSignature string) (string, error) {
-	duoSignature = strings.Split(duoSignature, ":")[0]
+	sigParts := strings.Split(duoSignature, ":")
 
-	session, err := getDuoSession(httpClient, parent, duoHost, duoSignature)
+	session, err := getDuoSession(httpClient, parent, duoHost, sigParts[0])
 	if err != nil {
 		return "", errors.Wrap(err, "error fetching Duo SID")
 	}
@@ -290,5 +290,7 @@ func VerifyDuoMfa(httpClient *provider.HTTPClient, loginDetails *creds.LoginDeta
 		return "", errors.Wrap(err, "error getting Duo result json")
 	}
 
-	return resultJson, nil
+	cookie := gjson.Get(resultJson, "response.cookie").String()
+
+	return fmt.Sprintf("%s:%s", cookie, sigParts[1]), nil
 }

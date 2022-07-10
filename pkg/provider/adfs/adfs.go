@@ -11,7 +11,6 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/pkg/errors"
-	"github.com/tidwall/gjson"
 
 	"github.com/versent/saml2aws/v2/pkg/cfg"
 	"github.com/versent/saml2aws/v2/pkg/creds"
@@ -161,7 +160,7 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 				return samlAssertion, errors.New("context field not found")
 			}
 
-			duoJson, err := duo.VerifyDuoMfa(ac.client, loginDetails, authSubmitURL, duoHost, duoSigRequest)
+			duoCookie, err := duo.VerifyDuoMfa(ac.client, loginDetails, authSubmitURL, duoHost, duoSigRequest)
 			if err != nil {
 				return samlAssertion, errors.Wrap(err, "error in Duo MFA process")
 			}
@@ -169,7 +168,7 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 			duoForm := url.Values{}
 			duoForm.Add("Context", duoContext)
 			duoForm.Add("AuthMethod", "DuoAdfsAdapter")
-			duoForm.Add("sig_response", gjson.Get(duoJson, "response.cookie").String())
+			duoForm.Add("sig_response", duoCookie)
 
 			doc, err = ac.submit(authSubmitURL, duoForm)
 		case UNKNOWN:
