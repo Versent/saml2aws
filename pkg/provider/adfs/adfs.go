@@ -11,8 +11,11 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/pkg/errors"
+	"github.com/tidwall/gjson"
+
 	"github.com/versent/saml2aws/v2/pkg/cfg"
 	"github.com/versent/saml2aws/v2/pkg/creds"
+	"github.com/versent/saml2aws/v2/pkg/duo"
 	"github.com/versent/saml2aws/v2/pkg/prompter"
 	"github.com/versent/saml2aws/v2/pkg/provider"
 )
@@ -33,6 +36,7 @@ const (
 	MFA_PROMPT
 	AZURE_MFA_WAIT
 	AZURE_MFA_SERVER_WAIT
+	DUO_MFA
 )
 
 // New create a new ADFS client
@@ -97,6 +101,9 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 
 	for {
 		responseType, samlAssertion, err := checkResponse(doc)
+		if err != nil {
+			return samlAssertion, err
+		}
 
 		switch responseType {
 		case SAML_RESPONSE:
@@ -140,6 +147,31 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 					return samlAssertion, errors.New(sel.Text())
 				}
 			}
+		case DUO_MFA:
+			duoHost, ok := doc.Find("input[name=\"duo_host\"]").Attr("value")
+			if !ok {
+				return samlAssertion, errors.New("duo_host field not found")
+			}
+			duoSigRequest, ok := doc.Find("input[name=\"duo_sig_request\"]").Attr("value")
+			if !ok {
+				return samlAssertion, errors.New("duo_sig_request field not found")
+			}
+			duoContext, ok := doc.Find("input[name=\"Context\"]").Attr("value")
+			if !ok {
+				return samlAssertion, errors.New("context field not found")
+			}
+
+			duoJson, err := duo.VerifyDuoMfa(ac.client, loginDetails, authSubmitURL, duoHost, duoSigRequest)
+			if err != nil {
+				return samlAssertion, errors.Wrap(err, "error in Duo MFA process")
+			}
+
+			duoForm := url.Values{}
+			duoForm.Add("Context", duoContext)
+			duoForm.Add("AuthMethod", "DuoAdfsAdapter")
+			duoForm.Add("sig_response", gjson.Get(duoJson, "response.cookie").String())
+
+			doc, err = ac.submit(authSubmitURL, duoForm)
 		case UNKNOWN:
 			return samlAssertion, errors.New("unable to classify response from auth server")
 		}
@@ -183,6 +215,30 @@ func (ac *Client) submit(url string, form url.Values) (*goquery.Document, error)
 	return doc, nil
 }
 
+func getResponseError(doc *goquery.Document) error {
+	msg := ""
+
+	finders := []func(){
+		func() {
+			doc.Find("div[id=\"errorDescription\"]").Find("li").Each(func(i int, s *goquery.Selection) {
+				msg += s.Text() + "\n"
+			})
+		},
+		func() {
+			msg = doc.Find("span[id=\"errorTextPassword\"]").Text()
+		}}
+
+	for _, f := range finders {
+		f()
+		if len(msg) > 0 {
+			msg = strings.ReplaceAll(msg, "\n", "\n  ")
+			return errors.New(fmt.Sprintf("Login Error:\n  %s\n", msg))
+		}
+	}
+
+	return nil
+}
+
 func checkResponse(doc *goquery.Document) (AuthResponseType, string, error) {
 	samlAssertion := ""
 	responseType := UNKNOWN
@@ -192,6 +248,7 @@ func checkResponse(doc *goquery.Document) (AuthResponseType, string, error) {
 		if !ok {
 			log.Fatalf("unable to locate IDP authentication form submit URL")
 		}
+
 		if name == "SAMLResponse" {
 			val, ok := s.Attr("value")
 			if !ok {
@@ -212,12 +269,24 @@ func checkResponse(doc *goquery.Document) (AuthResponseType, string, error) {
 				responseType = AZURE_MFA_WAIT
 			case "AzureMfaServerAuthentication":
 				responseType = AZURE_MFA_SERVER_WAIT
+			case "DuoAdfsAdapter":
+				responseType = DUO_MFA
 			}
 		}
 		if name == "VerificationCode" {
 			responseType = MFA_PROMPT
 		}
 	})
+
+	if responseType == UNKNOWN {
+		err := getResponseError(doc)
+		if err != nil {
+			return responseType, samlAssertion, err
+		}
+		html, _ := doc.Html()
+		fmt.Printf("\n\nUNKNOWN RESPONSE BODY:\n%s\n-----------\n", html)
+	}
+
 	return responseType, samlAssertion, nil
 }
 
