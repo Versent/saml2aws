@@ -184,6 +184,9 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 			duoForm.Add("sig_response", duoCookie)
 
 			doc, err = ac.submit(authSubmitURL, duoForm)
+			if err != nil {
+				return samlAssertion, errors.Wrap(err, "error in Duo MFA process")
+			}
 		case UNKNOWN:
 			return samlAssertion, errors.New("unable to classify response from auth server")
 		}
