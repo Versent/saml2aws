@@ -1133,6 +1133,8 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 		switch duoMfaOptions[duoMfaOption] {
 		case "Passcode":
 			duoForm.Add("passcode", token)
+			duoForm.Add("device", "phone1")
+			duoForm.Add("factor", "Passcode")
 		case "Duo Push":
 			duoForm.Add("device", "phone1")
 			duoForm.Add("factor", "Duo Push")

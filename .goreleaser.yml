@@ -10,13 +10,7 @@ builds:
   ldflags:
     - -s -w -X main.Version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}}
   goos:
-    - windows
     - darwin
-    - linux
-  goarch:
-    - amd64
-    - arm64
-    - arm
 archives:
   - format: tar.gz
     wrap_in_directory: false
