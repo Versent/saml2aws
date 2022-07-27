@@ -11,19 +11,10 @@ SOURCE_FILES?=$$(go list ./... | grep -v /vendor/)
 TEST_PATTERN?=.
 TEST_OPTIONS?=
 
-BIN_DIR := $(CURDIR)/bin
+BIN_DIR := ./bin
 
 ci: prepare test
 
-mod:
-	@go mod download
-	@go mod tidy
-.PHONY: mod
-
-lint: 
-	@echo "--- lint all the things"
-	@docker run --rm -v $(shell pwd):/app -w /app golangci/golangci-lint:v$(GOLANGCI_VERSION) golangci-lint run -v
-.PHONY: lint
 
 lint-fix:
 	@echo "--- lint all the things"
@@ -37,18 +28,7 @@ install:
 .PHONY: mod
 
 build:
-
-ifndef GORELEASER
-    $(error "goreleaser is not available please install and ensure it is on PATH")
-endif
-
-ifeq ($(OS),Darwin)
-	goreleaser build --snapshot --clean --config $(CURDIR)/.goreleaser.macos-latest.yml
-else ifeq ($(OS),Linux)
-	goreleaser build --snapshot --clean --config $(CURDIR)/.goreleaser.ubuntu-latest.yml
-else
-	$(error Unsupported build OS: $(OS))
-endif
+	goreleaser build --snapshot --rm-dist
 .PHONY: build
 
 clean:
