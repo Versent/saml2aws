@@ -12,9 +12,13 @@ import (
 // ExecShellCmd exec shell command using the default shell
 func ExecShellCmd(cmdline []string, envVars []string) error {
 
+	shell, exists := os.LookupEnv("SHELL")
+	if(!exists) {
+		shell = "/bin/sh"
+	}
 	c := strings.Join(cmdline, " ")
 
-	cs := []string{"/bin/sh", "-c", c}
+	cs := []string{ shell, "-c", c }
 	cmd := exec.Command(cs[0], cs[1:]...)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
