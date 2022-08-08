@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/marshallbrekka/go-u2fhost"
@@ -124,7 +125,11 @@ func (d *FidoClient) ChallengeU2F() (*SignedAssertion, error) {
 					prompted = true
 				}
 			default:
-				return responsePayload, err
+				errString := fmt.Sprintf("%s", err)
+				if !strings.Contains(errString, "U2FHIDError") &&
+					!strings.Contains(errString, "hidapi: hid_error is not implemented yet") {
+					return responsePayload, err
+				}
 			}
 		}
 	}
