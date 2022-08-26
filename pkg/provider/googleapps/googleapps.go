@@ -440,17 +440,14 @@ func (kc *Client) loadChallengePage(submitURL string, referer string, authForm u
 			return kc.loadResponsePage(secondActionURL, submitURL, responseForm)
 
 		case strings.Contains(secondActionURL, "challenge/dp/"): // handle device push challenge
-			var extraNumber string
-			doc.Find("div[jsname=feLNVc]").Each(func(_ int, s *goquery.Selection) {
-				extraNumber = s.Text()
-			})
-			if extraNumber == "" {
-				log.Print("Check your phone and tap 'Yes' on the prompt. Then press ENTER to continue.")
-			} else {
+			if extraNumber := extractDevicePushExtraNumber(doc); extraNumber != "" {
 				log.Println("Check your phone and tap 'Yes' on the prompt, then tap the number:")
 				log.Printf("\t%v\n", extraNumber)
 				log.Println("Then press ENTER to continue.")
+			} else {
+				log.Print("Check your phone and tap 'Yes' on the prompt. Then press ENTER to continue.")
 			}
+
 			_, err := bufio.NewReader(os.Stdin).ReadBytes('\n')
 			if err != nil {
 				return nil, errors.Wrap(err, "error reading new line \\n")
@@ -806,4 +803,12 @@ func isAppId(val string) string {
 		return ""
 	}
 	return appId
+}
+
+func extractDevicePushExtraNumber(doc *goquery.Document) string {
+	extraNumber := ""
+	doc.Find("div[jsname=feLNVc]").Each(func(_ int, s *goquery.Selection) {
+		extraNumber = s.Text()
+	})
+	return extraNumber
 }
