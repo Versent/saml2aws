@@ -326,6 +326,8 @@ func (kc *Client) loadLoginPage(submitURL string, referer string, authForm url.V
 
 func (kc *Client) loadChallengePage(submitURL string, referer string, authForm url.Values, loginDetails *creds.LoginDetails) (*goquery.Document, error) {
 
+	authForm.Set("bgresponse", "js_enabled")
+
 	req, err := http.NewRequest("POST", submitURL, strings.NewReader(authForm.Encode()))
 	if err != nil {
 		return nil, errors.Wrap(err, "error retrieving login form")
