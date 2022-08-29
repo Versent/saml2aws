@@ -175,7 +175,7 @@ func locateConfigFile() (string, error) {
 	filename := os.Getenv("AWS_SHARED_CREDENTIALS_FILE")
 
 	if filename != "" {
-		return filename, nil
+		return homedir.Expand(filename), nil
 	}
 
 	var name string
