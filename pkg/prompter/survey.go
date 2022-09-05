@@ -3,12 +3,27 @@ package prompter
 import (
 	"errors"
 	"fmt"
+	"os"
 
 	survey "github.com/AlecAivazis/survey/v2"
+	survey_terminal "github.com/AlecAivazis/survey/v2/terminal"
 )
+
+// outputWriter is where for all prompts will be printed. Defaults to os.Stder.
+var outputWriter survey_terminal.FileWriter = os.Stderr
 
 // CliPrompter used to prompt for cli input
 type CliPrompter struct {
+}
+
+// SetOutputWriter sets the output writer to use for all survey operations
+func SetOutputWriter(writer survey_terminal.FileWriter) {
+	outputWriter = writer
+}
+
+// stdioOption returns the IO option to use for survey functions
+func stdioOption() survey.AskOpt {
+	return survey.WithStdio(os.Stdin, outputWriter, os.Stderr)
 }
 
 // NewCli builds a new cli prompter
@@ -22,7 +37,7 @@ func (cli *CliPrompter) RequestSecurityCode(pattern string) string {
 	prompt := &survey.Input{
 		Message: fmt.Sprintf("Security Token [%s]", pattern),
 	}
-	_ = survey.AskOne(prompt, &token, survey.WithValidator(survey.Required))
+	_ = survey.AskOne(prompt, &token, survey.WithValidator(survey.Required), stdioOption())
 	return token
 }
 
@@ -34,7 +49,7 @@ func (cli *CliPrompter) ChooseWithDefault(pr string, defaultValue string, option
 		Options: options,
 		Default: defaultValue,
 	}
-	_ = survey.AskOne(prompt, &selected, survey.WithValidator(survey.Required))
+	_ = survey.AskOne(prompt, &selected, survey.WithValidator(survey.Required), stdioOption())
 
 	// return the selected element index
 	for i, option := range options {
@@ -52,7 +67,7 @@ func (cli *CliPrompter) Choose(pr string, options []string) int {
 		Message: pr,
 		Options: options,
 	}
-	_ = survey.AskOne(prompt, &selected, survey.WithValidator(survey.Required))
+	_ = survey.AskOne(prompt, &selected, survey.WithValidator(survey.Required), stdioOption())
 
 	// return the selected element index
 	for i, option := range options {
@@ -70,7 +85,7 @@ func (cli *CliPrompter) String(pr string, defaultValue string) string {
 		Message: pr,
 		Default: defaultValue,
 	}
-	_ = survey.AskOne(prompt, &val)
+	_ = survey.AskOne(prompt, &val, stdioOption())
 	return val
 }
 
@@ -80,7 +95,7 @@ func (cli *CliPrompter) StringRequired(pr string) string {
 	prompt := &survey.Input{
 		Message: pr,
 	}
-	_ = survey.AskOne(prompt, &val, survey.WithValidator(survey.Required))
+	_ = survey.AskOne(prompt, &val, survey.WithValidator(survey.Required), stdioOption())
 	return val
 }
 
@@ -90,6 +105,6 @@ func (cli *CliPrompter) Password(pr string) string {
 	prompt := &survey.Password{
 		Message: pr,
 	}
-	_ = survey.AskOne(prompt, &val)
+	_ = survey.AskOne(prompt, &val, stdioOption())
 	return val
 }
