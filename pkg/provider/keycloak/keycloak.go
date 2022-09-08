@@ -101,7 +101,7 @@ func (kc *Client) doAuthenticate(authCtx *authContext, loginDetails *creds.Login
 	}
 
 	samlResponse, err := extractSamlResponse(doc)
-	if err != nil && authCtx.authenticatorIndexValid {
+	if err != nil && authCtx.authenticatorIndexValid && passwordValid(doc) {
 		return kc.doAuthenticate(authCtx, loginDetails)
 	}
 	return samlResponse, err
@@ -350,6 +350,18 @@ func extractSamlResponse(doc *goquery.Document) (string, error) {
 		}
 	})
 	return samlAssertion, err
+}
+
+func passwordValid(doc *goquery.Document) bool {
+	var valid = true
+	doc.Find("span#input-error").Each(func(i int, s *goquery.Selection) {
+		text := s.Text()
+		if strings.Contains(text, "Invalid username or password.") {
+			valid = false
+			return
+		}
+	})
+	return valid
 }
 
 func containsTotpForm(doc *goquery.Document) bool {
