@@ -474,12 +474,14 @@ func (oc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		return "", err
 	}
 
-	// mfa required
-	if authStatus == "MFA_REQUIRED" {
+	switch authStatus {
+	case "MFA_REQUIRED":
 		oktaSessionToken, err = verifyMfa(oc, oktaOrgHost, loginDetails, primaryAuthResp)
 		if err != nil {
 			return "", errors.Wrap(err, "error verifying MFA")
 		}
+	case "LOCKED_OUT":
+		return "", errors.New("the account is locked")
 	}
 
 	// if user disabled sessions, default to using standard login WITHOUT sessions
