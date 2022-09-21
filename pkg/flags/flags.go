@@ -42,6 +42,7 @@ type LoginExecFlags struct {
 	DuoMFAOption      string
 	ExecProfile       string
 	CredentialProcess bool
+	ClusterName       string
 }
 
 type ConsoleFlags struct {
