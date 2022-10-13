@@ -146,8 +146,22 @@ func Login(loginFlags *flags.LoginExecFlags) error {
 		if err != nil {
 			return err
 		}
+	} else {
+		err = saveCredentials(awsCreds, sharedCreds)
+		if err != nil {
+			return err
+		}
+
+		log.Println("Logged in as:", awsCreds.PrincipalARN)
+		log.Println("")
+		log.Println("Your new access key pair has been stored in the AWS configuration.")
+		log.Printf("Note that it will expire at %v", awsCreds.Expires)
+		if sharedCreds.Profile != "default" {
+			log.Println("To use this credential, call the AWS CLI with the --profile option (e.g. aws --profile", sharedCreds.Profile, "ec2 describe-instances).")
+		}
 	}
-	return saveCredentials(awsCreds, sharedCreds)
+
+	return nil
 }
 
 func buildIdpAccount(loginFlags *flags.LoginExecFlags) (*cfg.IDPAccount, error) {
@@ -220,7 +234,7 @@ func resolveLoginDetails(account *cfg.IDPAccount, loginFlags *flags.LoginExecFla
 	// log.Printf("loginDetails %+v", loginDetails)
 
 	// if skip prompt was passed just pass back the flag values
-	if loginFlags.CommonFlags.SkipPrompt {
+	if loginFlags.CommonFlags.SkipPrompt || loginFlags.CredentialProcess {
 		return loginDetails, nil
 	}
 
@@ -346,14 +360,6 @@ func saveCredentials(awsCreds *awsconfig.AWSCredentials, sharedCreds *awsconfig.
 	err := sharedCreds.Save(awsCreds)
 	if err != nil {
 		return errors.Wrap(err, "Error saving credentials.")
-	}
-
-	log.Println("Logged in as:", awsCreds.PrincipalARN)
-	log.Println("")
-	log.Println("Your new access key pair has been stored in the AWS configuration.")
-	log.Printf("Note that it will expire at %v", awsCreds.Expires)
-	if sharedCreds.Profile != "default" {
-		log.Println("To use this credential, call the AWS CLI with the --profile option (e.g. aws --profile", sharedCreds.Profile, "ec2 describe-instances).")
 	}
 
 	return nil
