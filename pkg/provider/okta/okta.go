@@ -592,7 +592,7 @@ func (oc *Client) follow(ctx context.Context, req *http.Request, loginDetails *c
 }
 
 func getStateTokenFromOktaPageBody(responseBody string) (string, error) {
-	re := regexp.MustCompile("var stateToken = '(.*)';")
+	re := regexp.MustCompile("var stateToken = [\"|'](.*)[\"|'];")
 	match := re.FindStringSubmatch(responseBody)
 	if len(match) < 2 {
 		return "", errors.New("cannot find state token")
