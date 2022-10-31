@@ -2,8 +2,6 @@ skip_non_tags: true
 clone_folder: c:\gopath\src\github.com\versent\saml2aws
 environment:
   GOPATH: c:\gopath
-  CHOCOLATEY_APIKEY:
-    secure: 3kWTz99Qj+ipyaR73CxcJeGRRbmk84MF2ERDu6MyY10cjHAi6s3AVZ2Ccoa+Ioyt
   appName: saml2aws
 install:
 - set PATH=C:\msys64\mingw64\bin;C:\go118\bin;%PATH%
@@ -49,8 +47,3 @@ artifacts:
 #    secure: kxO8LOQfcXH15OdilgteFKRn4Y7vUQND84WaR2fgghgiwTTHPLgKV1j+6o/8Ggjx
 #  artifact: saml2aws.zip, saml2aws.zip.sha256, choco/saml2aws.1.3.2.nupkg, choco/saml2aws.1.3.2.nupkg.sha256
 #  draft: true
-deploy_script:
-- ps: >-
-    choco apiKey -k $env:CHOCOLATEY_APIKEY -source https://push.chocolatey.org/
-
-    choco push ./choco/${env:appName}.$(($env:APPVEYOR_REPO_TAG_NAME).Split('v')[1]).nupkg
