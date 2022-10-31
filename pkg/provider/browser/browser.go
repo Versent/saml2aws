@@ -52,7 +52,7 @@ func (cl *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		return "", err
 	}
 
-	r := page.WaitForRequest("https://signin.aws.amazon.com/saml")
+	r := page.WaitForRequest("https://signin.amazonaws-us-gov.com/saml")
 	data, err := r.PostData()
 	if err != nil {
 		return "", err
