@@ -112,7 +112,7 @@ func (c *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error) 
 		return "", errors.Wrap(err, "error encoding authreq")
 	}
 
-	authSubmitURL := fmt.Sprintf("https://%s/api/2/saml_assertion", host)
+	authSubmitURL := "https://api.us.onelogin.com/api/2/saml_assertion"
 
 	req, err := http.NewRequest("POST", authSubmitURL, &authBody)
 	if err != nil {
