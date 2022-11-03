@@ -84,3 +84,4 @@ func (cl *Client) Validate(loginDetails *creds.LoginDetails) error {
 
 	return nil
 }
+
