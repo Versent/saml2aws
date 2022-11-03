@@ -3,6 +3,7 @@ package browser
 import (
 	"errors"
 	"net/url"
+	"regexp"
 
 	"github.com/mxschmitt/playwright-go"
 	"github.com/sirupsen/logrus"
@@ -52,7 +53,7 @@ func (cl *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		return "", err
 	}
 
-	r := page.WaitForRequest("https://signin.aws.amazon.com/saml")
+	r := page.WaitForRequest(regexp.Compile("^https://signin\\.(aws\\.amazon|amazonaws-us-gov)\\.com/saml$"))
 	data, err := r.PostData()
 	if err != nil {
 		return "", err
