@@ -1,4 +1,5 @@
 skip_non_tags: true
+image: Visual Studio 2019
 clone_folder: c:\gopath\src\github.com\versent\saml2aws
 environment:
   GOPATH: c:\gopath

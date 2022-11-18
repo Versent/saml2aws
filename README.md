@@ -62,6 +62,7 @@ Aside from Okta, most of the providers in this project are using screen scraping
 
 1. AWS defaults to session tokens being issued with a duration of up to 3600 seconds (1 hour), this can now be configured as per [Enable Federated API Access to your AWS Resources for up to 12 hours Using IAM Roles](https://aws.amazon.com/blogs/security/enable-federated-api-access-to-your-aws-resources-for-up-to-12-hours-using-iam-roles/) and `--session-duration` flag.
 2. Every SAML provider is different, the login process, MFA support is pluggable and therefore some work may be needed to integrate with your identity server
+3. By default, the temporary security credentials returned **do not support SigV4A**. If you need SigV4A support then you must set the `AWS_STS_REGIONAL_ENDPOINTS` enviornment variable to `regional` when calling `saml2aws` so that [aws-sdk-go](https://github.com/aws/aws-sdk-go) uses a regional STS endpoint instead of the global one. See the note at the bottom of [Signing AWS API requests](https://docs.aws.amazon.com/general/latest/gr/signing_aws_api_requests.html#signature-versions) and [AWS STS Regionalized endpoints](https://docs.aws.amazon.com/sdkref/latest/guide/feature-sts-regionalized-endpoints.html).
 
 ## Install
 
