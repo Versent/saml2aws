@@ -27,6 +27,9 @@ const (
 
 	// DefaultProfile this is the default profile name used to save the credentials in the aws cli
 	DefaultProfile = "saml"
+
+	// Environment Variable used to define the Keyring Backend for Linux based distro
+	KeyringBackEnvironmentVariableName = "SAML2AWS_KEYRING_BACKEND"
 )
 
 // IDPAccount saml IDP account
