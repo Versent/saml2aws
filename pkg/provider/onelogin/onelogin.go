@@ -235,6 +235,9 @@ func verifyMFA(oc *Client, oauthToken, appID, host, resp string) (string, error)
 	}
 
 	factorID := gjson.Get(resp, fmt.Sprintf("devices.%d.device_id", option)).String()
+	// We always use the host here instead of the value of the callback_url field as
+	// some tenants may be erroneously routed to different regions causing a
+	// 400 Bad Request to appear whereas the host URL always resolves to the nearest region.
 	callbackURL := fmt.Sprintf("https://%s/api/2/saml_assertion/verify_factor", host)
 	mfaIdentifer := gjson.Get(resp, fmt.Sprintf("devices.%d.device_type", option)).String()
 	mfaDeviceID := gjson.Get(resp, fmt.Sprintf("devices.%d.device_id", option)).String()
