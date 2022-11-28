@@ -35,7 +35,7 @@ var (
 	connectionInfoPattern = regexp.MustCompile(`Auth0\.setClient\((.*)\)`)
 	sessionInfoPattern    = regexp.MustCompile(`window\.atob\('(.*)'\)`)
 
-	defaultPrompter = prompter.NewCli()
+	defaultPrompter = prompter.NewCli(false)
 )
 
 // Client wrapper around Auth0.
@@ -86,7 +86,7 @@ type sessionInfo struct {
 	csrf  string
 }
 
-//authCallbackRequest represents Auth0 authentication callback request
+// authCallbackRequest represents Auth0 authentication callback request
 type authCallbackRequest struct {
 	method string
 	url    string

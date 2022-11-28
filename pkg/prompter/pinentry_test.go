@@ -87,7 +87,7 @@ func TestValidateAndSetPrompterShouldWorkWithInputForCli(t *testing.T) {
 	for _, errPrompt := range errPrompts {
 		err := ValidateAndSetPrompter(errPrompt)
 		assert.NoError(t, err)
-		assert.IsType(t, ActivePrompter, NewCli())
+		assert.IsType(t, ActivePrompter, NewCli(false))
 	}
 
 }

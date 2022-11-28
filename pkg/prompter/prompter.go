@@ -6,7 +6,7 @@ import (
 )
 
 // ActivePrompter is by default the survey cli prompter
-var ActivePrompter Prompter = NewCli()
+var ActivePrompter Prompter = NewCli(false)
 
 // Prompter handles prompting user for input
 type Prompter interface {
@@ -29,6 +29,10 @@ func ValidateAndSetPrompter(prmptCfg string) error {
 
 	if prmptCfg == "" || prmptCfg == "survey" || prmptCfg == "default" {
 		// nothing to do; the default prompter is the survey one.
+		return nil
+	}
+	if prmptCfg == "output-to-stderr" {
+		SetPrompter(NewCli(true))
 		return nil
 	}
 

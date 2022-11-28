@@ -154,6 +154,11 @@ func main() {
 		Default("bash").
 		EnumVar(&shell, "bash", "powershell", "fish", "env")
 
+	cmdEksToken := app.Command("eks-token", "Produce token to get an access to the EKS cluster (cluster name should be provided by 'cluster-name' flag).")
+	eksFlags := new(flags.LoginExecFlags)
+	eksFlags.CommonFlags = commonFlags
+	cmdEksToken.Flag("cluster-name", "EKS cluster name.").StringVar(&eksFlags.ClusterName)
+
 	// Trigger the parsing of the command line inputs via kingpin
 	command := kingpin.MustParse(app.Parse(os.Args[1:]))
 
@@ -194,6 +199,8 @@ func main() {
 		err = commands.ListRoles(listRolesFlags)
 	case cmdConfigure.FullCommand():
 		err = commands.Configure(configFlags)
+	case cmdEksToken.FullCommand():
+		err = commands.EksToken(eksFlags)
 	}
 
 	if err != nil {

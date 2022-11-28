@@ -3,17 +3,18 @@ package prompter
 import (
 	"errors"
 	"fmt"
-
-	survey "github.com/AlecAivazis/survey/v2"
+	"github.com/AlecAivazis/survey/v2"
+	"os"
 )
 
 // CliPrompter used to prompt for cli input
 type CliPrompter struct {
+	stdErrOutput bool
 }
 
 // NewCli builds a new cli prompter
-func NewCli() *CliPrompter {
-	return &CliPrompter{}
+func NewCli(stdErrOutput bool) *CliPrompter {
+	return &CliPrompter{stdErrOutput}
 }
 
 // RequestSecurityCode request a security code to be entered by the user
@@ -22,7 +23,11 @@ func (cli *CliPrompter) RequestSecurityCode(pattern string) string {
 	prompt := &survey.Input{
 		Message: fmt.Sprintf("Security Token [%s]", pattern),
 	}
-	_ = survey.AskOne(prompt, &token, survey.WithValidator(survey.Required))
+	opts := []survey.AskOpt{survey.WithValidator(survey.Required)}
+	if cli.stdErrOutput {
+		opts = append(opts, survey.WithStdio(os.Stdin, os.Stderr, os.Stdin))
+	}
+	_ = survey.AskOne(prompt, &token, opts...)
 	return token
 }
 
@@ -34,7 +39,11 @@ func (cli *CliPrompter) ChooseWithDefault(pr string, defaultValue string, option
 		Options: options,
 		Default: defaultValue,
 	}
-	_ = survey.AskOne(prompt, &selected, survey.WithValidator(survey.Required))
+	opts := []survey.AskOpt{survey.WithValidator(survey.Required)}
+	if cli.stdErrOutput {
+		opts = append(opts, survey.WithStdio(os.Stdin, os.Stderr, os.Stdin))
+	}
+	_ = survey.AskOne(prompt, &selected, opts...)
 
 	// return the selected element index
 	for i, option := range options {
@@ -52,7 +61,11 @@ func (cli *CliPrompter) Choose(pr string, options []string) int {
 		Message: pr,
 		Options: options,
 	}
-	_ = survey.AskOne(prompt, &selected, survey.WithValidator(survey.Required))
+	opts := []survey.AskOpt{survey.WithValidator(survey.Required)}
+	if cli.stdErrOutput {
+		opts = append(opts, survey.WithStdio(os.Stdin, os.Stderr, os.Stdin))
+	}
+	_ = survey.AskOne(prompt, &selected, opts...)
 
 	// return the selected element index
 	for i, option := range options {
@@ -70,7 +83,11 @@ func (cli *CliPrompter) String(pr string, defaultValue string) string {
 		Message: pr,
 		Default: defaultValue,
 	}
-	_ = survey.AskOne(prompt, &val)
+	var opts []survey.AskOpt
+	if cli.stdErrOutput {
+		opts = append(opts, survey.WithStdio(os.Stdin, os.Stderr, os.Stdin))
+	}
+	_ = survey.AskOne(prompt, &val, opts...)
 	return val
 }
 
@@ -80,7 +97,11 @@ func (cli *CliPrompter) StringRequired(pr string) string {
 	prompt := &survey.Input{
 		Message: pr,
 	}
-	_ = survey.AskOne(prompt, &val, survey.WithValidator(survey.Required))
+	opts := []survey.AskOpt{survey.WithValidator(survey.Required)}
+	if cli.stdErrOutput {
+		opts = append(opts, survey.WithStdio(os.Stdin, os.Stderr, os.Stdin))
+	}
+	_ = survey.AskOne(prompt, &val, opts...)
 	return val
 }
 
@@ -90,6 +111,10 @@ func (cli *CliPrompter) Password(pr string) string {
 	prompt := &survey.Password{
 		Message: pr,
 	}
-	_ = survey.AskOne(prompt, &val)
+	var opts []survey.AskOpt
+	if cli.stdErrOutput {
+		opts = append(opts, survey.WithStdio(os.Stdin, os.Stderr, os.Stdin))
+	}
+	_ = survey.AskOne(prompt, &val, opts...)
 	return val
 }

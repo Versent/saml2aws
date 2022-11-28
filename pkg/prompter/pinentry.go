@@ -36,7 +36,7 @@ type PinentryPrompter struct {
 
 // NewPinentryPrompter is a factory for PinentryPrompter
 func NewPinentryPrompter(bin string) *PinentryPrompter {
-	return &PinentryPrompter{Runner: NewRealPinentryRunner(bin), DefaultPrompter: NewCli()}
+	return &PinentryPrompter{Runner: NewRealPinentryRunner(bin), DefaultPrompter: NewCli(false)}
 }
 
 // NewRealPinentryRunner is a factory for RealPinentryRunner
