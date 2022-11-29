@@ -1,11 +1,8 @@
-// +build darwin,cgo
+// +build darwin
 
 package osxkeychain
 
 import (
-	"net/url"
-	"strings"
-
 	"github.com/keybase/go-keychain"
 	"github.com/sirupsen/logrus"
 	"github.com/versent/saml2aws/v2/helper/credentials"
@@ -24,14 +21,11 @@ func (h Osxkeychain) Add(creds *credentials.Credentials) error {
 	}
 
 	item := keychain.NewItem()
-	item.SetSecClass(keychain.SecClassInternetPassword)
+	item.SetSecClass(keychain.SecClassGenericPassword)
 	item.SetLabel(credentials.CredsLabel)
 	item.SetAccount(creds.Username)
 	item.SetData([]byte(creds.Secret))
-	err = splitServer3(creds.ServerURL, item)
-	if err != nil {
-		return err
-	}
+	item.SetService(creds.ServerURL)
 
 	err = keychain.AddItem(item)
 	if err != nil {
@@ -46,13 +40,9 @@ func (h Osxkeychain) Add(creds *credentials.Credentials) error {
 func (h Osxkeychain) Delete(serverURL string) error {
 
 	item := keychain.NewItem()
-	item.SetSecClass(keychain.SecClassInternetPassword)
-	err := splitServer3(serverURL, item)
-	if err != nil {
-		return err
-	}
-
-	err = keychain.DeleteItem(item)
+	item.SetSecClass(keychain.SecClassGenericPassword)
+	item.SetService(serverURL)
+	err := keychain.DeleteItem(item)
 	if err != nil {
 		return err
 	}
@@ -66,13 +56,8 @@ func (h Osxkeychain) Get(serverURL string) (string, string, error) {
 	logger.WithField("serverURL", serverURL).Debug("Get credentials")
 
 	query := keychain.NewItem()
-	query.SetSecClass(keychain.SecClassInternetPassword)
-
-	err := splitServer3(serverURL, query)
-	if err != nil {
-		return "", "", err
-	}
-
+	query.SetSecClass(keychain.SecClassGenericPassword)
+	query.SetService(serverURL)
 	query.SetMatchLimit(keychain.MatchLimitOne)
 	query.SetReturnAttributes(true)
 	query.SetReturnData(true)
@@ -94,22 +79,4 @@ func (h Osxkeychain) Get(serverURL string) (string, string, error) {
 // SupportsCredentialStorage returns true since storage is supported
 func (Osxkeychain) SupportsCredentialStorage() bool {
 	return true
-}
-
-func splitServer3(serverURL string, item keychain.Item) (err error) {
-	u, err := url.Parse(serverURL)
-	if err != nil {
-		return
-	}
-
-	hostAndPort := strings.Split(u.Host, ":")
-	SetServer(item, hostAndPort[0])
-	if len(hostAndPort) == 2 {
-		SetPort(item, hostAndPort[1])
-	}
-
-	SetProtocol(item, u.Scheme)
-	SetPath(item, u.Path)
-
-	return
 }
