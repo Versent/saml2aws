@@ -179,6 +179,8 @@ Commands:
         --client-secret=CLIENT-SECRET
                                    OneLogin client secret, used to generate API access token. (env: ONELOGIN_CLIENT_SECRET)
         --subdomain=SUBDOMAIN      OneLogin subdomain of your company account. (env: ONELOGIN_SUBDOMAIN)
+        --mfa-ip-address=MFA-IP-ADDRESS
+                                   IP address whitelisting defined in OneLogin MFA policies. (env: ONELOGIN_MFA_IP_ADDRESS)
     -p, --profile=PROFILE          The AWS profile to save the temporary credentials. (env: SAML2AWS_PROFILE)
         --resource-id=RESOURCE-ID  F5APM SAML resource ID of your company account. (env: SAML2AWS_F5APM_RESOURCE_ID)
         --config=CONFIG            Path/filename of saml2aws config file (env: SAML2AWS_CONFIGFILE)
@@ -196,6 +198,8 @@ Commands:
         --client-id=CLIENT-ID    OneLogin client id, used to generate API access token. (env: ONELOGIN_CLIENT_ID)
         --client-secret=CLIENT-SECRET
                                  OneLogin client secret, used to generate API access token. (env: ONELOGIN_CLIENT_SECRET)
+        --mfa-ip-address=MFA-IP-ADDRESS
+                                 IP address whitelisting defined in OneLogin MFA policies. (env: ONELOGIN_MFA_IP_ADDRESS)
         --force                  Refresh credentials even if not expired.
         --credential-process     Enables AWS Credential Process support by outputting credentials to STDOUT in a JSON message.
         --credentials-file=CREDENTIALS-FILE
