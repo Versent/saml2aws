@@ -88,7 +88,7 @@ func storeCredentials(configFlags *flags.CommonFlags, account *cfg.IDPAccount) e
 	}
 	if account.Provider == onelogin.ProviderName {
 		if configFlags.ClientID == "" || configFlags.ClientSecret == "" {
-			log.Println("OneLogin provider requires --client_id and --client_secret flags to be set.")
+			log.Println("OneLogin provider requires --client-id and --client-secret flags to be set.")
 			os.Exit(1)
 		}
 		if err := credentials.SaveCredentials(path.Join(account.URL, OneLoginOAuthPath), configFlags.ClientID, configFlags.ClientSecret); err != nil {

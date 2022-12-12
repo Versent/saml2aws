@@ -157,7 +157,7 @@ func (c *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error) 
 		samlAssertion = authData.String()
 	case MessageMFARequired:
 		logger.Debug("Verifying MFA")
-		samlAssertion, err = verifyMFA(c, oauthToken, c.AppID, resp)
+		samlAssertion, err = verifyMFA(c, oauthToken, c.AppID, host, resp)
 		if err != nil {
 			return "", errors.Wrap(err, "error verifying MFA")
 		}
@@ -204,7 +204,7 @@ func addContentHeaders(r *http.Request) {
 
 // verifyMFA is used to either prompt to user for one time password or request approval using push notification.
 // For more details check https://developers.onelogin.com/api-docs/2/saml-assertions/verify-factor
-func verifyMFA(oc *Client, oauthToken, appID, resp string) (string, error) {
+func verifyMFA(oc *Client, oauthToken, appID, host, resp string) (string, error) {
 	stateToken := gjson.Get(resp, "state_token").String()
 	// choose an mfa option if there are multiple enabled
 	var option int
@@ -235,7 +235,10 @@ func verifyMFA(oc *Client, oauthToken, appID, resp string) (string, error) {
 	}
 
 	factorID := gjson.Get(resp, fmt.Sprintf("devices.%d.device_id", option)).String()
-	callbackURL := gjson.Get(resp, "callback_url").String()
+	// We always use the host here instead of the value of the callback_url field as
+	// some tenants may be erroneously routed to different regions causing a
+	// 400 Bad Request to appear whereas the host URL always resolves to the nearest region.
+	callbackURL := fmt.Sprintf("https://%s/api/2/saml_assertion/verify_factor", host)
 	mfaIdentifer := gjson.Get(resp, fmt.Sprintf("devices.%d.device_type", option)).String()
 	mfaDeviceID := gjson.Get(resp, fmt.Sprintf("devices.%d.device_id", option)).String()
 
