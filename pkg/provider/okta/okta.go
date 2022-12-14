@@ -474,12 +474,14 @@ func (oc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		return "", err
 	}
 
-	// mfa required
-	if authStatus == "MFA_REQUIRED" {
+	switch authStatus {
+	case "MFA_REQUIRED":
 		oktaSessionToken, err = verifyMfa(oc, oktaOrgHost, loginDetails, primaryAuthResp)
 		if err != nil {
 			return "", errors.Wrap(err, "error verifying MFA")
 		}
+	case "LOCKED_OUT":
+		return "", errors.New("the account is locked")
 	}
 
 	// if user disabled sessions, default to using standard login WITHOUT sessions
@@ -590,7 +592,7 @@ func (oc *Client) follow(ctx context.Context, req *http.Request, loginDetails *c
 }
 
 func getStateTokenFromOktaPageBody(responseBody string) (string, error) {
-	re := regexp.MustCompile("var stateToken = '(.*)';")
+	re := regexp.MustCompile("var stateToken = [\"|'](.*)[\"|'];")
 	match := re.FindStringSubmatch(responseBody)
 	if len(match) < 2 {
 		return "", errors.New("cannot find state token")
