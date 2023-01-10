@@ -35,15 +35,24 @@ func (cl *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		Headless: playwright.Bool(false),
 	}
 
-	if cl.idpAccount.BrowserType != "" {
-		logger.Info(fmt.Sprintf("Setting browser type: %s", cl.idpAccount.BrowserType))
-		launchOptions.Channel = playwright.String(cl.idpAccount.BrowserType)
+	browserTypeName := cl.idpAccount.BrowserType
+	if browserTypeName != "" {
+		logger.Info(fmt.Sprintf("Setting browser type: %s", browserTypeName))
+		launchOptions.Channel = playwright.String(browserTypeName)
 	}
 
-	// currently using Chromium as it is widely supported for Identity providers
+	// default browser is Chromium as it is widely supported for Identity providers, it can also be set to the other playwright browsers: Firefox and WebKit
+	browserType := pw.Chromium
+	if browserTypeName == "firefox" {
+		browserType = pw.Firefox
+	} else if browserTypeName == "webkit" {
+		browserType = pw.WebKit
+	}
+
+	// currently using the main browsers supported by Playwright: Chromium, Firefox or Webkit
 	//
 	// this is a sandboxed browser window so password managers and addons are separate
-	browser, err := pw.Chromium.Launch(launchOptions)
+	browser, err := browserType.Launch(launchOptions)
 	if err != nil {
 		return "", err
 	}
