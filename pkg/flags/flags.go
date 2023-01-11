@@ -72,7 +72,7 @@ func ApplyFlagOverrides(commonFlags *CommonFlags, account *cfg.IDPAccount) {
 		account.Provider = commonFlags.IdpProvider
 	}
 
-	if commonFlags.IdpProvider == "Browser" && commonFlags.BrowserType != "" {
+	if commonFlags.BrowserType != "" {
 		account.BrowserType = commonFlags.BrowserType
 	}
 
