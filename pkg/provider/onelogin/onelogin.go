@@ -26,6 +26,7 @@ const (
 	IdentifierSmsMfa             = "OneLogin SMS"
 	IdentifierTotpMfa            = "Google Authenticator"
 	IdentifierYubiKey            = "Yubico YubiKey"
+	IdentifierDuoSecurity		 = "Duo Duo Security"
 
 	MessageMFARequired = "MFA is required for this user"
 	MessageSuccess     = "Success"
@@ -43,6 +44,7 @@ var (
 		IdentifierSmsMfa:             "SMS",
 		IdentifierTotpMfa:            "TOTP",
 		IdentifierYubiKey:            "YUBIKEY",
+		IdentifierDuoSecurity:		  "DUO TOTP",
 	}
 )
 
@@ -250,7 +252,7 @@ func verifyMFA(oc *Client, oauthToken, appID, host, resp string) (string, error)
 
 	switch mfaIdentifer {
 	// These MFA options doesn't need additional request (e.g. to send SMS or a push notification etc) since the user can generate the code using their MFA app of choice.
-	case IdentifierTotpMfa, IdentifierYubiKey:
+	case IdentifierTotpMfa, IdentifierYubiKey, IdentifierDuoSecurity:
 		break
 
 	default:
@@ -284,7 +286,7 @@ func verifyMFA(oc *Client, oauthToken, appID, host, resp string) (string, error)
 	}
 
 	switch mfaIdentifer {
-	case IdentifierSmsMfa, IdentifierTotpMfa, IdentifierYubiKey:
+	case IdentifierSmsMfa, IdentifierTotpMfa, IdentifierYubiKey, IdentifierDuoSecurity:
 		verifyCode := prompter.StringRequired("Enter verification code")
 		var verifyBody bytes.Buffer
 		err := json.NewEncoder(&verifyBody).Encode(VerifyRequest{AppID: appID, DeviceID: mfaDeviceID, StateToken: stateToken, OTPToken: verifyCode})
