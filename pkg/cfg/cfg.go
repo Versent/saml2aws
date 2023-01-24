@@ -58,6 +58,7 @@ type IDPAccount struct {
 	DisableRememberDevice bool   `ini:"disable_remember_device"` // used by Okta
 	DisableSessions       bool   `ini:"disable_sessions"`        // used by Okta
 	Prompter              string `ini:"prompter"`
+	UseGovCloud           bool   `ini:"use_gov_cloud"`
 }
 
 func (ia IDPAccount) String() string {
@@ -91,7 +92,8 @@ func (ia IDPAccount) String() string {
   Profile: %s
   RoleARN: %s
   Region: %s
-}`, appID, policyID, oktaCfg, ia.URL, ia.Username, ia.Provider, ia.MFA, ia.SkipVerify, ia.AmazonWebservicesURN, ia.SessionDuration, ia.Profile, ia.RoleARN, ia.Region)
+  UseGovCloud: %v
+}`, appID, policyID, oktaCfg, ia.URL, ia.Username, ia.Provider, ia.MFA, ia.SkipVerify, ia.AmazonWebservicesURN, ia.SessionDuration, ia.Profile, ia.RoleARN, ia.Region, ia.UseGovCloud)
 }
 
 // Validate validate the required / expected fields are set
@@ -150,6 +152,7 @@ func NewIDPAccount() *IDPAccount {
 		AmazonWebservicesURN: DefaultAmazonWebservicesURN,
 		SessionDuration:      DefaultSessionDuration,
 		Profile:              DefaultProfile,
+		UseGovCloud:          false,
 	}
 }
 

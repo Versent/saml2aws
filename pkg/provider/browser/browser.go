@@ -14,11 +14,12 @@ var logger = logrus.WithField("provider", "browser")
 
 // Client client for browser based Identity Provider
 type Client struct {
+	UseGovCloud bool
 }
 
 // New create new browser based client
 func New(idpAccount *cfg.IDPAccount) (*Client, error) {
-	return &Client{}, nil
+	return &Client{UseGovCloud: idpAccount.UseGovCloud}, nil
 }
 
 func (cl *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error) {
@@ -52,7 +53,11 @@ func (cl *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		return "", err
 	}
 
-	r := page.WaitForRequest("https://signin.aws.amazon.com/saml")
+	awsSamlUrl := "https://signin.aws.amazon.com/saml"
+	if cl.UseGovCloud {
+		awsSamlUrl = "https://signin.amazonaws-us-gov.com/saml"
+	}
+	r := page.WaitForRequest(awsSamlUrl)
 	data, err := r.PostData()
 	if err != nil {
 		return "", err

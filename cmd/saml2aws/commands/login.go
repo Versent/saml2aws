@@ -197,6 +197,7 @@ func resolveLoginDetails(account *cfg.IDPAccount, loginFlags *flags.LoginExecFla
 
 	// log.Printf("%s %s", savedUsername, savedPassword)
 
+	loginDetails.UseGovCloud = loginFlags.CommonFlags.UseGovCloud
 	// if you supply a username in a flag it takes precedence
 	if loginFlags.CommonFlags.Username != "" {
 		loginDetails.Username = loginFlags.CommonFlags.Username
@@ -217,7 +218,7 @@ func resolveLoginDetails(account *cfg.IDPAccount, loginFlags *flags.LoginExecFla
 		loginDetails.ClientSecret = loginFlags.CommonFlags.ClientSecret
 	}
 
-	// log.Printf("loginDetails %+v", loginDetails)
+	log.Printf("loginDetails %+v", loginDetails)
 
 	// if skip prompt was passed just pass back the flag values
 	if loginFlags.CommonFlags.SkipPrompt {

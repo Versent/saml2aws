@@ -33,6 +33,7 @@ type CommonFlags struct {
 	DisableRememberDevice bool
 	DisableSessions       bool
 	Prompter              string
+	UseGovCloud           bool
 }
 
 // LoginExecFlags flags for the Login / Exec commands
@@ -42,6 +43,7 @@ type LoginExecFlags struct {
 	DuoMFAOption      string
 	ExecProfile       string
 	CredentialProcess bool
+	UseGovCloud       bool
 }
 
 type ConsoleFlags struct {
@@ -65,6 +67,12 @@ func ApplyFlagOverrides(commonFlags *CommonFlags, account *cfg.IDPAccount) {
 
 	if commonFlags.SkipVerify {
 		account.SkipVerify = commonFlags.SkipVerify
+	}
+
+	if commonFlags.UseGovCloud {
+		account.UseGovCloud = commonFlags.UseGovCloud
+	} else {
+		account.UseGovCloud = false
 	}
 
 	if commonFlags.IdpProvider != "" {
