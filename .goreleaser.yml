@@ -17,6 +17,14 @@ builds:
     - amd64
     - arm64
     - arm
+  overrides:
+    - goos: linux
+      goarch: amd64
+      goamd64: v1
+      tags:
+        - hidraw
+      env:
+        - CGO_ENABLED=1
 archives:
   - format: tar.gz
     wrap_in_directory: false
