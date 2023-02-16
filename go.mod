@@ -1,4 +1,4 @@
-module github.com/marcottedan/saml2aws/v2
+module github.com/versent/saml2aws/v2
 
 go 1.18
 
@@ -22,7 +22,6 @@ require (
 	github.com/skratchdot/open-golang v0.0.0-20200116055534-eef842397966
 	github.com/stretchr/testify v1.7.1
 	github.com/tidwall/gjson v1.13.0
-	github.com/versent/saml2aws/v2 v2.35.0
 	golang.org/x/net v0.0.0-20220127200216-cd36cc0744dd
 	gopkg.in/ini.v1 v1.66.6
 )
