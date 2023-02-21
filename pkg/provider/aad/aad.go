@@ -486,6 +486,7 @@ type mfaResponse struct {
 	SessionID     string      `json:"SessionId"`
 	CorrelationID string      `json:"CorrelationId"`
 	Timestamp     time.Time   `json:"Timestamp"`
+	Entropy       int         `json:"Entropy"`
 }
 
 // Autogenerate ProcessAuth response
@@ -977,7 +978,11 @@ func (ac *Client) getMfaFlowToken(mfas []userProof, loginPasswordResp passwordLo
 			mfaReq.AdditionalAuthData = verifyCode
 		}
 		if mfaReq.AuthMethodID == "PhoneAppNotification" && i == 0 {
-			log.Println("Phone approval required.")
+			if mfaResp.Entropy == 0 {
+				log.Println("Phone approval required.")
+			} else {
+				log.Printf("Phone approval required. Entropy is: %d", mfaResp.Entropy)
+			}
 		}
 		mfaReqJson, err := json.Marshal(mfaReq)
 		if err != nil {
