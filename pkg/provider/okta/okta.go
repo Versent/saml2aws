@@ -598,13 +598,13 @@ func getStateTokenFromOktaPageBody(responseBody string) (string, error) {
 	return strings.Replace(match[1], `\x2D`, "-", -1), nil
 }
 
-func parseMfaIdentifer(json string, arrayPosition int) (string, string){
+func parseMfaIdentifer(json string, arrayPosition int) (string, string) {
 	mfaProvider := gjson.Get(json, fmt.Sprintf("_embedded.factors.%d.provider", arrayPosition)).String()
 	factorType := strings.ToUpper(gjson.Get(json, fmt.Sprintf("_embedded.factors.%d.factorType", arrayPosition)).String())
 	// Okta gives names to some authentication methods
 	// displaying this name is useful when there's multiple auths of the same type. e.g. multiple FIDO options
 	authName := gjson.Get(json, fmt.Sprintf("_embedded.factors.%d.profile.authenticatorName", arrayPosition)).String()
-	return fmt.Sprintf("%s %s", mfaProvider, factorType), fmt.Sprintf("%s", authName)
+	return fmt.Sprintf("%s %s", mfaProvider, factorType), authName
 }
 
 func (oc *Client) handleFormRedirect(ctx context.Context, doc *goquery.Document) (context.Context, *http.Request, error) {
@@ -733,7 +733,7 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 			// If the authentication method as a name, we add it to the MFA option.
 			// This makes it possible to identify which method to choose
 			if len(authName) > 0 {
-				mfaOptions = append(mfaOptions, val + " - " + authName)
+				mfaOptions = append(mfaOptions, val+" - "+authName)
 			} else {
 				mfaOptions = append(mfaOptions, val)
 			}
