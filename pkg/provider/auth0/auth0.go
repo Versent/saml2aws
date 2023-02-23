@@ -86,7 +86,7 @@ type sessionInfo struct {
 	csrf  string
 }
 
-//authCallbackRequest represents Auth0 authentication callback request
+// authCallbackRequest represents Auth0 authentication callback request
 type authCallbackRequest struct {
 	method string
 	url    string

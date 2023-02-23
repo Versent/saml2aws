@@ -29,8 +29,7 @@ const (
 
 	MessageMFARequired = "MFA is required for this user"
 	MessageSuccess     = "Success"
-	TypePending        = "pending"
-	TypeSuccess        = "success"
+	MessagePending     = "Authentication pending"
 )
 
 // ProviderName constant holds the name of the OneLogin IDP.
@@ -106,14 +105,14 @@ func (c *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error) 
 
 	logger.Debug("Retrieved OneLogin OAuth token:", oauthToken)
 
-	authReq := AuthRequest{Username: loginDetails.Username, Password: loginDetails.Password, AppID: c.AppID, Subdomain: c.Subdomain}
+	authReq := AuthRequest{Username: loginDetails.Username, Password: loginDetails.Password, AppID: c.AppID, Subdomain: c.Subdomain, IPAddress: loginDetails.MFAIPAddress}
 	var authBody bytes.Buffer
 	err = json.NewEncoder(&authBody).Encode(authReq)
 	if err != nil {
 		return "", errors.Wrap(err, "error encoding authreq")
 	}
 
-	authSubmitURL := fmt.Sprintf("https://%s/api/1/saml_assertion", host)
+	authSubmitURL := fmt.Sprintf("https://%s/api/2/saml_assertion", host)
 
 	req, err := http.NewRequest("POST", authSubmitURL, &authBody)
 	if err != nil {
@@ -125,7 +124,7 @@ func (c *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error) 
 
 	logger.Debug("Requesting SAML Assertion")
 
-	// request the SAML assertion. For more details check https://developers.onelogin.com/api-docs/1/saml-assertions/generate-saml-assertion
+	// request the SAML assertion. For more details check https://developers.onelogin.com/api-docs/2/saml-assertions/generate-saml-assertion
 	res, err := c.Client.Do(req)
 	if err != nil {
 		return "", errors.Wrap(err, "error retrieving auth response")
@@ -142,11 +141,9 @@ func (c *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error) 
 	logger.Debug("SAML Assertion response code:", res.StatusCode)
 	logger.Debug("SAML Assertion response body:", resp)
 
-	authError := gjson.Get(resp, "status.error").Bool()
-	authMessage := gjson.Get(resp, "status.message").String()
-	authType := gjson.Get(resp, "status.type").String()
-	if authError || authType != TypeSuccess {
-		return "", errors.New(authMessage)
+	authMessage := gjson.Get(resp, "message").String()
+	if res.StatusCode != 200 {
+		return "", fmt.Errorf("HTTP %v: %s", res.StatusCode, authMessage)
 	}
 
 	authData := gjson.Get(resp, "data")
@@ -159,11 +156,8 @@ func (c *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error) 
 		}
 		samlAssertion = authData.String()
 	case MessageMFARequired:
-		if !authData.IsArray() {
-			return "", errors.New("invalid MFA data returned")
-		}
 		logger.Debug("Verifying MFA")
-		samlAssertion, err = verifyMFA(c, oauthToken, c.AppID, resp)
+		samlAssertion, err = verifyMFA(c, oauthToken, c.AppID, host, resp)
 		if err != nil {
 			return "", errors.Wrap(err, "error verifying MFA")
 		}
@@ -209,16 +203,22 @@ func addContentHeaders(r *http.Request) {
 }
 
 // verifyMFA is used to either prompt to user for one time password or request approval using push notification.
-// For more details check https://developers.onelogin.com/api-docs/1/saml-assertions/verify-factor
-func verifyMFA(oc *Client, oauthToken, appID, resp string) (string, error) {
-	stateToken := gjson.Get(resp, "data.0.state_token").String()
+// For more details check https://developers.onelogin.com/api-docs/2/saml-assertions/verify-factor
+func verifyMFA(oc *Client, oauthToken, appID, host, resp string) (string, error) {
+	stateToken := gjson.Get(resp, "state_token").String()
 	// choose an mfa option if there are multiple enabled
 	var option int
 	var mfaOptions []string
 	var preselected bool
-	for n, id := range gjson.Get(resp, "data.0.devices.#.device_type").Array() {
+	mfaOptionsCounter := make(map[string]int)
+	for n, id := range gjson.Get(resp, "devices.#.device_type").Array() {
 		identifier := id.String()
-		if val, ok := supportedMfaOptions[identifier]; ok {
+		if v, ok := supportedMfaOptions[identifier]; ok {
+			val := v
+			if mfaOptionsCounter[v] != 0 {
+				val = fmt.Sprintf("%s%d", v, mfaOptionsCounter[v])
+			}
+			mfaOptionsCounter[v]++
 			mfaOptions = append(mfaOptions, val)
 			// If there is pre-selected MFA option (thorugh the --mfa flag), then set MFA option index and break early.
 			if val == oc.MFA {
@@ -234,10 +234,13 @@ func verifyMFA(oc *Client, oauthToken, appID, resp string) (string, error) {
 		option = prompter.Choose("Select which MFA option to use", mfaOptions)
 	}
 
-	factorID := gjson.Get(resp, fmt.Sprintf("data.0.devices.%d.device_id", option)).String()
-	callbackURL := gjson.Get(resp, "data.0.callback_url").String()
-	mfaIdentifer := gjson.Get(resp, fmt.Sprintf("data.0.devices.%d.device_type", option)).String()
-	mfaDeviceID := gjson.Get(resp, fmt.Sprintf("data.0.devices.%d.device_id", option)).String()
+	factorID := gjson.Get(resp, fmt.Sprintf("devices.%d.device_id", option)).String()
+	// We always use the host here instead of the value of the callback_url field as
+	// some tenants may be erroneously routed to different regions causing a
+	// 400 Bad Request to appear whereas the host URL always resolves to the nearest region.
+	callbackURL := fmt.Sprintf("https://%s/api/2/saml_assertion/verify_factor", host)
+	mfaIdentifer := gjson.Get(resp, fmt.Sprintf("devices.%d.device_type", option)).String()
+	mfaDeviceID := gjson.Get(resp, fmt.Sprintf("devices.%d.device_id", option)).String()
 
 	logger.WithField("factorID", factorID).WithField("callbackURL", callbackURL).WithField("mfaIdentifer", mfaIdentifer).Debug("MFA")
 
@@ -275,7 +278,7 @@ func verifyMFA(oc *Client, oauthToken, appID, resp string) (string, error) {
 		}
 		resp = string(body)
 		if gjson.Get(resp, "status.error").Bool() {
-			msg := gjson.Get(resp, "status.message").String()
+			msg := gjson.Get(resp, "message").String()
 			return "", errors.New(msg)
 		}
 	}
@@ -307,16 +310,16 @@ func verifyMFA(oc *Client, oauthToken, appID, resp string) (string, error) {
 
 		resp = string(body)
 
-		message := gjson.Get(resp, "status.message").String()
-		if gjson.Get(resp, "status.error").Bool() {
-			return "", errors.New(message)
+		message := gjson.Get(resp, "message").String()
+		if res.StatusCode != 200 || message != MessageSuccess {
+			return "", fmt.Errorf("HTTP %v: %s", res.StatusCode, message)
 		}
 
 		return gjson.Get(resp, "data").String(), nil
 
 	case IdentifierOneLoginProtectMfa:
 		// set the body payload to disable further push notifications (i.e. set do_not_notify to true)
-		// https://developers.onelogin.com/api-docs/1/saml-assertions/verify-factor
+		// https://developers.onelogin.com/api-docs/2/saml-assertions/verify-factor
 		var verifyBody bytes.Buffer
 		err := json.NewEncoder(&verifyBody).Encode(VerifyRequest{AppID: appID, DeviceID: mfaDeviceID, DoNotNotify: true, StateToken: stateToken})
 		if err != nil {
@@ -350,25 +353,25 @@ func verifyMFA(oc *Client, oauthToken, appID, resp string) (string, error) {
 				return "", errors.Wrap(err, "error retrieving body from response")
 			}
 
-			message := gjson.Get(string(body), "status.message").String()
+			message := gjson.Get(string(body), "message").String()
 
 			// on 'error' status
-			if gjson.Get(string(body), "status.error").Bool() {
-				return "", errors.New(message)
+			if res.StatusCode != 200 {
+				return "", fmt.Errorf("HTTP %v: %s", res.StatusCode, message)
 			}
 
-			switch gjson.Get(string(body), "status.type").String() {
-			case TypePending:
+			switch true {
+			case strings.Contains(message, MessagePending):
 				time.Sleep(time.Second)
 				logger.Debug("Waiting for user to authorize login")
 
-			case TypeSuccess:
+			case message == MessageSuccess:
 				log.Println(" Approved")
 				return gjson.Get(string(body), "data").String(), nil
 
 			default:
 				log.Println(" Error:")
-				return "", errors.New("unsupported response from OneLogin, please raise ticket with saml2aws")
+				return "", fmt.Errorf("HTTP %v: %s", res.StatusCode, message)
 			}
 		}
 	}

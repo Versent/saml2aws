@@ -19,7 +19,7 @@ jobs:
     - name: Set up Go 1.x
       uses: actions/setup-go@v2
       with:
-        go-version: 1.16.x
+        go-version: 1.18.x
 
     - name: Check out code into the Go module directory
       uses: actions/checkout@v2
@@ -38,7 +38,7 @@ jobs:
     - name: Set up Go 1.x
       uses: actions/setup-go@v2
       with:
-        go-version: 1.16.x
+        go-version: 1.18.x
 
     - name: Check out code into the Go module directory
       uses: actions/checkout@v2
@@ -46,7 +46,7 @@ jobs:
     - name: golangci-lint
       uses: golangci/golangci-lint-action@v2
       with:
-        version: v1.42.0
+        version: v1.45.2
 
   release-build:
     name: release-build
@@ -56,7 +56,7 @@ jobs:
     - name: Set up Go 1.x
       uses: actions/setup-go@v2
       with:
-        go-version: 1.16.x
+        go-version: 1.18.x
 
     - name: Check out code into the Go module directory
       uses: actions/checkout@v2
