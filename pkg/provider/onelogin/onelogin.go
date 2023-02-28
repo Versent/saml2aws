@@ -105,7 +105,7 @@ func (c *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error) 
 
 	logger.Debug("Retrieved OneLogin OAuth token:", oauthToken)
 
-	authReq := AuthRequest{Username: loginDetails.Username, Password: loginDetails.Password, AppID: c.AppID, Subdomain: c.Subdomain}
+	authReq := AuthRequest{Username: loginDetails.Username, Password: loginDetails.Password, AppID: c.AppID, Subdomain: c.Subdomain, IPAddress: loginDetails.MFAIPAddress}
 	var authBody bytes.Buffer
 	err = json.NewEncoder(&authBody).Encode(authReq)
 	if err != nil {
