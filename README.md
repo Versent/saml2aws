@@ -633,6 +633,8 @@ region                  = us-east-1
 ```
 ## Building
 
+### macOS
+
 To build this software on osx clone to the repo to `$GOPATH/src/github.com/versent/saml2aws` and ensure you have `$GOPATH/bin` in your `$PATH`.
 
 ```
@@ -655,6 +657,26 @@ Before raising a PR please run the linter.
 
 ```
 make lint-fix
+```
+
+### Linux
+
+To build this software on Debian/Ubuntu, you need to install a build dependency:
+
+```
+sudo apt install libudev-dev
+```
+
+You also need [GoReleaser](https://github.com/goreleaser/goreleaser) installed, and the binary (or a symlink) in `bin/goreleaser`.
+
+```
+ln -s $(command -v goreleaser) bin/goreleaser
+```
+
+Then you can build:
+
+```
+make build
 ```
 
 ## Environment vars
