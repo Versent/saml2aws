@@ -24,7 +24,7 @@ import (
 
 var logger = logrus.WithField("provider", "f5apm")
 
-//Client client for F5 APM
+// Client client for F5 APM
 type Client struct {
 	provider.ValidateBase
 
