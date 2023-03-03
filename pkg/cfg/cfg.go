@@ -41,6 +41,7 @@ type IDPAccount struct {
 	Provider              string `ini:"provider"`
 	BrowserType           string `ini:"browser_type"` // used by 'Browser' Provider
 	MFA                   string `ini:"mfa"`
+	MFAIPAddress          string `ini:"mfa_ip_address"` // used by OneLogin
 	SkipVerify            bool   `ini:"skip_verify"`
 	Timeout               int    `ini:"timeout"`
 	AmazonWebservicesURN  string `ini:"aws_urn"`

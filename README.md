@@ -181,6 +181,8 @@ Commands:
         --client-secret=CLIENT-SECRET
                                    OneLogin client secret, used to generate API access token. (env: ONELOGIN_CLIENT_SECRET)
         --subdomain=SUBDOMAIN      OneLogin subdomain of your company account. (env: ONELOGIN_SUBDOMAIN)
+        --mfa-ip-address=MFA-IP-ADDRESS
+                                   IP address whitelisting defined in OneLogin MFA policies. (env: ONELOGIN_MFA_IP_ADDRESS)
     -p, --profile=PROFILE          The AWS profile to save the temporary credentials. (env: SAML2AWS_PROFILE)
         --resource-id=RESOURCE-ID  F5APM SAML resource ID of your company account. (env: SAML2AWS_F5APM_RESOURCE_ID)
         --config=CONFIG            Path/filename of saml2aws config file (env: SAML2AWS_CONFIGFILE)
@@ -198,6 +200,8 @@ Commands:
         --client-id=CLIENT-ID    OneLogin client id, used to generate API access token. (env: ONELOGIN_CLIENT_ID)
         --client-secret=CLIENT-SECRET
                                  OneLogin client secret, used to generate API access token. (env: ONELOGIN_CLIENT_SECRET)
+        --mfa-ip-address=MFA-IP-ADDRESS
+                                 IP address whitelisting defined in OneLogin MFA policies. (env: ONELOGIN_MFA_IP_ADDRESS)
         --force                  Refresh credentials even if not expired.
         --credential-process     Enables AWS Credential Process support by outputting credentials to STDOUT in a JSON message.
         --credentials-file=CREDENTIALS-FILE
@@ -631,6 +635,8 @@ region                  = us-east-1
 ```
 ## Building
 
+### macOS
+
 To build this software on osx clone to the repo to `$GOPATH/src/github.com/versent/saml2aws` and ensure you have `$GOPATH/bin` in your `$PATH`.
 
 ```
@@ -653,6 +659,26 @@ Before raising a PR please run the linter.
 
 ```
 make lint-fix
+```
+
+### Linux
+
+To build this software on Debian/Ubuntu, you need to install a build dependency:
+
+```
+sudo apt install libudev-dev
+```
+
+You also need [GoReleaser](https://github.com/goreleaser/goreleaser) installed, and the binary (or a symlink) in `bin/goreleaser`.
+
+```
+ln -s $(command -v goreleaser) bin/goreleaser
+```
+
+Then you can build:
+
+```
+make build
 ```
 
 ## Environment vars
