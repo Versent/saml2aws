@@ -22,7 +22,7 @@ jobs:
         go-version: 1.18.x
 
     - name: Check out code into the Go module directory
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
     - name: Test
       run: go test -v ./...
@@ -41,7 +41,7 @@ jobs:
         go-version: 1.18.x
 
     - name: Check out code into the Go module directory
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
     - name: golangci-lint
       uses: golangci/golangci-lint-action@v2
@@ -64,7 +64,7 @@ jobs:
         go-version: 1.18.x
 
     - name: Check out code into the Go module directory
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
     - name: Install dependency required for linux builds
       if: matrix.os == 'ubuntu-latest'
