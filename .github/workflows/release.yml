@@ -3,12 +3,20 @@ name: release
 on:
   push:
     tags:
-      - '*'
+    - '*'
 
 jobs:
   release:
     name: release
-    runs-on: macOS-latest
+    strategy:
+      # the goreleaser and the Github release API doesn't handle concurrent
+      # access well, so run goreleaser serially
+      max-parallel: 1
+      matrix:
+        os:
+        - ubuntu-latest
+        - macos-latest
+    runs-on: ${{ matrix.os }}
     steps:
 
     - name: Set up Go 1.x
@@ -19,10 +27,14 @@ jobs:
     - name: Check out code into the Go module directory
       uses: actions/checkout@v2
 
+    - name: Install dependency required for linux builds
+      if: matrix.os == 'ubuntu-latest'
+      run: sudo apt-get update && sudo apt-get install -y libudev-dev
+
     - name: GoReleaser
       uses: goreleaser/goreleaser-action@v2
       with:
         version: latest
-        args: release --rm-dist
+        args: release --rm-dist --config .goreleaser.${{ matrix.os }}.yml
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
