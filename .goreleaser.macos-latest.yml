@@ -10,9 +10,7 @@ builds:
   ldflags:
     - -s -w -X main.Version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}}
   goos:
-    - windows
     - darwin
-    - linux
   goarch:
     - amd64
     - arm64
@@ -28,10 +26,9 @@ builds:
 archives:
   - format: tar.gz
     wrap_in_directory: false
-    format_overrides:
-      - goos: windows
-        format: zip
     # remove README and LICENSE
     files:
       - LICENSE.md
       - README.md
+checksum:
+  name_template: "{{ .ProjectName }}_{{ .Version }}_darwin_checksums.txt"
