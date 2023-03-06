@@ -17,12 +17,12 @@ jobs:
     steps:
 
     - name: Set up Go 1.x
-      uses: actions/setup-go@v2
+      uses: actions/setup-go@v3
       with:
         go-version: 1.18.x
 
     - name: Check out code into the Go module directory
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
     - name: Test
       run: go test -v ./...
@@ -36,36 +36,42 @@ jobs:
     steps:
 
     - name: Set up Go 1.x
-      uses: actions/setup-go@v2
+      uses: actions/setup-go@v3
       with:
         go-version: 1.18.x
 
     - name: Check out code into the Go module directory
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
     - name: golangci-lint
-      uses: golangci/golangci-lint-action@v2
+      uses: golangci/golangci-lint-action@v3
       with:
-        version: v1.45.2
+        version: v1.51.2
 
   release-build:
     name: release-build
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os:
+        - ubuntu-latest
+        - macos-latest
+    runs-on: ${{ matrix.os }}
     steps:
 
     - name: Set up Go 1.x
-      uses: actions/setup-go@v2
+      uses: actions/setup-go@v3
       with:
         go-version: 1.18.x
 
     - name: Check out code into the Go module directory
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
     - name: Install dependency required for linux builds
+      if: matrix.os == 'ubuntu-latest'
       run: sudo apt-get update && sudo apt-get install -y libudev-dev
 
     - name: GoReleaser
-      uses: goreleaser/goreleaser-action@v2
+      uses: goreleaser/goreleaser-action@v4
       with:
         version: latest
-        args: build --snapshot --rm-dist
+        args: build --snapshot --rm-dist --config .goreleaser.${{ matrix.os }}.yml

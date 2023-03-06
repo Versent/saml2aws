@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"time"
@@ -180,7 +180,7 @@ func (ac *Client) handleSwipe(ctx context.Context, doc *goquery.Document) (conte
 			return ctx, nil, errors.Wrap(err, "error polling swipe status")
 		}
 
-		body, err := ioutil.ReadAll(res.Body)
+		body, err := io.ReadAll(res.Body)
 		if err != nil {
 			return ctx, nil, errors.Wrap(err, "error parsing body from swipe status response")
 		}

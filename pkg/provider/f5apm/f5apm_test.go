@@ -2,11 +2,11 @@ package f5apm
 
 import (
 	"bytes"
-	"io/ioutil"
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"testing"
 
 	"github.com/PuerkitoBio/goquery"
@@ -18,7 +18,7 @@ import (
 )
 
 func TestClient_getLoginForm(t *testing.T) {
-	data, err := ioutil.ReadFile("example/loginpage.html")
+	data, err := os.ReadFile("example/loginpage.html")
 	require.Nil(t, err)
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -43,7 +43,7 @@ func TestClient_getLoginForm(t *testing.T) {
 	}, authForm)
 }
 func TestClient_postLoginForm_user_pass(t *testing.T) {
-	data, err := ioutil.ReadFile("example/loginpage.html")
+	data, err := os.ReadFile("example/loginpage.html")
 	require.Nil(t, err)
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -68,7 +68,7 @@ func TestClient_postLoginForm_user_pass(t *testing.T) {
 }
 
 func TestClient_containsMFAForm(t *testing.T) {
-	data, err := ioutil.ReadFile("example/mfapage.html")
+	data, err := os.ReadFile("example/mfapage.html")
 	require.Nil(t, err)
 	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(data))
 	require.Nil(t, err)
@@ -78,7 +78,7 @@ func TestClient_containsMFAForm(t *testing.T) {
 }
 
 func TestClient_containsMFAForm_False(t *testing.T) {
-	data, err := ioutil.ReadFile("example/loginpage.html")
+	data, err := os.ReadFile("example/loginpage.html")
 	require.Nil(t, err)
 	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(data))
 	require.Nil(t, err)
