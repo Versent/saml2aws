@@ -88,7 +88,7 @@ func Login(loginFlags *flags.LoginExecFlags) error {
 	var samlAssertion string
 	if account.SAMLCache {
 		if cacheProvider.IsValid() {
-			samlAssertion, err = cacheProvider.Read()
+			samlAssertion, err = cacheProvider.ReadRaw()
 			if err != nil {
 				return errors.Wrap(err, "Could not read SAML cache.")
 			}
@@ -107,7 +107,7 @@ func Login(loginFlags *flags.LoginExecFlags) error {
 			return errors.Wrap(err, "Error authenticating to IdP.")
 		}
 		if account.SAMLCache {
-			err = cacheProvider.Write(samlAssertion)
+			err = cacheProvider.WriteRaw(samlAssertion)
 			if err != nil {
 				return errors.Wrap(err, "Could not write SAML cache.")
 			}
@@ -215,6 +215,13 @@ func resolveLoginDetails(account *cfg.IDPAccount, loginFlags *flags.LoginExecFla
 	// if you supply a client_secret in a flag it takes precedence
 	if loginFlags.CommonFlags.ClientSecret != "" {
 		loginDetails.ClientSecret = loginFlags.CommonFlags.ClientSecret
+	}
+
+	// if you supply an mfa_ip_address in a flag or an IDP account it takes precedence
+	if account.MFAIPAddress != "" {
+		loginDetails.MFAIPAddress = account.MFAIPAddress
+	} else if loginFlags.CommonFlags.MFAIPAddress != "" {
+		loginDetails.MFAIPAddress = loginFlags.CommonFlags.MFAIPAddress
 	}
 
 	// log.Printf("loginDetails %+v", loginDetails)

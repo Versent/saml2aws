@@ -62,6 +62,7 @@ Aside from Okta, most of the providers in this project are using screen scraping
 
 1. AWS defaults to session tokens being issued with a duration of up to 3600 seconds (1 hour), this can now be configured as per [Enable Federated API Access to your AWS Resources for up to 12 hours Using IAM Roles](https://aws.amazon.com/blogs/security/enable-federated-api-access-to-your-aws-resources-for-up-to-12-hours-using-iam-roles/) and `--session-duration` flag.
 2. Every SAML provider is different, the login process, MFA support is pluggable and therefore some work may be needed to integrate with your identity server
+3. By default, the temporary security credentials returned **do not support SigV4A**. If you need SigV4A support then you must set the `AWS_STS_REGIONAL_ENDPOINTS` enviornment variable to `regional` when calling `saml2aws` so that [aws-sdk-go](https://github.com/aws/aws-sdk-go) uses a regional STS endpoint instead of the global one. See the note at the bottom of [Signing AWS API requests](https://docs.aws.amazon.com/general/latest/gr/signing_aws_api_requests.html#signature-versions) and [AWS STS Regionalized endpoints](https://docs.aws.amazon.com/sdkref/latest/guide/feature-sts-regionalized-endpoints.html).
 
 ## Install
 
@@ -156,7 +157,7 @@ Flags:
       --url=URL                The URL of the SAML IDP server used to login. (env: SAML2AWS_URL)
       --username=USERNAME      The username used to login. (env: SAML2AWS_USERNAME)
       --password=PASSWORD      The password used to login. (env: SAML2AWS_PASSWORD)
-      --mfa-token=MFA-TOKEN    The current MFA token (supported in Keycloak, ADFS, GoogleApps). (env: SAML2AWS_MFA_TOKEN)
+      --mfa-token=MFA-TOKEN    The current MFA token (supported in Keycloak, ADFS, GoogleApps, Okta). (env: SAML2AWS_MFA_TOKEN)
       --role=ROLE              The ARN of the role to assume. (env: SAML2AWS_ROLE)
       --aws-urn=AWS-URN        The URN used by SAML when you login. (env: SAML2AWS_AWS_URN)
       --skip-prompt            Skip prompting for parameters during login.
@@ -178,6 +179,8 @@ Commands:
         --client-secret=CLIENT-SECRET
                                    OneLogin client secret, used to generate API access token. (env: ONELOGIN_CLIENT_SECRET)
         --subdomain=SUBDOMAIN      OneLogin subdomain of your company account. (env: ONELOGIN_SUBDOMAIN)
+        --mfa-ip-address=MFA-IP-ADDRESS
+                                   IP address whitelisting defined in OneLogin MFA policies. (env: ONELOGIN_MFA_IP_ADDRESS)
     -p, --profile=PROFILE          The AWS profile to save the temporary credentials. (env: SAML2AWS_PROFILE)
         --resource-id=RESOURCE-ID  F5APM SAML resource ID of your company account. (env: SAML2AWS_F5APM_RESOURCE_ID)
         --config=CONFIG            Path/filename of saml2aws config file (env: SAML2AWS_CONFIGFILE)
@@ -195,6 +198,8 @@ Commands:
         --client-id=CLIENT-ID    OneLogin client id, used to generate API access token. (env: ONELOGIN_CLIENT_ID)
         --client-secret=CLIENT-SECRET
                                  OneLogin client secret, used to generate API access token. (env: ONELOGIN_CLIENT_SECRET)
+        --mfa-ip-address=MFA-IP-ADDRESS
+                                 IP address whitelisting defined in OneLogin MFA policies. (env: ONELOGIN_MFA_IP_ADDRESS)
         --force                  Refresh credentials even if not expired.
         --credential-process     Enables AWS Credential Process support by outputting credentials to STDOUT in a JSON message.
         --credentials-file=CREDENTIALS-FILE
@@ -385,10 +390,65 @@ To use this credential, call the AWS CLI with the --profile option (e.g. aws --p
 ```
 
 ## Advanced Configuration
+### Windows Subsystem Linux (WSL) Configuration
+If you are using WSL1 or WSL2, you might get the following error when attempting to save the credentials into the keychain
 
+```
+ No such interface “org.freedesktop.DBus.Properties” on object at path /
+```
+
+This happens because the preferred keyring back-end - uses the `gnome-keyring` by default - which requires X11 - and if you are not using Windows 11 with support for Linux GUI applications - this can be difficult without [configuring a X11 forward](https://stackoverflow.com/questions/61110603/how-to-set-up-working-x11-forwarding-on-wsl2).
+
+There are 2 preferred approaches to workaround this issue:
+
+#### Option 1: Disable Keychain
+You can apply the  `--disable-keychain` flag when using both the `configure` and `login` commands. Using this flag means that your credentials (such as your password to your IDP, or in the case of Okta the Okta Session Token) will not save to your keychain - and be skipped entierly. This means you will be required to enter your username and password each time you invoke the `login` command.
+
+#### Option 2: Configure Pass to be the default keyring
+There are a few steps involved with this option - however this option will save your credentials (such as your password to your IDP, and session tokens etc) into the `pass`[https://www.passwordstore.org/] keyring. The `pass` keyring is the standard Unix password manager. This option was *heavily inspired* by a similar issue in [aws-vault](https://github.com/99designs/aws-vault/issues/683)
+
+To configure pass to be the default keyring the following steps will need to be completed (assuming you are using Ubuntu 20.04 LTS):
+
+1. Install the pass backend and update gnupg, which encrypts passwords
+```bash
+sudo apt-get update && sudo apt-get install -y pass gnupg
+```
+
+2. Generate a key with gpg (gnupg) and take note of your public key
+```bash
+gpg --gen-key
+```
+
+The output of the gpg command will output the something similar to the following:
+```
+public and secret key created and signed.
+
+pub   rsa3072 2021-04-22 [SC] [expires: 2023-04-22]
+      844E426A53A64C2A916CBD1F522014D5FDBF6E3D
+uid                      Meir Gabay <willy@wonka.com>
+sub   rsa3072 2021-04-22 [E] [expires: 2023-04-22]
+```
+
+3.  Create a storage key in pass from the previously generated public (pub) key
+```bash
+pass init <GPG_PUBLIC_KEY>
+```
+during the `init` process you'll be requested to enter the passphrase provided in step 2
+
+4. Now, configure `saml2aws` to use the `pass` keyring. This can be done by setting the `SAML2AWS_KEYRING_BACKEND` environment variable to be `pass`. You'll need to also set the `GPG_TTY` to your current tty which means you can set the variable to `"$( tty )"`
+
+which means the following can be added into your profile
+```
+export SAML2AWS_KEYRING_BACKEND=pass
+export GPG_TTY="$( tty )"
+```
+
+5. Profit! Now when you run login/configure commands - you'll be promoted once to enter your passphrase - and your credentials will be saved into your keyring!
+
+
+### Configuring Multiple Accounts
 Configuring multiple accounts with custom role and profile in `~/.aws/config` with goal being isolation between infra code when deploying to these environments. This setup assumes you're using separate roles and probably AWS accounts for `dev` and `test` and is designed to help operations staff avoid accidentally deploying to the wrong AWS account in complex environments. Note that this method configures SAML authentication to each AWS account directly (in this case different AWS accounts). In the example below, separate authentication values are configured for AWS accounts 'profile=customer-dev/awsAccount=was 121234567890' and 'profile=customer-test/awsAccount=121234567891'
-
-### Dev Account Setup
+#### Dev Account Setup
 
 To setup the dev account run the following and enter URL, username and password, and assign a standard role to be automatically selected on login.
 
@@ -415,7 +475,7 @@ region                  = us-east-1
 
 To use this you will need to export `AWS_DEFAULT_PROFILE=customer-dev` environment variable to target `dev`.
 
-### Test Account Setup
+#### Test Account Setup
 
 To setup the test account run the following and enter URL, username and password.
 
@@ -573,6 +633,8 @@ region                  = us-east-1
 ```
 ## Building
 
+### macOS
+
 To build this software on osx clone to the repo to `$GOPATH/src/github.com/versent/saml2aws` and ensure you have `$GOPATH/bin` in your `$PATH`.
 
 ```
@@ -595,6 +657,26 @@ Before raising a PR please run the linter.
 
 ```
 make lint-fix
+```
+
+### Linux
+
+To build this software on Debian/Ubuntu, you need to install a build dependency:
+
+```
+sudo apt install libudev-dev
+```
+
+You also need [GoReleaser](https://github.com/goreleaser/goreleaser) installed, and the binary (or a symlink) in `bin/goreleaser`.
+
+```
+ln -s $(command -v goreleaser) bin/goreleaser
+```
+
+Then you can build:
+
+```
+make build
 ```
 
 ## Environment vars
