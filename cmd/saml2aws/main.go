@@ -2,7 +2,7 @@ package main
 
 import (
 	"crypto/tls"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -172,8 +172,8 @@ func main() {
 	}
 
 	if *quiet {
-		log.SetOutput(ioutil.Discard)
-		logrus.SetOutput(ioutil.Discard)
+		log.SetOutput(io.Discard)
+		logrus.SetOutput(io.Discard)
 	}
 
 	// Set the default transport settings so all http clients will pick them up.
