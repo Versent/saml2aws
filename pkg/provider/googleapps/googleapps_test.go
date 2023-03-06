@@ -2,10 +2,10 @@ package googleapps
 
 import (
 	"bytes"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"strings"
 	"testing"
 
@@ -79,7 +79,7 @@ func TestContentContainsMessage2(t *testing.T) {
 
 func TestChallengePage(t *testing.T) {
 
-	data, err := ioutil.ReadFile("example/challenge-totp.html")
+	data, err := os.ReadFile("example/challenge-totp.html")
 	require.Nil(t, err)
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -98,7 +98,7 @@ func TestChallengePage(t *testing.T) {
 }
 
 func TestExtractDataAttributes(t *testing.T) {
-	data, err := ioutil.ReadFile("example/challenge-prompt.html")
+	data, err := os.ReadFile("example/challenge-prompt.html")
 	require.Nil(t, err)
 	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(data))
 	require.Nil(t, err)
