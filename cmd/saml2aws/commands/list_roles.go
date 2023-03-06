@@ -1,18 +1,20 @@
 package commands
 
 import (
-	"encoding/base64"
+	b64 "encoding/base64"
 	"fmt"
+	"log"
 	"os"
 
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"github.com/versent/saml2aws"
-	"github.com/versent/saml2aws/helper/credentials"
-	"github.com/versent/saml2aws/pkg/flags"
+	"github.com/versent/saml2aws/v2"
+	"github.com/versent/saml2aws/v2/helper/credentials"
+	"github.com/versent/saml2aws/v2/pkg/flags"
+	"github.com/versent/saml2aws/v2/pkg/samlcache"
 )
 
-// List will list available role ARNs
+// ListRoles will list available role ARNs
 func ListRoles(loginFlags *flags.LoginExecFlags) error {
 
 	logger := logrus.WithField("command", "list")
@@ -22,15 +24,16 @@ func ListRoles(loginFlags *flags.LoginExecFlags) error {
 		return errors.Wrap(err, "error building login details")
 	}
 
-	loginDetails, err := resolveLoginDetails(account, loginFlags)
-	if err != nil {
-		fmt.Printf("%+v\n", err)
-		os.Exit(1)
+	// creates a cacheProvider, only used when --cache is set
+	cacheProvider := &samlcache.SAMLCacheProvider{
+		Account:  account.Name,
+		Filename: account.SAMLCacheFile,
 	}
 
-	err = loginDetails.Validate()
+	loginDetails, err := resolveLoginDetails(account, loginFlags)
 	if err != nil {
-		return errors.Wrap(err, "error validating login details")
+		log.Printf("%+v", err)
+		os.Exit(1)
 	}
 
 	logger.WithField("idpAccount", account).Debug("building provider")
@@ -40,24 +43,53 @@ func ListRoles(loginFlags *flags.LoginExecFlags) error {
 		return errors.Wrap(err, "error building IdP client")
 	}
 
-	samlAssertion, err := provider.Authenticate(loginDetails)
+	err = provider.Validate(loginDetails)
 	if err != nil {
-		return errors.Wrap(err, "error authenticating to IdP")
+		return errors.Wrap(err, "error validating login details")
+	}
 
+	var samlAssertion string
+	if account.SAMLCache {
+		if cacheProvider.IsValid() {
+			samlAssertion, err = cacheProvider.ReadRaw()
+			if err != nil {
+				logger.Debug("Could not read cache:", err)
+			}
+		} else {
+			logger.Debug("Cache is invalid")
+			log.Printf("Authenticating as %s ...", loginDetails.Username)
+		}
 	}
 
 	if samlAssertion == "" {
-		fmt.Println("Response did not contain a valid SAML assertion")
-		fmt.Println("Please check your username and password is correct")
+		// samlAssertion was not cached
+		samlAssertion, err = provider.Authenticate(loginDetails)
+		if err != nil {
+			return errors.Wrap(err, "error authenticating to IdP")
+		}
+		if account.SAMLCache {
+			err = cacheProvider.WriteRaw(samlAssertion)
+			if err != nil {
+				logger.Error("Could not write samlAssertion:", err)
+			}
+		}
+	}
+
+	if samlAssertion == "" {
+		log.Println("Response did not contain a valid SAML assertion")
+		log.Println("Please check your username and password is correct")
+		log.Println("To see the output follow the instructions in https://github.com/versent/saml2aws#debugging-issues-with-idps")
 		os.Exit(1)
 	}
 
-	err = credentials.SaveCredentials(loginDetails.URL, loginDetails.Username, loginDetails.Password)
-	if err != nil {
-		return errors.Wrap(err, "error storing password in keychain")
+	if !loginFlags.CommonFlags.DisableKeychain {
+		err = credentials.SaveCredentials(loginDetails.URL, loginDetails.Username, loginDetails.Password)
+		if err != nil {
+			return errors.Wrap(err, "error storing password in keychain")
+		}
 	}
 
-	data, err := base64.StdEncoding.DecodeString(samlAssertion)
+	data, err := b64.StdEncoding.DecodeString(samlAssertion)
 	if err != nil {
 		return errors.Wrap(err, "error decoding saml assertion")
 	}
@@ -68,7 +100,7 @@ func ListRoles(loginFlags *flags.LoginExecFlags) error {
 	}
 
 	if len(roles) == 0 {
-		fmt.Println("No roles to assume")
+		log.Println("No roles to assume")
 		os.Exit(1)
 	}
 
@@ -85,14 +117,33 @@ func ListRoles(loginFlags *flags.LoginExecFlags) error {
 }
 
 func listRoles(awsRoles []*saml2aws.AWSRole, samlAssertion string, loginFlags *flags.LoginExecFlags) error {
-	awsAccounts, err := saml2aws.ParseAWSAccounts(samlAssertion)
+	if len(awsRoles) == 1 {
+		log.Println("")
+		log.Println("Only one role to assume. Will be automatically assumed on login")
+		log.Println(awsRoles[0].RoleARN)
+		return nil
+	} else if len(awsRoles) == 0 {
+		return errors.New("no roles available")
+	}
+
+	samlAssertionData, err := b64.StdEncoding.DecodeString(samlAssertion)
 	if err != nil {
-		errors.Wrap(err, "error parsing aws role accounts")
+		return errors.Wrap(err, "error decoding saml assertion")
+	}
+
+	aud, err := saml2aws.ExtractDestinationURL(samlAssertionData)
+	if err != nil {
+		return errors.Wrap(err, "error parsing destination url")
+	}
+
+	awsAccounts, err := saml2aws.ParseAWSAccounts(aud, samlAssertion)
+	if err != nil {
+		return errors.Wrap(err, "error parsing aws role accounts")
 	}
 
 	saml2aws.AssignPrincipals(awsRoles, awsAccounts)
 
-	fmt.Println("")
+	log.Println("")
 	for _, account := range awsAccounts {
 		fmt.Println(account.Name)
 		for _, role := range account.Roles {

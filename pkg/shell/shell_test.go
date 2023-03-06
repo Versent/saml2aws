@@ -1,9 +1,13 @@
+//go:build !windows
 // +build !windows
 
 package shell
 
-import "testing"
-import "github.com/stretchr/testify/assert"
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
 
 func TestExecShellCmd(t *testing.T) {
 

@@ -6,11 +6,10 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/PuerkitoBio/goquery"
-	"github.com/versent/saml2aws/pkg/provider"
+	"github.com/pkg/errors"
+	"github.com/versent/saml2aws/v2/pkg/provider"
 )
-
 
 type Form struct {
 	URL    string
@@ -52,11 +51,12 @@ func NewFormFromDocument(doc *goquery.Document, formFilter string) (*Form, error
 		return nil, fmt.Errorf("could not find form")
 	}
 
-	attrValue, ok := formSelection.Attr("action");
-	if !ok {
-		return nil, fmt.Errorf("could not extract form action")
+	attrValue, ok := formSelection.Attr("action")
+	if ok {
+		form.URL = attrValue
+	} else {
+		form.URL = doc.Url.String()
 	}
-	form.URL = attrValue
 
 	attrValue, ok = formSelection.Attr("method")
 	if ok {
@@ -82,7 +82,7 @@ func NewFormFromDocument(doc *goquery.Document, formFilter string) (*Form, error
 }
 
 func NewFormFromResponse(res *http.Response, formFilter string) (*Form, error) {
-	doc, err := goquery.NewDocumentFromResponse(res)
+	doc, err := goquery.NewDocumentFromReader(res.Body)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build document from response")
 	}

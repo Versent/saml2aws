@@ -1,74 +1,61 @@
 NAME=saml2aws
 ARCH=$(shell uname -m)
-VERSION=2.13.0
+OS=$(shell uname)
+VERSION=2.28.0
 ITERATION := 1
+
+GOLANGCI_VERSION = 1.45.2
+GORELEASER_VERSION = 0.157.0
 
 SOURCE_FILES?=$$(go list ./... | grep -v /vendor/)
 TEST_PATTERN?=.
 TEST_OPTIONS?=
 
-ci: deps test
+BIN_DIR := $(CURDIR)/bin
 
-deps:
-	go get github.com/buildkite/github-release
-	go get -u github.com/golang/dep/cmd/dep
-	go get -u github.com/mitchellh/gox
-	go get -u github.com/alecthomas/gometalinter
-	go get -u github.com/axw/gocov/...
-	go get -u golang.org/x/tools/cmd/cover
-	gometalinter --install
-	dep ensure
+ci: prepare test
 
-compile:
-	@rm -rf build/
-	@gox -ldflags "-X main.Version=$(VERSION)" \
-	-osarch="darwin/amd64" \
-	-osarch="linux/i386" \
-	-osarch="linux/amd64" \
-	-osarch="windows/amd64" \
-	-osarch="windows/i386" \
-	-output "build/{{.Dir}}_$(VERSION)_{{.OS}}_{{.Arch}}/$(NAME)" \
-	${SOURCE_FILES}
+mod:
+	@go mod download
+	@go mod tidy
+.PHONY: mod
 
-# Run all the linters
-lint:
-	gometalinter --vendor ./...
+lint: 
+	@echo "--- lint all the things"
+	@docker run --rm -v $(shell pwd):/app -w /app golangci/golangci-lint:v$(GOLANGCI_VERSION) golangci-lint run -v
+.PHONY: lint
 
-# gofmt and goimports all go files
-fmt:
-	find . -name '*.go' -not -wholename './vendor/*' | while read -r file; do gofmt -w -s "$$file"; goimports -w "$$file"; done
+lint-fix:
+	@echo "--- lint all the things"
+	@docker run --rm -v $(shell pwd):/app -w /app golangci/golangci-lint:v$(GOLANGCI_VERSION) golangci-lint run -v --fix
+.PHONY: lint-fix
+
+fmt: lint-fix
 
 install:
 	go install ./cmd/saml2aws
+.PHONY: mod
 
-dist:
-	$(eval FILES := $(shell ls build))
-	@rm -rf dist && mkdir dist
-	@for f in $(FILES); do \
-		(cd $(shell pwd)/build/$$f && tar -cvzf ../../dist/$$f.tar.gz *); \
-		(cd $(shell pwd)/dist && shasum -a 512 $$f.tar.gz > $$f.sha512); \
-		echo $$f; \
-	done
-
-release:
-	@github-release "v$(VERSION)" dist/* --commit "$(git rev-parse HEAD)" --github-repository versent/$(NAME)
-
-test:
-	@gocov test $(SOURCE_FILES) | gocov report
+build: $(BIN_DIR)/goreleaser
+ifeq ($(OS),Darwin)
+	$(BIN_DIR)/goreleaser build --snapshot --rm-dist --config $(CURDIR)/.goreleaser.macos-latest.yml
+else ifeq ($(OS),Linux)
+	$(BIN_DIR)/goreleaser build --snapshot --rm-dist --config $(CURDIR)/.goreleaser.ubuntu-latest.yml
+else
+	$(error Unsupported build OS: $(OS))
+endif
+.PHONY: build
 
 clean:
 	@rm -fr ./build
-
-packages:
-	rm -rf package && mkdir package
-	rm -rf stage && mkdir -p stage/usr/bin
-	cp build/saml2aws_*_linux_amd64/saml2aws stage/usr/bin
-	fpm --name $(NAME) -a x86_64 -t rpm -s dir --version $(VERSION) --iteration $(ITERATION) -C stage -p package/$(NAME)-$(VERSION)_$(ITERATION).rpm usr
-	fpm --name $(NAME) -a x86_64 -t deb -s dir --version $(VERSION) --iteration $(ITERATION) -C stage -p package/$(NAME)-$(VERSION)_$(ITERATION).deb usr
-	shasum -a 512 package/$(NAME)-$(VERSION)_$(ITERATION).rpm > package/$(NAME)-$(VERSION)_$(ITERATION).rpm.sha512
-	shasum -a 512 package/$(NAME)-$(VERSION)_$(ITERATION).deb > package/$(NAME)-$(VERSION)_$(ITERATION).deb.sha512
+.PHONY: clean
 
 generate-mocks:
 	mockery -dir pkg/prompter --all
+	mockery -dir pkg/provider/okta -name U2FDevice
+.PHONY: generate-mocks
 
-.PHONY: default deps compile lint fmt dist release test clean generate-mocks
+test:
+	@echo "--- test all the things"
+	@go test -cover ./...
+.PHONY: test

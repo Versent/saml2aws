@@ -1,7 +1,6 @@
 package adfs2
 
 import (
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -10,23 +9,18 @@ import (
 	"testing"
 
 	"github.com/PuerkitoBio/goquery"
-
 	"github.com/stretchr/testify/require"
-	"github.com/versent/saml2aws/pkg/cfg"
-	"github.com/versent/saml2aws/pkg/creds"
-)
-
-const (
-	exampleLoginURL = "https://id.example.com"
+	"github.com/versent/saml2aws/v2/pkg/cfg"
+	"github.com/versent/saml2aws/v2/pkg/creds"
 )
 
 func TestClient_getLoginForm(t *testing.T) {
 
-	data, err := ioutil.ReadFile("example/loginpage.html")
+	data, err := os.ReadFile("example/loginpage.html")
 	require.Nil(t, err)
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write(data)
+		_, _ = w.Write(data)
 	}))
 	defer ts.Close()
 
@@ -43,16 +37,17 @@ func TestClient_getLoginForm(t *testing.T) {
 		"UserName":   []string{"test"},
 		"Password":   []string{"test123"},
 		"AuthMethod": []string{"FormsAuthentication"},
+		"Kmsi":       []string{"true"},
 	}, authForm)
 }
 
 func TestClient_postLoginForm(t *testing.T) {
 
-	data, err := ioutil.ReadFile("example/passcode.html")
+	data, err := os.ReadFile("example/passcode.html")
 	require.Nil(t, err)
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write(data)
+		_, _ = w.Write(data)
 	}))
 	defer ts.Close()
 

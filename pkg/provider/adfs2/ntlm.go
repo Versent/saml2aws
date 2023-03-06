@@ -3,12 +3,12 @@ package adfs2
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/pkg/errors"
-	"github.com/versent/saml2aws/pkg/creds"
+	"github.com/versent/saml2aws/v2/pkg/creds"
 )
 
 func (ac *Client) authenticateNTLM(loginDetails *creds.LoginDetails) (string, error) {
@@ -30,7 +30,7 @@ func (ac *Client) authenticateNTLM(loginDetails *creds.LoginDetails) (string, er
 		return "", errors.Wrap(err, "error retieving login form")
 	}
 
-	data, err := ioutil.ReadAll(res.Body)
+	data, err := io.ReadAll(res.Body)
 	if err != nil {
 		return "", errors.Wrap(err, "error retieving body")
 	}

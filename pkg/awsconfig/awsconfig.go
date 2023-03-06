@@ -1,7 +1,6 @@
 package awsconfig
 
 import (
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -9,10 +8,8 @@ import (
 	"time"
 
 	homedir "github.com/mitchellh/go-homedir"
-	"github.com/sirupsen/logrus"
-
 	"github.com/pkg/errors"
-
+	"github.com/sirupsen/logrus"
 	ini "gopkg.in/ini.v1"
 )
 
@@ -34,6 +31,7 @@ type AWSCredentials struct {
 	AWSSecurityToken string    `ini:"aws_security_token"`
 	PrincipalARN     string    `ini:"x_principal_arn"`
 	Expires          time.Time `ini:"x_security_token_expires"`
+	Region           string    `ini:"region,omitempty"`
 }
 
 // CredentialsProvider loads aws credentials file
@@ -43,9 +41,10 @@ type CredentialsProvider struct {
 }
 
 // NewSharedCredentials helper to create the credentials provider
-func NewSharedCredentials(profile string) *CredentialsProvider {
+func NewSharedCredentials(profile string, filename string) *CredentialsProvider {
 	return &CredentialsProvider{
-		Profile: profile,
+		Filename: filename,
+		Profile:  profile,
 	}
 }
 
@@ -143,7 +142,7 @@ func (p *CredentialsProvider) ensureConfigExists() error {
 			logger.WithField("dir", dir).Debug("Dir created")
 
 			// create an base config file
-			err = ioutil.WriteFile(filename, []byte("["+p.Profile+"]"), 0600)
+			err = os.WriteFile(filename, []byte("["+p.Profile+"]"), 0600)
 			if err != nil {
 				return err
 			}

@@ -4,7 +4,8 @@ import (
 	"crypto/tls"
 	"fmt"
 	"html"
-	"io/ioutil"
+	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -13,18 +14,17 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
 	"github.com/tidwall/gjson"
-	"github.com/versent/saml2aws/pkg/cfg"
-	"github.com/versent/saml2aws/pkg/creds"
-	"github.com/versent/saml2aws/pkg/prompter"
-	"github.com/versent/saml2aws/pkg/provider"
+	"github.com/versent/saml2aws/v2/pkg/cfg"
+	"github.com/versent/saml2aws/v2/pkg/creds"
+	"github.com/versent/saml2aws/v2/pkg/prompter"
+	"github.com/versent/saml2aws/v2/pkg/provider"
 )
-
-var logger = logrus.WithField("provider", "shibboleth")
 
 // Client wrapper around Shibboleth enabling authentication and retrieval of assertions
 type Client struct {
+	provider.ValidateBase
+
 	client     *provider.HTTPClient
 	idpAccount *cfg.IDPAccount
 }
@@ -37,7 +37,7 @@ func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: idpAccount.SkipVerify, Renegotiation: tls.RenegotiateFreelyAsClient},
 	}
 
-	client, err := provider.NewHTTPClient(tr)
+	client, err := provider.NewHTTPClient(tr, provider.BuildHttpClientOpts(idpAccount))
 	if err != nil {
 		return nil, errors.Wrap(err, "error building http client")
 	}
@@ -61,7 +61,7 @@ func (sc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		return samlAssertion, errors.Wrap(err, "error retrieving form")
 	}
 
-	doc, err := goquery.NewDocumentFromResponse(res)
+	doc, err := goquery.NewDocumentFromReader(res.Body)
 	if err != nil {
 		return samlAssertion, errors.Wrap(err, "failed to build document from response")
 	}
@@ -100,9 +100,9 @@ func (sc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 
 	switch sc.idpAccount.MFA {
 	case "Auto":
-		b, _ := ioutil.ReadAll(res.Body)
+		b, _ := io.ReadAll(res.Body)
 
-		mfaRes, err := verifyMfa(sc, loginDetails.URL, string(b))
+		mfaRes, err := verifyMfa(sc, loginDetails, loginDetails.URL, string(b))
 		if err != nil {
 			return mfaRes.Status, errors.Wrap(err, "error verifying MFA")
 		}
@@ -143,13 +143,13 @@ func updateFormData(authForm url.Values, s *goquery.Selection, user *creds.Login
 	}
 }
 
-func verifyMfa(oc *Client, shibbolethHost string, resp string) (*http.Response, error) {
+func verifyMfa(oc *Client, loginDetails *creds.LoginDetails, shibbolethHost string, resp string) (*http.Response, error) {
 
-	duoHost, postAction, tx, app := parseTokens(resp)
+	duoHost, postAction, tx, app, csrfToken := parseTokens(resp)
 
 	parent := fmt.Sprintf(shibbolethHost + postAction)
 
-	duoTxCookie, err := verifyDuoMfa(oc, duoHost, parent, tx)
+	duoTxCookie, err := verifyDuoMfa(oc, loginDetails, duoHost, parent, tx)
 	if err != nil {
 		return nil, errors.Wrap(err, "error when interacting with Duo iframe")
 	}
@@ -157,6 +157,7 @@ func verifyMfa(oc *Client, shibbolethHost string, resp string) (*http.Response, 
 	idpForm := url.Values{}
 	idpForm.Add("_eventId", "proceed")
 	idpForm.Add("sig_response", duoTxCookie+":"+app)
+	idpForm.Add("csrf_token", csrfToken)
 
 	req, err := http.NewRequest("POST", parent, strings.NewReader(idpForm.Encode()))
 	if err != nil {
@@ -173,7 +174,7 @@ func verifyMfa(oc *Client, shibbolethHost string, resp string) (*http.Response, 
 	return res, nil
 }
 
-func verifyDuoMfa(oc *Client, duoHost string, parent string, tx string) (string, error) {
+func verifyDuoMfa(oc *Client, loginDetails *creds.LoginDetails, duoHost string, parent string, tx string) (string, error) {
 	// initiate duo mfa to get sid
 	duoSubmitURL := fmt.Sprintf("https://%s/frame/web/v1/auth", duoHost)
 
@@ -201,12 +202,22 @@ func verifyDuoMfa(oc *Client, duoHost string, parent string, tx string) (string,
 		return "", errors.Wrap(err, "error retrieving verify response")
 	}
 
-	//try to extract sid
-	doc, err := goquery.NewDocumentFromResponse(res)
+	// retrieve response from post
+	doc, err := goquery.NewDocumentFromReader(res.Body)
 	if err != nil {
 		return "", errors.Wrap(err, "error parsing document")
 	}
 
+	// Duo cookie is returned here if mfa bypassed - immediatly return it if found
+	duoTxCookie, ok := doc.Find("input[name=\"js_cookie\"]").Attr("value")
+	if ok {
+		if duoTxCookie == "" {
+			return "", errors.Wrap(err, "duoMfaBypass: invalid response cookie")
+		}
+		return duoTxCookie, nil
+	}
+
+	// Duo cookie not found - continue with full MFA transaction
 	duoSID, ok := doc.Find("input[name=\"sid\"]").Attr("value")
 	if !ok {
 		return "", errors.Wrap(err, "unable to locate saml response")
@@ -224,7 +235,17 @@ func verifyDuoMfa(oc *Client, duoHost string, parent string, tx string) (string,
 		"Passcode",
 	}
 
-	duoMfaOption := prompter.Choose("Select a DUO MFA Option", duoMfaOptions)
+	duoMfaOption := 0
+
+	if loginDetails.DuoMFAOption == "Duo Push" {
+		duoMfaOption = 0
+	} else if loginDetails.DuoMFAOption == "Phone Call" {
+		duoMfaOption = 1
+	} else if loginDetails.DuoMFAOption == "Passcode" {
+		duoMfaOption = 2
+	} else {
+		duoMfaOption = prompter.Choose("Select a DUO MFA Option", duoMfaOptions)
+	}
 
 	if duoMfaOptions[duoMfaOption] == "Passcode" {
 		//get users DUO MFA Token
@@ -255,7 +276,7 @@ func verifyDuoMfa(oc *Client, duoHost string, parent string, tx string) (string,
 		return "", errors.Wrap(err, "error retrieving verify response")
 	}
 
-	body, err := ioutil.ReadAll(res.Body)
+	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		return "", errors.Wrap(err, "error retrieving body from response")
 	}
@@ -287,7 +308,7 @@ func verifyDuoMfa(oc *Client, duoHost string, parent string, tx string) (string,
 		return "", errors.Wrap(err, "error retrieving verify response")
 	}
 
-	body, err = ioutil.ReadAll(res.Body)
+	body, err = io.ReadAll(res.Body)
 	if err != nil {
 		return "", errors.Wrap(err, "error retrieving body from response")
 	}
@@ -297,7 +318,7 @@ func verifyDuoMfa(oc *Client, duoHost string, parent string, tx string) (string,
 	duoTxResult := gjson.Get(resp, "response.result").String()
 	duoResultURL := gjson.Get(resp, "response.result_url").String()
 
-	fmt.Println(gjson.Get(resp, "response.status").String())
+	log.Println(gjson.Get(resp, "response.status").String())
 
 	if duoTxResult != "SUCCESS" {
 		//poll as this is likely a push request
@@ -316,7 +337,7 @@ func verifyDuoMfa(oc *Client, duoHost string, parent string, tx string) (string,
 				return "", errors.Wrap(err, "error retrieving verify response")
 			}
 
-			body, err = ioutil.ReadAll(res.Body)
+			body, err = io.ReadAll(res.Body)
 			if err != nil {
 				return "", errors.Wrap(err, "error retrieving body from response")
 			}
@@ -326,7 +347,7 @@ func verifyDuoMfa(oc *Client, duoHost string, parent string, tx string) (string,
 			duoTxResult = gjson.Get(resp, "response.result").String()
 			duoResultURL = gjson.Get(resp, "response.result_url").String()
 
-			fmt.Println(gjson.Get(resp, "response.status").String())
+			log.Println(gjson.Get(resp, "response.status").String())
 
 			if duoTxResult == "FAILURE" {
 				return "", errors.Wrap(err, "failed to authenticate device")
@@ -351,14 +372,14 @@ func verifyDuoMfa(oc *Client, duoHost string, parent string, tx string) (string,
 		return "", errors.Wrap(err, "error retrieving duo result response")
 	}
 
-	body, err = ioutil.ReadAll(res.Body)
+	body, err = io.ReadAll(res.Body)
 	if err != nil {
 		return "", errors.Wrap(err, "duoResultSubmit: error retrieving body from response")
 	}
 
 	resp = string(body)
 
-	duoTxCookie := gjson.Get(resp, "response.cookie").String()
+	duoTxCookie = gjson.Get(resp, "response.cookie").String()
 	if duoTxCookie == "" {
 		return "", errors.Wrap(err, "duoResultSubmit: Unable to get response.cookie")
 	}
@@ -366,21 +387,29 @@ func verifyDuoMfa(oc *Client, duoHost string, parent string, tx string) (string,
 	return duoTxCookie, nil
 }
 
-func parseTokens(blob string) (string, string, string, string) {
+func parseTokens(blob string) (string, string, string, string, string) {
 	hostRgx := regexp.MustCompile(`data-host=\"(.*?)\"`)
 	sigRgx := regexp.MustCompile(`data-sig-request=\"(.*?)\"`)
 	dpaRgx := regexp.MustCompile(`data-post-action=\"(.*?)\"`)
+	csrfRgx := regexp.MustCompile(`name=\"csrf_token\" value=\"(.*?)\"`)
 
 	dataSigRequest := sigRgx.FindStringSubmatch(blob)
 	duoHost := hostRgx.FindStringSubmatch(blob)
 	postAction := dpaRgx.FindStringSubmatch(blob)
 
+	// extract the Shibboleth v4 CSRF token, if present
+	csrfToken := ""
+	csrfTokenMatch := csrfRgx.FindStringSubmatch(blob)
+	if len(csrfTokenMatch) != 0 {
+		csrfToken = csrfTokenMatch[1]
+	}
+
 	duoSignatures := strings.Split(dataSigRequest[1], ":")
-	return duoHost[1], postAction[1], duoSignatures[0], duoSignatures[1]
+	return duoHost[1], postAction[1], duoSignatures[0], duoSignatures[1], csrfToken
 }
 
 func extractSamlResponse(res *http.Response) (string, error) {
-	body, err := ioutil.ReadAll(res.Body)
+	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		return "", errors.Wrap(err, "extractSamlResponse: error retrieving body from response")
 	}

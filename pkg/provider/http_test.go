@@ -10,13 +10,13 @@ import (
 
 func TestClientDoGetOK(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("OK"))
+		_, _ = w.Write([]byte("OK"))
 	}))
 	defer ts.Close()
 
 	rt := NewDefaultTransport(false)
-
-	hc, err := NewHTTPClient(rt)
+	opts := &HTTPClientOptions{IsWithRetries: false}
+	hc, err := NewHTTPClient(rt, opts)
 	require.Nil(t, err)
 
 	// hc := &HTTPClient{Client: http.Client{}}
@@ -33,13 +33,14 @@ func TestClientDoGetOK(t *testing.T) {
 func TestClientDisableRedirect(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(302)
-		w.Write([]byte("OK"))
+		_, _ = w.Write([]byte("OK"))
 	}))
 	defer ts.Close()
 
 	rt := NewDefaultTransport(false)
 
-	hc, err := NewHTTPClient(rt)
+	opts := &HTTPClientOptions{IsWithRetries: false}
+	hc, err := NewHTTPClient(rt, opts)
 	require.Nil(t, err)
 
 	hc.DisableFollowRedirect()
@@ -55,11 +56,12 @@ func TestClientDisableRedirect(t *testing.T) {
 func TestClientDoResponseCheck(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(400)
-		w.Write([]byte("OK"))
+		_, _ = w.Write([]byte("OK"))
 	}))
 	defer ts.Close()
 
-	hc := &HTTPClient{Client: http.Client{}}
+	opts := &HTTPClientOptions{IsWithRetries: false}
+	hc := &HTTPClient{Client: http.Client{}, Options: opts}
 
 	hc.CheckResponseStatus = SuccessOrRedirectResponseValidator
 

@@ -4,19 +4,26 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/versent/saml2aws/pkg/cfg"
-	"github.com/versent/saml2aws/pkg/creds"
-	"github.com/versent/saml2aws/pkg/provider/adfs"
-	"github.com/versent/saml2aws/pkg/provider/adfs2"
-	"github.com/versent/saml2aws/pkg/provider/googleapps"
-	"github.com/versent/saml2aws/pkg/provider/jumpcloud"
-	"github.com/versent/saml2aws/pkg/provider/keycloak"
-	"github.com/versent/saml2aws/pkg/provider/okta"
-	"github.com/versent/saml2aws/pkg/provider/onelogin"
-	"github.com/versent/saml2aws/pkg/provider/pingfed"
-	"github.com/versent/saml2aws/pkg/provider/pingone"
-	"github.com/versent/saml2aws/pkg/provider/psu"
-	"github.com/versent/saml2aws/pkg/provider/shibboleth"
+	"github.com/versent/saml2aws/v2/pkg/cfg"
+	"github.com/versent/saml2aws/v2/pkg/creds"
+	"github.com/versent/saml2aws/v2/pkg/provider/aad"
+	"github.com/versent/saml2aws/v2/pkg/provider/adfs"
+	"github.com/versent/saml2aws/v2/pkg/provider/adfs2"
+	"github.com/versent/saml2aws/v2/pkg/provider/akamai"
+	"github.com/versent/saml2aws/v2/pkg/provider/auth0"
+	"github.com/versent/saml2aws/v2/pkg/provider/browser"
+	"github.com/versent/saml2aws/v2/pkg/provider/f5apm"
+	"github.com/versent/saml2aws/v2/pkg/provider/googleapps"
+	"github.com/versent/saml2aws/v2/pkg/provider/jumpcloud"
+	"github.com/versent/saml2aws/v2/pkg/provider/keycloak"
+	"github.com/versent/saml2aws/v2/pkg/provider/netiq"
+	"github.com/versent/saml2aws/v2/pkg/provider/okta"
+	"github.com/versent/saml2aws/v2/pkg/provider/onelogin"
+	"github.com/versent/saml2aws/v2/pkg/provider/pingfed"
+	"github.com/versent/saml2aws/v2/pkg/provider/pingone"
+	"github.com/versent/saml2aws/v2/pkg/provider/shell"
+	"github.com/versent/saml2aws/v2/pkg/provider/shibboleth"
+	"github.com/versent/saml2aws/v2/pkg/provider/shibbolethecp"
 )
 
 // ProviderList list of providers with their MFAs
@@ -24,17 +31,23 @@ type ProviderList map[string][]string
 
 // MFAsByProvider a list of providers with their respective supported MFAs
 var MFAsByProvider = ProviderList{
-	"ADFS":       []string{"Auto", "VIP"},
-	"ADFS2":      []string{"Auto", "RSA"}, // nothing automatic about ADFS 2.x
-	"Ping":       []string{"Auto"},        // automatically detects PingID
-	"PingOne":    []string{"Auto"},        // automatically detects PingID
-	"JumpCloud":  []string{"Auto"},
-	"Okta":       []string{"Auto", "PUSH", "DUO", "SMS", "TOTP", "OKTA"}, // automatically detects DUO, SMS and ToTP
-	"OneLogin":   []string{"Auto", "OLP", "SMS", "TOTP"},                 // automatically detects OneLogin Protect, SMS and ToTP
-	"KeyCloak":   []string{"Auto"},                                       // automatically detects ToTP
-	"GoogleApps": []string{"Auto"},                                       // automatically detects ToTP
-	"Shibboleth": []string{"Auto"},
-	"PSU":        []string{"Auto"},
+	"AzureAD":       []string{"Auto", "PhoneAppOTP", "PhoneAppNotification", "OneWaySMS"},
+	"ADFS":          []string{"Auto", "VIP", "Azure", "Defender"},
+	"ADFS2":         []string{"Auto", "RSA"}, // nothing automatic about ADFS 2.x
+	"Ping":          []string{"Auto"},        // automatically detects PingID
+	"PingOne":       []string{"Auto"},        // automatically detects PingID
+	"JumpCloud":     []string{"Auto", "TOTP", "WEBAUTHN", "DUO", "PUSH"},
+	"Okta":          []string{"Auto", "PUSH", "DUO", "SMS", "TOTP", "OKTA", "FIDO", "YUBICO TOKEN:HARDWARE"}, // automatically detects DUO, SMS, ToTP, and FIDO
+	"OneLogin":      []string{"Auto", "OLP", "SMS", "TOTP", "YUBIKEY"},                                       // automatically detects OneLogin Protect, SMS and ToTP
+	"KeyCloak":      []string{"Auto"},                                                                        // automatically detects ToTP
+	"GoogleApps":    []string{"Auto"},                                                                        // automatically detects ToTP
+	"Shibboleth":    []string{"Auto", "None"},
+	"F5APM":         []string{"Auto"},
+	"Akamai":        []string{"Auto", "DUO", "SMS", "EMAIL", "TOTP"},
+	"ShibbolethECP": []string{"auto", "phone", "push", "passcode"},
+	"NetIQ":         []string{"Auto", "Privileged"},
+	"Browser":       []string{"Auto"},
+	"Auth0":         []string{"Auto"},
 }
 
 // Names get a list of provider names
@@ -75,11 +88,17 @@ func invalidMFA(provider string, mfa string) bool {
 // SAMLClient client interface
 type SAMLClient interface {
 	Authenticate(loginDetails *creds.LoginDetails) (string, error)
+	Validate(loginDetails *creds.LoginDetails) error
 }
 
 // NewSAMLClient create a new SAML client
 func NewSAMLClient(idpAccount *cfg.IDPAccount) (SAMLClient, error) {
 	switch idpAccount.Provider {
+	case "AzureAD":
+		if invalidMFA(idpAccount.Provider, idpAccount.MFA) {
+			return nil, fmt.Errorf("Invalid MFA type: %v for %v provider", idpAccount.MFA, idpAccount.Provider)
+		}
+		return aad.New(idpAccount)
 	case "ADFS":
 		if invalidMFA(idpAccount.Provider, idpAccount.MFA) {
 			return nil, fmt.Errorf("Invalid MFA type: %v for %v provider", idpAccount.MFA, idpAccount.Provider)
@@ -130,11 +149,35 @@ func NewSAMLClient(idpAccount *cfg.IDPAccount) (SAMLClient, error) {
 			return nil, fmt.Errorf("Invalid MFA type: %v for %v provider", idpAccount.MFA, idpAccount.Provider)
 		}
 		return shibboleth.New(idpAccount)
-	case "PSU":
+	case "ShibbolethECP":
 		if invalidMFA(idpAccount.Provider, idpAccount.MFA) {
 			return nil, fmt.Errorf("Invalid MFA type: %v for %v provider", idpAccount.MFA, idpAccount.Provider)
 		}
-		return psu.New(idpAccount)
+		return shibbolethecp.New(idpAccount)
+	case "F5APM":
+		if invalidMFA(idpAccount.Provider, idpAccount.MFA) {
+			return nil, fmt.Errorf("Invalid MFA type: %v for %v provider", idpAccount.MFA, idpAccount.Provider)
+		}
+		return f5apm.New(idpAccount)
+	case "Akamai":
+		if invalidMFA(idpAccount.Provider, idpAccount.MFA) {
+			return nil, fmt.Errorf("Invalid MFA type: %v for %v provider", idpAccount.MFA, idpAccount.Provider)
+		}
+		return akamai.New(idpAccount)
+	case "Shell":
+		return shell.New(idpAccount)
+	case "NetIQ":
+		if invalidMFA(idpAccount.Provider, idpAccount.MFA) {
+			return nil, fmt.Errorf("Invalid MFA type: %v for %v provider", idpAccount.MFA, idpAccount.Provider)
+		}
+		return netiq.New(idpAccount, idpAccount.MFA)
+	case "Browser":
+		return browser.New(idpAccount)
+	case "Auth0":
+		if invalidMFA(idpAccount.Provider, idpAccount.MFA) {
+			return nil, fmt.Errorf("Invalid MFA type: %v for %v provider", idpAccount.MFA, idpAccount.Provider)
+		}
+		return auth0.New(idpAccount)
 	default:
 		return nil, fmt.Errorf("Invalid provider: %v", idpAccount.Provider)
 	}

@@ -2,28 +2,30 @@ package pingone
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"time"
-	"encoding/base64"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/tidwall/gjson"
-	"github.com/versent/saml2aws/pkg/cfg"
-	"github.com/versent/saml2aws/pkg/creds"
-	"github.com/versent/saml2aws/pkg/page"
-	"github.com/versent/saml2aws/pkg/prompter"
-	"github.com/versent/saml2aws/pkg/provider"
+	"github.com/versent/saml2aws/v2/pkg/cfg"
+	"github.com/versent/saml2aws/v2/pkg/creds"
+	"github.com/versent/saml2aws/v2/pkg/page"
+	"github.com/versent/saml2aws/v2/pkg/prompter"
+	"github.com/versent/saml2aws/v2/pkg/provider"
 )
 
 var logger = logrus.WithField("provider", "pingone")
 
 // Client wrapper around PingOne + PingId enabling authentication and retrieval of assertions
 type Client struct {
+	provider.ValidateBase
+
 	client     *provider.HTTPClient
 	idpAccount *cfg.IDPAccount
 }
@@ -33,14 +35,14 @@ func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 
 	tr := provider.NewDefaultTransport(idpAccount.SkipVerify)
 
-	client, err := provider.NewHTTPClient(tr)
+	client, err := provider.NewHTTPClient(tr, provider.BuildHttpClientOpts(idpAccount))
 	if err != nil {
 		return nil, errors.Wrap(err, "error building http client")
 	}
 
 	// assign a response validator to ensure all responses are either success or a redirect
 	// this is to avoid have explicit checks for every single response
-	client.CheckResponseStatus = provider.SuccessOrRedirectResponseValidator
+	client.CheckResponseStatus = provider.SuccessOrRedirectOrUnauthorizedResponseValidator
 
 	return &Client{
 		client:     client,
@@ -66,14 +68,14 @@ func (ac *Client) follow(ctx context.Context, req *http.Request) (string, error)
 		return "", errors.Wrap(err, "error following")
 	}
 
-	doc, err := goquery.NewDocumentFromResponse(res)
+	doc, err := goquery.NewDocumentFromReader(res.Body)
 	if err != nil {
 		return "", errors.Wrap(err, "failed to build document from response")
 	}
 
 	var handler func(context.Context, *goquery.Document, *http.Response) (context.Context, *http.Request, error)
 
-	if docIsFormRedirectToAWS(doc) {
+	if docIsFormRedirectToTarget(doc, ac.idpAccount.TargetURL) {
 		logger.WithField("type", "saml-response-to-aws").Debug("doc detect")
 		if samlResponse, ok := extractSAMLResponse(doc); ok {
 			decodedSamlResponse, err := base64.StdEncoding.DecodeString(samlResponse)
@@ -95,6 +97,9 @@ func (ac *Client) follow(ctx context.Context, req *http.Request) (string, error)
 	} else if docIsCheckWebAuthn(doc) {
 		logger.WithField("type", "check-webauthn").Debug("doc detect")
 		handler = ac.handleCheckWebAuthn
+	} else if docIsFormSelectDevice(doc) {
+		logger.WithField("type", "select-device").Debug("doc detect")
+		handler = ac.handleFormSelectDevice
 	} else if docIsOTP(doc) {
 		logger.WithField("type", "otp").Debug("doc detect")
 		handler = ac.handleOTP
@@ -104,6 +109,9 @@ func (ac *Client) follow(ctx context.Context, req *http.Request) (string, error)
 	} else if docIsFormRedirect(doc) {
 		logger.WithField("type", "form-redirect").Debug("doc detect")
 		handler = ac.handleFormRedirect
+	} else if docIsRefresh(doc) {
+		logger.WithField("type", "refresh").Debug("doc detect")
+		handler = ac.handleRefresh
 	}
 	if handler == nil {
 		html, _ := doc.Selection.Html()
@@ -134,7 +142,10 @@ func (ac *Client) handleLogin(ctx context.Context, doc *goquery.Document, res *h
 
 	form.Values.Set("pf.username", loginDetails.Username)
 	form.Values.Set("pf.pass", loginDetails.Password)
-	form.URL = makeAbsoluteURL(form.URL, baseURL)
+	form.URL, err = makeAbsoluteURL(form.URL, baseURL)
+	if err != nil {
+		return ctx, nil, err
+	}
 
 	req, err := form.BuildRequest()
 	return ctx, req, err
@@ -185,7 +196,7 @@ func (ac *Client) handleSwipe(ctx context.Context, doc *goquery.Document, _ *htt
 			return ctx, nil, errors.Wrap(err, "error polling swipe status")
 		}
 
-		body, err := ioutil.ReadAll(res.Body)
+		body, err := io.ReadAll(res.Body)
 		if err != nil {
 			return ctx, nil, errors.Wrap(err, "error parsing body from swipe status response")
 		}
@@ -222,11 +233,47 @@ func (ac *Client) handleFormRedirect(ctx context.Context, doc *goquery.Document,
 	return ctx, req, err
 }
 
-func (ac *Client) handleFormSamlRequest(ctx context.Context, doc *goquery.Document, _ *http.Response) (context.Context, *http.Request, error) {
+func (ac *Client) handleRefresh(ctx context.Context, doc *goquery.Document, _ *http.Response) (context.Context, *http.Request, error) {
+	loginDetails, ok := ctx.Value(ctxKey("login")).(*creds.LoginDetails)
+	if !ok {
+		return ctx, nil, fmt.Errorf("no context value for 'login'")
+	}
+
+	req, err := http.NewRequest("GET", loginDetails.URL, nil)
+	if err != nil {
+		return ctx, nil, errors.Wrap(err, "error building request")
+	}
+
+	return ctx, req, err
+}
+
+func (ac *Client) handleFormSelectDevice(ctx context.Context, doc *goquery.Document, res *http.Response) (context.Context, *http.Request, error) {
+	deviceList := make(map[string]string)
+	var deviceNameList []string
+
+	doc.Find("ul.device-list > li").Each(func(_ int, s *goquery.Selection) {
+		deviceId, _ := s.Attr("data-id")
+		deviceName, _ := s.Find("a > div.device-name").Html()
+
+		logger.WithField("device name", deviceName).WithField("device id", deviceId).Debug("Select Device")
+		deviceList[deviceName] = deviceId
+		deviceNameList = append(deviceNameList, deviceName)
+	})
+
+	var chooseDevice = prompter.Choose("Select which MFA Device to use", deviceNameList)
+
 	form, err := page.NewFormFromDocument(doc, "")
 	if err != nil {
-		return ctx, nil, errors.Wrap(err, "error extracting samlrequest form")
+		return ctx, nil, errors.Wrap(err, "error extracting select device form")
 	}
+
+	form.Values.Set("deviceId", deviceList[deviceNameList[chooseDevice]])
+	form.URL, err = makeAbsoluteURL(form.URL, makeBaseURL(res.Request.URL))
+	if err != nil {
+		return ctx, nil, err
+	}
+
+	logger.WithField("value", form.Values.Encode()).Debug("Select Device")
 	req, err := form.BuildRequest()
 	return ctx, req, err
 }
@@ -248,7 +295,7 @@ func docIsSwipe(doc *goquery.Document) bool {
 }
 
 func docIsFormRedirect(doc *goquery.Document) bool {
-	return doc.Has("input[name=\"ppm_request\"]").Size() == 1
+	return doc.Has("input[name=\"ppm_request\"]").Size() == 1 || doc.Find("form[action=\"https://authenticator.pingone.com/pingid/ppm/auth\"]").Size() == 1
 }
 
 func docIsFormSamlRequest(doc *goquery.Document) bool {
@@ -256,14 +303,27 @@ func docIsFormSamlRequest(doc *goquery.Document) bool {
 }
 
 func docIsFormResume(doc *goquery.Document) bool {
-	return doc.Find("input[name=\"RelayState\"]").Size() == 1
+	return doc.Find("input[name=\"RelayState\"]").Size() == 1 || doc.Find("input[name=\"Resume\"]").Size() == 1
 }
 
-func docIsFormRedirectToAWS(doc *goquery.Document) bool {
-	return doc.Find("form[action=\"https://signin.aws.amazon.com/saml\"]").Size() == 1
+func docIsFormRedirectToTarget(doc *goquery.Document, target string) bool {
+	if target == "" {
+		target = "https://signin.aws.amazon.com/saml"
+	}
+	urlForm := fmt.Sprintf("form[action=\"%s\"]", target)
+	return doc.Find(urlForm).Size() == 1
+}
+
+func docIsFormSelectDevice(doc *goquery.Document) bool {
+	return doc.Has("form[name=\"device-form\"]").Size() == 1
+}
+
+func docIsRefresh(doc *goquery.Document) bool {
+	return doc.Has("meta[http-equiv=\"refresh\"]").Size() == 1
 }
 
 func extractSAMLResponse(doc *goquery.Document) (v string, ok bool) {
+
 	return doc.Find("input[name=\"SAMLResponse\"]").Attr("value")
 }
 
@@ -272,11 +332,18 @@ func makeBaseURL(url *url.URL) string {
 }
 
 // ensures given url is an absolute URL. if not, it will be combined with the base URL
-func makeAbsoluteURL(v string, base string) string {
+func makeAbsoluteURL(v string, base string) (string, error) {
 	logger.WithField("base", base).WithField("v", v).Debug("make absolute url")
-	if u, err := url.ParseRequestURI(v); err == nil && !u.IsAbs() {
-		return fmt.Sprintf("%s%s", base, v)
+	baseURL, err := url.Parse(base)
+	if err != nil {
+		return "", err
 	}
-	return v
+	pathURL, err := url.ParseRequestURI(v)
+	if err != nil {
+		return "", err
+	}
+	if pathURL.IsAbs() {
+		return pathURL.String(), nil
+	}
+	return baseURL.ResolveReference(pathURL).String(), nil
 }
-

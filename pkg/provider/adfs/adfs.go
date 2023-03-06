@@ -7,23 +7,33 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
-	"github.com/versent/saml2aws/pkg/cfg"
-	"github.com/versent/saml2aws/pkg/creds"
-	"github.com/versent/saml2aws/pkg/prompter"
-	"github.com/versent/saml2aws/pkg/provider"
+	"github.com/versent/saml2aws/v2/pkg/cfg"
+	"github.com/versent/saml2aws/v2/pkg/creds"
+	"github.com/versent/saml2aws/v2/pkg/prompter"
+	"github.com/versent/saml2aws/v2/pkg/provider"
 )
-
-var logger = logrus.WithField("provider", "adfs")
 
 // Client wrapper around ADFS enabling authentication and retrieval of assertions
 type Client struct {
+	provider.ValidateBase
+
 	client     *provider.HTTPClient
 	idpAccount *cfg.IDPAccount
 }
+
+type AuthResponseType int
+
+const (
+	UNKNOWN AuthResponseType = iota
+	SAML_RESPONSE
+	MFA_PROMPT
+	AZURE_MFA_WAIT
+	AZURE_MFA_SERVER_WAIT
+)
 
 // New create a new ADFS client
 func New(idpAccount *cfg.IDPAccount) (*Client, error) {
@@ -33,7 +43,7 @@ func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: idpAccount.SkipVerify, Renegotiation: tls.RenegotiateFreelyAsClient},
 	}
 
-	client, err := provider.NewHTTPClient(tr)
+	client, err := provider.NewHTTPClient(tr, provider.BuildHttpClientOpts(idpAccount))
 	if err != nil {
 		return nil, errors.Wrap(err, "error building http client")
 	}
@@ -49,17 +59,17 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 
 	var authSubmitURL string
 	var samlAssertion string
+	var instructions string
 
-	adfsURL := fmt.Sprintf("%s/adfs/ls/IdpInitiatedSignOn.aspx?loginToRp=%s", loginDetails.URL, ac.idpAccount.AmazonWebservicesURN)
+	awsURN := url.QueryEscape(ac.idpAccount.AmazonWebservicesURN)
 
-	res, err := ac.client.Get(adfsURL)
+	adfsURL := fmt.Sprintf("%s/adfs/ls/IdpInitiatedSignOn.aspx?loginToRp=%s", loginDetails.URL, awsURN)
+
+	mfaToken := loginDetails.MFAToken
+
+	doc, err := ac.get(adfsURL)
 	if err != nil {
-		return samlAssertion, errors.Wrap(err, "error retrieving form")
-	}
-
-	doc, err := goquery.NewDocumentFromResponse(res)
-	if err != nil {
-		return samlAssertion, errors.Wrap(err, "failed to build document from response")
+		return "", errors.Wrap(err, "failed to get adfs page")
 	}
 
 	authForm := url.Values{}
@@ -78,35 +88,125 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 
 	if authSubmitURL == "" {
 		return samlAssertion, fmt.Errorf("unable to locate IDP authentication form submit URL")
+	} else if strings.HasPrefix(authSubmitURL, "/") {
+		//
+		// The server returned a relative URL. Make it absolute.
+		//
+		parsedUrl, err := url.Parse(adfsURL)
+		if err != nil {
+			return "", errors.Wrap(err, "failed to parse ADFS URL")
+		}
+		parsedPath, err := url.Parse(authSubmitURL)
+		if err != nil {
+			return "", errors.Wrap(err, "failed to parse authSubmitURL fragment")
+		}
+		authSubmitURL = parsedUrl.ResolveReference(parsedPath).String()
 	}
 
-	//log.Printf("id authentication url: %s", authSubmitURL)
-
-	req, err := http.NewRequest("POST", authSubmitURL, strings.NewReader(authForm.Encode()))
+	doc, err = ac.submit(authSubmitURL, authForm)
 	if err != nil {
-		return samlAssertion, errors.Wrap(err, "error building authentication request")
+		return samlAssertion, errors.Wrap(err, "failed to submit adfs auth form")
+	}
+
+	for {
+		responseType, samlAssertion, err := checkResponse(doc)
+
+		switch responseType {
+		case SAML_RESPONSE:
+			return samlAssertion, err
+		case MFA_PROMPT:
+			otpForm := url.Values{}
+			if mfaToken == "" {
+				mfaToken = prompter.RequestSecurityCode("000000")
+			}
+
+			doc.Find("input").Each(func(i int, s *goquery.Selection) {
+				updateOTPFormData(otpForm, s, mfaToken)
+			})
+			doc, err = ac.submit(authSubmitURL, otpForm)
+			if err != nil {
+				return samlAssertion, errors.Wrap(err, "error retrieving mfa form results")
+			}
+			mfaToken = ""
+		case AZURE_MFA_SERVER_WAIT:
+			fallthrough
+		case AZURE_MFA_WAIT:
+			azureForm := url.Values{}
+			doc.Find("input").Each(func(i int, s *goquery.Selection) {
+				updatePassthroughFormData(azureForm, s)
+			})
+			sel := doc.Find("p#validEntropyNumber")
+			if sel.Index() != -1 {
+				if instructions != sel.Text() {
+					instructions = sel.Text()
+					log.Println("Open your Microsoft Authenticator app and tap the number you see below to sign in.")
+					log.Println(instructions)
+				}
+			}
+			sel = doc.Find("p#instructions")
+			if sel.Index() != -1 {
+				if instructions != sel.Text() {
+					instructions = sel.Text()
+					log.Println(instructions)
+				}
+			}
+			time.Sleep(1 * time.Second)
+			doc, err = ac.submit(authSubmitURL, azureForm)
+			if err != nil {
+				return samlAssertion, errors.Wrap(err, "error retrieving mfa form results")
+			}
+			if responseType == AZURE_MFA_SERVER_WAIT {
+				sel := doc.Find("label#errorText")
+				if sel.Index() != -1 {
+					return samlAssertion, errors.New(sel.Text())
+				}
+			}
+		case UNKNOWN:
+			return samlAssertion, errors.New("unable to classify response from auth server")
+		}
+	}
+}
+
+func (ac *Client) get(url string) (*goquery.Document, error) {
+	res, err := ac.client.Get(url)
+	if err != nil {
+		return nil, errors.Wrap(err, "error retieving form")
+
+	}
+	defer res.Body.Close()
+
+	doc, err := goquery.NewDocumentFromReader(res.Body)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to build document from response")
+	}
+	return doc, nil
+}
+
+func (ac *Client) submit(url string, form url.Values) (*goquery.Document, error) {
+	req, err := http.NewRequest("POST", url, strings.NewReader(form.Encode()))
+	if err != nil {
+		return nil, errors.Wrap(err, "error building request")
 	}
 
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 
-	res, err = ac.client.Do(req)
+	res, err := ac.client.Do(req)
 	if err != nil {
-		return samlAssertion, errors.Wrap(err, "error retrieving login form results")
-	}
+		return nil, errors.Wrap(err, "error submitting form")
 
-	switch ac.idpAccount.MFA {
-	case "VIP":
-		res, err = ac.vipMFA(authSubmitURL, loginDetails.MFAToken, res)
-		if err != nil {
-			return samlAssertion, errors.Wrap(err, "error retrieving mfa form results")
-		}
 	}
+	defer res.Body.Close()
 
-	// just parse the response whether res is from the login form or MFA form
-	doc, err = goquery.NewDocumentFromResponse(res)
+	doc, err := goquery.NewDocumentFromReader(res.Body)
 	if err != nil {
-		return samlAssertion, errors.Wrap(err, "error retrieving login response body")
+		return nil, errors.Wrap(err, "failed to build document from response")
 	}
+	return doc, nil
+}
+
+func checkResponse(doc *goquery.Document) (AuthResponseType, string, error) {
+	samlAssertion := ""
+	responseType := UNKNOWN
 
 	doc.Find("input").Each(func(i int, s *goquery.Selection) {
 		name, ok := s.Attr("name")
@@ -119,103 +219,85 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 				log.Fatalf("unable to locate saml assertion value")
 			}
 			samlAssertion = val
+			responseType = SAML_RESPONSE
+		}
+		if name == "OathCode" {
+			responseType = MFA_PROMPT
+		}
+		if name == "AuthMethod" {
+			val, _ := s.Attr("value")
+			switch val {
+			case "VIPAuthenticationProviderWindowsAccountName", "VIPAuthenticationProviderUPN", "Defender AD FS Adapter":
+				responseType = MFA_PROMPT
+			case "AzureMfaAuthentication":
+				responseType = AZURE_MFA_WAIT
+			case "AzureMfaServerAuthentication":
+				responseType = AZURE_MFA_SERVER_WAIT
+			}
+		}
+		if name == "VerificationCode" {
+			responseType = MFA_PROMPT
 		}
 	})
-
-	return samlAssertion, nil
-}
-
-// vipMFA when supplied with the the form response document attempt to extract the VIP mfa related field
-// then use that to trigger a submit of the MFA security token
-func (ac *Client) vipMFA(authSubmitURL string, mfaToken string, res *http.Response) (*http.Response, error) {
-
-	doc, err := goquery.NewDocumentFromResponse(res)
-	if err != nil {
-		return nil, errors.Wrap(err, "error retrieving saml response body")
-	}
-
-	otpForm := url.Values{}
-
-	vipIndex := doc.Find("input#authMethod[value=VIPAuthenticationProviderWindowsAccountName]").Index()
-
-	if vipIndex == -1 {
-		return res, nil // if we didn't find the MFA flag then just continue
-	}
-
-	if mfaToken == "" {
-		mfaToken = prompter.RequestSecurityCode("000000")
-	}
-
-	doc.Find("input").Each(func(i int, s *goquery.Selection) {
-		updateOTPFormData(otpForm, s, mfaToken)
-	})
-
-	doc.Find("form").Each(func(i int, s *goquery.Selection) {
-		action, ok := s.Attr("action")
-		if !ok {
-			return
-		}
-		authSubmitURL = action
-	})
-
-	if authSubmitURL == "" {
-		return nil, fmt.Errorf("unable to locate IDP MFA form submit URL")
-	}
-
-	req, err := http.NewRequest("POST", authSubmitURL, strings.NewReader(otpForm.Encode()))
-	if err != nil {
-		return nil, errors.Wrap(err, "error building MFA request")
-	}
-
-	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-
-	res, err = ac.client.Do(req)
-	if err != nil {
-		return nil, errors.Wrap(err, "error retrieving content")
-	}
-
-	return res, nil
+	return responseType, samlAssertion, nil
 }
 
 func updateFormData(authForm url.Values, s *goquery.Selection, user *creds.LoginDetails) {
 	name, ok := s.Attr("name")
-	//	log.Printf("name = %s ok = %v", name, ok)
 	if !ok {
 		return
 	}
+
+	typeValue, typeFound := s.Attr("type")
+	hiddenAttr := typeFound && typeValue == "hidden"
+
 	lname := strings.ToLower(name)
 	if strings.Contains(lname, "user") {
-		authForm.Add(name, user.Username)
-	} else if strings.Contains(lname, "email") {
-		authForm.Add(name, user.Username)
-	} else if strings.Contains(lname, "pass") {
-		authForm.Add(name, user.Password)
-	} else {
-		// pass through any hidden fields
-		val, ok := s.Attr("value")
-		if !ok {
-			return
+		if !hiddenAttr {
+			authForm.Add(name, user.Username)
 		}
-		authForm.Add(name, val)
+	} else if strings.Contains(lname, "email") {
+		if !hiddenAttr {
+			authForm.Add(name, user.Username)
+		}
+	} else if strings.Contains(lname, "pass") {
+		if !hiddenAttr {
+			authForm.Add(name, user.Password)
+		}
+	} else {
+		updatePassthroughFormData(authForm, s)
 	}
 }
 
 func updateOTPFormData(otpForm url.Values, s *goquery.Selection, token string) {
 	name, ok := s.Attr("name")
-	//	log.Printf("name = %s ok = %v", name, ok)
 	if !ok {
 		return
 	}
 	lname := strings.ToLower(name)
 	if strings.Contains(lname, "security_code") {
 		otpForm.Add(name, token)
+	} else if strings.Contains(lname, "verificationcode") {
+		otpForm.Add(name, token)
+	} else if strings.Contains(lname, "challengequestionanswer") {
+		otpForm.Add(name, token)
+	} else if strings.Contains(lname, "oathcode") {
+		otpForm.Add(name, token)
 	} else {
-		// pass through any hidden fields
-		val, ok := s.Attr("value")
-		if !ok {
-			return
-		}
-		otpForm.Add(name, val)
+		updatePassthroughFormData(otpForm, s)
 	}
+
+}
+
+func updatePassthroughFormData(otpForm url.Values, s *goquery.Selection) {
+	name, ok := s.Attr("name")
+	if !ok {
+		return
+	}
+	val, ok := s.Attr("value")
+	if !ok {
+		return
+	}
+	otpForm.Add(name, val)
 
 }

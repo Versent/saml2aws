@@ -3,14 +3,15 @@ package pingfed
 import (
 	"bytes"
 	"context"
-	"io/ioutil"
+	"io"
+	"os"
 	"testing"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/stretchr/testify/require"
-	"github.com/versent/saml2aws/mocks"
-	"github.com/versent/saml2aws/pkg/creds"
-	"github.com/versent/saml2aws/pkg/prompter"
+	"github.com/versent/saml2aws/v2/mocks"
+	"github.com/versent/saml2aws/v2/pkg/creds"
+	"github.com/versent/saml2aws/v2/pkg/prompter"
 )
 
 func TestMakeAbsoluteURL(t *testing.T) {
@@ -53,7 +54,7 @@ var docTests = []struct {
 
 func TestDocTypes(t *testing.T) {
 	for _, tt := range docTests {
-		data, err := ioutil.ReadFile(tt.file)
+		data, err := os.ReadFile(tt.file)
 		require.Nil(t, err)
 
 		doc, err := goquery.NewDocumentFromReader(bytes.NewReader(data))
@@ -74,16 +75,16 @@ func TestHandleLogin(t *testing.T) {
 	}
 	ctx := context.WithValue(context.Background(), ctxKey("login"), &loginDetails)
 
-	data, err := ioutil.ReadFile("example/login.html")
+	data, err := os.ReadFile("example/login.html")
 	require.Nil(t, err)
 
 	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(data))
 	require.Nil(t, err)
 
-	ctx, req, err := ac.handleLogin(ctx, doc)
+	_, req, err := ac.handleLogin(ctx, doc)
 	require.Nil(t, err)
 
-	b, err := ioutil.ReadAll(req.Body)
+	b, err := io.ReadAll(req.Body)
 	require.Nil(t, err)
 
 	s := string(b[:])
@@ -96,7 +97,7 @@ func TestHandleOTP(t *testing.T) {
 	prompter.SetPrompter(pr)
 	pr.Mock.On("StringRequired", "Enter passcode").Return("5309")
 
-	data, err := ioutil.ReadFile("example/otp.html")
+	data, err := os.ReadFile("example/otp.html")
 	require.Nil(t, err)
 
 	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(data))
@@ -106,7 +107,7 @@ func TestHandleOTP(t *testing.T) {
 	_, req, err := ac.handleOTP(context.Background(), doc)
 	require.Nil(t, err)
 
-	b, err := ioutil.ReadAll(req.Body)
+	b, err := io.ReadAll(req.Body)
 	require.Nil(t, err)
 
 	s := string(b[:])
@@ -114,7 +115,7 @@ func TestHandleOTP(t *testing.T) {
 }
 
 func TestHandleFormRedirect(t *testing.T) {
-	data, err := ioutil.ReadFile("example/form-redirect.html")
+	data, err := os.ReadFile("example/form-redirect.html")
 	require.Nil(t, err)
 
 	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(data))
@@ -124,7 +125,7 @@ func TestHandleFormRedirect(t *testing.T) {
 	_, req, err := ac.handleFormRedirect(context.Background(), doc)
 	require.Nil(t, err)
 
-	b, err := ioutil.ReadAll(req.Body)
+	b, err := io.ReadAll(req.Body)
 	require.Nil(t, err)
 
 	s := string(b[:])
@@ -133,7 +134,7 @@ func TestHandleFormRedirect(t *testing.T) {
 }
 
 func TestHandleWebAuthn(t *testing.T) {
-	data, err := ioutil.ReadFile("example/webauthn.html")
+	data, err := os.ReadFile("example/webauthn.html")
 	require.Nil(t, err)
 
 	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(data))
@@ -143,7 +144,7 @@ func TestHandleWebAuthn(t *testing.T) {
 	_, req, err := ac.handleWebAuthn(context.Background(), doc)
 	require.Nil(t, err)
 
-	b, err := ioutil.ReadAll(req.Body)
+	b, err := io.ReadAll(req.Body)
 	require.Nil(t, err)
 
 	s := string(b[:])

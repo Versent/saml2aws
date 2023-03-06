@@ -1,6 +1,6 @@
 .DS_Store
 .credentials
-/dist
+/dist*
 /build
 /packages
 /release
@@ -13,3 +13,9 @@ vendor
 coverage.txt
 .ctags
 .vscode
+bin/
+# JetBrains tool
+.idea
+
+# direnv
+.envrc

@@ -3,6 +3,7 @@ package saml2aws
 import (
 	"fmt"
 	"strconv"
+	"time"
 
 	"github.com/beevik/etree"
 )
@@ -12,17 +13,18 @@ const (
 	attributeStatementTag = "AttributeStatement"
 	attributeTag          = "Attribute"
 	attributeValueTag     = "AttributeValue"
+	responseTag           = "Response"
 )
 
-//ErrMissingElement is the error type that indicates an element and/or attribute is
-//missing. It provides a structured error that can be more appropriately acted
-//upon.
+// ErrMissingElement is the error type that indicates an element and/or attribute is
+// missing. It provides a structured error that can be more appropriately acted
+// upon.
 type ErrMissingElement struct {
 	Tag, Attribute string
 }
 
-//ErrMissingAssertion indicates that an appropriate assertion element could not
-//be found in the SAML Response
+// ErrMissingAssertion indicates that an appropriate assertion element could not
+// be found in the SAML Response
 var (
 	ErrMissingAssertion = ErrMissingElement{Tag: assertionTag}
 )
@@ -69,6 +71,66 @@ func ExtractSessionDuration(data []byte) (int64, error) {
 	}
 
 	return 0, nil
+}
+
+// ExtractDestinationURL will find the Destination URL to POST the SAML assertion to.
+// This is necessary to support AWS instances with custom endpoints such as GovCloud and AWS China without requiring
+// hardcoded endpoints on the saml2aws side.
+func ExtractDestinationURL(data []byte) (string, error) {
+
+	doc := etree.NewDocument()
+	if err := doc.ReadFromBytes(data); err != nil {
+		return "", err
+	}
+
+	rootElement := doc.Root()
+	if rootElement == nil {
+		return "", ErrMissingElement{Tag: responseTag}
+	}
+
+	destination := rootElement.SelectAttrValue("Destination", "none")
+	if destination == "none" {
+		// If Destination attribute is not found in Response (root) element,
+		// get the Recipient attribute from the SubjectConfirmationData element.
+		subjectConfirmationDataElement := doc.FindElement(".//SubjectConfirmationData")
+		if subjectConfirmationDataElement == nil {
+			return "", ErrMissingElement{Tag: responseTag}
+		}
+
+		destination = subjectConfirmationDataElement.SelectAttrValue("Recipient", "none")
+		if destination == "none" {
+			return "", ErrMissingElement{Tag: responseTag}
+		}
+	}
+
+	return destination, nil
+}
+
+// ExtractMFATokenExpiryTime returns the duration of MFA token
+// This is done by looking at the SubjectConfirmationData's NotOnOrAfter attribute
+func ExtractMFATokenExpiryTime(data []byte) (time.Time, error) {
+	var t time.Time
+
+	doc := etree.NewDocument()
+	if err := doc.ReadFromBytes(data); err != nil {
+		return t, err
+	}
+
+	rootElement := doc.Root()
+	if rootElement == nil {
+		return t, ErrMissingElement{Tag: responseTag}
+	}
+
+	subjectConfirmationDataElement := doc.FindElement(".//SubjectConfirmationData")
+	if subjectConfirmationDataElement == nil {
+		return t, ErrMissingElement{Tag: responseTag}
+	}
+
+	// The field NotOnOrAfter holds the timestamp past which the token is invalid
+	ValidUntilString := subjectConfirmationDataElement.SelectAttrValue("NotOnOrAfter", "")
+
+	// return time.Parse("", ValidUntilString)
+	return time.Parse(time.RFC3339, ValidUntilString)
 }
 
 // ExtractAwsRoles given an assertion document extract the aws roles

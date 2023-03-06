@@ -1,22 +1,29 @@
 package credentials
 
 import (
-	"fmt"
 	"path"
 
-	"github.com/versent/saml2aws/pkg/creds"
+	"github.com/versent/saml2aws/v2/pkg/creds"
 )
 
 // LookupCredentials lookup an existing set of credentials and validate it.
 func LookupCredentials(loginDetails *creds.LoginDetails, provider string) error {
 
-	username, password, err := CurrentHelper.Get(fmt.Sprintf("%s", loginDetails.URL))
+	username, password, err := CurrentHelper.Get(loginDetails.URL)
 	if err != nil {
 		return err
 	}
 
 	loginDetails.Username = username
 	loginDetails.Password = password
+
+	// If the provider is Okta, check for existing Okta Session Cookie (sid)
+	if provider == "Okta" {
+		_, oktaSessionCookie, err := CurrentHelper.Get(loginDetails.URL + "/sessionCookie")
+		if err == nil {
+			loginDetails.OktaSessionCookie = oktaSessionCookie
+		}
+	}
 
 	if provider == "OneLogin" {
 		id, secret, err := CurrentHelper.Get(path.Join(loginDetails.URL, "/auth/oauth2/v2/token"))
@@ -33,7 +40,7 @@ func LookupCredentials(loginDetails *creds.LoginDetails, provider string) error 
 func SaveCredentials(url, username, password string) error {
 
 	creds := &Credentials{
-		ServerURL: fmt.Sprintf("%s", url),
+		ServerURL: url,
 		Username:  username,
 		Secret:    password,
 	}

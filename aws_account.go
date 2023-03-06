@@ -2,17 +2,14 @@ package saml2aws
 
 import (
 	"bytes"
-	"io/ioutil"
+	"fmt"
+	"io"
 	"net/http"
 	"net/url"
-
-	"fmt"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/pkg/errors"
 )
-
-const awsURL = "https://signin.aws.amazon.com/saml"
 
 // AWSAccount holds the AWS account name and roles
 type AWSAccount struct {
@@ -21,14 +18,13 @@ type AWSAccount struct {
 }
 
 // ParseAWSAccounts extract the aws accounts from the saml assertion
-func ParseAWSAccounts(samlAssertion string) ([]*AWSAccount, error) {
-
-	res, err := http.PostForm(awsURL, url.Values{"SAMLResponse": {samlAssertion}})
+func ParseAWSAccounts(audience string, samlAssertion string) ([]*AWSAccount, error) {
+	res, err := http.PostForm(audience, url.Values{"SAMLResponse": {samlAssertion}})
 	if err != nil {
 		return nil, errors.Wrap(err, "error retrieving AWS login form")
 	}
 
-	data, err := ioutil.ReadAll(res.Body)
+	data, err := io.ReadAll(res.Body)
 	if err != nil {
 		return nil, errors.Wrap(err, "error retrieving AWS login body")
 	}

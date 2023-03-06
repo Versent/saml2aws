@@ -2,16 +2,17 @@ package googleapps
 
 import (
 	"bytes"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"strings"
 	"testing"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/stretchr/testify/require"
-	"github.com/versent/saml2aws/pkg/provider"
+	"github.com/versent/saml2aws/v2/pkg/creds"
+	"github.com/versent/saml2aws/v2/pkg/provider"
 )
 
 func TestExtractInputByName(t *testing.T) {
@@ -24,16 +25,27 @@ func TestExtractInputByName(t *testing.T) {
 	require.Equal(t, "test error message", captcha)
 }
 
-func TestExtractInputsByFormID(t *testing.T) {
+func TestExtractInputsByFormQuery(t *testing.T) {
 	html := `<html><body><form id="dev" action="http://example.com/test"><input name="pass" value="test error message"\></form></body></html>`
 
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(html))
 	require.Nil(t, err)
 
-	form, actionURL, err := extractInputsByFormID(doc, "dev")
+	doc.Url = &url.URL{
+		Scheme: "https",
+		Host:   "google.com",
+		Path:   "foobar",
+	}
+
+	form, actionURL, err := extractInputsByFormQuery(doc, "#dev")
 	require.Nil(t, err)
 	require.Equal(t, "http://example.com/test", actionURL)
 	require.Equal(t, "test error message", form.Get("pass"))
+
+	form2, actionURL2, err := extractInputsByFormQuery(doc, `[action$="/test"]`)
+	require.Nil(t, err)
+	require.Equal(t, "http://example.com/test", actionURL2)
+	require.Equal(t, "test error message", form2.Get("pass"))
 }
 func TestExtractErrorMsg(t *testing.T) {
 	html := `<html><body><span class="error-msg">test error message</span></body></html>`
@@ -67,25 +79,26 @@ func TestContentContainsMessage2(t *testing.T) {
 
 func TestChallengePage(t *testing.T) {
 
-	data, err := ioutil.ReadFile("example/challenge-totp.html")
+	data, err := os.ReadFile("example/challenge-totp.html")
 	require.Nil(t, err)
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write(data)
+		_, _ = w.Write(data)
 	}))
 	defer ts.Close()
 
-	kc := Client{client: &provider.HTTPClient{Client: http.Client{}}}
-	// loginDetails := &creds.LoginDetails{URL: ts.URL, Username: "test", Password: "test123"}
+	opts := &provider.HTTPClientOptions{IsWithRetries: false}
+	kc := Client{client: &provider.HTTPClient{Client: http.Client{}, Options: opts}}
+	loginDetails := &creds.LoginDetails{URL: ts.URL, Username: "test", Password: "test123"}
 	authForm := url.Values{}
 
-	challengeDoc, err := kc.loadChallengePage(ts.URL, "https://accounts.google.com/signin/challenge/sl/password", authForm)
+	challengeDoc, err := kc.loadChallengePage(ts.URL, "https://accounts.google.com/signin/challenge/sl/password", authForm, loginDetails)
 	require.Nil(t, err)
 	require.NotNil(t, challengeDoc)
 }
 
 func TestExtractDataAttributes(t *testing.T) {
-	data, err := ioutil.ReadFile("example/challenge-prompt.html")
+	data, err := os.ReadFile("example/challenge-prompt.html")
 	require.Nil(t, err)
 	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(data))
 	require.Nil(t, err)
@@ -93,4 +106,14 @@ func TestExtractDataAttributes(t *testing.T) {
 	dataAttrs := extractDataAttributes(doc, "div[data-context]", []string{"data-context", "data-gapi-url", "data-tx-id", "data-tx-lifetime"})
 
 	require.Equal(t, "https://apis.google.com/js/base.js", dataAttrs["data-gapi-url"])
+}
+
+func TestWrongPassword(t *testing.T) {
+	passwordErrorId := "passwordError"
+	html := `<html><body><span class="Qx8Abe" id="` + passwordErrorId + `">Wrong password. Try again or click Forgot password to reset it.</span></body></html>`
+
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(html))
+	require.Nil(t, err)
+	txt := doc.Selection.Find("#" + passwordErrorId).Text()
+	require.NotEqual(t, "", txt)
 }

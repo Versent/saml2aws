@@ -3,16 +3,16 @@ package adfs2
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/pkg/errors"
-	"github.com/versent/saml2aws/pkg/creds"
-	"github.com/versent/saml2aws/pkg/dump"
-	"github.com/versent/saml2aws/pkg/prompter"
+	"github.com/versent/saml2aws/v2/pkg/creds"
+	"github.com/versent/saml2aws/v2/pkg/dump"
+	"github.com/versent/saml2aws/v2/pkg/prompter"
 )
 
 // Authenticate authenticate the user using the supplied login details
@@ -30,11 +30,29 @@ func (ac *Client) authenticateRsa(loginDetails *creds.LoginDetails) (string, err
 
 	passcodeForm, passcodeActionURL, err := extractFormData(doc)
 	if err != nil {
+		return "", errors.Wrap(err, "error extractign login data")
+	}
+
+	/**
+	 * RSAv2 requires an additional POST to establish a context
+	 * https://github.com/torric1/AWSCLI-MFA-RSAv2
+	 * https://gist.github.com/jgard/17262e0fc073c82bc7930db2f5603446
+	 */
+	if passcodeForm.Get("AuthMethod") == "SecurIDv2Authentication" {
+		doc, err = ac.postPasscodeForm(passcodeActionURL, passcodeForm)
+		if err != nil {
+			return "", errors.Wrap(err, "error posting passcode form")
+		}
+	}
+
+	passcodeForm, passcodeActionURL, err = extractFormData(doc)
+	if err != nil {
 		return "", errors.Wrap(err, "error extracting mfa form data")
 	}
 
 	token := prompter.Password("Enter passcode")
 
+	passcodeForm.Set("ChallengeQuestionAnswer", token)
 	passcodeForm.Set("Passcode", token)
 	passcodeForm.Del("submit")
 
@@ -48,16 +66,18 @@ func (ac *Client) authenticateRsa(loginDetails *creds.LoginDetails) (string, err
 		return "", errors.Wrap(err, "error extracting rsa form data")
 	}
 
-	nextCode := prompter.Password("Enter nextCode")
+	if rsaForm.Get("SAMLResponse") == "" {
+		nextCode := prompter.Password("Enter nextCode")
 
-	rsaForm.Set("NextCode", nextCode)
-	rsaForm.Del("submit")
+		rsaForm.Set("ChallengeQuestionAnswer", token)
+		rsaForm.Set("NextCode", nextCode)
+		rsaForm.Del("submit")
 
-	doc, err = ac.postRSAForm(rsaActionURL, rsaForm)
-	if err != nil {
-		return "", errors.Wrap(err, "error posting rsa form")
+		doc, err = ac.postRSAForm(rsaActionURL, rsaForm)
+		if err != nil {
+			return "", errors.Wrap(err, "error posting rsa form")
+		}
 	}
-
 	return extractSamlAssertion(doc)
 }
 
@@ -79,7 +99,7 @@ func (ac *Client) postLoginForm(authSubmitURL string, authForm url.Values) (*goq
 
 	logger.WithField("status", res.StatusCode).WithField("authSubmitURL", authSubmitURL).WithField("res", dump.ResponseString(res)).Debug("POST")
 
-	doc, err := goquery.NewDocumentFromResponse(res)
+	doc, err := goquery.NewDocumentFromReader(res.Body)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build document from response")
 	}
@@ -103,14 +123,19 @@ func (ac *Client) getLoginForm(loginDetails *creds.LoginDetails) (string, url.Va
 
 	logger.WithField("status", res.StatusCode).WithField("url", loginDetails.URL).WithField("res", dump.ResponseString(res)).Debug("GET")
 
-	// REALLY need to extract the form and actionURL from the previous response
+	// Extract the form and actionURL from the previous response
 
-	authForm := url.Values{}
-	authForm.Add("UserName", loginDetails.Username)
-	authForm.Add("Password", loginDetails.Password)
-	authForm.Add("AuthMethod", "FormsAuthentication")
+	doc, err := goquery.NewDocumentFromReader(res.Body)
+	if err != nil {
+		return "", nil, errors.Wrap(err, "error extracting response data")
+	}
+	authForm, authSubmitURL, err := extractFormData(doc)
+	if err != nil {
+		return "", nil, errors.Wrap(err, "error extracting login data")
+	}
 
-	authSubmitURL := fmt.Sprintf("%s/adfs/ls/idpinitiatedsignon", loginDetails.URL)
+	authForm.Set("UserName", loginDetails.Username)
+	authForm.Set("Password", loginDetails.Password)
 
 	return authSubmitURL, authForm, nil
 }
@@ -131,7 +156,7 @@ func (ac *Client) postPasscodeForm(passcodeActionURL string, passcodeForm url.Va
 
 	logger.WithField("status", res.StatusCode).WithField("passcodeActionURL", passcodeActionURL).WithField("res", dump.ResponseString(res)).Debug("POST")
 
-	doc, err := goquery.NewDocumentFromResponse(res)
+	doc, err := goquery.NewDocumentFromReader(res.Body)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build document from response")
 	}
@@ -155,7 +180,7 @@ func (ac *Client) postRSAForm(rsaSubmitURL string, form url.Values) (*goquery.Do
 
 	logger.WithField("status", res.StatusCode).WithField("rsaSubmitURL", rsaSubmitURL).WithField("res", dump.ResponseString(res)).Debug("POST")
 
-	data, err := ioutil.ReadAll(res.Body)
+	data, err := io.ReadAll(res.Body)
 	if err != nil {
 		return nil, errors.Wrap(err, "error retrieving body")
 	}
@@ -188,10 +213,10 @@ func extractFormData(doc *goquery.Document) (url.Values, string, error) {
 			return
 		}
 		val, ok := s.Attr("value")
-		if !ok {
+		if !ok || len(val) == 0 {
 			return
 		}
-		formData.Add(name, val)
+		formData.Set(name, val)
 	})
 
 	return formData, actionURL, nil
