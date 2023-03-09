@@ -1,7 +1,6 @@
 package adfs2
 
 import (
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -17,7 +16,7 @@ import (
 
 func TestClient_getLoginForm(t *testing.T) {
 
-	data, err := ioutil.ReadFile("example/loginpage.html")
+	data, err := os.ReadFile("example/loginpage.html")
 	require.Nil(t, err)
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -44,7 +43,7 @@ func TestClient_getLoginForm(t *testing.T) {
 
 func TestClient_postLoginForm(t *testing.T) {
 
-	data, err := ioutil.ReadFile("example/passcode.html")
+	data, err := os.ReadFile("example/passcode.html")
 	require.Nil(t, err)
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

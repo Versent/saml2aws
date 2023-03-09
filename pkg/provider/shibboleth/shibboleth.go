@@ -4,7 +4,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"html"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"net/url"
@@ -100,7 +100,7 @@ func (sc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 
 	switch sc.idpAccount.MFA {
 	case "Auto":
-		b, _ := ioutil.ReadAll(res.Body)
+		b, _ := io.ReadAll(res.Body)
 
 		mfaRes, err := verifyMfa(sc, loginDetails, loginDetails.URL, string(b))
 		if err != nil {
@@ -276,7 +276,7 @@ func verifyDuoMfa(oc *Client, loginDetails *creds.LoginDetails, duoHost string, 
 		return "", errors.Wrap(err, "error retrieving verify response")
 	}
 
-	body, err := ioutil.ReadAll(res.Body)
+	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		return "", errors.Wrap(err, "error retrieving body from response")
 	}
@@ -308,7 +308,7 @@ func verifyDuoMfa(oc *Client, loginDetails *creds.LoginDetails, duoHost string, 
 		return "", errors.Wrap(err, "error retrieving verify response")
 	}
 
-	body, err = ioutil.ReadAll(res.Body)
+	body, err = io.ReadAll(res.Body)
 	if err != nil {
 		return "", errors.Wrap(err, "error retrieving body from response")
 	}
@@ -337,7 +337,7 @@ func verifyDuoMfa(oc *Client, loginDetails *creds.LoginDetails, duoHost string, 
 				return "", errors.Wrap(err, "error retrieving verify response")
 			}
 
-			body, err = ioutil.ReadAll(res.Body)
+			body, err = io.ReadAll(res.Body)
 			if err != nil {
 				return "", errors.Wrap(err, "error retrieving body from response")
 			}
@@ -372,7 +372,7 @@ func verifyDuoMfa(oc *Client, loginDetails *creds.LoginDetails, duoHost string, 
 		return "", errors.Wrap(err, "error retrieving duo result response")
 	}
 
-	body, err = ioutil.ReadAll(res.Body)
+	body, err = io.ReadAll(res.Body)
 	if err != nil {
 		return "", errors.Wrap(err, "duoResultSubmit: error retrieving body from response")
 	}
@@ -409,7 +409,7 @@ func parseTokens(blob string) (string, string, string, string, string) {
 }
 
 func extractSamlResponse(res *http.Response) (string, error) {
-	body, err := ioutil.ReadAll(res.Body)
+	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		return "", errors.Wrap(err, "extractSamlResponse: error retrieving body from response")
 	}

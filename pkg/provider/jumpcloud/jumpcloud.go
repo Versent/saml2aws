@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"html"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"net/url"
@@ -106,7 +106,7 @@ func (jc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 	defer res.Body.Close()
 
 	// Grab the web response that has the xsrf in it
-	xsrfBody, err := ioutil.ReadAll(res.Body)
+	xsrfBody, err := io.ReadAll(res.Body)
 	if err != nil {
 		return samlAssertion, errors.Wrap(err, "error reading body of XSRF response")
 	}
@@ -151,7 +151,7 @@ func (jc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 	if res.StatusCode == 401 {
 
 		// Grab the body from the response that has the message in it.
-		messageBody, err := ioutil.ReadAll(res.Body)
+		messageBody, err := io.ReadAll(res.Body)
 		if err != nil {
 			return samlAssertion, errors.Wrap(err, "Error reading body")
 		}
@@ -182,7 +182,7 @@ func (jc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 	// Check if our auth was successful
 	if res.StatusCode == 200 {
 		// Grab the body from the response that has the redirect in it.
-		reDirBody, err := ioutil.ReadAll(res.Body)
+		reDirBody, err := io.ReadAll(res.Body)
 		if err != nil {
 			return samlAssertion, errors.Wrap(err, "Error reading body")
 		}
@@ -271,7 +271,7 @@ func (jc *Client) verifyMFA(jumpCloudOrgHost string, loginDetails *creds.LoginDe
 		}
 		defer res.Body.Close()
 
-		respBody, err := ioutil.ReadAll(res.Body)
+		respBody, err := io.ReadAll(res.Body)
 		if err != nil {
 			return nil, err
 		}
@@ -339,7 +339,7 @@ func (jc *Client) verifyMFA(jumpCloudOrgHost string, loginDetails *creds.LoginDe
 		if res.StatusCode != 200 {
 			return nil, errors.New("error retrieving Duo configuration, non 200 status returned")
 		}
-		duoResp, err := ioutil.ReadAll(res.Body)
+		duoResp, err := io.ReadAll(res.Body)
 		if err != nil {
 			return nil, errors.Wrap(err, "error retrieving Duo configuration")
 		}
@@ -436,7 +436,7 @@ func (jc *Client) verifyMFA(jumpCloudOrgHost string, loginDetails *creds.LoginDe
 		}
 		defer res.Body.Close()
 
-		body, err := ioutil.ReadAll(res.Body)
+		body, err := io.ReadAll(res.Body)
 		if err != nil {
 			return nil, errors.Wrap(err, "error retrieving body from response")
 		}
@@ -469,7 +469,7 @@ func (jc *Client) verifyMFA(jumpCloudOrgHost string, loginDetails *creds.LoginDe
 		}
 		defer res.Body.Close()
 
-		body, err = ioutil.ReadAll(res.Body)
+		body, err = io.ReadAll(res.Body)
 		if err != nil {
 			return nil, errors.Wrap(err, "error retrieving body from response")
 		}
@@ -503,7 +503,7 @@ func (jc *Client) verifyMFA(jumpCloudOrgHost string, loginDetails *creds.LoginDe
 				}
 				defer res.Body.Close()
 
-				body, err = ioutil.ReadAll(res.Body)
+				body, err = io.ReadAll(res.Body)
 				if err != nil {
 					return nil, errors.Wrap(err, "error retrieving body from response")
 				}
@@ -547,7 +547,7 @@ func (jc *Client) verifyMFA(jumpCloudOrgHost string, loginDetails *creds.LoginDe
 		}
 		defer res.Body.Close()
 
-		body, err = ioutil.ReadAll(res.Body)
+		body, err = io.ReadAll(res.Body)
 		if err != nil {
 			return nil, errors.Wrap(err, "duoResultSubmit: error retrieving body from response")
 		}

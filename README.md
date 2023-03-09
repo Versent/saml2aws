@@ -62,6 +62,7 @@ Aside from Okta, most of the providers in this project are using screen scraping
 
 1. AWS defaults to session tokens being issued with a duration of up to 3600 seconds (1 hour), this can now be configured as per [Enable Federated API Access to your AWS Resources for up to 12 hours Using IAM Roles](https://aws.amazon.com/blogs/security/enable-federated-api-access-to-your-aws-resources-for-up-to-12-hours-using-iam-roles/) and `--session-duration` flag.
 2. Every SAML provider is different, the login process, MFA support is pluggable and therefore some work may be needed to integrate with your identity server
+3. By default, the temporary security credentials returned **do not support SigV4A**. If you need SigV4A support then you must set the `AWS_STS_REGIONAL_ENDPOINTS` enviornment variable to `regional` when calling `saml2aws` so that [aws-sdk-go](https://github.com/aws/aws-sdk-go) uses a regional STS endpoint instead of the global one. See the note at the bottom of [Signing AWS API requests](https://docs.aws.amazon.com/general/latest/gr/signing_aws_api_requests.html#signature-versions) and [AWS STS Regionalized endpoints](https://docs.aws.amazon.com/sdkref/latest/guide/feature-sts-regionalized-endpoints.html).
 
 ## Install
 
@@ -178,6 +179,8 @@ Commands:
         --client-secret=CLIENT-SECRET
                                    OneLogin client secret, used to generate API access token. (env: ONELOGIN_CLIENT_SECRET)
         --subdomain=SUBDOMAIN      OneLogin subdomain of your company account. (env: ONELOGIN_SUBDOMAIN)
+        --mfa-ip-address=MFA-IP-ADDRESS
+                                   IP address whitelisting defined in OneLogin MFA policies. (env: ONELOGIN_MFA_IP_ADDRESS)
     -p, --profile=PROFILE          The AWS profile to save the temporary credentials. (env: SAML2AWS_PROFILE)
         --resource-id=RESOURCE-ID  F5APM SAML resource ID of your company account. (env: SAML2AWS_F5APM_RESOURCE_ID)
         --config=CONFIG            Path/filename of saml2aws config file (env: SAML2AWS_CONFIGFILE)
@@ -195,6 +198,8 @@ Commands:
         --client-id=CLIENT-ID    OneLogin client id, used to generate API access token. (env: ONELOGIN_CLIENT_ID)
         --client-secret=CLIENT-SECRET
                                  OneLogin client secret, used to generate API access token. (env: ONELOGIN_CLIENT_SECRET)
+        --mfa-ip-address=MFA-IP-ADDRESS
+                                 IP address whitelisting defined in OneLogin MFA policies. (env: ONELOGIN_MFA_IP_ADDRESS)
         --force                  Refresh credentials even if not expired.
         --credential-process     Enables AWS Credential Process support by outputting credentials to STDOUT in a JSON message.
         --credentials-file=CREDENTIALS-FILE
@@ -628,6 +633,8 @@ region                  = us-east-1
 ```
 ## Building
 
+### macOS
+
 To build this software on osx clone to the repo to `$GOPATH/src/github.com/versent/saml2aws` and ensure you have `$GOPATH/bin` in your `$PATH`.
 
 ```
@@ -650,6 +657,26 @@ Before raising a PR please run the linter.
 
 ```
 make lint-fix
+```
+
+### Linux
+
+To build this software on Debian/Ubuntu, you need to install a build dependency:
+
+```
+sudo apt install libudev-dev
+```
+
+You also need [GoReleaser](https://github.com/goreleaser/goreleaser) installed, and the binary (or a symlink) in `bin/goreleaser`.
+
+```
+ln -s $(command -v goreleaser) bin/goreleaser
+```
+
+Then you can build:
+
+```
+make build
 ```
 
 ## Environment vars
