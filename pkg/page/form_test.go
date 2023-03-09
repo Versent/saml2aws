@@ -2,8 +2,8 @@ package page
 
 import (
 	"bytes"
-	"io/ioutil"
 	"net/url"
+	"os"
 	"testing"
 
 	"github.com/PuerkitoBio/goquery"
@@ -11,7 +11,7 @@ import (
 )
 
 func TestNewFormFromDocument(t *testing.T) {
-	data, err := ioutil.ReadFile("example/multi-form.html")
+	data, err := os.ReadFile("example/multi-form.html")
 	require.Nil(t, err)
 
 	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(data))

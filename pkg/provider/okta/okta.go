@@ -7,7 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"html"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"net/http/cookiejar"
@@ -180,7 +180,7 @@ func (oc *Client) createSession(loginDetails *creds.LoginDetails, sessionToken s
 		return "", "", errors.Wrap(err, "error retrieving session response")
 	}
 
-	body, err := ioutil.ReadAll(res.Body)
+	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		return "", "", errors.Wrap(err, "error retrieving body from response")
 	}
@@ -257,7 +257,7 @@ func (oc *Client) validateSession(loginDetails *creds.LoginDetails) error {
 		return errors.Wrap(err, "error retrieving session response")
 	}
 
-	body, err := ioutil.ReadAll(res.Body)
+	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		return errors.Wrap(err, "error retrieving body from response")
 	}
@@ -314,7 +314,7 @@ func (oc *Client) authWithSession(loginDetails *creds.LoginDetails) (string, err
 		logger.Debugf("error authing with session: %v", err)
 	}
 
-	body, err := ioutil.ReadAll(res.Body)
+	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		logger.Debugf("error reading body for auth with session: %v", err)
 	}
@@ -426,7 +426,7 @@ func (oc *Client) primaryAuth(loginDetails *creds.LoginDetails) (string, string,
 		return "", "", "", errors.Wrap(err, "error retrieving auth response")
 	}
 
-	body, err := ioutil.ReadAll(res.Body)
+	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		return "", "", "", errors.Wrap(err, "error retrieving body from response")
 	}
@@ -565,7 +565,7 @@ func (oc *Client) follow(ctx context.Context, req *http.Request, loginDetails *c
 		if err != nil {
 			return "", errors.Wrap(err, "error retrieving app response")
 		}
-		body, err := ioutil.ReadAll(res.Body)
+		body, err := io.ReadAll(res.Body)
 		if err != nil {
 			return "", errors.Wrap(err, "error retrieving body from response")
 		}
@@ -710,7 +710,7 @@ func getMfaChallengeContext(oc *Client, mfaOption int, resp string) (*mfaChallen
 		return nil, errors.Wrap(err, "error retrieving verify response")
 	}
 
-	body, err := ioutil.ReadAll(res.Body)
+	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		return nil, errors.Wrap(err, "error retrieving body from response")
 	}
@@ -802,7 +802,7 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 			return "", errors.Wrap(err, "error retrieving token post response")
 		}
 
-		body, err := ioutil.ReadAll(res.Body)
+		body, err := io.ReadAll(res.Body)
 		if err != nil {
 			return "", errors.Wrap(err, "error retrieving body from response")
 		}
@@ -948,7 +948,7 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 			return "", errors.Wrap(err, "error retrieving verify response")
 		}
 
-		body, err := ioutil.ReadAll(res.Body)
+		body, err := io.ReadAll(res.Body)
 		if err != nil {
 			return "", errors.Wrap(err, "error retrieving body from response")
 		}
@@ -980,7 +980,7 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 			return "", errors.Wrap(err, "error retrieving verify response")
 		}
 
-		body, err = ioutil.ReadAll(res.Body)
+		body, err = io.ReadAll(res.Body)
 		if err != nil {
 			return "", errors.Wrap(err, "error retrieving body from response")
 		}
@@ -1013,7 +1013,7 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 					return "", errors.Wrap(err, "error retrieving verify response")
 				}
 
-				body, err = ioutil.ReadAll(res.Body)
+				body, err = io.ReadAll(res.Body)
 				if err != nil {
 					return "", errors.Wrap(err, "error retrieving body from response")
 				}
@@ -1056,7 +1056,7 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 			return "", errors.Wrap(err, "error retrieving duo result response")
 		}
 
-		body, err = ioutil.ReadAll(res.Body)
+		body, err = io.ReadAll(res.Body)
 		if err != nil {
 			return "", errors.Wrap(err, "duoResultSubmit: error retrieving body from response")
 		}
@@ -1115,7 +1115,7 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 			return "", errors.Wrap(err, "error retrieving verify response")
 		}
 
-		body, err = ioutil.ReadAll(res.Body)
+		body, err = io.ReadAll(res.Body)
 		if err != nil {
 			return "", errors.Wrap(err, "error retrieving body from response")
 		}
@@ -1196,7 +1196,7 @@ func fidoWebAuthn(oc *Client, oktaOrgHost string, challengeContext *mfaChallenge
 		return "", errors.Wrap(err, "error retrieving verify response")
 	}
 
-	body, err := ioutil.ReadAll(res.Body)
+	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		return "", errors.Wrap(err, "error retrieving body from response")
 	}
