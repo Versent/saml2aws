@@ -96,6 +96,19 @@ hash -r
 saml2aws --version
 ```
 
+#### Using Make
+
+You will need [Go Tools](https://golang.org/doc/install) (you can check your package maintainer as well) installed and the [Go Lint tool](https://github.com/alecthomas/gometalinter)
+
+Clone this repo to your `$GOPATH/src` directory
+
+Now you can install by running 
+
+```
+make
+make install
+```
+
 #### [Arch Linux](https://archlinux.org/) and its derivatives
 
 The `saml2aws` tool is available in AUR ([saml2aws-bin](https://aur.archlinux.org/packages/saml2aws-bin/)), so you can install it using an available AUR helper:
