@@ -49,8 +49,8 @@ func TestClientDisableRedirect(t *testing.T) {
 	require.Nil(t, err)
 
 	res, err := hc.Do(req)
-	require.Error(t, err)
-	require.Nil(t, res)
+	require.Nil(t, err)
+	require.Equal(t, 302, res.StatusCode)
 }
 
 func TestClientDoResponseCheck(t *testing.T) {

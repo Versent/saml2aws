@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"path"
@@ -43,7 +42,7 @@ func (jc *Client) jumpCloudProtectAuth(submitUrl string, xsrfToken string) (*htt
 		return nil, errors.New("error retrieving JumpCloud PUSH payload, non 200 status returned")
 	}
 
-	jpResp, err := ioutil.ReadAll(res.Body)
+	jpResp, err := io.ReadAll(res.Body)
 	if err != nil {
 		return nil, errors.Wrap(err, "error retrieving JumpCloud PUSH payload")
 	}

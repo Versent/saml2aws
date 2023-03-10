@@ -7,7 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"html"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"net/http/cookiejar"
@@ -180,7 +180,7 @@ func (oc *Client) createSession(loginDetails *creds.LoginDetails, sessionToken s
 		return "", "", errors.Wrap(err, "error retrieving session response")
 	}
 
-	body, err := ioutil.ReadAll(res.Body)
+	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		return "", "", errors.Wrap(err, "error retrieving body from response")
 	}
@@ -257,7 +257,7 @@ func (oc *Client) validateSession(loginDetails *creds.LoginDetails) error {
 		return errors.Wrap(err, "error retrieving session response")
 	}
 
-	body, err := ioutil.ReadAll(res.Body)
+	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		return errors.Wrap(err, "error retrieving body from response")
 	}
@@ -314,7 +314,7 @@ func (oc *Client) authWithSession(loginDetails *creds.LoginDetails) (string, err
 		logger.Debugf("error authing with session: %v", err)
 	}
 
-	body, err := ioutil.ReadAll(res.Body)
+	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		logger.Debugf("error reading body for auth with session: %v", err)
 	}
@@ -426,7 +426,7 @@ func (oc *Client) primaryAuth(loginDetails *creds.LoginDetails) (string, string,
 		return "", "", "", errors.Wrap(err, "error retrieving auth response")
 	}
 
-	body, err := ioutil.ReadAll(res.Body)
+	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		return "", "", "", errors.Wrap(err, "error retrieving body from response")
 	}
@@ -474,12 +474,14 @@ func (oc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		return "", err
 	}
 
-	// mfa required
-	if authStatus == "MFA_REQUIRED" {
+	switch authStatus {
+	case "MFA_REQUIRED":
 		oktaSessionToken, err = verifyMfa(oc, oktaOrgHost, loginDetails, primaryAuthResp)
 		if err != nil {
 			return "", errors.Wrap(err, "error verifying MFA")
 		}
+	case "LOCKED_OUT":
+		return "", errors.New("the account is locked")
 	}
 
 	// if user disabled sessions, default to using standard login WITHOUT sessions
@@ -563,7 +565,7 @@ func (oc *Client) follow(ctx context.Context, req *http.Request, loginDetails *c
 		if err != nil {
 			return "", errors.Wrap(err, "error retrieving app response")
 		}
-		body, err := ioutil.ReadAll(res.Body)
+		body, err := io.ReadAll(res.Body)
 		if err != nil {
 			return "", errors.Wrap(err, "error retrieving body from response")
 		}
@@ -590,7 +592,7 @@ func (oc *Client) follow(ctx context.Context, req *http.Request, loginDetails *c
 }
 
 func getStateTokenFromOktaPageBody(responseBody string) (string, error) {
-	re := regexp.MustCompile("var stateToken = '(.*)';")
+	re := regexp.MustCompile("var stateToken = [\"|'](.*)[\"|'];")
 	match := re.FindStringSubmatch(responseBody)
 	if len(match) < 2 {
 		return "", errors.New("cannot find state token")
@@ -705,7 +707,7 @@ func getMfaChallengeContext(oc *Client, mfaOption int, resp string) (*mfaChallen
 		return nil, errors.Wrap(err, "error retrieving verify response")
 	}
 
-	body, err := ioutil.ReadAll(res.Body)
+	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		return nil, errors.Wrap(err, "error retrieving body from response")
 	}
@@ -772,7 +774,7 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 			return "", errors.Wrap(err, "error retrieving token post response")
 		}
 
-		body, err := ioutil.ReadAll(res.Body)
+		body, err := io.ReadAll(res.Body)
 		if err != nil {
 			return "", errors.Wrap(err, "error retrieving body from response")
 		}
@@ -918,7 +920,7 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 			return "", errors.Wrap(err, "error retrieving verify response")
 		}
 
-		body, err := ioutil.ReadAll(res.Body)
+		body, err := io.ReadAll(res.Body)
 		if err != nil {
 			return "", errors.Wrap(err, "error retrieving body from response")
 		}
@@ -950,7 +952,7 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 			return "", errors.Wrap(err, "error retrieving verify response")
 		}
 
-		body, err = ioutil.ReadAll(res.Body)
+		body, err = io.ReadAll(res.Body)
 		if err != nil {
 			return "", errors.Wrap(err, "error retrieving body from response")
 		}
@@ -983,7 +985,7 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 					return "", errors.Wrap(err, "error retrieving verify response")
 				}
 
-				body, err = ioutil.ReadAll(res.Body)
+				body, err = io.ReadAll(res.Body)
 				if err != nil {
 					return "", errors.Wrap(err, "error retrieving body from response")
 				}
@@ -1026,7 +1028,7 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 			return "", errors.Wrap(err, "error retrieving duo result response")
 		}
 
-		body, err = ioutil.ReadAll(res.Body)
+		body, err = io.ReadAll(res.Body)
 		if err != nil {
 			return "", errors.Wrap(err, "duoResultSubmit: error retrieving body from response")
 		}
@@ -1085,7 +1087,7 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 			return "", errors.Wrap(err, "error retrieving verify response")
 		}
 
-		body, err = ioutil.ReadAll(res.Body)
+		body, err = io.ReadAll(res.Body)
 		if err != nil {
 			return "", errors.Wrap(err, "error retrieving body from response")
 		}
@@ -1166,7 +1168,7 @@ func fidoWebAuthn(oc *Client, oktaOrgHost string, challengeContext *mfaChallenge
 		return "", errors.Wrap(err, "error retrieving verify response")
 	}
 
-	body, err := ioutil.ReadAll(res.Body)
+	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		return "", errors.Wrap(err, "error retrieving body from response")
 	}

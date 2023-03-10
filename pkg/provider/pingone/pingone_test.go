@@ -2,7 +2,7 @@ package pingone
 
 import (
 	"bytes"
-	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/PuerkitoBio/goquery"
@@ -29,7 +29,7 @@ func TestMakeAbsoluteURL(t *testing.T) {
 
 func TestDocTypes(t *testing.T) {
 	for _, tt := range docTests {
-		data, err := ioutil.ReadFile(tt.file)
+		data, err := os.ReadFile(tt.file)
 		require.Nil(t, err)
 
 		doc, err := goquery.NewDocumentFromReader(bytes.NewReader(data))
