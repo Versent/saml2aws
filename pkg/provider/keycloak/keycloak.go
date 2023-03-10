@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"net/url"
@@ -193,7 +193,7 @@ func (kc *Client) postLoginForm(authSubmitURL string, authForm url.Values) ([]by
 		return nil, errors.Wrap(err, "error retrieving login form")
 	}
 
-	data, err := ioutil.ReadAll(res.Body)
+	data, err := io.ReadAll(res.Body)
 	if err != nil {
 		return nil, errors.Wrap(err, "error retrieving body")
 	}
