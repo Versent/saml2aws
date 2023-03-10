@@ -141,7 +141,15 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 			doc.Find("input").Each(func(i int, s *goquery.Selection) {
 				updatePassthroughFormData(azureForm, s)
 			})
-			sel := doc.Find("p#instructions")
+			sel := doc.Find("p#validEntropyNumber")
+			if sel.Index() != -1 {
+				if instructions != sel.Text() {
+					instructions = sel.Text()
+					log.Println("Open your Microsoft Authenticator app and tap the number you see below to sign in.")
+					log.Println(instructions)
+				}
+			}
+			sel = doc.Find("p#instructions")
 			if sel.Index() != -1 {
 				if instructions != sel.Text() {
 					instructions = sel.Text()
