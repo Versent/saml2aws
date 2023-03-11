@@ -1136,6 +1136,10 @@ func (ac *Client) processMfaAuth(mfaResp mfaResponse, loginPasswordResp password
 			return res, errors.Wrap(err, "ProcessAuth response unmarshal error")
 		}
 
+		if processAuthResp.URLPost == "/common/SSPR/End" {
+			return res, errors.Wrap(err, "please reset your AzureAD password")
+		}
+
 		res, err = ac.kmsiRequest(
 			res.Request.URL.Scheme, res.Request.URL.Host, processAuthResp.URLPost, processAuthResp.SFT, processAuthResp.SCtx)
 		if err != nil {
