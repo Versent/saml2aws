@@ -74,4 +74,4 @@ jobs:
       uses: goreleaser/goreleaser-action@v4
       with:
         version: latest
-        args: build --snapshot --rm-dist --config .goreleaser.${{ matrix.os }}.yml
+        args: build --snapshot --clean --config .goreleaser.${{ matrix.os }}.yml
