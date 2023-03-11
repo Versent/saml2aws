@@ -88,6 +88,19 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 
 	if authSubmitURL == "" {
 		return samlAssertion, fmt.Errorf("unable to locate IDP authentication form submit URL")
+	} else if strings.HasPrefix(authSubmitURL, "/") {
+		//
+		// The server returned a relative URL. Make it absolute.
+		//
+		parsedUrl, err := url.Parse(adfsURL)
+		if err != nil {
+			return "", errors.Wrap(err, "failed to parse ADFS URL")
+		}
+		parsedPath, err := url.Parse(authSubmitURL)
+		if err != nil {
+			return "", errors.Wrap(err, "failed to parse authSubmitURL fragment")
+		}
+		authSubmitURL = parsedUrl.ResolveReference(parsedPath).String()
 	}
 
 	doc, err = ac.submit(authSubmitURL, authForm)
@@ -122,7 +135,15 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 			doc.Find("input").Each(func(i int, s *goquery.Selection) {
 				updatePassthroughFormData(azureForm, s)
 			})
-			sel := doc.Find("p#instructions")
+			sel := doc.Find("p#validEntropyNumber")
+			if sel.Index() != -1 {
+				if instructions != sel.Text() {
+					instructions = sel.Text()
+					log.Println("Open your Microsoft Authenticator app and tap the number you see below to sign in.")
+					log.Println(instructions)
+				}
+			}
+			sel = doc.Find("p#instructions")
 			if sel.Index() != -1 {
 				if instructions != sel.Text() {
 					instructions = sel.Text()
@@ -200,6 +221,9 @@ func checkResponse(doc *goquery.Document) (AuthResponseType, string, error) {
 			samlAssertion = val
 			responseType = SAML_RESPONSE
 		}
+		if name == "OathCode" {
+			responseType = MFA_PROMPT
+		}
 		if name == "AuthMethod" {
 			val, _ := s.Attr("value")
 			switch val {
@@ -256,6 +280,8 @@ func updateOTPFormData(otpForm url.Values, s *goquery.Selection, token string) {
 	} else if strings.Contains(lname, "verificationcode") {
 		otpForm.Add(name, token)
 	} else if strings.Contains(lname, "challengequestionanswer") {
+		otpForm.Add(name, token)
+	} else if strings.Contains(lname, "oathcode") {
 		otpForm.Add(name, token)
 	} else {
 		updatePassthroughFormData(otpForm, s)

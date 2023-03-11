@@ -6,6 +6,7 @@ import (
 
 	"github.com/mitchellh/go-homedir"
 	"github.com/pkg/errors"
+	"github.com/versent/saml2aws/v2/pkg/prompter"
 	ini "gopkg.in/ini.v1"
 )
 
@@ -26,6 +27,9 @@ const (
 
 	// DefaultProfile this is the default profile name used to save the credentials in the aws cli
 	DefaultProfile = "saml"
+
+	// Environment Variable used to define the Keyring Backend for Linux based distro
+	KeyringBackEnvironmentVariableName = "SAML2AWS_KEYRING_BACKEND"
 )
 
 // IDPAccount saml IDP account
@@ -36,6 +40,7 @@ type IDPAccount struct {
 	Username              string `ini:"username"`
 	Provider              string `ini:"provider"`
 	MFA                   string `ini:"mfa"`
+	MFAIPAddress          string `ini:"mfa_ip_address"` // used by OneLogin
 	SkipVerify            bool   `ini:"skip_verify"`
 	Timeout               int    `ini:"timeout"`
 	AmazonWebservicesURN  string `ini:"aws_urn"`
@@ -53,6 +58,7 @@ type IDPAccount struct {
 	TargetURL             string `ini:"target_url"`
 	DisableRememberDevice bool   `ini:"disable_remember_device"` // used by Okta
 	DisableSessions       bool   `ini:"disable_sessions"`        // used by Okta
+	Prompter              string `ini:"prompter"`
 }
 
 func (ia IDPAccount) String() string {
@@ -132,6 +138,10 @@ func (ia *IDPAccount) Validate() error {
 		return errors.New("Profile empty in idp account")
 	}
 
+	if err := prompter.ValidateAndSetPrompter(ia.Prompter); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -196,7 +206,7 @@ func (cm *ConfigManager) SaveIDPAccount(idpAccountName string, account *IDPAccou
 // LoadIDPAccount load the idp account and default to an empty one if it doesn't exist
 func (cm *ConfigManager) LoadIDPAccount(idpAccountName string) (*IDPAccount, error) {
 
-	cfg, err := ini.LoadSources(ini.LoadOptions{Loose: true}, cm.configPath)
+	cfg, err := ini.LoadSources(ini.LoadOptions{Loose: true, SpaceBeforeInlineComment: true}, cm.configPath)
 	if err != nil {
 		return nil, errors.Wrap(err, "Unable to load configuration file")
 	}

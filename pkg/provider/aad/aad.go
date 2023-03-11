@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
@@ -486,6 +485,7 @@ type mfaResponse struct {
 	SessionID     string      `json:"SessionId"`
 	CorrelationID string      `json:"CorrelationId"`
 	Timestamp     time.Time   `json:"Timestamp"`
+	Entropy       int         `json:"Entropy"`
 }
 
 // Autogenerate ProcessAuth response
@@ -763,7 +763,7 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 	}
 
 	//  get saml assertion
-	oidcResponse, err := ioutil.ReadAll(res.Body)
+	oidcResponse, err := io.ReadAll(res.Body)
 	if err != nil {
 		return samlAssertion, errors.Wrap(err, "oidc login response error")
 	}
@@ -977,7 +977,11 @@ func (ac *Client) getMfaFlowToken(mfas []userProof, loginPasswordResp passwordLo
 			mfaReq.AdditionalAuthData = verifyCode
 		}
 		if mfaReq.AuthMethodID == "PhoneAppNotification" && i == 0 {
-			log.Println("Phone approval required.")
+			if mfaResp.Entropy == 0 {
+				log.Println("Phone approval required.")
+			} else {
+				log.Printf("Phone approval required. Entropy is: %d", mfaResp.Entropy)
+			}
 		}
 		mfaReqJson, err := json.Marshal(mfaReq)
 		if err != nil {
@@ -1117,10 +1121,10 @@ func (ac *Client) processMfaAuth(mfaResp mfaResponse, loginPasswordResp password
 	}
 	// data is embeded javascript object
 	// <script><![CDATA[  $Config=......; ]]>
-	resBody, _ := ioutil.ReadAll(res.Body)
+	resBody, _ := io.ReadAll(res.Body)
 	resBodyStr := string(resBody)
 	// reset res.Body so it can be read again later if required
-	res.Body = ioutil.NopCloser(bytes.NewBuffer(resBody))
+	res.Body = io.NopCloser(bytes.NewBuffer(resBody))
 
 	// After performing MFA we may be prompted with KMSI (Keep Me Signed In) page
 	// Ref: https://docs.microsoft.com/ja-jp/azure/active-directory/fundamentals/keep-me-signed-in
@@ -1142,6 +1146,6 @@ func (ac *Client) processMfaAuth(mfaResp mfaResponse, loginPasswordResp password
 }
 
 func (ac *Client) responseBodyAsString(body io.ReadCloser) (string, error) {
-	resBody, err := ioutil.ReadAll(body)
+	resBody, err := io.ReadAll(body)
 	return string(resBody), err
 }
