@@ -3,6 +3,7 @@ package browser
 import (
 	"errors"
 	"net/url"
+	"os"
 
 	"github.com/mxschmitt/playwright-go"
 	"github.com/sirupsen/logrus"
@@ -31,6 +32,7 @@ func (cl *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 	// TODO: provide some overrides for this window
 	launchOptions := playwright.BrowserTypeLaunchOptions{
 		Headless: playwright.Bool(false),
+		Proxy:    GetProxy("ALL_PROXY"),
 	}
 
 	// currently using Chromium as it is widely supported for Identity providers
@@ -81,5 +83,12 @@ func (cl *Client) Validate(loginDetails *creds.LoginDetails) error {
 		return errors.New("empty URL")
 	}
 
+	return nil
+}
+
+func GetProxy(envVar string) *playwright.BrowserTypeLaunchOptionsProxy {
+	if value, ok := os.LookupEnv(envVar); ok {
+		return &playwright.BrowserTypeLaunchOptionsProxy{Server: playwright.String(value)}
+	}
 	return nil
 }
