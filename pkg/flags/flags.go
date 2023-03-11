@@ -34,6 +34,7 @@ type CommonFlags struct {
 	DisableRememberDevice bool
 	DisableSessions       bool
 	Prompter              string
+	PersistentDataDir     string
 }
 
 // LoginExecFlags flags for the Login / Exec commands
@@ -122,6 +123,9 @@ func ApplyFlagOverrides(commonFlags *CommonFlags, account *cfg.IDPAccount) {
 	}
 	if commonFlags.Prompter != "" {
 		account.Prompter = commonFlags.Prompter
+	}
+	if commonFlags.PersistentDataDir != "" {
+		account.PersistentDataDir = commonFlags.PersistentDataDir
 	}
 
 	// select the prompter

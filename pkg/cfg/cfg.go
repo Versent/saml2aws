@@ -59,6 +59,7 @@ type IDPAccount struct {
 	DisableRememberDevice bool   `ini:"disable_remember_device"` // used by Okta
 	DisableSessions       bool   `ini:"disable_sessions"`        // used by Okta
 	Prompter              string `ini:"prompter"`
+	PersistentDataDir     string `ini:"persistent_data_dir"` // Used by browser
 }
 
 func (ia IDPAccount) String() string {
