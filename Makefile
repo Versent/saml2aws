@@ -38,9 +38,9 @@ install:
 
 build: $(BIN_DIR)/goreleaser
 ifeq ($(OS),Darwin)
-	$(BIN_DIR)/goreleaser build --snapshot --rm-dist --config $(CURDIR)/.goreleaser.macos-latest.yml
+	$(BIN_DIR)/goreleaser build --snapshot --clean --config $(CURDIR)/.goreleaser.macos-latest.yml
 else ifeq ($(OS),Linux)
-	$(BIN_DIR)/goreleaser build --snapshot --rm-dist --config $(CURDIR)/.goreleaser.ubuntu-latest.yml
+	$(BIN_DIR)/goreleaser build --snapshot --clean --config $(CURDIR)/.goreleaser.ubuntu-latest.yml
 else
 	$(error Unsupported build OS: $(OS))
 endif
