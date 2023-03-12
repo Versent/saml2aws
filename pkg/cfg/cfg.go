@@ -40,6 +40,7 @@ type IDPAccount struct {
 	Username              string `ini:"username"`
 	Provider              string `ini:"provider"`
 	MFA                   string `ini:"mfa"`
+	MFAIPAddress          string `ini:"mfa_ip_address"` // used by OneLogin
 	SkipVerify            bool   `ini:"skip_verify"`
 	Timeout               int    `ini:"timeout"`
 	AmazonWebservicesURN  string `ini:"aws_urn"`
