@@ -75,3 +75,9 @@ jobs:
       with:
         version: latest
         args: build --snapshot --clean --config .goreleaser.${{ matrix.os }}.yml
+
+    - name: Upload
+      uses: actions/upload-artifact@v3
+      with:
+        name: saml2aws
+        path: dist/
