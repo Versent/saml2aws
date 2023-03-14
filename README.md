@@ -52,7 +52,7 @@ The process goes something like this:
   * [Akamai](pkg/provider/akamai/README.md)
   * OneLogin
   * NetIQ
-  * Browser, this uses [playwright-go](github.com/mxschmitt/playwright-go) to run a sandbox chromium window.
+  * Browser, this uses [playwright-go](github.com/playwright-community/playwright-go) to run a sandbox chromium window.
   * [Auth0](pkg/provider/auth0/README.md) NOTE: Currently, MFA not supported
 * AWS SAML Provider configured
 
@@ -94,6 +94,19 @@ wget -c https://github.com/Versent/saml2aws/releases/download/v${CURRENT_VERSION
 chmod u+x ~/.local/bin/saml2aws
 hash -r
 saml2aws --version
+```
+
+#### Using Make
+
+You will need [Go Tools](https://golang.org/doc/install) (you can check your package maintainer as well) installed and the [Go Lint tool](https://github.com/alecthomas/gometalinter)
+
+Clone this repo to your `$GOPATH/src` directory
+
+Now you can install by running 
+
+```
+make
+make install
 ```
 
 #### [Arch Linux](https://archlinux.org/) and its derivatives
