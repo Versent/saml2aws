@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -270,15 +270,14 @@ func prepareErrors(component string, errs map[string][]map[string]string) string
 func parseResponsePayload(res *http.Response) (*authentikPayload, error) {
 	var payload authentikPayload
 	defer res.Body.Close()
-	b, err := ioutil.ReadAll(res.Body)
+	b, err := io.ReadAll(res.Body)
+	if err != nil {
+		return nil, err
+	}
 	err = json.Unmarshal(b, &payload)
 	if err != nil {
 		return nil, err
 	}
 
 	return &payload, nil
-}
-
-func aaa(a int) int {
-	return a + 1
 }
