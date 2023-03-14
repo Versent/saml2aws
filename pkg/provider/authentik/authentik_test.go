@@ -5,6 +5,7 @@ import (
 
 	"github.com/h2non/gock"
 	"github.com/stretchr/testify/assert"
+
 	"github.com/versent/saml2aws/v2/pkg/cfg"
 	"github.com/versent/saml2aws/v2/pkg/creds"
 )
@@ -36,7 +37,7 @@ func Test_getLoginJSON(t *testing.T) {
 		Component: "ak-stage-test",
 		Type:      "native",
 	}
-	b, err = getLoginJSON(loginDetails, payload)
+	_, err = getLoginJSON(loginDetails, payload)
 	assert.NotNil(err)
 }
 
@@ -85,7 +86,7 @@ func Test_prepareErrors(t *testing.T) {
 	desc = prepareErrors("ak-stage-password", identification_errs)
 	assert.Equal(desc, "")
 
-	password_errs := map[string][]map[string]string{
+	passwordErrs := map[string][]map[string]string{
 		"password": {
 			{
 				"string": "Failed to authenticate.",
@@ -93,10 +94,10 @@ func Test_prepareErrors(t *testing.T) {
 			},
 		},
 	}
-	desc = prepareErrors("ak-stage-password", password_errs)
+	desc = prepareErrors("ak-stage-password", passwordErrs)
 	assert.Equal(desc, "password invalid: Failed to authenticate.")
 
-	desc = prepareErrors("ak-stage-identification", password_errs)
+	desc = prepareErrors("ak-stage-identification", passwordErrs)
 	assert.Equal(desc, "")
 }
 
