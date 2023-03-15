@@ -11,6 +11,7 @@ import (
 	"github.com/versent/saml2aws/v2/pkg/provider/adfs2"
 	"github.com/versent/saml2aws/v2/pkg/provider/akamai"
 	"github.com/versent/saml2aws/v2/pkg/provider/auth0"
+	"github.com/versent/saml2aws/v2/pkg/provider/authentik"
 	"github.com/versent/saml2aws/v2/pkg/provider/browser"
 	"github.com/versent/saml2aws/v2/pkg/provider/f5apm"
 	"github.com/versent/saml2aws/v2/pkg/provider/googleapps"
@@ -39,8 +40,9 @@ var MFAsByProvider = ProviderList{
 	"JumpCloud":     []string{"Auto", "TOTP", "WEBAUTHN", "DUO", "PUSH"},
 	"Okta":          []string{"Auto", "PUSH", "DUO", "SMS", "TOTP", "OKTA", "FIDO", "YUBICO TOKEN:HARDWARE", "SYMANTEC"}, // automatically detects DUO, SMS, ToTP, and FIDO
 	"OneLogin":      []string{"Auto", "OLP", "SMS", "TOTP", "YUBIKEY"},                                                   // automatically detects OneLogin Protect, SMS and ToTP
-	"KeyCloak":      []string{"Auto"},                                                                                    // automatically detects ToTP
-	"GoogleApps":    []string{"Auto"},                                                                                    // automatically detects ToTP
+	"Authentik":     []string{"Auto"},
+	"KeyCloak":      []string{"Auto"}, // automatically detects ToTP
+	"GoogleApps":    []string{"Auto"}, // automatically detects ToTP
 	"Shibboleth":    []string{"Auto", "None"},
 	"F5APM":         []string{"Auto"},
 	"Akamai":        []string{"Auto", "DUO", "SMS", "EMAIL", "TOTP"},
@@ -134,6 +136,11 @@ func NewSAMLClient(idpAccount *cfg.IDPAccount) (SAMLClient, error) {
 			return nil, fmt.Errorf("Invalid MFA type: %v for %v provider", idpAccount.MFA, idpAccount.Provider)
 		}
 		return onelogin.New(idpAccount)
+	case "Authentik":
+		if invalidMFA(idpAccount.Provider, idpAccount.MFA) {
+			return nil, fmt.Errorf("Invalid MFA type: %v for %v provider", idpAccount.MFA, idpAccount.Provider)
+		}
+		return authentik.New(idpAccount)
 	case "KeyCloak":
 		if invalidMFA(idpAccount.Provider, idpAccount.MFA) {
 			return nil, fmt.Errorf("Invalid MFA type: %v for %v provider", idpAccount.MFA, idpAccount.Provider)
