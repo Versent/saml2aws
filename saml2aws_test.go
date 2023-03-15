@@ -7,17 +7,13 @@ import (
 )
 
 func TestProviderList_Keys(t *testing.T) {
-
 	names := MFAsByProvider.Names()
 
-	require.Len(t, names, 17)
-
+	require.Len(t, names, 18)
 }
 
 func TestProviderList_Mfas(t *testing.T) {
-
 	mfas := MFAsByProvider.Mfas("Ping")
 
 	require.Len(t, mfas, 1)
-
 }
