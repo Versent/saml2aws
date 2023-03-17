@@ -459,7 +459,7 @@ func genIntFixture(length int) string {
 
 func genUUID() string {
 	return uuid.New().String()
-)
+}
 
 func TestAad_UnmarshallMfaResponseWithEntropy(t *testing.T) {
 
