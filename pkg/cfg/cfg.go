@@ -27,6 +27,9 @@ const (
 
 	// DefaultProfile this is the default profile name used to save the credentials in the aws cli
 	DefaultProfile = "saml"
+
+	// Environment Variable used to define the Keyring Backend for Linux based distro
+	KeyringBackEnvironmentVariableName = "SAML2AWS_KEYRING_BACKEND"
 )
 
 // IDPAccount saml IDP account
@@ -37,6 +40,7 @@ type IDPAccount struct {
 	Username              string `ini:"username"`
 	Provider              string `ini:"provider"`
 	MFA                   string `ini:"mfa"`
+	MFAIPAddress          string `ini:"mfa_ip_address"` // used by OneLogin
 	SkipVerify            bool   `ini:"skip_verify"`
 	Timeout               int    `ini:"timeout"`
 	AmazonWebservicesURN  string `ini:"aws_urn"`

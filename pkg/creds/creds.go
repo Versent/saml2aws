@@ -4,6 +4,7 @@ package creds
 type LoginDetails struct {
 	ClientID          string // used by OneLogin
 	ClientSecret      string // used by OneLogin
+	MFAIPAddress      string // used by OneLogin
 	Username          string
 	Password          string
 	MFAToken          string

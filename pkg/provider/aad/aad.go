@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
@@ -124,6 +123,7 @@ type mfaResponse struct {
 	SessionID     string      `json:"SessionId"`
 	CorrelationID string      `json:"CorrelationId"`
 	Timestamp     time.Time   `json:"Timestamp"`
+	Entropy       int         `json:"Entropy"`
 }
 
 // A given method for a user to prove their indentity
@@ -174,10 +174,10 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 
 AuthProcessor:
 	for {
-		resBody, _ = ioutil.ReadAll(res.Body)
+		resBody, _ = io.ReadAll(res.Body)
 		resBodyStr = string(resBody)
 		// reset res.Body so it can be read again later if required
-		res.Body = ioutil.NopCloser(bytes.NewBuffer(resBody))
+		res.Body = io.NopCloser(bytes.NewBuffer(resBody))
 
 		switch {
 		case strings.Contains(resBodyStr, "ConvergedSignIn"):
@@ -461,7 +461,11 @@ func (ac *Client) processMfa(mfas []userProof, convergedResponse *ConvergedRespo
 			mfaReq.AdditionalAuthData = verifyCode
 		}
 		if mfaReq.AuthMethodID == "PhoneAppNotification" && i == 0 {
-			log.Println("Phone approval required.")
+			if mfaResp.Entropy == 0 {
+				log.Println("Phone approval required.")
+			} else {
+				log.Printf("Phone approval required. Entropy is: %d", mfaResp.Entropy)
+			}
 		}
 
 		mfaResp, err = ac.processMfaEndAuth(mfaReq, convergedResponse)
@@ -671,7 +675,7 @@ func (ac *Client) getJsonFromConfig(resBodyStr string) string {
 }
 
 func (ac *Client) responseBodyAsString(body io.ReadCloser) (string, error) {
-	resBody, err := ioutil.ReadAll(body)
+	resBody, err := io.ReadAll(body)
 	return string(resBody), err
 }
 

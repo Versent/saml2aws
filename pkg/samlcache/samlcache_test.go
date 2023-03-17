@@ -2,7 +2,6 @@ package samlcache
 
 import (
 	b64 "encoding/base64"
-	"io/ioutil"
 	"os"
 	"path"
 	"testing"
@@ -66,7 +65,7 @@ func TestCanWrite(t *testing.T) {
 func TestCanRead(t *testing.T) {
 
 	// create a dummy file
-	_ = ioutil.WriteFile("example_cache", []byte("testing output"), 0700)
+	_ = os.WriteFile("example_cache", []byte("testing output"), 0700)
 
 	p := SAMLCacheProvider{
 		Filename: "example_cache",
@@ -97,7 +96,7 @@ func templateAssertion(t time.Time) (string, error) {
 		ExpiryRFC3339Time: t.Format(time.RFC3339),
 	}
 
-	content, _ := ioutil.ReadFile("./assertion_validity_template.gotmpl")
+	content, _ := os.ReadFile("./assertion_validity_template.gotmpl")
 	tmpl, err := template.New("assertion_validity_template").Parse(string(content))
 	if err != nil {
 		defer os.Remove(newfile.Name())
