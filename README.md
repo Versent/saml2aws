@@ -1,7 +1,7 @@
 # saml2aws
 
 [![GitHub Actions status](https://github.com/Versent/saml2aws/workflows/Go/badge.svg?branch=master)](https://github.com/Versent/saml2aws/actions?query=workflow%3AGo) [![Build status - Windows](https://ci.appveyor.com/api/projects/status/ptpi18kci16o4i82/branch/master?svg=true)](https://ci.appveyor.com/project/davidobrien1985/saml2aws/branch/master)
-[![codecov](https://codecov.io/github/Versent/saml2aws/branch/master/graph/badge.svg)](https://codecov.io/github/Versent/saml2aws)
+[![codecov](https://codecov.io/gh/Versent/saml2aws/branch/master/graph/badge.svg)](https://codecov.io/gh/Versent/saml2aws)
 
 CLI tool which enables you to login and retrieve [AWS](https://aws.amazon.com/) temporary credentials using
 with [ADFS](https://msdn.microsoft.com/en-us/library/bb897402.aspx) or [PingFederate](https://www.pingidentity.com/en/products/pingfederate.html) Identity Providers.
