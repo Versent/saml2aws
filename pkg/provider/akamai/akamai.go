@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"html"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"net/url"
@@ -159,7 +159,7 @@ func (oc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		return samlAssertion, errors.Wrap(err, "error login to EAA IDP")
 	}
 
-	body, err := ioutil.ReadAll(res.Body)
+	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		return samlAssertion, errors.Wrap(err, "error retrieving body from response")
 	}
@@ -194,7 +194,7 @@ func (oc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		return samlAssertion, errors.Wrap(err, "error while navigation request to EAA ")
 	}
 
-	body, err = ioutil.ReadAll(res.Body)
+	body, err = io.ReadAll(res.Body)
 	if err != nil {
 		return samlAssertion, errors.Wrap(err, "error retrieving response from navigate request")
 	}
@@ -232,7 +232,7 @@ func (oc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		return samlAssertion, errors.Wrap(err, "error navigate request to EAA ")
 	}
 
-	body, err = ioutil.ReadAll(res.Body)
+	body, err = io.ReadAll(res.Body)
 	if err != nil {
 		return samlAssertion, errors.Wrap(err, "error retrieving body from response")
 	}
@@ -267,7 +267,7 @@ func verifyMfa(oc *Client, akamaiOrgHost string, loginDetails *creds.LoginDetail
 	if err != nil {
 		return errors.Wrap(err, "error mfa config request to EAA ")
 	}
-	body, err := ioutil.ReadAll(res.Body)
+	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		return errors.Wrap(err, "error retrieving mfa config request")
 	}
@@ -300,7 +300,7 @@ func verifyMfa(oc *Client, akamaiOrgHost string, loginDetails *creds.LoginDetail
 	if err != nil {
 		return errors.Wrap(err, "error mfa setting request to EAA ")
 	}
-	mfaSettingData, err := ioutil.ReadAll(res.Body)
+	mfaSettingData, err := io.ReadAll(res.Body)
 	if err != nil {
 		return errors.Wrap(err, "error retrieving body from response")
 	}
@@ -376,7 +376,7 @@ func verifyMfa(oc *Client, akamaiOrgHost string, loginDetails *creds.LoginDetail
 				return errors.Wrap(err, "error while sending MFA push code ")
 			}
 
-			body, err = ioutil.ReadAll(res.Body)
+			body, err = io.ReadAll(res.Body)
 			if err != nil {
 				return errors.Wrap(err, "error retrieving MFA push response ")
 			}
@@ -413,7 +413,7 @@ func verifyMfa(oc *Client, akamaiOrgHost string, loginDetails *creds.LoginDetail
 			return errors.Wrap(err, "error verifying mfa to EAA ")
 		}
 
-		body, err = ioutil.ReadAll(res.Body)
+		body, err = io.ReadAll(res.Body)
 		if err != nil {
 			return errors.Wrap(err, "error retrieving mfa verify response")
 		}
@@ -523,7 +523,7 @@ func verifyMfa(oc *Client, akamaiOrgHost string, loginDetails *creds.LoginDetail
 			return errors.Wrap(err, "error retrieving duo prompt request")
 		}
 
-		body, err = ioutil.ReadAll(res.Body)
+		body, err = io.ReadAll(res.Body)
 		if err != nil {
 			return errors.Wrap(err, "error retrieving duo prompt response")
 		}
@@ -555,7 +555,7 @@ func verifyMfa(oc *Client, akamaiOrgHost string, loginDetails *creds.LoginDetail
 			return errors.Wrap(err, "error sending duo status request")
 		}
 
-		body, err = ioutil.ReadAll(res.Body)
+		body, err = io.ReadAll(res.Body)
 		if err != nil {
 			return errors.Wrap(err, "error retrieving duo status response")
 		}
@@ -584,7 +584,7 @@ func verifyMfa(oc *Client, akamaiOrgHost string, loginDetails *creds.LoginDetail
 					return errors.Wrap(err, "error retrieving verify response")
 				}
 
-				body, err = ioutil.ReadAll(res.Body)
+				body, err = io.ReadAll(res.Body)
 				if err != nil {
 					return errors.Wrap(err, "error retrieving body from response")
 				}
@@ -619,7 +619,7 @@ func verifyMfa(oc *Client, akamaiOrgHost string, loginDetails *creds.LoginDetail
 			return errors.Wrap(err, "error retrieving duo result response")
 		}
 
-		body, err = ioutil.ReadAll(res.Body)
+		body, err = io.ReadAll(res.Body)
 		if err != nil {
 			return errors.Wrap(err, "duoResultSubmit: error retrieving body from response")
 		}
@@ -655,7 +655,7 @@ func verifyMfa(oc *Client, akamaiOrgHost string, loginDetails *creds.LoginDetail
 			return errors.Wrap(err, "error sending duo mfa request to EAA ")
 		}
 
-		body, err = ioutil.ReadAll(res.Body)
+		body, err = io.ReadAll(res.Body)
 		if err != nil {
 			return errors.Wrap(err, "error retrieving duo mfa response ")
 		}
