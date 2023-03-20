@@ -13,7 +13,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macOS-latest, macos-11]
+        os: [ubuntu-18.04, macOS-latest, macos-11]
     steps:
 
     - name: Set up Go 1.x
@@ -25,7 +25,16 @@ jobs:
       uses: actions/checkout@v3
 
     - name: Test
-      run: go test -v ./...
+      run: |
+        go install github.com/playwright-community/playwright-go/cmd/playwright
+        playwright install --with-deps
+        go test -v ./... -coverprofile=coverage.txt -covermode=atomic
+
+    - name: Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: coverage.txt
+        flags: unittests
 
     - name: Install
       run: go install ./cmd/saml2aws
