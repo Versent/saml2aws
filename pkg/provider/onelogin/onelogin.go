@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"net/url"
@@ -107,7 +107,7 @@ func (c *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error) 
 
 	logger.Debug("Retrieved OneLogin OAuth token:", oauthToken)
 
-	authReq := AuthRequest{Username: loginDetails.Username, Password: loginDetails.Password, AppID: c.AppID, Subdomain: c.Subdomain}
+	authReq := AuthRequest{Username: loginDetails.Username, Password: loginDetails.Password, AppID: c.AppID, Subdomain: c.Subdomain, IPAddress: loginDetails.MFAIPAddress}
 	var authBody bytes.Buffer
 	err = json.NewEncoder(&authBody).Encode(authReq)
 	if err != nil {
@@ -133,7 +133,7 @@ func (c *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error) 
 	}
 	defer res.Body.Close()
 
-	body, err := ioutil.ReadAll(res.Body)
+	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		return "", errors.Wrap(err, "error retrieving body from response")
 	}
@@ -186,7 +186,7 @@ func generateToken(oc *Client, loginDetails *creds.LoginDetails, host string) (s
 		return "", errors.Wrap(err, "error retrieving oauth token response")
 	}
 
-	body, err := ioutil.ReadAll(res.Body)
+	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		return "", errors.Wrap(err, "error reading oauth token response")
 	}
@@ -274,7 +274,7 @@ func verifyMFA(oc *Client, oauthToken, appID, host, resp string) (string, error)
 			return "", errors.Wrap(err, "error retrieving verify response")
 		}
 
-		body, err := ioutil.ReadAll(res.Body)
+		body, err := io.ReadAll(res.Body)
 		if err != nil {
 			return "", errors.Wrap(err, "error retrieving body from response")
 		}
@@ -305,7 +305,7 @@ func verifyMFA(oc *Client, oauthToken, appID, host, resp string) (string, error)
 			return "", errors.Wrap(err, "error retrieving token post response")
 		}
 
-		body, err := ioutil.ReadAll(res.Body)
+		body, err := io.ReadAll(res.Body)
 		if err != nil {
 			return "", errors.Wrap(err, "error retrieving body from response")
 		}
@@ -350,7 +350,7 @@ func verifyMFA(oc *Client, oauthToken, appID, host, resp string) (string, error)
 				return "", errors.Wrap(err, "error retrieving verify response")
 			}
 
-			body, err := ioutil.ReadAll(res.Body)
+			body, err := io.ReadAll(res.Body)
 			if err != nil {
 				return "", errors.Wrap(err, "error retrieving body from response")
 			}
