@@ -9,10 +9,11 @@ require (
 	github.com/PuerkitoBio/goquery v1.8.1
 	github.com/alecthomas/kingpin v2.2.6+incompatible
 	github.com/avast/retry-go v3.0.0+incompatible
-	github.com/aws/aws-sdk-go v1.44.220
+	github.com/aws/aws-sdk-go v1.44.225
 	github.com/beevik/etree v1.1.0
 	github.com/danieljoos/wincred v1.1.2
 	github.com/google/uuid v1.3.0
+	github.com/h2non/gock v1.2.0
 	github.com/keybase/go-keychain v0.0.0-20211119201326-e02f34051621
 	github.com/marshallbrekka/go-u2fhost v0.0.0-20210111072507-3ccdec8c8105
 	github.com/mitchellh/go-homedir v1.1.0
@@ -38,7 +39,6 @@ require (
 	github.com/go-stack/stack v1.8.1 // indirect
 	github.com/godbus/dbus v0.0.0-20190726142602-4481cbc300e2 // indirect
 	github.com/gsterjov/go-libsecret v0.0.0-20161001094733-a6f4afe4910c // indirect
-	github.com/h2non/gock v1.2.0 // indirect
 	github.com/h2non/parth v0.0.0-20190131123155-b4df798d6542 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 // indirect
