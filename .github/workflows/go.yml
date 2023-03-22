@@ -35,6 +35,8 @@ jobs:
       with:
         name: reports
         path: ${{ matrix.os }}_coverage.txt
+        if-no-files-found: error
+        retention-days: 1        
 
     - name: Install
       run: go install ./cmd/saml2aws
