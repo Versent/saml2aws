@@ -28,13 +28,13 @@ jobs:
       run: |
         go install github.com/playwright-community/playwright-go/cmd/playwright
         playwright install --with-deps
-        go test -v ./... -coverprofile=coverage.txt -covermode=atomic
+        go test -v ./... -coverprofile=${{ matrix.os }}_coverage.txt -covermode=atomic
 
-    - name: Codecov
-      uses: codecov/codecov-action@v3
+    - name: Upload coverage report
+      uses: actions/upload-artifact@v3
       with:
-        file: coverage.txt
-        flags: unittests
+        name: reports
+        path: ${{ matrix.os }}_coverage.txt
 
     - name: Install
       run: go install ./cmd/saml2aws
@@ -56,6 +56,25 @@ jobs:
       uses: golangci/golangci-lint-action@v3
       with:
         version: v1.51.2
+
+  coverage:
+    name: coverage
+    permissions:
+      actions: read
+    runs-on: ubuntu-latest
+    needs: [build]
+    steps:
+    - name: Download coverage reports
+      uses: actions/download-artifact@v3
+      with:
+        name: reports
+        path: reports
+
+    - name: Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        directory: reports
+        flags: unittests
 
   release-build:
     name: release-build
