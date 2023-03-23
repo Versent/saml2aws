@@ -492,7 +492,7 @@ func TestAad_UnmarshallMfaResponseWithoutEntropy(t *testing.T) {
 	}
 }
 
-func TestAad_getJsonFromConfigNoLineBreak(t *testing.T) {
+func TestAad_getJsonFromConfig(t *testing.T) {
 	for _, i := range []string{"LoginEmbeddedJsonLineBreak", "LoginEmbeddedJsonNoLineBreak"} {
 		t.Run(i, func(t *testing.T) {
 			data, err := os.ReadFile(fmt.Sprintf("testdata/%s.html", i))
