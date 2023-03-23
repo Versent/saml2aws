@@ -671,9 +671,9 @@ func (ac *Client) getJsonFromConfig(resBodyStr string) string {
 	 * <script><![CDATA[  $Config=......; ]]>
 	 */
 	startIndex := strings.Index(resBodyStr, "$Config=") + 8
-	endIndex := startIndex + strings.Index(resBodyStr[startIndex:], "//]]>") - 1
-	untrimmedJsonStr := resBodyStr[startIndex:endIndex]
-	return untrimmedJsonStr[:strings.LastIndex(untrimmedJsonStr, "}")+1]
+	var msg json.RawMessage
+	_ = json.NewDecoder(strings.NewReader(resBodyStr[startIndex:])).Decode(&msg)
+	return string(msg)
 }
 
 func (ac *Client) responseBodyAsString(body io.ReadCloser) (string, error) {
