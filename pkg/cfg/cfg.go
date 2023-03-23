@@ -58,6 +58,7 @@ type IDPAccount struct {
 	TargetURL             string `ini:"target_url"`
 	DisableRememberDevice bool   `ini:"disable_remember_device"` // used by Okta
 	DisableSessions       bool   `ini:"disable_sessions"`        // used by Okta
+	Headless              bool   `ini:"headless"`                // used by browser
 	Prompter              string `ini:"prompter"`
 }
 
