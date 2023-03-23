@@ -7,10 +7,12 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"math"
 	mrand "math/rand"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strconv"
 	"sync"
 	"testing"
@@ -18,6 +20,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
+
 	"github.com/versent/saml2aws/v2/mocks"
 	"github.com/versent/saml2aws/v2/pkg/cfg"
 	"github.com/versent/saml2aws/v2/pkg/creds"
@@ -486,5 +489,19 @@ func TestAad_UnmarshallMfaResponseWithoutEntropy(t *testing.T) {
 
 	if mfaResp.Entropy != 0 {
 		t.Errorf("Entropy is %d and should have been 0", mfaResp.Entropy)
+	}
+}
+
+func TestAad_getJsonFromConfigNoLineBreak(t *testing.T) {
+	for _, i := range []string{"LoginEmbeddedJsonLineBreak", "LoginEmbeddedJsonNoLineBreak"} {
+		t.Run(i, func(t *testing.T) {
+			data, err := os.ReadFile(fmt.Sprintf("testdata/%s.html", i))
+			require.Nil(t, err)
+			c := Client{}
+			s := c.getJsonFromConfig(string(data))
+			var v interface{}
+			err = json.Unmarshal([]byte(s), &v)
+			require.Nil(t, err)
+		})
 	}
 }

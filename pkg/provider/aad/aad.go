@@ -15,6 +15,7 @@ import (
 	"github.com/PuerkitoBio/goquery"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+
 	"github.com/versent/saml2aws/v2/pkg/cfg"
 	"github.com/versent/saml2aws/v2/pkg/creds"
 	"github.com/versent/saml2aws/v2/pkg/prompter"
@@ -670,8 +671,9 @@ func (ac *Client) getJsonFromConfig(resBodyStr string) string {
 	 * <script><![CDATA[  $Config=......; ]]>
 	 */
 	startIndex := strings.Index(resBodyStr, "$Config=") + 8
-	endIndex := startIndex + strings.Index(resBodyStr[startIndex:], ";")
-	return resBodyStr[startIndex:endIndex]
+	endIndex := startIndex + strings.Index(resBodyStr[startIndex:], "//]]>") - 1
+	untrimmedJsonStr := resBodyStr[startIndex:endIndex]
+	return untrimmedJsonStr[:strings.LastIndex(untrimmedJsonStr, "}")+1]
 }
 
 func (ac *Client) responseBodyAsString(body io.ReadCloser) (string, error) {
