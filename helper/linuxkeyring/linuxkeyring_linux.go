@@ -14,8 +14,12 @@ type KeyringHelper struct {
 	keyring keyring.Keyring
 }
 
-func NewKeyringHelper() (*KeyringHelper, error) {
-	kr, err := keyring.Open(keyring.Config{
+type Configuration struct {
+	Backend string
+}
+
+func NewKeyringHelper(config Configuration) (*KeyringHelper, error) {
+	c := keyring.Config{
 		AllowedBackends: []keyring.BackendType{
 			keyring.KWalletBackend,
 			keyring.SecretServiceBackend,
@@ -23,7 +27,14 @@ func NewKeyringHelper() (*KeyringHelper, error) {
 		},
 		LibSecretCollectionName: "login",
 		PassPrefix:              "saml2aws",
-	})
+	}
+
+	// set the only allowed backend to be backend configured
+	if config.Backend != "" {
+		c.AllowedBackends = []keyring.BackendType{keyring.BackendType(config.Backend)}
+	}
+
+	kr, err := keyring.Open(c)
 
 	if err != nil {
 		return nil, err

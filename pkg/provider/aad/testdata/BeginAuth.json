@@ -1,0 +1,1 @@
+{"Success":true,"ResultValue":"Success","Message":null,"AuthMethodId":"OneWaySMS","ErrCode":0,"Retry":false,"FlowToken":"{{.SFT}}","Ctx":"{{.Ctx}}","SessionId":"{{.SessionId}}","CorrelationId":"{{.ClientRequestId}}","Timestamp":"2020-01-01T00:00:00Z","Entropy":0}

@@ -13,6 +13,7 @@ type CommonFlags struct {
 	IdpAccount            string
 	IdpProvider           string
 	MFA                   string
+	MFAIPAddress          string
 	MFAToken              string
 	URL                   string
 	Username              string
@@ -73,6 +74,10 @@ func ApplyFlagOverrides(commonFlags *CommonFlags, account *cfg.IDPAccount) {
 
 	if commonFlags.MFA != "" {
 		account.MFA = commonFlags.MFA
+	}
+
+	if commonFlags.MFAIPAddress != "" {
+		account.MFAIPAddress = commonFlags.MFAIPAddress
 	}
 
 	if commonFlags.AmazonWebservicesURN != "" {
