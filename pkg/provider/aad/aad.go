@@ -14,12 +14,14 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 	"github.com/versent/saml2aws/v2/pkg/cfg"
 	"github.com/versent/saml2aws/v2/pkg/creds"
 	"github.com/versent/saml2aws/v2/pkg/prompter"
 	"github.com/versent/saml2aws/v2/pkg/provider"
-	"golang.org/x/net/html"
 )
+
+var logger = logrus.WithField("provider", "AzureAD")
 
 // Client wrapper around AzureAD enabling authentication and retrieval of assertions
 type Client struct {
@@ -29,440 +31,76 @@ type Client struct {
 	idpAccount *cfg.IDPAccount
 }
 
-// Autogenerate startSAML Response struct
-// some case, some fields is not exists
-type startSAMLResponse struct {
-	FShowPersistentCookiesWarning         bool     `json:"fShowPersistentCookiesWarning"`
-	URLMsaLogout                          string   `json:"urlMsaLogout"`
-	ShowCantAccessAccountLink             bool     `json:"showCantAccessAccountLink"`
-	URLGitHubFed                          string   `json:"urlGitHubFed"`
-	FShowSignInWithGitHubOnlyOnCredPicker bool     `json:"fShowSignInWithGitHubOnlyOnCredPicker"`
-	FEnableShowResendCode                 bool     `json:"fEnableShowResendCode"`
-	IShowResendCodeDelay                  int      `json:"iShowResendCodeDelay"`
-	SSMSCtryPhoneData                     string   `json:"sSMSCtryPhoneData"`
-	FUseInlinePhoneNumber                 bool     `json:"fUseInlinePhoneNumber"`
-	URLSessionState                       string   `json:"urlSessionState"`
-	URLResetPassword                      string   `json:"urlResetPassword"`
-	URLMsaResetPassword                   string   `json:"urlMsaResetPassword"`
-	URLLogin                              string   `json:"urlLogin"`
-	URLSignUp                             string   `json:"urlSignUp"`
-	URLGetCredentialType                  string   `json:"urlGetCredentialType"`
-	URLGetOneTimeCode                     string   `json:"urlGetOneTimeCode"`
-	URLLogout                             string   `json:"urlLogout"`
-	URLForget                             string   `json:"urlForget"`
-	URLDisambigRename                     string   `json:"urlDisambigRename"`
-	URLGoToAADError                       string   `json:"urlGoToAADError"`
-	URLDssoStatus                         string   `json:"urlDssoStatus"`
-	URLFidoHelp                           string   `json:"urlFidoHelp"`
-	URLFidoLogin                          string   `json:"urlFidoLogin"`
-	URLPostAad                            string   `json:"urlPostAad"`
-	URLPostMsa                            string   `json:"urlPostMsa"`
-	URLPIAEndAuth                         string   `json:"urlPIAEndAuth"`
-	FCBShowSignUp                         bool     `json:"fCBShowSignUp"`
-	FKMSIEnabled                          bool     `json:"fKMSIEnabled"`
-	ILoginMode                            int      `json:"iLoginMode"`
-	FAllowPhoneSignIn                     bool     `json:"fAllowPhoneSignIn"`
-	FAllowPhoneInput                      bool     `json:"fAllowPhoneInput"`
-	FAllowSkypeNameLogin                  bool     `json:"fAllowSkypeNameLogin"`
-	IMaxPollErrors                        int      `json:"iMaxPollErrors"`
-	IPollingTimeout                       int      `json:"iPollingTimeout"`
-	SrsSuccess                            bool     `json:"srsSuccess"`
-	FShowSwitchUser                       bool     `json:"fShowSwitchUser"`
-	ArrValErrs                            []string `json:"arrValErrs"`
-	SErrorCode                            string   `json:"sErrorCode"`
-	SErrTxt                               string   `json:"sErrTxt"`
-	SResetPasswordPrefillParam            string   `json:"sResetPasswordPrefillParam"`
-	OnPremPasswordValidationConfig        struct {
-		IsUserRealmPrecheckEnabled bool `json:"isUserRealmPrecheckEnabled"`
-	} `json:"onPremPasswordValidationConfig"`
-	FSwitchDisambig   bool `json:"fSwitchDisambig"`
-	OCancelPostParams struct {
-		Error        string `json:"error"`
-		ErrorSubcode string `json:"error_subcode"`
-		State        string `json:"state"`
-	} `json:"oCancelPostParams"`
-	IAllowedIdentities                  int         `json:"iAllowedIdentities"`
-	IRemoteNgcPollingType               int         `json:"iRemoteNgcPollingType"`
-	IsGlobalTenant                      bool        `json:"isGlobalTenant"`
-	FIsFidoSupported                    bool        `json:"fIsFidoSupported"`
-	FUseNewNoPasswordTypes              bool        `json:"fUseNewNoPasswordTypes"`
-	IMaxStackForKnockoutAsyncComponents int         `json:"iMaxStackForKnockoutAsyncComponents"`
-	StrCopyrightTxt                     string      `json:"strCopyrightTxt"`
-	FShowButtons                        bool        `json:"fShowButtons"`
-	URLCdn                              string      `json:"urlCdn"`
-	URLFooterTOU                        string      `json:"urlFooterTOU"`
-	URLFooterPrivacy                    string      `json:"urlFooterPrivacy"`
-	URLPost                             string      `json:"urlPost"`
-	URLRefresh                          string      `json:"urlRefresh"`
-	URLCancel                           string      `json:"urlCancel"`
-	IPawnIcon                           int         `json:"iPawnIcon"`
-	IPollingInterval                    int         `json:"iPollingInterval"`
-	SPOSTUsername                       string      `json:"sPOST_Username"`
-	SFT                                 string      `json:"sFT"`
-	SFTName                             string      `json:"sFTName"`
-	SSessionIdentifierName              string      `json:"sSessionIdentifierName"`
-	SCtx                                string      `json:"sCtx"`
-	IProductIcon                        int         `json:"iProductIcon"`
-	URLReportPageLoad                   string      `json:"urlReportPageLoad"`
-	StaticTenantBranding                interface{} `json:"staticTenantBranding"`
-	OAppCobranding                      struct {
-	} `json:"oAppCobranding"`
-	IBackgroundImage                      int           `json:"iBackgroundImage"`
-	ArrSessions                           []interface{} `json:"arrSessions"`
-	FUseConstantPolling                   bool          `json:"fUseConstantPolling"`
-	FUseFlowTokenAsCanary                 bool          `json:"fUseFlowTokenAsCanary"`
-	FApplicationInsightsEnabled           bool          `json:"fApplicationInsightsEnabled"`
-	IApplicationInsightsEnabledPercentage int           `json:"iApplicationInsightsEnabledPercentage"`
-	URLSetDebugMode                       string        `json:"urlSetDebugMode"`
-	FEnableCSSAnimation                   bool          `json:"fEnableCssAnimation"`
-	FAllowGrayOutLightBox                 bool          `json:"fAllowGrayOutLightBox"`
-	FIsRemoteNGCSupported                 bool          `json:"fIsRemoteNGCSupported"`
-	Scid                                  int           `json:"scid"`
-	Hpgact                                int           `json:"hpgact"`
-	Hpgid                                 int           `json:"hpgid"`
-	Pgid                                  string        `json:"pgid"`
-	APICanary                             string        `json:"apiCanary"`
-	Canary                                string        `json:"canary"`
-	CorrelationID                         string        `json:"correlationId"`
-	SessionID                             string        `json:"sessionId"`
-	Locale                                struct {
-		Mkt  string `json:"mkt"`
-		Lcid int    `json:"lcid"`
-	} `json:"locale"`
-	SlMaxRetry      int  `json:"slMaxRetry"`
-	SlReportFailure bool `json:"slReportFailure"`
-	Strings         struct {
-		Desktopsso struct {
-			Authenticatingmessage string `json:"authenticatingmessage"`
-		} `json:"desktopsso"`
-	} `json:"strings"`
-	Enums struct {
-		ClientMetricsModes struct {
-			None             int `json:"None"`
-			SubmitOnPost     int `json:"SubmitOnPost"`
-			SubmitOnRedirect int `json:"SubmitOnRedirect"`
-			InstrumentPlt    int `json:"InstrumentPlt"`
-		} `json:"ClientMetricsModes"`
-	} `json:"enums"`
-	Urls struct {
-		Instr struct {
-			Pageload   string `json:"pageload"`
-			Dssostatus string `json:"dssostatus"`
-		} `json:"instr"`
-	} `json:"urls"`
-	Browser struct {
-		Ltr     int `json:"ltr"`
-		Other   int `json:"_Other"`
-		Full    int `json:"Full"`
-		REOther int `json:"RE_Other"`
-		B       struct {
-			Name  string `json:"name"`
-			Major int    `json:"major"`
-			Minor int    `json:"minor"`
-		} `json:"b"`
-		Os struct {
-			Name    string `json:"name"`
-			Version string `json:"version"`
-		} `json:"os"`
-		V int `json:"V"`
-	} `json:"browser"`
-	Watson struct {
-		URL              string   `json:"url"`
-		Bundle           string   `json:"bundle"`
-		Sbundle          string   `json:"sbundle"`
-		Fbundle          string   `json:"fbundle"`
-		ResetErrorPeriod int      `json:"resetErrorPeriod"`
-		MaxCorsErrors    int      `json:"maxCorsErrors"`
-		MaxInjectErrors  int      `json:"maxInjectErrors"`
-		MaxErrors        int      `json:"maxErrors"`
-		MaxTotalErrors   int      `json:"maxTotalErrors"`
-		ExpSrcs          []string `json:"expSrcs"`
-		EnvErrorRedirect bool     `json:"envErrorRedirect"`
-		EnvErrorURL      string   `json:"envErrorUrl"`
-	} `json:"watson"`
-	Loader struct {
-		CdnRoots []string `json:"cdnRoots"`
-	} `json:"loader"`
-	ServerDetails struct {
-		Slc string `json:"slc"`
-		Dc  string `json:"dc"`
-		Ri  string `json:"ri"`
-		Ver struct {
-			V []int `json:"v"`
-		} `json:"ver"`
-		Rt string `json:"rt"`
-		Et int    `json:"et"`
-	} `json:"serverDetails"`
-	Country                    string `json:"country"`
-	FBreakBrandingSigninString bool   `json:"fBreakBrandingSigninString"`
-	Bsso                       struct {
-		Type   string `json:"type"`
-		Reason string `json:"reason"`
-	} `json:"bsso"`
-	URLNoCookies       string `json:"urlNoCookies"`
-	FTrimChromeBssoURL bool   `json:"fTrimChromeBssoUrl"`
+// Autogenrated Converged Response struct
+// for some cases, some fields may not exist
+type ConvergedResponse struct {
+	URLGetCredentialType    string             `json:"urlGetCredentialType"`
+	ArrUserProofs           []userProof        `json:"arrUserProofs"`
+	URLSkipMfaRegistration  string             `json:"urlSkipMfaRegistration"`
+	OPerAuthPollingInterval map[string]float64 `json:"oPerAuthPollingInterval"`
+	URLBeginAuth            string             `json:"urlBeginAuth"`
+	URLEndAuth              string             `json:"urlEndAuth"`
+	URLPost                 string             `json:"urlPost"`
+	SErrorCode              string             `json:"sErrorCode"`
+	SErrTxt                 string             `json:"sErrTxt"`
+	SPOSTUsername           string             `json:"sPOST_Username"`
+	SFT                     string             `json:"sFT"`
+	SFTName                 string             `json:"sFTName"`
+	SCtx                    string             `json:"sCtx"`
+	Hpgact                  int                `json:"hpgact"`
+	Hpgid                   int                `json:"hpgid"`
+	Pgid                    string             `json:"pgid"`
+	APICanary               string             `json:"apiCanary"`
+	Canary                  string             `json:"canary"`
+	CorrelationID           string             `json:"correlationId"`
+	SessionID               string             `json:"sessionId"`
 }
 
-// Autogenerate password login response
-// some case, some fields is not exists
-type passwordLoginResponse struct {
-	ArrUserProofs                       []userProof        `json:"arrUserProofs"`
-	FHideIHaveCodeLink                  bool               `json:"fHideIHaveCodeLink"`
-	OPerAuthPollingInterval             map[string]float64 `json:"oPerAuthPollingInterval"`
-	FProofIndexedByType                 bool               `json:"fProofIndexedByType"`
-	URLBeginAuth                        string             `json:"urlBeginAuth"`
-	URLEndAuth                          string             `json:"urlEndAuth"`
-	ISAMode                             int                `json:"iSAMode"`
-	ITrustedDeviceCheckboxConfig        int                `json:"iTrustedDeviceCheckboxConfig"`
-	IMaxPollAttempts                    int                `json:"iMaxPollAttempts"`
-	IPollingTimeout                     int                `json:"iPollingTimeout"`
-	IPollingBackoffInterval             float64            `json:"iPollingBackoffInterval"`
-	IRememberMfaDuration                float64            `json:"iRememberMfaDuration"`
-	STrustedDeviceCheckboxName          string             `json:"sTrustedDeviceCheckboxName"`
-	SAuthMethodInputFieldName           string             `json:"sAuthMethodInputFieldName"`
-	ISAOtcLength                        int                `json:"iSAOtcLength"`
-	ITotpOtcLength                      int                `json:"iTotpOtcLength"`
-	URLMoreInfo                         string             `json:"urlMoreInfo"`
-	FShowViewDetailsLink                bool               `json:"fShowViewDetailsLink"`
-	FAlwaysUpdateFTInSasEnd             bool               `json:"fAlwaysUpdateFTInSasEnd"`
-	IMaxStackForKnockoutAsyncComponents int                `json:"iMaxStackForKnockoutAsyncComponents"`
-	StrCopyrightTxt                     string             `json:"strCopyrightTxt"`
-	FShowButtons                        bool               `json:"fShowButtons"`
-	URLCdn                              string             `json:"urlCdn"`
-	URLFooterTOU                        string             `json:"urlFooterTOU"`
-	URLFooterPrivacy                    string             `json:"urlFooterPrivacy"`
-	URLPost                             string             `json:"urlPost"`
-	URLCancel                           string             `json:"urlCancel"`
-	IPawnIcon                           int                `json:"iPawnIcon"`
-	IPollingInterval                    int                `json:"iPollingInterval"`
-	SPOSTUsername                       string             `json:"sPOST_Username"`
-	SFT                                 string             `json:"sFT"`
-	SFTName                             string             `json:"sFTName"`
-	SCtx                                string             `json:"sCtx"`
-	DynamicTenantBranding               []struct {
-		Locale                 int    `json:"Locale"`
-		Illustration           string `json:"Illustration"`
-		UserIDLabel            string `json:"UserIdLabel"`
-		KeepMeSignedInDisabled bool   `json:"KeepMeSignedInDisabled"`
-		UseTransparentLightBox bool   `json:"UseTransparentLightBox"`
-	} `json:"dynamicTenantBranding"`
-	OAppCobranding struct {
-	} `json:"oAppCobranding"`
-	IBackgroundImage                      int    `json:"iBackgroundImage"`
-	FUseConstantPolling                   bool   `json:"fUseConstantPolling"`
-	FUseFlowTokenAsCanary                 bool   `json:"fUseFlowTokenAsCanary"`
-	FApplicationInsightsEnabled           bool   `json:"fApplicationInsightsEnabled"`
-	IApplicationInsightsEnabledPercentage int    `json:"iApplicationInsightsEnabledPercentage"`
-	URLSetDebugMode                       string `json:"urlSetDebugMode"`
-	FEnableCSSAnimation                   bool   `json:"fEnableCssAnimation"`
-	FAllowGrayOutLightBox                 bool   `json:"fAllowGrayOutLightBox"`
-	FIsRemoteNGCSupported                 bool   `json:"fIsRemoteNGCSupported"`
-	Scid                                  int    `json:"scid"`
-	Hpgact                                int    `json:"hpgact"`
-	Hpgid                                 int    `json:"hpgid"`
-	Pgid                                  string `json:"pgid"`
-	APICanary                             string `json:"apiCanary"`
-	Canary                                string `json:"canary"`
-	CorrelationID                         string `json:"correlationId"`
-	SessionID                             string `json:"sessionId"`
-	Locale                                struct {
-		Mkt  string `json:"mkt"`
-		Lcid int    `json:"lcid"`
-	} `json:"locale"`
-	SlMaxRetry      int  `json:"slMaxRetry"`
-	SlReportFailure bool `json:"slReportFailure"`
-	Strings         struct {
-		Desktopsso struct {
-			Authenticatingmessage string `json:"authenticatingmessage"`
-		} `json:"desktopsso"`
-	} `json:"strings"`
-	Enums struct {
-		ClientMetricsModes struct {
-			None             int `json:"None"`
-			SubmitOnPost     int `json:"SubmitOnPost"`
-			SubmitOnRedirect int `json:"SubmitOnRedirect"`
-			InstrumentPlt    int `json:"InstrumentPlt"`
-		} `json:"ClientMetricsModes"`
-	} `json:"enums"`
-	Urls struct {
-		Instr struct {
-			Pageload   string `json:"pageload"`
-			Dssostatus string `json:"dssostatus"`
-		} `json:"instr"`
-	} `json:"urls"`
-	Browser struct {
-		Ltr     int `json:"ltr"`
-		Other   int `json:"_Other"`
-		Full    int `json:"Full"`
-		REOther int `json:"RE_Other"`
-		B       struct {
-			Name  string `json:"name"`
-			Major int    `json:"major"`
-			Minor int    `json:"minor"`
-		} `json:"b"`
-		Os struct {
-			Name    string `json:"name"`
-			Version string `json:"version"`
-		} `json:"os"`
-		V int `json:"V"`
-	} `json:"browser"`
-	Watson struct {
-		URL              string   `json:"url"`
-		Bundle           string   `json:"bundle"`
-		Sbundle          string   `json:"sbundle"`
-		Fbundle          string   `json:"fbundle"`
-		ResetErrorPeriod int      `json:"resetErrorPeriod"`
-		MaxCorsErrors    int      `json:"maxCorsErrors"`
-		MaxInjectErrors  int      `json:"maxInjectErrors"`
-		MaxErrors        int      `json:"maxErrors"`
-		MaxTotalErrors   int      `json:"maxTotalErrors"`
-		ExpSrcs          []string `json:"expSrcs"`
-		EnvErrorRedirect bool     `json:"envErrorRedirect"`
-		EnvErrorURL      string   `json:"envErrorUrl"`
-	} `json:"watson"`
-	Loader struct {
-		CdnRoots []string `json:"cdnRoots"`
-	} `json:"loader"`
-	ServerDetails struct {
-		Slc string `json:"slc"`
-		Dc  string `json:"dc"`
-		Ri  string `json:"ri"`
-		Ver struct {
-			V []int `json:"v"`
-		} `json:"ver"`
-		Rt string `json:"rt"`
-		Et int    `json:"et"`
-	} `json:"serverDetails"`
-	Country                    string `json:"country"`
-	FBreakBrandingSigninString bool   `json:"fBreakBrandingSigninString"`
-	URLNoCookies               string `json:"urlNoCookies"`
-	FTrimChromeBssoURL         bool   `json:"fTrimChromeBssoUrl"`
+// Autogenerated GetCredentialType Request struct
+// for some cases, some fields may not exist
+type GetCredentialTypeRequest struct {
+	Username                       string `json:"username"`
+	IsOtherIdpSupported            bool   `json:"isOtherIdpSupported"`
+	CheckPhones                    bool   `json:"checkPhones"`
+	IsRemoteNGCSupported           bool   `json:"isRemoteNGCSupported"`
+	IsCookieBannerShown            bool   `json:"isCookieBannerShown"`
+	IsFidoSupported                bool   `json:"isFidoSupported"`
+	OriginalRequest                string `json:"originalRequest"`
+	Country                        string `json:"country"`
+	Forceotclogin                  bool   `json:"forceotclogin"`
+	IsExternalFederationDisallowed bool   `json:"isExternalFederationDisallowed"`
+	IsRemoteConnectSupported       bool   `json:"isRemoteConnectSupported"`
+	FederationFlags                int    `json:"federationFlags"`
+	IsSignup                       bool   `json:"isSignup"`
+	FlowToken                      string `json:"flowToken"`
+	IsAccessPassSupported          bool   `json:"isAccessPassSupported"`
 }
 
-// Autogenerated skip mfa login response
-type SkipMfaResponse struct {
-	URLPostRedirect                     string `json:"urlPostRedirect"`
-	URLSkipMfaRegistration              string `json:"urlSkipMfaRegistration"`
-	URLMoreInfo                         string `json:"urlMoreInfo"`
-	SProofUpToken                       string `json:"sProofUpToken"`
-	SProofUpTokenName                   string `json:"sProofUpTokenName"`
-	SProofUpAuthState                   string `json:"sProofUpAuthState"`
-	SCanaryToken                        string `json:"sCanaryToken"`
-	IRemainingDaysToSkipMfaRegistration int    `json:"iRemainingDaysToSkipMfaRegistration"`
-	IMaxStackForKnockoutAsyncComponents int    `json:"iMaxStackForKnockoutAsyncComponents"`
-	StrCopyrightTxt                     string `json:"strCopyrightTxt"`
-	FShowButtons                        bool   `json:"fShowButtons"`
-	URLCdn                              string `json:"urlCdn"`
-	URLFooterTOU                        string `json:"urlFooterTOU"`
-	URLFooterPrivacy                    string `json:"urlFooterPrivacy"`
-	URLPost                             string `json:"urlPost"`
-	URLCancel                           string `json:"urlCancel"`
-	IPawnIcon                           int    `json:"iPawnIcon"`
-	SPOSTUsername                       string `json:"sPOST_Username"`
-	SFT                                 string `json:"sFT"`
-	SFTName                             string `json:"sFTName"`
-	SCanaryTokenName                    string `json:"sCanaryTokenName"`
-	DynamicTenantBranding               []struct {
-		Locale                 int    `json:"Locale"`
-		Illustration           string `json:"Illustration"`
-		UserIDLabel            string `json:"UserIdLabel"`
-		KeepMeSignedInDisabled bool   `json:"KeepMeSignedInDisabled"`
-		UseTransparentLightBox bool   `json:"UseTransparentLightBox"`
-	} `json:"dynamicTenantBranding"`
-	OAppCobranding struct {
-	} `json:"oAppCobranding"`
-	IBackgroundImage                      int    `json:"iBackgroundImage"`
-	FUseConstantPolling                   bool   `json:"fUseConstantPolling"`
-	FUseFlowTokenAsCanary                 bool   `json:"fUseFlowTokenAsCanary"`
-	FApplicationInsightsEnabled           bool   `json:"fApplicationInsightsEnabled"`
-	IApplicationInsightsEnabledPercentage int    `json:"iApplicationInsightsEnabledPercentage"`
-	URLSetDebugMode                       string `json:"urlSetDebugMode"`
-	FEnableCSSAnimation                   bool   `json:"fEnableCssAnimation"`
-	FAllowGrayOutLightBox                 bool   `json:"fAllowGrayOutLightBox"`
-	FIsRemoteNGCSupported                 bool   `json:"fIsRemoteNGCSupported"`
-	Scid                                  int    `json:"scid"`
-	Hpgact                                int    `json:"hpgact"`
-	Hpgid                                 int    `json:"hpgid"`
-	Pgid                                  string `json:"pgid"`
-	APICanary                             string `json:"apiCanary"`
-	Canary                                string `json:"canary"`
-	CorrelationID                         string `json:"correlationId"`
-	SessionID                             string `json:"sessionId"`
-	Locale                                struct {
-		Mkt  string `json:"mkt"`
-		Lcid int    `json:"lcid"`
-	} `json:"locale"`
-	SlMaxRetry      int  `json:"slMaxRetry"`
-	SlReportFailure bool `json:"slReportFailure"`
-	Strings         struct {
-		Desktopsso struct {
-			Authenticatingmessage string `json:"authenticatingmessage"`
-		} `json:"desktopsso"`
-	} `json:"strings"`
-	Enums struct {
-		ClientMetricsModes struct {
-			None             int `json:"None"`
-			SubmitOnPost     int `json:"SubmitOnPost"`
-			SubmitOnRedirect int `json:"SubmitOnRedirect"`
-			InstrumentPlt    int `json:"InstrumentPlt"`
-		} `json:"ClientMetricsModes"`
-	} `json:"enums"`
-	Urls struct {
-		Instr struct {
-			Pageload   string `json:"pageload"`
-			Dssostatus string `json:"dssostatus"`
-		} `json:"instr"`
-	} `json:"urls"`
-	Browser struct {
-		Ltr     int `json:"ltr"`
-		Other   int `json:"_Other"`
-		Full    int `json:"Full"`
-		REOther int `json:"RE_Other"`
-		B       struct {
-			Name  string `json:"name"`
-			Major int    `json:"major"`
-			Minor int    `json:"minor"`
-		} `json:"b"`
-		Os struct {
-			Name    string `json:"name"`
-			Version string `json:"version"`
-		} `json:"os"`
-		V int `json:"V"`
-	} `json:"browser"`
-	Watson struct {
-		URL              string   `json:"url"`
-		Bundle           string   `json:"bundle"`
-		Sbundle          string   `json:"sbundle"`
-		Fbundle          string   `json:"fbundle"`
-		ResetErrorPeriod int      `json:"resetErrorPeriod"`
-		MaxCorsErrors    int      `json:"maxCorsErrors"`
-		MaxInjectErrors  int      `json:"maxInjectErrors"`
-		MaxErrors        int      `json:"maxErrors"`
-		MaxTotalErrors   int      `json:"maxTotalErrors"`
-		ExpSrcs          []string `json:"expSrcs"`
-		EnvErrorRedirect bool     `json:"envErrorRedirect"`
-		EnvErrorURL      string   `json:"envErrorUrl"`
-	} `json:"watson"`
-	Loader struct {
-		CdnRoots []string `json:"cdnRoots"`
-	} `json:"loader"`
-	ServerDetails struct {
-		Slc string `json:"slc"`
-		Dc  string `json:"dc"`
-		Ri  string `json:"ri"`
-		Ver struct {
-			V []int `json:"v"`
-		} `json:"ver"`
-		Rt string `json:"rt"`
-		Et int    `json:"et"`
-	} `json:"serverDetails"`
-	Country                    string `json:"country"`
-	FBreakBrandingSigninString bool   `json:"fBreakBrandingSigninString"`
-	URLNoCookies               string `json:"urlNoCookies"`
-	FTrimChromeBssoURL         bool   `json:"fTrimChromeBssoUrl"`
+// Autogenerated GetCredentialType Response struct
+// for some cases, some fields may not exist
+type GetCredentialTypeResponse struct {
+	Username       string `json:"Username"`
+	Display        string `json:"Display"`
+	IfExistsResult int    `json:"IfExistsResult"`
+	IsUnmanaged    bool   `json:"IsUnmanaged"`
+	ThrottleStatus int    `json:"ThrottleStatus"`
+	Credentials    struct {
+		PrefCredential        int         `json:"PrefCredential"`
+		HasPassword           bool        `json:"HasPassword"`
+		RemoteNgcParams       interface{} `json:"RemoteNgcParams"`
+		FidoParams            interface{} `json:"FidoParams"`
+		SasParams             interface{} `json:"SasParams"`
+		CertAuthParams        interface{} `json:"CertAuthParams"`
+		GoogleParams          interface{} `json:"GoogleParams"`
+		FacebookParams        interface{} `json:"FacebookParams"`
+		FederationRedirectURL string      `json:"FederationRedirectUrl"`
+	} `json:"Credentials"`
+	FlowToken          string `json:"FlowToken"`
+	IsSignupDisallowed bool   `json:"IsSignupDisallowed"`
+	APICanary          string `json:"apiCanary"`
 }
 
-// mfa request
+// MFA Request struct
 type mfaRequest struct {
 	AuthMethodID       string `json:"AuthMethodId"`
 	Method             string `json:"Method"`
@@ -472,7 +110,7 @@ type mfaRequest struct {
 	AdditionalAuthData string `json:"AdditionalAuthData,omitempty"`
 }
 
-// mfa response
+// MFA Response struct
 type mfaResponse struct {
 	Success       bool        `json:"Success"`
 	ResultValue   string      `json:"ResultValue"`
@@ -486,122 +124,6 @@ type mfaResponse struct {
 	CorrelationID string      `json:"CorrelationId"`
 	Timestamp     time.Time   `json:"Timestamp"`
 	Entropy       int         `json:"Entropy"`
-}
-
-// Autogenerate ProcessAuth response
-// some case, some fields is not exists
-type processAuthResponse struct {
-	IMaxStackForKnockoutAsyncComponents int    `json:"iMaxStackForKnockoutAsyncComponents"`
-	StrCopyrightTxt                     string `json:"strCopyrightTxt"`
-	FShowButtons                        bool   `json:"fShowButtons"`
-	URLCdn                              string `json:"urlCdn"`
-	URLFooterTOU                        string `json:"urlFooterTOU"`
-	URLFooterPrivacy                    string `json:"urlFooterPrivacy"`
-	URLPost                             string `json:"urlPost"`
-	IPawnIcon                           int    `json:"iPawnIcon"`
-	SPOSTUsername                       string `json:"sPOST_Username"`
-	SFT                                 string `json:"sFT"`
-	SFTName                             string `json:"sFTName"`
-	SCtx                                string `json:"sCtx"`
-	SCanaryTokenName                    string `json:"sCanaryTokenName"`
-	DynamicTenantBranding               []struct {
-		Locale                 int    `json:"Locale"`
-		Illustration           string `json:"Illustration"`
-		UserIDLabel            string `json:"UserIdLabel"`
-		KeepMeSignedInDisabled bool   `json:"KeepMeSignedInDisabled"`
-		UseTransparentLightBox bool   `json:"UseTransparentLightBox"`
-	} `json:"dynamicTenantBranding"`
-	OAppCobranding struct {
-	} `json:"oAppCobranding"`
-	IBackgroundImage                      int    `json:"iBackgroundImage"`
-	FUseConstantPolling                   bool   `json:"fUseConstantPolling"`
-	FUseFlowTokenAsCanary                 bool   `json:"fUseFlowTokenAsCanary"`
-	FApplicationInsightsEnabled           bool   `json:"fApplicationInsightsEnabled"`
-	IApplicationInsightsEnabledPercentage int    `json:"iApplicationInsightsEnabledPercentage"`
-	URLSetDebugMode                       string `json:"urlSetDebugMode"`
-	FEnableCSSAnimation                   bool   `json:"fEnableCssAnimation"`
-	FAllowGrayOutLightBox                 bool   `json:"fAllowGrayOutLightBox"`
-	FIsRemoteNGCSupported                 bool   `json:"fIsRemoteNGCSupported"`
-	Scid                                  int    `json:"scid"`
-	Hpgact                                int    `json:"hpgact"`
-	Hpgid                                 int    `json:"hpgid"`
-	Pgid                                  string `json:"pgid"`
-	APICanary                             string `json:"apiCanary"`
-	Canary                                string `json:"canary"`
-	CorrelationID                         string `json:"correlationId"`
-	SessionID                             string `json:"sessionId"`
-	Locale                                struct {
-		Mkt  string `json:"mkt"`
-		Lcid int    `json:"lcid"`
-	} `json:"locale"`
-	SlMaxRetry      int  `json:"slMaxRetry"`
-	SlReportFailure bool `json:"slReportFailure"`
-	Strings         struct {
-		Desktopsso struct {
-			Authenticatingmessage string `json:"authenticatingmessage"`
-		} `json:"desktopsso"`
-	} `json:"strings"`
-	Enums struct {
-		ClientMetricsModes struct {
-			None             int `json:"None"`
-			SubmitOnPost     int `json:"SubmitOnPost"`
-			SubmitOnRedirect int `json:"SubmitOnRedirect"`
-			InstrumentPlt    int `json:"InstrumentPlt"`
-		} `json:"ClientMetricsModes"`
-	} `json:"enums"`
-	Urls struct {
-		Instr struct {
-			Pageload   string `json:"pageload"`
-			Dssostatus string `json:"dssostatus"`
-		} `json:"instr"`
-	} `json:"urls"`
-	Browser struct {
-		Ltr     int `json:"ltr"`
-		Other   int `json:"_Other"`
-		Full    int `json:"Full"`
-		REOther int `json:"RE_Other"`
-		B       struct {
-			Name  string `json:"name"`
-			Major int    `json:"major"`
-			Minor int    `json:"minor"`
-		} `json:"b"`
-		Os struct {
-			Name    string `json:"name"`
-			Version string `json:"version"`
-		} `json:"os"`
-		V int `json:"V"`
-	} `json:"browser"`
-	Watson struct {
-		URL              string   `json:"url"`
-		Bundle           string   `json:"bundle"`
-		Sbundle          string   `json:"sbundle"`
-		Fbundle          string   `json:"fbundle"`
-		ResetErrorPeriod int      `json:"resetErrorPeriod"`
-		MaxCorsErrors    int      `json:"maxCorsErrors"`
-		MaxInjectErrors  int      `json:"maxInjectErrors"`
-		MaxErrors        int      `json:"maxErrors"`
-		MaxTotalErrors   int      `json:"maxTotalErrors"`
-		ExpSrcs          []string `json:"expSrcs"`
-		EnvErrorRedirect bool     `json:"envErrorRedirect"`
-		EnvErrorURL      string   `json:"envErrorUrl"`
-	} `json:"watson"`
-	Loader struct {
-		CdnRoots []string `json:"cdnRoots"`
-	} `json:"loader"`
-	ServerDetails struct {
-		Slc string `json:"slc"`
-		Dc  string `json:"dc"`
-		Ri  string `json:"ri"`
-		Ver struct {
-			V []int `json:"v"`
-		} `json:"ver"`
-		Rt string `json:"rt"`
-		Et int    `json:"et"`
-	} `json:"serverDetails"`
-	Country                    string `json:"country"`
-	FBreakBrandingSigninString bool   `json:"fBreakBrandingSigninString"`
-	URLNoCookies               string `json:"urlNoCookies"`
-	FTrimChromeBssoURL         bool   `json:"fTrimChromeBssoUrl"`
 }
 
 // A given method for a user to prove their indentity
@@ -633,337 +155,299 @@ func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 
 // Authenticate to AzureAD and return the data from the body of the SAML assertion.
 func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error) {
-
 	var samlAssertion string
 	var res *http.Response
+	var err error
+	var resBody []byte
+	var resBodyStr string
+	var convergedResponse *ConvergedResponse
 
 	// idpAccount.URL = https://account.activedirectory.windowsazure.com
 
 	// startSAML
 	startURL := fmt.Sprintf("%s/applications/redirecttofederatedapplication.aspx?Operation=LinkedSignIn&applicationId=%s", ac.idpAccount.URL, ac.idpAccount.AppID)
 
-	res, err := ac.client.Get(startURL)
+	res, err = ac.client.Get(startURL)
 	if err != nil {
-		return samlAssertion, errors.Wrap(err, "error retrieving form")
+		return samlAssertion, errors.Wrap(err, "error retrieving entry URL")
 	}
 
-	// data is embedded javascript object
-	// <script><![CDATA[  $Config=......; ]]>
-	resBodyStr, _ := ac.responseBodyAsString(res.Body)
-	var startSAMLJson string
-	if strings.Contains(resBodyStr, "$Config") {
-		startSAMLJson = ac.getJsonFromConfig(resBodyStr)
-	}
-	var startSAMLResp startSAMLResponse
-	if err := json.Unmarshal([]byte(startSAMLJson), &startSAMLResp); err != nil {
-		return samlAssertion, errors.Wrap(err, "startSAML response unmarshal error")
-	}
+AuthProcessor:
+	for {
+		resBody, _ = io.ReadAll(res.Body)
+		resBodyStr = string(resBody)
+		// reset res.Body so it can be read again later if required
+		res.Body = io.NopCloser(bytes.NewBuffer(resBody))
 
-	// password login
-	loginValues := url.Values{}
-	loginValues.Set(startSAMLResp.SFTName, startSAMLResp.SFT)
-	loginValues.Set("ctx", startSAMLResp.SCtx)
-	loginValues.Set("login", loginDetails.Username)
-	loginValues.Set("passwd", loginDetails.Password)
-
-	// Sometimes AAD response may contain "post url" as a relative url
-	// in this case, prepend the url scheme and host, of the URL we requested
-	var urlPost string
-	if strings.HasPrefix(startSAMLResp.URLPost, "/") {
-		urlPost = res.Request.URL.Scheme + "://" + res.Request.URL.Host + startSAMLResp.URLPost
-	} else {
-		urlPost = startSAMLResp.URLPost
-	}
-
-	passwordLoginRequest, err := http.NewRequest("POST", urlPost, strings.NewReader(loginValues.Encode()))
-
-	if err != nil {
-		return samlAssertion, errors.Wrap(err, "error retrieving login results")
-	}
-	passwordLoginRequest.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-	res, err = ac.client.Do(passwordLoginRequest)
-	if err != nil {
-		return samlAssertion, errors.Wrap(err, "error retrieving login results")
-	}
-
-	resBodyStr, _ = ac.responseBodyAsString(res.Body)
-
-	isSkippedMFA := !strings.HasPrefix(resBodyStr, "<html><head><title>Working...</title>")
-	/**
-	 * If conditional access is enabled, we will get a response like:
-	 *
-	 * <html><head><title>Working...</title></head><body><form method="POST" name="hiddenform" action="https://login.microsoftonline.com:443/common/DeviceAuthTls/reprocess"><input type="hidden" name="ctx" value="***" /><input type="hidden" name="flowtoken" value="***" /><noscript><p>Script is disabled. Click Submit to continue.</p><input type="submit" value="Submit" /></noscript></form><script language="javascript">document.forms[0].submit();</script></body></html>
-	 */
-	isEnabledConditonalAccess := strings.HasPrefix(resBodyStr, "<html><head><title>Working...</title>") && strings.Contains(resBodyStr, "name=\"flowtoken\"")
-
-	if isSkippedMFA || isEnabledConditonalAccess {
-		// require reprocess
-		if strings.Contains(resBodyStr, "<form") {
-			res, err = ac.reProcess(resBodyStr)
-			if err != nil {
-				return samlAssertion, errors.Wrap(err, "error retrieving login reprocess results")
+		switch {
+		case strings.Contains(resBodyStr, "ConvergedSignIn"):
+			logger.Debug("processing ConvergedSignIn")
+			res, err = ac.processConvergedSignIn(res, resBodyStr, loginDetails)
+		case strings.Contains(resBodyStr, "ConvergedProofUpRedirect"):
+			logger.Debug("processing ConvergedProofUpRedirect")
+			res, err = ac.processConvergedProofUpRedirect(res, resBodyStr)
+		case strings.Contains(resBodyStr, "KmsiInterrupt"):
+			logger.Debug("processing KmsiInterrupt")
+			res, err = ac.processKmsiInterrupt(res, resBodyStr)
+		case strings.Contains(resBodyStr, "ConvergedTFA"):
+			logger.Debug("processing ConvergedTFA")
+			res, err = ac.processConvergedTFA(res, resBodyStr)
+		case strings.Contains(resBodyStr, "SAMLRequest"):
+			logger.Debug("processing SAMLRequest")
+			res, err = ac.processSAMLRequest(res, resBodyStr)
+		case ac.isHiddenForm(resBodyStr):
+			if samlAssertion, _ = ac.getSamlAssertion(resBodyStr); samlAssertion != "" {
+				logger.Debug("processing a SAMLResponse")
+				return samlAssertion, nil
 			}
-			resBodyStr, _ = ac.responseBodyAsString(res.Body)
+			logger.Debug("processing a 'hiddenform'")
+			res, err = ac.reProcessForm(resBodyStr)
+		default:
+			if strings.Contains(resBodyStr, "$Config") {
+				if err := json.Unmarshal([]byte(ac.getJsonFromConfig(resBodyStr)), &convergedResponse); err != nil {
+					return samlAssertion, errors.Wrap(err, "unmarshal error")
+				}
+				logger.Debug("unknown process step found:", convergedResponse.Pgid)
+			} else {
+				logger.Debug("reached an unknown page within the authentication process")
+			}
+			break AuthProcessor
 		}
-
-		// data is embedded javascript object
-		// <script><![CDATA[  $Config=......; ]]>
-		var loginPasswordJson string
-		if strings.Contains(resBodyStr, "$Config") {
-			loginPasswordJson = ac.getJsonFromConfig(resBodyStr)
-		}
-		resBodyStr, err = ac.processAuth(loginPasswordJson, res)
 		if err != nil {
 			return samlAssertion, err
 		}
-	}
-
-	node, _ := html.Parse(strings.NewReader(resBodyStr))
-	doc := goquery.NewDocumentFromNode(node)
-
-	// data in input tag
-	authForm := url.Values{}
-	var authSubmitURL string
-
-	doc.Find("input").Each(func(i int, s *goquery.Selection) {
-		name, ok := s.Attr("name")
-		if !ok {
-			return
-		}
-		value, ok := s.Attr("value")
-		if !ok {
-			return
-		}
-		authForm.Set(name, value)
-	})
-
-	doc.Find("form").Each(func(i int, s *goquery.Selection) {
-		action, ok := s.Attr("action")
-		if !ok {
-			return
-		}
-		authSubmitURL = action
-	})
-
-	if authSubmitURL == "" {
-		return samlAssertion, fmt.Errorf("unable to locate IDP oidc form submit URL")
-	}
-
-	req, err := http.NewRequest("POST", authSubmitURL, strings.NewReader(authForm.Encode()))
-	if err != nil {
-		return samlAssertion, errors.Wrap(err, "error building authentication request")
-	}
-
-	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-
-	ac.client.EnableFollowRedirect()
-	res, err = ac.client.Do(req)
-	if err != nil {
-		return samlAssertion, errors.Wrap(err, "error retrieving oidc login form results")
-	}
-
-	//  get saml assertion
-	oidcResponse, err := io.ReadAll(res.Body)
-	if err != nil {
-		return samlAssertion, errors.Wrap(err, "oidc login response error")
-	}
-
-	oidcResponseStr := string(oidcResponse)
-
-	// data is embedded javascript
-	// window.location = 'https:/..../?SAMLRequest=......'
-	oidcResponseList := strings.Split(oidcResponseStr, ";")
-	var SAMLRequestURL string
-	for _, v := range oidcResponseList {
-		if strings.Contains(v, "SAMLRequest") {
-			startURLPos := strings.Index(v, "https://")
-			endURLPos := strings.Index(v[startURLPos:], "'")
-			if endURLPos == -1 {
-				endURLPos = strings.Index(v[startURLPos:], "\"")
-			}
-			SAMLRequestURL = v[startURLPos : startURLPos+endURLPos]
-		}
-
-	}
-	if SAMLRequestURL == "" {
-		return samlAssertion, fmt.Errorf("unable to locate SAMLRequest URL")
-	}
-
-	req, err = http.NewRequest("GET", SAMLRequestURL, nil)
-	if err != nil {
-		return samlAssertion, errors.Wrap(err, "error building get request")
-	}
-
-	res, err = ac.client.Do(req)
-	if err != nil {
-		return samlAssertion, errors.Wrap(err, "error retrieving oidc login form results")
-	}
-
-	// if mfa skipped then get $Config and urlSkipMfaRegistration
-	// get urlSkipMfaRegistraition to return saml assertion
-	resBodyStr, err = ac.responseBodyAsString(res.Body)
-	if err != nil {
-		return samlAssertion, errors.Wrap(err, "error oidc login response read")
-	}
-	if strings.Contains(resBodyStr, "arrUserProofs") {
-		// data is embedded javascript object
-		// <script><![CDATA[  $Config=......; ]]>
-		var loginPasswordJson string
-		if strings.Contains(resBodyStr, "$Config") {
-			loginPasswordJson = ac.getJsonFromConfig(resBodyStr)
-		}
-		resBodyStr, err = ac.processAuth(loginPasswordJson, res)
-		if err != nil {
-			return samlAssertion, err
-		}
-	}
-
-	// data in input tag
-	doc, err = goquery.NewDocumentFromReader(strings.NewReader(resBodyStr))
-	if err != nil {
-		return samlAssertion, errors.Wrap(err, "failed to build document from response")
-	}
-
-	doc.Find("input").Each(func(i int, s *goquery.Selection) {
-		attrName, ok := s.Attr("name")
-		if !ok {
-			return
-		}
-		if attrName != "SAMLResponse" {
-			return
-		}
-		samlAssertion, _ = s.Attr("value")
-	})
-	if samlAssertion != "" {
-		return samlAssertion, nil
-	}
-	res, err = ac.reProcess(resBodyStr)
-	if err != nil {
-		return samlAssertion, errors.Wrap(err, "failed to saml request reprocess")
-	}
-	resBodyStr, _ = ac.responseBodyAsString(res.Body)
-	doc, err = goquery.NewDocumentFromReader(strings.NewReader(resBodyStr))
-	if err != nil {
-		return samlAssertion, errors.Wrap(err, "failed to build document from result body")
-	}
-
-	doc.Find("input").Each(func(i int, s *goquery.Selection) {
-		attrName, ok := s.Attr("name")
-		if !ok {
-			return
-		}
-
-		if attrName != "SAMLResponse" {
-			return
-		}
-
-		samlAssertion, _ = s.Attr("value")
-	})
-	if samlAssertion != "" {
-		return samlAssertion, nil
 	}
 
 	return samlAssertion, errors.New("failed get SAMLAssertion")
 }
 
-func (ac *Client) reProcess(resBodyStr string) (*http.Response, error) {
-	doc, err := goquery.NewDocumentFromReader(strings.NewReader(resBodyStr))
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to build document from response")
+func (ac *Client) processConvergedSignIn(res *http.Response, srcBodyStr string, loginDetails *creds.LoginDetails) (*http.Response, error) {
+	var convergedResponse *ConvergedResponse
+	var err error
+
+	if err := json.Unmarshal([]byte(ac.getJsonFromConfig(srcBodyStr)), &convergedResponse); err != nil {
+		return res, errors.Wrap(err, "ConvergedSignIn response unmarshal error")
 	}
 
-	var action, ctx, flowToken string
-	doc.Find("form").Each(func(i int, s *goquery.Selection) {
-		action, _ = s.Attr("action")
-	})
-	doc.Find("input").Each(func(i int, s *goquery.Selection) {
-		attrName, ok := s.Attr("name")
-		if !ok {
-			return
-		}
-		if attrName == "ctx" {
-			ctx, _ = s.Attr("value")
-		}
-		if attrName == "flowtoken" {
-			flowToken, _ = s.Attr("value")
-		}
-	})
+	loginRequestUrl := ac.fullUrl(res, convergedResponse.URLPost)
 
-	reprocessValues := url.Values{}
-	reprocessValues.Set("ctx", ctx)
-	reprocessValues.Set("flowtoken", flowToken)
-	reprocessRequest, err := http.NewRequest("post", action, strings.NewReader(reprocessValues.Encode()))
+	refererUrl := res.Request.URL.String()
+
+	getCredentialTypeResponse, _, err := ac.requestGetCredentialType(refererUrl, loginDetails, convergedResponse)
 	if err != nil {
-		return nil, errors.Wrap(err, "error reprocess create httpRequest")
+		return res, errors.Wrap(err, "error processing GetCredentialType request")
 	}
-	reprocessRequest.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-	res, err := ac.client.Do(reprocessRequest)
-	if err != nil {
-		return res, errors.Wrap(err, "error reprocess results")
+
+	federationRedirectURL := getCredentialTypeResponse.Credentials.FederationRedirectURL
+
+	if federationRedirectURL != "" {
+		res, err = ac.processADFSAuthentication(federationRedirectURL, loginDetails)
+		if err != nil {
+			return res, err
+		}
+	} else {
+		res, err = ac.processAuthentication(loginRequestUrl, refererUrl, loginDetails, convergedResponse)
+		if err != nil {
+			return res, err
+		}
 	}
+
 	return res, nil
 }
 
-func (ac *Client) buildMfaRequestJson(mfas []userProof, flowToken string, ctx string) ([]byte, error) {
-	mfa := mfas[0]
-	switch ac.idpAccount.MFA {
+func (ac *Client) requestGetCredentialType(refererUrl string, loginDetails *creds.LoginDetails, convergedResponse *ConvergedResponse) (GetCredentialTypeResponse, *http.Response, error) {
+	var res *http.Response
+	var getCredentialTypeResponse GetCredentialTypeResponse
 
-	case "Auto":
-		for _, v := range mfas {
-			if v.IsDefault {
-				mfa = v
-				break
-			}
+	reqBodyObj := GetCredentialTypeRequest{
+		Username:             loginDetails.Username,
+		IsOtherIdpSupported:  true,
+		CheckPhones:          false,
+		IsRemoteNGCSupported: false,
+		IsCookieBannerShown:  false,
+		IsFidoSupported:      false,
+		OriginalRequest:      convergedResponse.SCtx,
+		FlowToken:            convergedResponse.SFT,
+	}
+	reqBodyJson, err := json.Marshal(reqBodyObj)
+	if err != nil {
+		return getCredentialTypeResponse, res, errors.Wrap(err, "failed to build GetCredentialType request JSON")
+	}
+
+	req, err := http.NewRequest("POST", convergedResponse.URLGetCredentialType, strings.NewReader(string(reqBodyJson)))
+	if err != nil {
+		return getCredentialTypeResponse, res, errors.Wrap(err, "error building GetCredentialType request")
+	}
+
+	req.Header.Add("canary", convergedResponse.APICanary)
+	req.Header.Add("client-request-id", convergedResponse.CorrelationID)
+	req.Header.Add("hpgact", fmt.Sprint(convergedResponse.Hpgact))
+	req.Header.Add("hpgid", fmt.Sprint(convergedResponse.Hpgid))
+	req.Header.Add("hpgrequestid", convergedResponse.SessionID)
+	req.Header.Add("Referer", refererUrl)
+
+	res, err = ac.client.Do(req)
+	if err != nil {
+		return getCredentialTypeResponse, res, errors.Wrap(err, "error retrieving GetCredentialType results")
+	}
+
+	err = json.NewDecoder(res.Body).Decode(&getCredentialTypeResponse)
+	if err != nil {
+		return getCredentialTypeResponse, res, errors.Wrap(err, "error decoding GetCredentialType results")
+	}
+
+	return getCredentialTypeResponse, res, nil
+}
+
+func (ac *Client) processADFSAuthentication(federationUrl string, loginDetails *creds.LoginDetails) (*http.Response, error) {
+	var res *http.Response
+	var err error
+	var resBodyStr string
+	var formValues url.Values
+	var formSubmitUrl string
+	var req *http.Request
+
+	res, err = ac.client.Get(federationUrl)
+	if err != nil {
+		return res, errors.Wrap(err, "error retrieving ADFS url")
+	}
+
+	resBodyStr, _ = ac.responseBodyAsString(res.Body)
+
+	formValues, formSubmitUrl, err = ac.reSubmitFormData(resBodyStr)
+	if err != nil {
+		return res, errors.Wrap(err, "failed to parse ADFS login form")
+	}
+
+	if formSubmitUrl == "" {
+		return res, fmt.Errorf("unable to locate ADFS form submit URL")
+	}
+
+	formValues.Set("UserName", loginDetails.Username)
+	formValues.Set("Password", loginDetails.Password)
+	formValues.Set("AuthMethod", "FormsAuthentication")
+
+	req, err = http.NewRequest("POST", ac.fullUrl(res, formSubmitUrl), strings.NewReader(formValues.Encode()))
+	if err != nil {
+		return res, errors.Wrap(err, "error building ADFS login request")
+	}
+
+	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+
+	res, err = ac.client.Do(req)
+	if err != nil {
+		return res, errors.Wrap(err, "error retrieving ADFS login results")
+	}
+
+	return res, nil
+}
+
+func (ac *Client) processAuthentication(loginUrl string, refererUrl string, loginDetails *creds.LoginDetails, convergedResponse *ConvergedResponse) (*http.Response, error) {
+	var res *http.Response
+	var err error
+	var req *http.Request
+
+	// 50058: user is not signed in (yet)
+	if convergedResponse.SErrorCode != "" && convergedResponse.SErrorCode != "50058" {
+		return res, fmt.Errorf("login error %s", convergedResponse.SErrorCode)
+	}
+
+	formValues := url.Values{}
+	formValues.Set("canary", convergedResponse.Canary)
+	formValues.Set("hpgrequestid", convergedResponse.SessionID)
+	formValues.Set(convergedResponse.SFTName, convergedResponse.SFT)
+	formValues.Set("ctx", convergedResponse.SCtx)
+	formValues.Set("login", loginDetails.Username)
+	formValues.Set("loginfmt", loginDetails.Username)
+	formValues.Set("passwd", loginDetails.Password)
+
+	req, err = http.NewRequest("POST", loginUrl, strings.NewReader(formValues.Encode()))
+	if err != nil {
+		return res, errors.Wrap(err, "error building login request")
+	}
+
+	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Add("Referer", refererUrl)
+
+	res, err = ac.client.Do(req)
+	if err != nil {
+		return res, errors.Wrap(err, "error retrieving login results")
+	}
+
+	return res, nil
+}
+
+func (ac *Client) processKmsiInterrupt(res *http.Response, srcBodyStr string) (*http.Response, error) {
+	var convergedResponse *ConvergedResponse
+	var err error
+
+	if err := json.Unmarshal([]byte(ac.getJsonFromConfig(srcBodyStr)), &convergedResponse); err != nil {
+		return res, errors.Wrap(err, "KMSI request unmarshal error")
+	}
+
+	formValues := url.Values{}
+	formValues.Set(convergedResponse.SFTName, convergedResponse.SFT)
+	formValues.Set("ctx", convergedResponse.SCtx)
+	formValues.Set("LoginOptions", "1")
+
+	req, err := http.NewRequest("POST", ac.fullUrl(res, convergedResponse.URLPost), strings.NewReader(formValues.Encode()))
+	if err != nil {
+		return res, errors.Wrap(err, "error building KMSI request")
+	}
+
+	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+
+	ac.client.DisableFollowRedirect()
+	res, err = ac.client.Do(req)
+	if err != nil {
+		return res, errors.Wrap(err, "error retrieving KMSI results")
+	}
+	ac.client.EnableFollowRedirect()
+
+	return res, nil
+}
+
+func (ac *Client) processConvergedTFA(res *http.Response, srcBodyStr string) (*http.Response, error) {
+	var convergedResponse *ConvergedResponse
+	var err error
+
+	if err := json.Unmarshal([]byte(ac.getJsonFromConfig(srcBodyStr)), &convergedResponse); err != nil {
+		return res, errors.Wrap(err, "ConvergedTFA response unmarshal error")
+	}
+
+	mfas := convergedResponse.ArrUserProofs
+
+	// if there's an explicit option to skip MFA, do so
+	if convergedResponse.URLSkipMfaRegistration != "" {
+		res, err = ac.client.Get(convergedResponse.URLSkipMfaRegistration)
+		if err != nil {
+			return res, errors.Wrap(err, "error retrieving skip MFA results")
 		}
-	default:
-		for _, v := range mfas {
-			if v.AuthMethodID == ac.idpAccount.MFA {
-				mfa = v
-				break
-			}
+	} else if len(mfas) != 0 {
+		// there's no explicit option to skip MFA, and MFA options are available
+		res, err = ac.processMfa(mfas, convergedResponse)
+		if err != nil {
+			return res, err
 		}
 	}
-	mfaReq := mfaRequest{AuthMethodID: mfa.AuthMethodID, Method: "BeginAuth", Ctx: ctx, FlowToken: flowToken}
-	return json.Marshal(mfaReq)
+
+	return res, nil
 }
 
-func (ac *Client) getJsonFromConfig(resBodyStr string) string {
-	startIndex := strings.Index(resBodyStr, "$Config=") + 8
-	endIndex := startIndex + strings.Index(resBodyStr[startIndex:], ";")
-	return resBodyStr[startIndex:endIndex]
-}
-
-func (ac *Client) getMfaFlowToken(mfas []userProof, loginPasswordResp passwordLoginResponse) (mfaResponse, error) {
+func (ac *Client) processMfa(mfas []userProof, convergedResponse *ConvergedResponse) (*http.Response, error) {
+	var res *http.Response
+	var err error
 	var mfaResp mfaResponse
+
 	if len(mfas) == 0 {
-		return mfaResp, fmt.Errorf("mfa not found")
-	}
-	mfaReqJson, err := ac.buildMfaRequestJson(mfas, loginPasswordResp.SFT, loginPasswordResp.SCtx)
-	if err != nil {
-		return mfaResp, err
-	}
-	mfaBeginRequest, err := http.NewRequest("POST", loginPasswordResp.URLBeginAuth, strings.NewReader(string(mfaReqJson)))
-	if err != nil {
-		return mfaResp, errors.Wrap(err, "error retrieving begin mfa")
-	}
-	mfaBeginRequest.Header.Add("Content-Type", "application/json")
-	res, err := ac.client.Do(mfaBeginRequest)
-	if err != nil {
-		return mfaResp, errors.Wrap(err, "error retrieving begin mfa")
-	}
-	mfaBeginJson := make([]byte, res.ContentLength)
-	if n, err := res.Body.Read(mfaBeginJson); err != nil && err != io.EOF || n != int(res.ContentLength) {
-		return mfaResp, errors.Wrap(err, "mfa BeginAuth response error")
+		return res, fmt.Errorf("MFA not found")
 	}
 
-	if err := json.Unmarshal(mfaBeginJson, &mfaResp); err != nil {
-		return mfaResp, errors.Wrap(err, "mfa BeginAuth  response unmarshal error")
-	}
-	if !mfaResp.Success {
-		return mfaResp, fmt.Errorf("mfa BeginAuth is not success %v", mfaResp.Message)
+	mfaResp, err = ac.processMfaBeginAuth(mfas, convergedResponse)
+	if err != nil {
+		return res, errors.Wrap(err, "error processing MFA BeginAuth")
 	}
 
-	//  mfa end
 	for i := 0; ; i++ {
 		mfaReq := mfaRequest{
 			AuthMethodID: mfaResp.AuthMethodID,
@@ -983,169 +467,312 @@ func (ac *Client) getMfaFlowToken(mfas []userProof, loginPasswordResp passwordLo
 				log.Printf("Phone approval required. Entropy is: %d", mfaResp.Entropy)
 			}
 		}
-		mfaReqJson, err := json.Marshal(mfaReq)
+
+		mfaResp, err = ac.processMfaEndAuth(mfaReq, convergedResponse)
 		if err != nil {
-			return mfaResp, err
+			return res, errors.Wrap(err, "error processing MFA EndAuth")
 		}
-		mfaEndRequest, err := http.NewRequest("POST", loginPasswordResp.URLEndAuth, strings.NewReader(string(mfaReqJson)))
-		if err != nil {
-			return mfaResp, errors.Wrap(err, "error retrieving begin mfa")
-		}
-		mfaEndRequest.Header.Add("Content-Type", "application/json")
-		res, err = ac.client.Do(mfaEndRequest)
-		if err != nil {
-			return mfaResp, errors.Wrap(err, "error retrieving begin mfa")
-		}
-		mfaJson := make([]byte, res.ContentLength)
-		if n, err := res.Body.Read(mfaJson); err != nil && err != io.EOF || n != int(res.ContentLength) {
-			return mfaResp, errors.Wrap(err, "mfa EndAuth response error")
-		}
-		if err := json.Unmarshal(mfaJson, &mfaResp); err != nil {
-			return mfaResp, errors.Wrap(err, "mfa EndAuth  response unmarshal error")
-		}
+
 		if mfaResp.ErrCode != 0 {
-			return mfaResp, fmt.Errorf("error mfa fail errcode: %d, message: %v", mfaResp.ErrCode, mfaResp.Message)
+			return res, fmt.Errorf("error processing MFA, errcode: %d, message: %v", mfaResp.ErrCode, mfaResp.Message)
 		}
+
 		if mfaResp.Success {
 			break
 		}
 		if !mfaResp.Retry {
 			break
 		}
+
 		// if mfaResp.Retry == true then
-		// must exist loginPasswordResp.OPerAuthPollingInterval[mfaResp.AuthMethodID]
-		time.Sleep(time.Duration(loginPasswordResp.OPerAuthPollingInterval[mfaResp.AuthMethodID]) * time.Second)
+		// must exist convergedResponse.OPerAuthPollingInterval[mfaResp.AuthMethodID]
+		time.Sleep(time.Duration(convergedResponse.OPerAuthPollingInterval[mfaResp.AuthMethodID]) * time.Second)
 	}
+
 	if !mfaResp.Success {
-		return mfaResp, fmt.Errorf("error mfa fail")
+		return res, fmt.Errorf("error processing MFA")
 	}
+
+	res, err = ac.processMfaAuth(mfaResp, convergedResponse)
+	if err != nil {
+		return res, errors.Wrap(err, "error processing MFA ProcessAuth")
+	}
+
+	return res, nil
+}
+
+func (ac *Client) processMfaBeginAuth(mfas []userProof, convergedResponse *ConvergedResponse) (mfaResponse, error) {
+	var res *http.Response
+	var err error
+	var mfaResp mfaResponse
+	var req *http.Request
+
+	mfa := mfas[0]
+	switch ac.idpAccount.MFA {
+	case "Auto":
+		for _, v := range mfas {
+			if v.IsDefault {
+				mfa = v
+				break
+			}
+		}
+	default:
+		for _, v := range mfas {
+			if v.AuthMethodID == ac.idpAccount.MFA {
+				mfa = v
+				break
+			}
+		}
+	}
+	mfaReqObj := mfaRequest{
+		AuthMethodID: mfa.AuthMethodID,
+		Method:       "BeginAuth",
+		Ctx:          convergedResponse.SCtx,
+		FlowToken:    convergedResponse.SFT,
+	}
+	mfaReqJson, err := json.Marshal(mfaReqObj)
+	if err != nil {
+		return mfaResp, errors.Wrap(err, "failed to build MFA BeginAuth request body")
+	}
+
+	req, err = http.NewRequest("POST", convergedResponse.URLBeginAuth, strings.NewReader(string(mfaReqJson)))
+	if err != nil {
+		return mfaResp, errors.Wrap(err, "error building MFA BeginAuth request")
+	}
+
+	req.Header.Add("Content-Type", "application/json")
+
+	res, err = ac.client.Do(req)
+	if err != nil {
+		return mfaResp, errors.Wrap(err, "error retrieving MFA BeginAuth results")
+	}
+
+	err = json.NewDecoder(res.Body).Decode(&mfaResp)
+	if err != nil {
+		return mfaResp, errors.Wrap(err, "error decoding MFA BeginAuth results")
+	}
+
+	if !mfaResp.Success {
+		return mfaResp, fmt.Errorf("MFA BeginAuth result is not success: %v", mfaResp.Message)
+	}
+
 	return mfaResp, nil
 }
 
-func (ac *Client) kmsiRequest(scheme string, host string, urlPost string, flowToken string, ctx string) (*http.Response, error) {
+func (ac *Client) processMfaEndAuth(mfaReqObj mfaRequest, convergedResponse *ConvergedResponse) (mfaResponse, error) {
 	var res *http.Response
-	KmsiURL := scheme + "://" + host + urlPost
-	KmsiValues := url.Values{}
-	KmsiValues.Set("flowToken", flowToken)
-	KmsiValues.Set("ctx", ctx)
-	KmsiValues.Set("LoginOptions", "1")
-	KmsiRequest, err := http.NewRequest("POST", KmsiURL, strings.NewReader(KmsiValues.Encode()))
-	if err != nil {
-		return res, errors.Wrap(err, "error retrieving kmsi results")
-	}
-	KmsiRequest.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-	ac.client.DisableFollowRedirect()
-	res, err = ac.client.Do(KmsiRequest)
-	if err != nil {
-		return res, errors.Wrap(err, "error retrieving kmsi results")
-	}
-	ac.client.EnableFollowRedirect()
-	return res, nil
-}
-
-func (ac *Client) processAuth(loginPasswordJson string, res *http.Response) (string, error) {
 	var err error
-	var loginPasswordResp passwordLoginResponse
-	var loginPasswordSkipMfaResp SkipMfaResponse
-	var restartSAMLResp startSAMLResponse
-	var resBodyStr string
+	var mfaResp mfaResponse
+	var req *http.Request
 
-	if err := json.Unmarshal([]byte(loginPasswordJson), &loginPasswordResp); err != nil {
-		return resBodyStr, errors.Wrap(err, "loginPassword response unmarshal error")
-	}
-	if err := json.Unmarshal([]byte(loginPasswordJson), &loginPasswordSkipMfaResp); err != nil {
-		return resBodyStr, errors.Wrap(err, "loginPassword response unmarshal error")
-	}
-	if err := json.Unmarshal([]byte(loginPasswordJson), &restartSAMLResp); err != nil {
-		return resBodyStr, errors.Wrap(err, "startSAML response unmarshal error")
+	mfaReqJson, err := json.Marshal(mfaReqObj)
+	if err != nil {
+		return mfaResp, errors.Wrap(err, "failed to build MFA EndAuth request body")
 	}
 
-	mfas := loginPasswordResp.ArrUserProofs
-
-	// If there's an explicit option to skip MFA, do so
-	if loginPasswordSkipMfaResp.URLSkipMfaRegistration != "" {
-		res, err = ac.client.Get(loginPasswordSkipMfaResp.URLSkipMfaRegistration)
-		if err != nil {
-			return resBodyStr, errors.Wrap(err, "error retrieving skip mfa results")
-		}
-	} else if len(mfas) != 0 {
-		// There's no explicit option to skip MFA, and MFA options are available
-		// Start MFA
-		mfaResp, err := ac.getMfaFlowToken(mfas, loginPasswordResp)
-		if err != nil {
-			return resBodyStr, err
-		}
-
-		// ProcessAuth
-		res, err = ac.processMfaAuth(mfaResp, loginPasswordResp, restartSAMLResp)
-		if err != nil {
-			return resBodyStr, err
-		}
-	}
-	// There was no explicit link to skip MFA
-	// and there were no MFA options available for us to process
-	// This can happen if MFA is enabled, but we're accessing from a MFA trusted IP
-	// See https://docs.microsoft.com/en-us/azure/active-directory/authentication/howto-mfa-mfasettings#targetText=MFA%20service%20settings,-Settings%20for%20app&targetText=Service%20settings%20can%20be%20accessed,Additional%20cloud-based%20MFA%20settings.
-	// Proceed with login as normal
-
-	// If we've been prompted with KMSI despite not going via MFA flow
-	// Azure can do this if MFA is enabled but
-	//  - we're accessing from an MFA whitelisted / trusted IP
-	//  - we've been exempted from a Conditional Access Policy
-	if loginPasswordResp.URLPost == "/kmsi" {
-		res, err = ac.kmsiRequest(
-			res.Request.URL.Scheme, res.Request.URL.Host, loginPasswordResp.URLPost, loginPasswordResp.SFT, loginPasswordResp.SCtx)
-		if err != nil {
-			return resBodyStr, err
-		}
+	req, err = http.NewRequest("POST", convergedResponse.URLEndAuth, strings.NewReader(string(mfaReqJson)))
+	if err != nil {
+		return mfaResp, errors.Wrap(err, "error building MFA EndAuth request")
 	}
 
-	return ac.responseBodyAsString(res.Body)
+	req.Header.Add("Content-Type", "application/json")
+
+	res, err = ac.client.Do(req)
+	if err != nil {
+		return mfaResp, errors.Wrap(err, "error retrieving MFA EndAuth results")
+	}
+
+	err = json.NewDecoder(res.Body).Decode(&mfaResp)
+	if err != nil {
+		return mfaResp, errors.Wrap(err, "error decoding MFA EndAuth results")
+	}
+
+	return mfaResp, nil
 }
 
-func (ac *Client) processMfaAuth(mfaResp mfaResponse, loginPasswordResp passwordLoginResponse, restartSAMLResp startSAMLResponse) (*http.Response, error) {
+func (ac *Client) processMfaAuth(mfaResp mfaResponse, convergedResponse *ConvergedResponse) (*http.Response, error) {
 	var res *http.Response
-	ProcessAuthValues := url.Values{}
-	ProcessAuthValues.Set(restartSAMLResp.SFTName, mfaResp.FlowToken)
-	ProcessAuthValues.Set("request", mfaResp.Ctx)
-	ProcessAuthValues.Set("login", loginPasswordResp.SPOSTUsername)
+	var err error
+	var req *http.Request
 
-	ProcessAuthRequest, err := http.NewRequest("POST", loginPasswordResp.URLPost, strings.NewReader(ProcessAuthValues.Encode()))
+	formValues := url.Values{}
+	formValues.Set(convergedResponse.SFTName, mfaResp.FlowToken)
+	formValues.Set("request", mfaResp.Ctx)
+	formValues.Set("login", convergedResponse.SPOSTUsername)
+
+	req, err = http.NewRequest("POST", convergedResponse.URLPost, strings.NewReader(formValues.Encode()))
 	if err != nil {
-		return res, errors.Wrap(err, "error retrieving process auth results")
+		return res, errors.Wrap(err, "error building MFA ProcessAuth request")
 	}
-	ProcessAuthRequest.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-	res, err = ac.client.Do(ProcessAuthRequest)
+
+	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+
+	res, err = ac.client.Do(req)
 	if err != nil {
-		return res, errors.Wrap(err, "error retrieving process auth results")
+		return res, errors.Wrap(err, "error retrieving MFA ProcessAuth results")
 	}
-	// data is embeded javascript object
-	// <script><![CDATA[  $Config=......; ]]>
-	resBody, _ := io.ReadAll(res.Body)
-	resBodyStr := string(resBody)
-	// reset res.Body so it can be read again later if required
-	res.Body = io.NopCloser(bytes.NewBuffer(resBody))
 
-	// After performing MFA we may be prompted with KMSI (Keep Me Signed In) page
-	// Ref: https://docs.microsoft.com/ja-jp/azure/active-directory/fundamentals/keep-me-signed-in
-	if strings.Contains(resBodyStr, "$Config") {
-		ProcessAuthJson := ac.getJsonFromConfig(resBodyStr)
-
-		var processAuthResp processAuthResponse
-		if err := json.Unmarshal([]byte(ProcessAuthJson), &processAuthResp); err != nil {
-			return res, errors.Wrap(err, "ProcessAuth response unmarshal error")
-		}
-
-		res, err = ac.kmsiRequest(
-			res.Request.URL.Scheme, res.Request.URL.Host, processAuthResp.URLPost, processAuthResp.SFT, processAuthResp.SCtx)
-		if err != nil {
-			return res, err
-		}
-	}
 	return res, nil
+}
+
+func (ac *Client) processSAMLRequest(res *http.Response, srcBodyStr string) (*http.Response, error) {
+	var err error
+
+	// data is embedded javascript
+	// window.location = 'https:/..../?SAMLRequest=......'
+	oidcResponseList := strings.Split(srcBodyStr, ";")
+	var samlRequestUrl string
+	for _, v := range oidcResponseList {
+		if strings.Contains(v, "SAMLRequest") {
+			startURLPos := strings.Index(v, "https://")
+			endURLPos := strings.Index(v[startURLPos:], "'")
+			if endURLPos == -1 {
+				endURLPos = strings.Index(v[startURLPos:], "\"")
+			}
+			samlRequestUrl = v[startURLPos : startURLPos+endURLPos]
+		}
+	}
+	if samlRequestUrl == "" {
+		return res, fmt.Errorf("unable to locate SAMLRequest URL")
+	}
+
+	res, err = ac.client.Get(samlRequestUrl)
+	if err != nil {
+		return res, errors.Wrap(err, "error retrieving SAMLRequest results")
+	}
+
+	return res, nil
+}
+
+func (ac *Client) processConvergedProofUpRedirect(res *http.Response, srcBodyStr string) (*http.Response, error) {
+	var convergedResponse *ConvergedResponse
+	var err error
+
+	if err := json.Unmarshal([]byte(ac.getJsonFromConfig(srcBodyStr)), &convergedResponse); err != nil {
+		return res, errors.Wrap(err, "skip MFA response unmarshal error")
+	}
+
+	if convergedResponse.URLSkipMfaRegistration == "" {
+		return res, errors.Wrap(err, "skip MFA not possible")
+	}
+
+	res, err = ac.client.Get(convergedResponse.URLSkipMfaRegistration)
+	if err != nil {
+		return res, errors.Wrap(err, "error processing skip MFA request")
+	}
+
+	return res, nil
+}
+
+func (ac *Client) getJsonFromConfig(resBodyStr string) string {
+	/*
+	 * data is embedded in a javascript object
+	 * <script><![CDATA[  $Config=......; ]]>
+	 */
+	startIndex := strings.Index(resBodyStr, "$Config=") + 8
+	endIndex := startIndex + strings.Index(resBodyStr[startIndex:], ";")
+	return resBodyStr[startIndex:endIndex]
 }
 
 func (ac *Client) responseBodyAsString(body io.ReadCloser) (string, error) {
 	resBody, err := io.ReadAll(body)
 	return string(resBody), err
+}
+
+func (ac *Client) fullUrl(res *http.Response, urlFragment string) string {
+	if strings.HasPrefix(urlFragment, "/") {
+		return res.Request.URL.Scheme + "://" + res.Request.URL.Host + urlFragment
+	} else {
+		return urlFragment
+	}
+}
+
+func (ac *Client) isHiddenForm(resBodyStr string) bool {
+	return strings.HasPrefix(resBodyStr, "<html><head><title>Working...</title>") && strings.Contains(resBodyStr, "name=\"hiddenform\"")
+}
+
+func (ac *Client) reProcessForm(srcBodyStr string) (*http.Response, error) {
+	var res *http.Response
+	var err error
+	var formValues url.Values
+	var formSubmitUrl string
+
+	formValues, formSubmitUrl, err = ac.reSubmitFormData(srcBodyStr)
+	if err != nil {
+		return res, errors.Wrap(err, "failed to parse hiddenform form")
+	}
+
+	if formSubmitUrl == "" {
+		return res, fmt.Errorf("unable to locate hiddenform submit URL")
+	}
+
+	req, err := http.NewRequest("POST", formSubmitUrl, strings.NewReader(formValues.Encode()))
+	if err != nil {
+		return res, errors.Wrap(err, "error building hiddenform request")
+	}
+
+	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+
+	res, err = ac.client.Do(req)
+	if err != nil {
+		return res, errors.Wrap(err, "error retrieving hiddenform results")
+	}
+
+	return res, nil
+}
+
+func (ac *Client) reSubmitFormData(resBodyStr string) (url.Values, string, error) {
+	formValues := url.Values{}
+	var formSubmitUrl string
+
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(resBodyStr))
+	if err != nil {
+		return formValues, formSubmitUrl, errors.Wrap(err, "failed to build document from response")
+	}
+
+	// prefil form data from page as provided
+	doc.Find("input").Each(func(i int, s *goquery.Selection) {
+		name, ok := s.Attr("name")
+		if !ok {
+			return
+		}
+		value, ok := s.Attr("value")
+		if !ok {
+			return
+		}
+		formValues.Set(name, value)
+	})
+
+	// identify form submit url/path
+	doc.Find("form").Each(func(i int, s *goquery.Selection) {
+		action, ok := s.Attr("action")
+		if !ok {
+			return
+		}
+		formSubmitUrl = action
+	})
+
+	return formValues, formSubmitUrl, nil
+}
+
+func (ac *Client) getSamlAssertion(resBodyStr string) (string, error) {
+	var samlAssertion string
+
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(resBodyStr))
+	if err != nil {
+		return samlAssertion, errors.Wrap(err, "failed to build document from response")
+	}
+
+	doc.Find("input").Each(func(i int, s *goquery.Selection) {
+		attrName, ok := s.Attr("name")
+		if !ok {
+			return
+		}
+		if attrName != "SAMLResponse" {
+			return
+		}
+		samlAssertion, _ = s.Attr("value")
+	})
+
+	return samlAssertion, nil
 }
