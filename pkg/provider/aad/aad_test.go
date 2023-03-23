@@ -492,15 +492,14 @@ func TestAad_UnmarshallMfaResponseWithoutEntropy(t *testing.T) {
 	}
 }
 
-func TestAad_getJsonFromConfig(t *testing.T) {
+func TestAad_unmarshalEmbeddedJson(t *testing.T) {
 	for _, i := range []string{"LoginEmbeddedJsonLineBreak", "LoginEmbeddedJsonNoLineBreak", "LoginEmbeddedJsonExtraJavascript"} {
 		t.Run(i, func(t *testing.T) {
 			data, err := os.ReadFile(fmt.Sprintf("testdata/%s.html", i))
 			require.Nil(t, err)
 			c := Client{}
-			s := c.getJsonFromConfig(string(data))
 			var v interface{}
-			err = json.Unmarshal([]byte(s), &v)
+			err = c.unmarshalEmbeddedJson(string(data), v)
 			require.Nil(t, err)
 		})
 	}
