@@ -713,11 +713,11 @@ func (_m *Page) ExposeBinding(name string, binding playwright.BindingCallFunctio
 }
 
 // ExposeFunction provides a mock function with given fields: name, binding
-func (_m *Page) ExposeFunction(name string, binding func([]interface{}) interface{}) error {
+func (_m *Page) ExposeFunction(name string, binding func(...interface{}) interface{}) error {
 	ret := _m.Called(name, binding)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(string, func([]interface{}) interface{}) error); ok {
+	if rf, ok := ret.Get(0).(func(string, func(...interface{}) interface{}) error); ok {
 		r0 = rf(name, binding)
 	} else {
 		r0 = ret.Error(0)
