@@ -15,6 +15,7 @@ import (
 	"github.com/PuerkitoBio/goquery"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+
 	"github.com/versent/saml2aws/v2/pkg/cfg"
 	"github.com/versent/saml2aws/v2/pkg/creds"
 	"github.com/versent/saml2aws/v2/pkg/prompter"
@@ -204,7 +205,7 @@ AuthProcessor:
 			res, err = ac.reProcessForm(resBodyStr)
 		default:
 			if strings.Contains(resBodyStr, "$Config") {
-				if err := json.Unmarshal([]byte(ac.getJsonFromConfig(resBodyStr)), &convergedResponse); err != nil {
+				if err := ac.unmarshalEmbeddedJson(resBodyStr, &convergedResponse); err != nil {
 					return samlAssertion, errors.Wrap(err, "unmarshal error")
 				}
 				logger.Debug("unknown process step found:", convergedResponse.Pgid)
@@ -225,7 +226,7 @@ func (ac *Client) processConvergedSignIn(res *http.Response, srcBodyStr string, 
 	var convergedResponse *ConvergedResponse
 	var err error
 
-	if err := json.Unmarshal([]byte(ac.getJsonFromConfig(srcBodyStr)), &convergedResponse); err != nil {
+	if err := ac.unmarshalEmbeddedJson(srcBodyStr, &convergedResponse); err != nil {
 		return res, errors.Wrap(err, "ConvergedSignIn response unmarshal error")
 	}
 
@@ -381,7 +382,7 @@ func (ac *Client) processKmsiInterrupt(res *http.Response, srcBodyStr string) (*
 	var convergedResponse *ConvergedResponse
 	var err error
 
-	if err := json.Unmarshal([]byte(ac.getJsonFromConfig(srcBodyStr)), &convergedResponse); err != nil {
+	if err := ac.unmarshalEmbeddedJson(srcBodyStr, &convergedResponse); err != nil {
 		return res, errors.Wrap(err, "KMSI request unmarshal error")
 	}
 
@@ -411,7 +412,7 @@ func (ac *Client) processConvergedTFA(res *http.Response, srcBodyStr string) (*h
 	var convergedResponse *ConvergedResponse
 	var err error
 
-	if err := json.Unmarshal([]byte(ac.getJsonFromConfig(srcBodyStr)), &convergedResponse); err != nil {
+	if err := ac.unmarshalEmbeddedJson(srcBodyStr, &convergedResponse); err != nil {
 		return res, errors.Wrap(err, "ConvergedTFA response unmarshal error")
 	}
 
@@ -648,7 +649,7 @@ func (ac *Client) processConvergedProofUpRedirect(res *http.Response, srcBodyStr
 	var convergedResponse *ConvergedResponse
 	var err error
 
-	if err := json.Unmarshal([]byte(ac.getJsonFromConfig(srcBodyStr)), &convergedResponse); err != nil {
+	if err := ac.unmarshalEmbeddedJson(srcBodyStr, &convergedResponse); err != nil {
 		return res, errors.Wrap(err, "skip MFA response unmarshal error")
 	}
 
@@ -664,14 +665,13 @@ func (ac *Client) processConvergedProofUpRedirect(res *http.Response, srcBodyStr
 	return res, nil
 }
 
-func (ac *Client) getJsonFromConfig(resBodyStr string) string {
+func (ac *Client) unmarshalEmbeddedJson(resBodyStr string, v any) error {
 	/*
 	 * data is embedded in a javascript object
 	 * <script><![CDATA[  $Config=......; ]]>
 	 */
 	startIndex := strings.Index(resBodyStr, "$Config=") + 8
-	endIndex := startIndex + strings.Index(resBodyStr[startIndex:], ";")
-	return resBodyStr[startIndex:endIndex]
+	return json.NewDecoder(strings.NewReader(resBodyStr[startIndex:])).Decode(&v)
 }
 
 func (ac *Client) responseBodyAsString(body io.ReadCloser) (string, error) {
