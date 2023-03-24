@@ -153,16 +153,19 @@ func TestOktaParseMfaIdentifer(t *testing.T) {
 
 	tests := []parseMfaIdentifierTests{
 		{
+			title:      "Google TOTP doesn't have a name",
 			identifier: "GOOGLE TOKEN:SOFTWARE:TOTP",
 			authName:   "",
 			index:      0,
 		},
 		{
+			title:      "WebAuthn tokens have names",
 			identifier: "FIDO WEBAUTHN",
 			authName:   "MacBook Touch ID",
 			index:      1,
 		},
 		{
+			title:      "A second webauthn token with a different name",
 			identifier: "FIDO WEBAUTHN",
 			authName:   "Yubikey 5",
 			index:      2,
