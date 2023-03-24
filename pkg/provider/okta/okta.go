@@ -774,22 +774,7 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 			return "", errors.Wrap(err, "error retrieving token post response")
 		}
 
-		body, err := io.ReadAll(res.Body)
-		if err != nil {
-			return "", errors.Wrap(err, "error retrieving body from response")
-		}
-
-		resp = string(body)
-		sessionToken := gjson.Get(resp, "sessionToken").String()
-		if sessionToken == "" {
-			status := gjson.Get(resp, "status").String()
-			if status != "" {
-				return "", errors.Errorf("response does not contain session token, received status is: %q", status)
-			}
-			return "", errors.Errorf("response does not contain session token")
-		}
-
-		return gjson.Get(resp, "sessionToken").String(), nil
+		return extractSessionToken(res.Body)
 
 	case IdentifierPushMfa:
 
@@ -1108,6 +1093,25 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 
 	// catch all
 	return "", errors.New("no mfa options provided")
+}
+
+func extractSessionToken(r io.Reader) (string, error) {
+	bb, err := io.ReadAll(r)
+	if err != nil {
+		return "", errors.Wrap(err, "error retrieving body from response")
+	}
+
+	resp := string(bb)
+	sessionToken := gjson.Get(resp, "sessionToken").String()
+	if sessionToken == "" {
+		status := gjson.Get(resp, "status").String()
+		if status != "" {
+			return "", errors.Errorf("response does not contain session token, received status is: %q", status)
+		}
+		return "", errors.Errorf("response does not contain session token")
+	}
+
+	return gjson.Get(resp, "sessionToken").String(), nil
 }
 
 func fidoWebAuthn(oc *Client, oktaOrgHost string, challengeContext *mfaChallengeContext, mfaOption int, stateToken string, mfaOptions []string, resp string) (string, error) {
