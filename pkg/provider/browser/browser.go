@@ -26,6 +26,13 @@ func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 
 func (cl *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error) {
 
+	// Automatically download browser downloads to match behavior releases < 2.36.4
+	// TODO: provide override to not automatically download playwright browsers
+	err := playwright.Install()
+	if err != nil {
+		return "", err
+	}
+
 	pw, err := playwright.Run()
 	if err != nil {
 		return "", err
