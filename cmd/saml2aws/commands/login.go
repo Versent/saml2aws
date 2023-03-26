@@ -217,6 +217,13 @@ func resolveLoginDetails(account *cfg.IDPAccount, loginFlags *flags.LoginExecFla
 		loginDetails.ClientSecret = loginFlags.CommonFlags.ClientSecret
 	}
 
+	// if you supply an mfa_ip_address in a flag or an IDP account it takes precedence
+	if account.MFAIPAddress != "" {
+		loginDetails.MFAIPAddress = account.MFAIPAddress
+	} else if loginFlags.CommonFlags.MFAIPAddress != "" {
+		loginDetails.MFAIPAddress = loginFlags.CommonFlags.MFAIPAddress
+	}
+
 	// log.Printf("loginDetails %+v", loginDetails)
 
 	// if skip prompt was passed just pass back the flag values
