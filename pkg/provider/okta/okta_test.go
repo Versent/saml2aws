@@ -3,6 +3,8 @@ package okta
 import (
 	"errors"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"testing"
 
@@ -18,6 +20,13 @@ type stateTokenTests struct {
 	err        error
 }
 
+type parseMfaIdentifierTests struct {
+	title      string
+	identifier string
+	authName   string
+	index      int
+}
+
 func TestGetStateTokenFromOktaPageBody(t *testing.T) {
 	tests := []stateTokenTests{
 		{
@@ -27,13 +36,13 @@ func TestGetStateTokenFromOktaPageBody(t *testing.T) {
 			err:        nil,
 		},
 		{
-			title:      "State token not in body casues error",
+			title:      "State token not in body causes error",
 			body:       "someJavascriptCode();\nsomeOtherJavaScriptCode();",
 			stateToken: "",
 			err:        errors.New("cannot find state token"),
 		},
 		{
-			title:      "State token with hypen handled correctly",
+			title:      "State token with hyphen handled correctly",
 			body:       "someJavascriptCode();\nvar stateToken = '12345\x2D6789';\nsomeOtherJavaScriptCode();",
 			stateToken: "12345-6789",
 			err:        nil,
@@ -113,4 +122,90 @@ func TestOktaCfgFlagsCustomState(t *testing.T) {
 	assert.True(t, oc.disableSessions, fmt.Errorf("DisableSessions was set to true so disableSessions should be true"))
 	assert.False(t, oc.rememberDevice, fmt.Errorf("DisablDisableSessionseRememberDevice was set to true, so rememberDevice should be false"))
 
+}
+
+func TestOktaParseMfaIdentifer(t *testing.T) {
+	resp := `{
+		"_embedded": {
+			"factors": [
+				{
+					"factorType": "token:software:totp",
+					"provider": "GOOGLE",
+					"profile": {
+						"credentialId": "dade.murphy@example.com"
+					}
+				},
+				{
+					"factorType":"webauthn",
+					"provider":"FIDO",
+					"profile":{
+						"authenticatorName":"MacBook Touch ID"
+					}
+				},
+				{
+					"factorType":"webauthn",
+					"provider":"FIDO",
+					"profile":{
+						"authenticatorName":"Yubikey 5"
+					}
+				}
+			]
+		}
+	}`
+
+	tests := []parseMfaIdentifierTests{
+		{
+			title:      "Google TOTP doesn't have a name",
+			identifier: "GOOGLE TOKEN:SOFTWARE:TOTP",
+			authName:   "",
+			index:      0,
+		},
+		{
+			title:      "WebAuthn tokens have names",
+			identifier: "FIDO WEBAUTHN",
+			authName:   "MacBook Touch ID",
+			index:      1,
+		},
+		{
+			title:      "A second webauthn token with a different name",
+			identifier: "FIDO WEBAUTHN",
+			authName:   "Yubikey 5",
+			index:      2,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.title, func(t *testing.T) {
+			identifier, authName := parseMfaIdentifer(resp, test.index)
+			assert.Equal(t, test.identifier, identifier)
+			assert.Equal(t, test.authName, authName)
+		})
+	}
+}
+
+func TestGetStateToken(t *testing.T) {
+	svr := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		expected := "var stateToken = \"token1\";"
+		_, err := w.Write([]byte(expected))
+		assert.Nil(t, err)
+	}))
+	defer svr.Close()
+
+	idpAccount := cfg.NewIDPAccount()
+	idpAccount.URL = svr.URL
+	idpAccount.Username = "user@example.com"
+	idpAccount.SkipVerify = true
+
+	loginDetails := &creds.LoginDetails{
+		Username: idpAccount.Username,
+		Password: "abc123",
+		URL:      idpAccount.URL,
+	}
+
+	oc, err := New(idpAccount)
+	assert.Nil(t, err)
+
+	stateToken, err := oc.getStateToken(loginDetails)
+	assert.Nil(t, err)
+	assert.Equal(t, "token1", stateToken)
 }
