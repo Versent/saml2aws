@@ -55,8 +55,12 @@ func (kc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		return "", errors.Wrap(err, "error loading first page")
 	}
 
+	// Google supports only JavaScript-enabled clients
+	authForm.Set("bgresponse", "js_enabled")
+
 	authForm.Set("Email", loginDetails.Username)
 
+	// Post email address w/o password, then Get the password-input page
 	passwordURL, passwordForm, err := kc.loadLoginPage(authURL+"?hl=en&loc=US", loginDetails.URL+"&hl=en&loc=US", authForm)
 	if err != nil {
 		return "", errors.Wrap(err, "error loading login page")
@@ -64,23 +68,12 @@ func (kc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 
 	logger.Debugf("loginURL: %s", passwordURL)
 
-	authForm.Set("Passwd", loginDetails.Password)
+	passwordForm.Set("Passwd", loginDetails.Password)
+	passwordForm.Set("TrustDevice", "on")
 
 	referingURL := passwordURL
 
-	if _, rawIdPresent := passwordForm["rawidentifier"]; rawIdPresent {
-		authForm.Set("rawidentifier", loginDetails.Username)
-		referingURL = authURL
-	}
-
-	if v, tlPresent := passwordForm["TL"]; tlPresent {
-		authForm.Set("TL", v[0])
-	}
-	if v, gxfPresent := passwordForm["gxf"]; gxfPresent {
-		authForm.Set("gxf", v[0])
-	}
-
-	responseDoc, err := kc.loadChallengePage(passwordURL+"?hl=en&loc=US", referingURL, authForm, loginDetails)
+	responseDoc, err := kc.loadChallengePage(passwordURL+"?hl=en&loc=US", referingURL, passwordForm, loginDetails)
 	if err != nil {
 		return "", errors.Wrap(err, "error loading challenge page")
 	}
@@ -231,62 +224,7 @@ func (kc *Client) loadFirstPage(loginDetails *creds.LoginDetails) (string, url.V
 		return "", nil, errors.Wrap(err, "failed to build login form data")
 	}
 
-	_, loginPageV1 := authForm["GALX"]
-
-	var postForm url.Values
-	// using a field which is known to be in the original login page
-	if loginPageV1 {
-		// Login page v1
-		postForm = url.Values{
-			"bgresponse":               []string{"js_disabled"},
-			"checkConnection":          []string{""},
-			"checkedDomains":           []string{"youtube"},
-			"continue":                 []string{authForm.Get("continue")},
-			"gxf":                      []string{authForm.Get("gxf")},
-			"identifier-captcha-input": []string{""},
-			"identifiertoken":          []string{""},
-			"identifiertoken_audio":    []string{""},
-			"ltmpl":                    []string{"popup"},
-			"oauth":                    []string{"1"},
-			"Page":                     []string{authForm.Get("Page")},
-			"Passwd":                   []string{""},
-			"PersistentCookie":         []string{"yes"},
-			"ProfileInformation":       []string{""},
-			"pstMsg":                   []string{"0"},
-			"sarp":                     []string{"1"},
-			"scc":                      []string{"1"},
-			"SessionState":             []string{authForm.Get("SessionState")},
-			"signIn":                   []string{authForm.Get("signIn")},
-			"_utf8":                    []string{authForm.Get("_utf8")},
-			"GALX":                     []string{authForm.Get("GALX")},
-		}
-	} else {
-		// Login page v2
-		postForm = url.Values{
-			"challengeId":     []string{"1"},
-			"challengeType":   []string{"1"},
-			"continue":        []string{authForm.Get("continue")},
-			"scc":             []string{"1"},
-			"sarp":            []string{"1"},
-			"checkeddomains":  []string{"youtube"},
-			"checkConnection": []string{"youtube:930:1"},
-			"pstMessage":      []string{"1"},
-			"oauth":           []string{authForm.Get("oauth")},
-			"flowName":        []string{authForm.Get("flowName")},
-			"faa":             []string{"1"},
-			"Email":           []string{""},
-			"Passwd":          []string{""},
-			"TrustDevice":     []string{"on"},
-			"bgresponse":      []string{"js_disabled"},
-		}
-		for _, k := range []string{"TL", "gxf"} {
-			if v, ok := authForm[k]; ok {
-				postForm.Set(k, v[0])
-			}
-		}
-	}
-
-	return submitURL, postForm, err
+	return submitURL, authForm, err
 }
 
 func (kc *Client) loadLoginPage(submitURL string, referer string, authForm url.Values) (string, url.Values, error) {
@@ -325,6 +263,8 @@ func (kc *Client) loadLoginPage(submitURL string, referer string, authForm url.V
 }
 
 func (kc *Client) loadChallengePage(submitURL string, referer string, authForm url.Values, loginDetails *creds.LoginDetails) (*goquery.Document, error) {
+
+	authForm.Set("bgresponse", "js_enabled")
 
 	req, err := http.NewRequest("POST", submitURL, strings.NewReader(authForm.Encode()))
 	if err != nil {
