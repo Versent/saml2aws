@@ -3,6 +3,8 @@ package okta
 import (
 	"errors"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"testing"
 
@@ -179,4 +181,31 @@ func TestOktaParseMfaIdentifer(t *testing.T) {
 			assert.Equal(t, test.authName, authName)
 		})
 	}
+}
+
+func TestGetStateToken(t *testing.T) {
+	svr := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		expected := "var stateToken = \"token1\";"
+		_, err := w.Write([]byte(expected))
+		assert.Nil(t, err)
+	}))
+	defer svr.Close()
+
+	idpAccount := cfg.NewIDPAccount()
+	idpAccount.URL = svr.URL
+	idpAccount.Username = "user@example.com"
+	idpAccount.SkipVerify = true
+
+	loginDetails := &creds.LoginDetails{
+		Username: idpAccount.Username,
+		Password: "abc123",
+		URL:      idpAccount.URL,
+	}
+
+	oc, err := New(idpAccount)
+	assert.Nil(t, err)
+
+	stateToken, err := oc.getStateToken(loginDetails)
+	assert.Nil(t, err)
+	assert.Equal(t, "token1", stateToken)
 }
