@@ -557,7 +557,7 @@ func (oc *Client) follow(ctx context.Context, req *http.Request, loginDetails *c
 		logger.WithField("type", "saml-response").Debug("doc detect")
 		handler = oc.handleFormRedirect
 	} else {
-		stateToken, err := oc.getStateToken(loginDetails)
+		stateToken, err := oc.getStateToken(req, loginDetails)
 		if err != nil {
 			return "", errors.Wrap(err, "failed to getStateToken")
 		}
@@ -579,11 +579,15 @@ func (oc *Client) follow(ctx context.Context, req *http.Request, loginDetails *c
 
 }
 
-func (oc *Client) getStateToken(loginDetails *creds.LoginDetails) (string, error) {
-	req, err := http.NewRequest("GET", loginDetails.URL, nil)
+func (oc *Client) getStateToken(req *http.Request, loginDetails *creds.LoginDetails) (string, error) {
+	url, err := url.Parse(loginDetails.URL)
 	if err != nil {
 		return "", errors.Wrap(err, "error building app request")
 	}
+
+	req.URL = url
+	req.Method = "GET"
+	req.Body = nil
 
 	res, err := oc.client.Do(req)
 	if err != nil {
@@ -680,6 +684,14 @@ func getMfaChallengeContext(oc *Client, mfaOption int, resp string) (*mfaChallen
 	factorID := gjson.Get(resp, fmt.Sprintf("_embedded.factors.%d.id", mfaOption)).String()
 	oktaVerify := gjson.Get(resp, fmt.Sprintf("_embedded.factors.%d._links.verify.href", mfaOption)).String()
 	mfaIdentifer, _ := parseMfaIdentifer(resp, mfaOption)
+
+	if !strings.Contains(oktaVerify, "rememberDevice") {
+		separator := "?"
+		if strings.Contains(oktaVerify, "?") {
+			separator = "&"
+		}
+		oktaVerify = oktaVerify + separator + "rememberDevice=" + strconv.FormatBool(oc.rememberDevice)
+	}
 
 	logger.WithField("factorID", factorID).WithField("oktaVerify", oktaVerify).WithField("mfaIdentifer", mfaIdentifer).Debug("MFA")
 
