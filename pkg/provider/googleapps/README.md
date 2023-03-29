@@ -4,10 +4,9 @@ This provider uses SAML with Google Apps to enable authentication of users to AW
 
 # prerequisites
 
-Setup your Google Apps and AWS Account as per one of the configuration guides.
+Setup your Google Workspace Apps and AWS Account:
 
-* [How to Set Up Federated Single Sign-On to AWS Using Google Apps](https://aws.amazon.com/blogs/security/how-to-set-up-federated-single-sign-on-to-aws-using-google-apps/)
-* [Using Google Apps SAML SSO to do one-click login to AWS](https://blog.faisalmisle.com/2015/11/using-google-apps-saml-sso-to-do-one-click-login-to-aws/)
+* [How to set up IAM federation using Google Workspace](https://aws.amazon.com/blogs/security/how-to-set-up-federated-single-sign-on-to-aws-using-google-workspace/)
 
 # configuration
 

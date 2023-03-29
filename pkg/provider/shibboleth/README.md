@@ -16,4 +16,4 @@ https://idp.example.com/idp/profile/SAML2/Unsolicited/SSO?providerId=urn:amazon:
 
 * Tested on:
  * Shibboleth 3.3 with Duo MFA;
- * Shibboleth 4.0.1 with Duo MFA and CSRF tokens.
+ * Shibboleth 4.0.1, 4.2.1 with Duo MFA and CSRF tokens.

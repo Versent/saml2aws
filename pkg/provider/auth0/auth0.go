@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"html"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -86,7 +86,7 @@ type sessionInfo struct {
 	csrf  string
 }
 
-//authCallbackRequest represents Auth0 authentication callback request
+// authCallbackRequest represents Auth0 authentication callback request
 type authCallbackRequest struct {
 	method string
 	url    string
@@ -207,7 +207,7 @@ func (ac *Client) fetchSessionInfo(loginURL string) (*sessionInfo, error) {
 		return nil, errors.Wrap(err, "error retrieving response")
 	}
 
-	respBody, err := ioutil.ReadAll(resp.Body)
+	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, errors.Wrap(err, "error retrieving response body")
 	}
@@ -249,7 +249,7 @@ func (ac *Client) getConnectionNames(connectionInfoURL string) ([]string, error)
 		return nil, errors.Wrap(err, "error retrieving response")
 	}
 
-	respBody, err := ioutil.ReadAll(resp.Body)
+	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, errors.Wrap(err, "error retrieving body from response")
 	}
@@ -340,7 +340,7 @@ func (ac *Client) loginAuth0(loginDetails *creds.LoginDetails, ai *authInfo) (st
 		return "", errors.Wrap(err, "error retrieving auth response")
 	}
 
-	respBody, err := ioutil.ReadAll(resp.Body)
+	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", errors.Wrap(err, "error retrieving body from response")
 	}
@@ -364,7 +364,7 @@ func (ac *Client) doAuthCallback(authCallback *authCallbackRequest, ai *authInfo
 		return "", errors.Wrap(err, "error retrieving auth callback response")
 	}
 
-	respBody, err := ioutil.ReadAll(resp.Body)
+	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", errors.Wrap(err, "error retrieving body from response")
 	}
