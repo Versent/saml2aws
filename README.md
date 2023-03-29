@@ -277,7 +277,7 @@ Commands:
     Emit a script that will export environment variables.
 
     -p, --profile=PROFILE      The AWS profile to save the temporary credentials. (env: SAML2AWS_PROFILE)
-        --shell=bash           Type of shell environment. Options include: bash, powershell, fish, env
+        --shell=bash           Type of shell environment. Options include: bash, /bin/sh, powershell, fish, env
         --credentials-file=CREDENTIALS-FILE
                                The file that will cache the credentials retrieved from AWS. When not specified, will use the default AWS credentials file location. (env: SAML2AWS_CREDENTIALS_FILE)
 
@@ -297,7 +297,7 @@ export AWS_CREDENTIAL_EXPIRATION="2016-09-04T38:27:00Z00:00"
 SAML2AWS_PROFILE=saml
 ```
 
-Powershell, and fish shells are supported as well.
+Powershell, sh and fish shells are supported as well.
 Env is useful for all AWS SDK compatible tools that can source an env file. It is a powerful combo with docker and the `--env-file` parameter.
 
 If you use `eval $(saml2aws script)` frequently, you may want to create a alias for it:
