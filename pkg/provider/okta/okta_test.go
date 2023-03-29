@@ -4,10 +4,13 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"testing"
+	"testing/iotest"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/versent/saml2aws/v2/pkg/cfg"
@@ -59,6 +62,65 @@ func TestGetStateTokenFromOktaPageBody(t *testing.T) {
 				assert.Equal(t, test.err.Error(), err.Error())
 			}
 
+		})
+	}
+}
+
+func TestExtractSessionToken(t *testing.T) {
+	tests := []struct {
+		name          string
+		r             io.Reader
+		expectedToken string
+		expectedError string
+	}{
+		{
+			name:          "response with session token",
+			r:             strings.NewReader(`{"sessionToken": "xxxx"}`),
+			expectedToken: "xxxx",
+		},
+		{
+			name:          "response with no session token but with status",
+			r:             strings.NewReader(`{"status": "invalid password"}`),
+			expectedError: "response does not contain session token, received status is: \"invalid password\"",
+		},
+		{
+			name:          "response with no session token and no status",
+			r:             strings.NewReader(`{}`),
+			expectedError: "response does not contain session token",
+		},
+		{
+			name:          "response is not even json",
+			r:             strings.NewReader(`const x = {}`),
+			expectedError: "response does not contain session token",
+		},
+		{
+			name:          "reader returns an error",
+			r:             iotest.ErrReader(fmt.Errorf("failed to read")),
+			expectedError: "error retrieving body from response: failed to read",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			resp, err := extractSessionToken(tc.r)
+			if tc.expectedError != "" {
+				if err == nil {
+					t.Fatalf("Expected error, but got null")
+				}
+				if err.Error() != tc.expectedError {
+					t.Fatalf("Expected error %q, but got %q",
+						err.Error(), tc.expectedError,
+					)
+				}
+			}
+			if tc.expectedToken != "" {
+				if err != nil {
+					t.Fatalf("Expected token %q, but got error %v", tc.expectedToken, err)
+				}
+				if resp != tc.expectedToken {
+					t.Fatalf("Expected token %q, but got %q", tc.expectedToken, resp)
+				}
+			}
 		})
 	}
 }
