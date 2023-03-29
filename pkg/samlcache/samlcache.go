@@ -3,7 +3,6 @@ package samlcache
 import (
 	b64 "encoding/base64"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -66,7 +65,7 @@ func (p *SAMLCacheProvider) IsValid() bool {
 	}
 	logger = logger.WithField("Cache_file", cache_path)
 
-	raw, err := ioutil.ReadFile(cache_path)
+	raw, err := os.ReadFile(cache_path)
 	if err != nil {
 		logger.Debug("Could not read cache content", err)
 		return false
@@ -130,7 +129,7 @@ func (p *SAMLCacheProvider) ReadRaw() (string, error) {
 		cache_path = p.Filename
 	}
 
-	content, err := ioutil.ReadFile(cache_path)
+	content, err := os.ReadFile(cache_path)
 	if err != nil {
 		return "", errors.Wrap(err, "Could not read the cache file path")
 	}
@@ -156,7 +155,7 @@ func (p *SAMLCacheProvider) WriteRaw(samlAssertion string) error {
 	if err != nil {
 		return errors.Wrap(err, "Could not write the cache file directory")
 	}
-	err = ioutil.WriteFile(cache_path, []byte(samlAssertion), SAMLCacheFilePermissions)
+	err = os.WriteFile(cache_path, []byte(samlAssertion), SAMLCacheFilePermissions)
 	if err != nil {
 		return errors.Wrap(err, "Could not write the cache file path")
 	}

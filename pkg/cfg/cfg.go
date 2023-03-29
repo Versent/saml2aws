@@ -40,6 +40,7 @@ type IDPAccount struct {
 	Username              string `ini:"username"`
 	Provider              string `ini:"provider"`
 	MFA                   string `ini:"mfa"`
+	MFAIPAddress          string `ini:"mfa_ip_address"` // used by OneLogin
 	SkipVerify            bool   `ini:"skip_verify"`
 	Timeout               int    `ini:"timeout"`
 	AmazonWebservicesURN  string `ini:"aws_urn"`
@@ -57,6 +58,7 @@ type IDPAccount struct {
 	TargetURL             string `ini:"target_url"`
 	DisableRememberDevice bool   `ini:"disable_remember_device"` // used by Okta
 	DisableSessions       bool   `ini:"disable_sessions"`        // used by Okta
+	Headless              bool   `ini:"headless"`                // used by browser
 	Prompter              string `ini:"prompter"`
 }
 
