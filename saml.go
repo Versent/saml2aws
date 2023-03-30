@@ -16,15 +16,15 @@ const (
 	responseTag           = "Response"
 )
 
-//ErrMissingElement is the error type that indicates an element and/or attribute is
-//missing. It provides a structured error that can be more appropriately acted
-//upon.
+// ErrMissingElement is the error type that indicates an element and/or attribute is
+// missing. It provides a structured error that can be more appropriately acted
+// upon.
 type ErrMissingElement struct {
 	Tag, Attribute string
 }
 
-//ErrMissingAssertion indicates that an appropriate assertion element could not
-//be found in the SAML Response
+// ErrMissingAssertion indicates that an appropriate assertion element could not
+// be found in the SAML Response
 var (
 	ErrMissingAssertion = ErrMissingElement{Tag: assertionTag}
 )
