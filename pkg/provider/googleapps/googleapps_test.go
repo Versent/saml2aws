@@ -171,3 +171,19 @@ func TestWrongPassword(t *testing.T) {
 	txt := doc.Selection.Find("#" + passwordErrorId).Text()
 	require.NotEqual(t, "", txt)
 }
+
+func TestExtractDevicePushExtraNumber(t *testing.T) {
+	data1, err := os.ReadFile("example/challenge-extra-number.html")
+	require.Nil(t, err)
+	doc1, err := goquery.NewDocumentFromReader(bytes.NewReader(data1))
+	require.Nil(t, err)
+	require.Equal(t, "89", extractDevicePushExtraNumber(doc1))
+
+	for _, filename := range []string{"example/challenge-prompt.html", "example/challenge-totp.html"} {
+		data2, err := os.ReadFile(filename)
+		require.Nil(t, err)
+		doc2, err := goquery.NewDocumentFromReader(bytes.NewReader(data2))
+		require.Nil(t, err)
+		require.Equal(t, "", extractDevicePushExtraNumber(doc2))
+	}
+}
