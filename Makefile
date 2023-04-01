@@ -1,5 +1,6 @@
 NAME=saml2aws
 ARCH=$(shell uname -m)
+OS=$(shell uname)
 VERSION=2.28.0
 ITERATION := 1
 
@@ -36,7 +37,13 @@ install:
 .PHONY: mod
 
 build: $(BIN_DIR)/goreleaser
-	$(BIN_DIR)/goreleaser build --snapshot --rm-dist
+ifeq ($(OS),Darwin)
+	$(BIN_DIR)/goreleaser build --snapshot --clean --config $(CURDIR)/.goreleaser.macos-latest.yml
+else ifeq ($(OS),Linux)
+	$(BIN_DIR)/goreleaser build --snapshot --clean --config $(CURDIR)/.goreleaser.ubuntu-latest.yml
+else
+	$(error Unsupported build OS: $(OS))
+endif
 .PHONY: build
 
 clean:

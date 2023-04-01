@@ -1,7 +1,6 @@
 package awsconfig
 
 import (
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -143,7 +142,7 @@ func (p *CredentialsProvider) ensureConfigExists() error {
 			logger.WithField("dir", dir).Debug("Dir created")
 
 			// create an base config file
-			err = ioutil.WriteFile(filename, []byte("["+p.Profile+"]"), 0600)
+			err = os.WriteFile(filename, []byte("["+p.Profile+"]"), 0600)
 			if err != nil {
 				return err
 			}

@@ -7,7 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"html"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"net/http/cookiejar"
@@ -180,7 +180,7 @@ func (oc *Client) createSession(loginDetails *creds.LoginDetails, sessionToken s
 		return "", "", errors.Wrap(err, "error retrieving session response")
 	}
 
-	body, err := ioutil.ReadAll(res.Body)
+	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		return "", "", errors.Wrap(err, "error retrieving body from response")
 	}
@@ -257,7 +257,7 @@ func (oc *Client) validateSession(loginDetails *creds.LoginDetails) error {
 		return errors.Wrap(err, "error retrieving session response")
 	}
 
-	body, err := ioutil.ReadAll(res.Body)
+	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		return errors.Wrap(err, "error retrieving body from response")
 	}
@@ -314,7 +314,7 @@ func (oc *Client) authWithSession(loginDetails *creds.LoginDetails) (string, err
 		logger.Debugf("error authing with session: %v", err)
 	}
 
-	body, err := ioutil.ReadAll(res.Body)
+	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		logger.Debugf("error reading body for auth with session: %v", err)
 	}
@@ -426,7 +426,7 @@ func (oc *Client) primaryAuth(loginDetails *creds.LoginDetails) (string, string,
 		return "", "", "", errors.Wrap(err, "error retrieving auth response")
 	}
 
-	body, err := ioutil.ReadAll(res.Body)
+	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		return "", "", "", errors.Wrap(err, "error retrieving body from response")
 	}
@@ -557,21 +557,9 @@ func (oc *Client) follow(ctx context.Context, req *http.Request, loginDetails *c
 		logger.WithField("type", "saml-response").Debug("doc detect")
 		handler = oc.handleFormRedirect
 	} else {
-		req, err = http.NewRequest("GET", loginDetails.URL, nil)
+		stateToken, err := oc.getStateToken(req, loginDetails)
 		if err != nil {
-			return "", errors.Wrap(err, "error building app request")
-		}
-		res, err = oc.client.Do(req)
-		if err != nil {
-			return "", errors.Wrap(err, "error retrieving app response")
-		}
-		body, err := ioutil.ReadAll(res.Body)
-		if err != nil {
-			return "", errors.Wrap(err, "error retrieving body from response")
-		}
-		stateToken, err := getStateTokenFromOktaPageBody(string(body))
-		if err != nil {
-			return "", errors.Wrap(err, "error retrieving saml response")
+			return "", errors.Wrap(err, "failed to getStateToken")
 		}
 		loginDetails.StateToken = stateToken
 		return oc.Authenticate(loginDetails)
@@ -591,8 +579,33 @@ func (oc *Client) follow(ctx context.Context, req *http.Request, loginDetails *c
 
 }
 
+func (oc *Client) getStateToken(req *http.Request, loginDetails *creds.LoginDetails) (string, error) {
+	url, err := url.Parse(loginDetails.URL)
+	if err != nil {
+		return "", errors.Wrap(err, "error building app request")
+	}
+
+	req.URL = url
+	req.Method = "GET"
+	req.Body = nil
+
+	res, err := oc.client.Do(req)
+	if err != nil {
+		return "", errors.Wrap(err, "error retrieving app response")
+	}
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		return "", errors.Wrap(err, "error retrieving body from response")
+	}
+	stateToken, err := getStateTokenFromOktaPageBody(string(body))
+	if err != nil {
+		return "", errors.Wrap(err, "error retrieving saml response")
+	}
+	return stateToken, nil
+}
+
 func getStateTokenFromOktaPageBody(responseBody string) (string, error) {
-	re := regexp.MustCompile("var stateToken = '(.*)';")
+	re := regexp.MustCompile("var stateToken = [\"|'](.*)[\"|'];")
 	match := re.FindStringSubmatch(responseBody)
 	if len(match) < 2 {
 		return "", errors.New("cannot find state token")
@@ -600,10 +613,13 @@ func getStateTokenFromOktaPageBody(responseBody string) (string, error) {
 	return strings.Replace(match[1], `\x2D`, "-", -1), nil
 }
 
-func parseMfaIdentifer(json string, arrayPosition int) string {
+func parseMfaIdentifer(json string, arrayPosition int) (string, string) {
 	mfaProvider := gjson.Get(json, fmt.Sprintf("_embedded.factors.%d.provider", arrayPosition)).String()
 	factorType := strings.ToUpper(gjson.Get(json, fmt.Sprintf("_embedded.factors.%d.factorType", arrayPosition)).String())
-	return fmt.Sprintf("%s %s", mfaProvider, factorType)
+	// Okta gives names to some authentication methods
+	// displaying this name is useful when there's multiple auths of the same type. e.g. multiple FIDO options
+	authName := gjson.Get(json, fmt.Sprintf("_embedded.factors.%d.profile.authenticatorName", arrayPosition)).String()
+	return fmt.Sprintf("%s %s", mfaProvider, factorType), authName
 }
 
 func (oc *Client) handleFormRedirect(ctx context.Context, doc *goquery.Document) (context.Context, *http.Request, error) {
@@ -667,7 +683,15 @@ func getMfaChallengeContext(oc *Client, mfaOption int, resp string) (*mfaChallen
 	stateToken := gjson.Get(resp, "stateToken").String()
 	factorID := gjson.Get(resp, fmt.Sprintf("_embedded.factors.%d.id", mfaOption)).String()
 	oktaVerify := gjson.Get(resp, fmt.Sprintf("_embedded.factors.%d._links.verify.href", mfaOption)).String()
-	mfaIdentifer := parseMfaIdentifer(resp, mfaOption)
+	mfaIdentifer, _ := parseMfaIdentifer(resp, mfaOption)
+
+	if !strings.Contains(oktaVerify, "rememberDevice") {
+		separator := "?"
+		if strings.Contains(oktaVerify, "?") {
+			separator = "&"
+		}
+		oktaVerify = oktaVerify + separator + "rememberDevice=" + strconv.FormatBool(oc.rememberDevice)
+	}
 
 	logger.WithField("factorID", factorID).WithField("oktaVerify", oktaVerify).WithField("mfaIdentifer", mfaIdentifer).Debug("MFA")
 
@@ -707,7 +731,7 @@ func getMfaChallengeContext(oc *Client, mfaOption int, resp string) (*mfaChallen
 		return nil, errors.Wrap(err, "error retrieving verify response")
 	}
 
-	body, err := ioutil.ReadAll(res.Body)
+	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		return nil, errors.Wrap(err, "error retrieving body from response")
 	}
@@ -727,16 +751,41 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 	mfaOption := 0
 	var mfaOptions []string
 	for i := range gjson.Get(resp, "_embedded.factors").Array() {
-		identifier := parseMfaIdentifer(resp, i)
+		identifier, authName := parseMfaIdentifer(resp, i)
 		if val, ok := supportedMfaOptions[identifier]; ok {
-			mfaOptions = append(mfaOptions, val)
+			// If the authentication method as a name, we add it to the MFA option.
+			// This makes it possible to identify which method to choose
+			if len(authName) > 0 {
+				mfaOptions = append(mfaOptions, val+" - "+authName)
+			} else {
+				mfaOptions = append(mfaOptions, val)
+			}
+
 		} else {
 			mfaOptions = append(mfaOptions, "UNSUPPORTED: "+identifier)
 		}
 	}
 
 	if strings.ToUpper(oc.mfa) != "AUTO" {
-		mfaOption = findMfaOption(oc.mfa, mfaOptions, 0)
+		var mfaOptionsMatches []string
+		// Collect all options that match the chosen MFA
+		// It will be more than 1 when there's multiple MFA of the same type configured - e.g.: multiple FIDO methods
+		for _, option := range mfaOptions {
+			if strings.HasPrefix(strings.ToUpper(option), oc.mfa) {
+				mfaOptionsMatches = append(mfaOptionsMatches, option)
+			}
+		}
+		// If multiple MFA of the same type are found, we prompt the user to pick which one to use
+		if len(mfaOptionsMatches) > 1 {
+			matchOptionIndex := prompter.Choose(fmt.Sprintf("Multiple %s MFA options found. Select which MFA option to use", oc.mfa), mfaOptionsMatches)
+			for i := range mfaOptions {
+				if mfaOptions[i] == mfaOptionsMatches[matchOptionIndex] {
+					mfaOption = i
+				}
+			}
+		} else {
+			mfaOption = findMfaOption(oc.mfa, mfaOptions, 0)
+		}
 	} else if len(mfaOptions) > 1 {
 		mfaOption = prompter.Choose("Select which MFA option to use", mfaOptions)
 	}
@@ -774,14 +823,7 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 			return "", errors.Wrap(err, "error retrieving token post response")
 		}
 
-		body, err := ioutil.ReadAll(res.Body)
-		if err != nil {
-			return "", errors.Wrap(err, "error retrieving body from response")
-		}
-
-		resp = string(body)
-
-		return gjson.Get(resp, "sessionToken").String(), nil
+		return extractSessionToken(res.Body)
 
 	case IdentifierPushMfa:
 
@@ -920,7 +962,7 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 			return "", errors.Wrap(err, "error retrieving verify response")
 		}
 
-		body, err := ioutil.ReadAll(res.Body)
+		body, err := io.ReadAll(res.Body)
 		if err != nil {
 			return "", errors.Wrap(err, "error retrieving body from response")
 		}
@@ -952,7 +994,7 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 			return "", errors.Wrap(err, "error retrieving verify response")
 		}
 
-		body, err = ioutil.ReadAll(res.Body)
+		body, err = io.ReadAll(res.Body)
 		if err != nil {
 			return "", errors.Wrap(err, "error retrieving body from response")
 		}
@@ -985,7 +1027,7 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 					return "", errors.Wrap(err, "error retrieving verify response")
 				}
 
-				body, err = ioutil.ReadAll(res.Body)
+				body, err = io.ReadAll(res.Body)
 				if err != nil {
 					return "", errors.Wrap(err, "error retrieving body from response")
 				}
@@ -1028,7 +1070,7 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 			return "", errors.Wrap(err, "error retrieving duo result response")
 		}
 
-		body, err = ioutil.ReadAll(res.Body)
+		body, err = io.ReadAll(res.Body)
 		if err != nil {
 			return "", errors.Wrap(err, "duoResultSubmit: error retrieving body from response")
 		}
@@ -1087,7 +1129,7 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 			return "", errors.Wrap(err, "error retrieving verify response")
 		}
 
-		body, err = ioutil.ReadAll(res.Body)
+		body, err = io.ReadAll(res.Body)
 		if err != nil {
 			return "", errors.Wrap(err, "error retrieving body from response")
 		}
@@ -1100,6 +1142,25 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 
 	// catch all
 	return "", errors.New("no mfa options provided")
+}
+
+func extractSessionToken(r io.Reader) (string, error) {
+	bb, err := io.ReadAll(r)
+	if err != nil {
+		return "", errors.Wrap(err, "error retrieving body from response")
+	}
+
+	resp := string(bb)
+	sessionToken := gjson.Get(resp, "sessionToken").String()
+	if sessionToken == "" {
+		status := gjson.Get(resp, "status").String()
+		if status != "" {
+			return "", errors.Errorf("response does not contain session token, received status is: %q", status)
+		}
+		return "", errors.Errorf("response does not contain session token")
+	}
+
+	return gjson.Get(resp, "sessionToken").String(), nil
 }
 
 func fidoWebAuthn(oc *Client, oktaOrgHost string, challengeContext *mfaChallengeContext, mfaOption int, stateToken string, mfaOptions []string, resp string) (string, error) {
@@ -1168,7 +1229,7 @@ func fidoWebAuthn(oc *Client, oktaOrgHost string, challengeContext *mfaChallenge
 		return "", errors.Wrap(err, "error retrieving verify response")
 	}
 
-	body, err := ioutil.ReadAll(res.Body)
+	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		return "", errors.Wrap(err, "error retrieving body from response")
 	}
