@@ -13,8 +13,28 @@ func TestNewConfigManagerNew(t *testing.T) {
 
 	cfgm, err := NewConfigManager("example/saml2aws.ini")
 	require.Nil(t, err)
+	require.NotNil(t, cfgm)
+}
+
+func TestIDPAccountString(t *testing.T) {
+	cfgm, err := NewConfigManager("example/saml2aws.ini")
+	require.Nil(t, err)
 
 	require.NotNil(t, cfgm)
+
+	idpAccount, err := cfgm.LoadIDPAccount("test123")
+	require.Nil(t, err)
+	s := idpAccount.String()
+	require.Contains(t, s, "urn:amazon:webservices\n")
+}
+
+func TestNewConfigManagerDefaultEmpty(t *testing.T) {
+	cfgm, err := NewConfigManager("")
+	require.Nil(t, err)
+	require.Contains(t, cfgm.configPath, ".saml2aws")
+	idpAccount, err := cfgm.LoadIDPAccount("foo")
+	require.Nil(t, err)
+	require.Equal(t, idpAccount.URL, "")
 }
 
 func TestNewConfigManagerLoad(t *testing.T) {
