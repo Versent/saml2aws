@@ -4,7 +4,8 @@ OS=$(shell uname)
 ITERATION := 1
 
 GOLANGCI_VERSION = 1.45.2
-GORELEASER_VERSION = 1.16.2
+
+GORELEASER := $(shell command -v goreleaser 2> /dev/null)
 
 SOURCE_FILES?=$$(go list ./... | grep -v /vendor/)
 TEST_PATTERN?=.
@@ -13,10 +14,6 @@ TEST_OPTIONS?=
 BIN_DIR := $(CURDIR)/bin
 
 ci: prepare test
-
-$(BIN_DIR)/goreleaser:
-	@GOBIN=$(BIN_DIR) go install github.com/goreleaser/goreleaser@v${GORELEASER_VERSION}
-.PHONY: $(BIN_DIR)/goreleaser
 
 mod:
 	@go mod download
@@ -39,11 +36,16 @@ install:
 	go install ./cmd/saml2aws
 .PHONY: mod
 
-build: $(BIN_DIR)/goreleaser
+build:
+
+ifndef GORELEASER
+    $(error "goreleaser is not available please install and ensure it is on PATH")
+endif
+
 ifeq ($(OS),Darwin)
-	$(BIN_DIR)/goreleaser build --snapshot --clean --config $(CURDIR)/.goreleaser.macos-latest.yml
+	goreleaser build --snapshot --clean --config $(CURDIR)/.goreleaser.macos-latest.yml
 else ifeq ($(OS),Linux)
-	$(BIN_DIR)/goreleaser build --snapshot --clean --config $(CURDIR)/.goreleaser.ubuntu-latest.yml
+	goreleaser build --snapshot --clean --config $(CURDIR)/.goreleaser.ubuntu-latest.yml
 else
 	$(error Unsupported build OS: $(OS))
 endif
