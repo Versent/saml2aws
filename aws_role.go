@@ -2,6 +2,7 @@ package saml2aws
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 )
 
@@ -29,7 +30,8 @@ func ParseAWSRoles(roles []string) ([]*AWSRole, error) {
 }
 
 func parseRole(role string) (*AWSRole, error) {
-	tokens := strings.Split(role, ",")
+	r, _ := regexp.Compile("arn:([^:\n]*):([^:\n]*):([^:\n]*):([^:\n]*):(([^:/\n]*)[:/])?([^:,\n]*)")
+	tokens := r.FindAllString(role, -1)
 
 	if len(tokens) != 2 {
 		return nil, fmt.Errorf("Invalid role string only %d tokens", len(tokens))
