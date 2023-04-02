@@ -557,7 +557,7 @@ func (oc *Client) follow(ctx context.Context, req *http.Request, loginDetails *c
 		logger.WithField("type", "saml-response").Debug("doc detect")
 		handler = oc.handleFormRedirect
 	} else {
-		stateToken, err := oc.getStateToken(loginDetails)
+		stateToken, err := oc.getStateToken(req, loginDetails)
 		if err != nil {
 			return "", errors.Wrap(err, "failed to getStateToken")
 		}
@@ -579,11 +579,15 @@ func (oc *Client) follow(ctx context.Context, req *http.Request, loginDetails *c
 
 }
 
-func (oc *Client) getStateToken(loginDetails *creds.LoginDetails) (string, error) {
-	req, err := http.NewRequest("GET", loginDetails.URL, nil)
+func (oc *Client) getStateToken(req *http.Request, loginDetails *creds.LoginDetails) (string, error) {
+	url, err := url.Parse(loginDetails.URL)
 	if err != nil {
 		return "", errors.Wrap(err, "error building app request")
 	}
+
+	req.URL = url
+	req.Method = "GET"
+	req.Body = nil
 
 	res, err := oc.client.Do(req)
 	if err != nil {
@@ -680,6 +684,14 @@ func getMfaChallengeContext(oc *Client, mfaOption int, resp string) (*mfaChallen
 	factorID := gjson.Get(resp, fmt.Sprintf("_embedded.factors.%d.id", mfaOption)).String()
 	oktaVerify := gjson.Get(resp, fmt.Sprintf("_embedded.factors.%d._links.verify.href", mfaOption)).String()
 	mfaIdentifer, _ := parseMfaIdentifer(resp, mfaOption)
+
+	if !strings.Contains(oktaVerify, "rememberDevice") {
+		separator := "?"
+		if strings.Contains(oktaVerify, "?") {
+			separator = "&"
+		}
+		oktaVerify = oktaVerify + separator + "rememberDevice=" + strconv.FormatBool(oc.rememberDevice)
+	}
 
 	logger.WithField("factorID", factorID).WithField("oktaVerify", oktaVerify).WithField("mfaIdentifer", mfaIdentifer).Debug("MFA")
 
@@ -811,14 +823,7 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 			return "", errors.Wrap(err, "error retrieving token post response")
 		}
 
-		body, err := io.ReadAll(res.Body)
-		if err != nil {
-			return "", errors.Wrap(err, "error retrieving body from response")
-		}
-
-		resp = string(body)
-
-		return gjson.Get(resp, "sessionToken").String(), nil
+		return extractSessionToken(res.Body)
 
 	case IdentifierPushMfa:
 
@@ -1137,6 +1142,25 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 
 	// catch all
 	return "", errors.New("no mfa options provided")
+}
+
+func extractSessionToken(r io.Reader) (string, error) {
+	bb, err := io.ReadAll(r)
+	if err != nil {
+		return "", errors.Wrap(err, "error retrieving body from response")
+	}
+
+	resp := string(bb)
+	sessionToken := gjson.Get(resp, "sessionToken").String()
+	if sessionToken == "" {
+		status := gjson.Get(resp, "status").String()
+		if status != "" {
+			return "", errors.Errorf("response does not contain session token, received status is: %q", status)
+		}
+		return "", errors.Errorf("response does not contain session token")
+	}
+
+	return gjson.Get(resp, "sessionToken").String(), nil
 }
 
 func fidoWebAuthn(oc *Client, oktaOrgHost string, challengeContext *mfaChallengeContext, mfaOption int, stateToken string, mfaOptions []string, resp string) (string, error) {
