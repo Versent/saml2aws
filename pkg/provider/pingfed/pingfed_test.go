@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/stretchr/testify/require"
@@ -107,16 +108,23 @@ func TestHandleOTP(t *testing.T) {
 	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(data))
 	require.Nil(t, err)
 
-	jar, err := cookiejar.New(&cookiejar.Options{})
-	require.Nil(t, err)
-
-	opts := &provider.HTTPClientOptions{IsWithRetries: false}
-	ac := Client{client: &provider.HTTPClient{Client: http.Client{Jar: jar}, Options: opts}}
-	_, req, err := ac.handleOTP(context.Background(), doc, &url.URL{
+	pingfedURL := &url.URL{
 		Scheme: "https",
 		Host:   "authenticator.pingone.com",
 		Path:   "/pingid/ppm/auth/otp",
-	})
+	}
+	jar, err := cookiejar.New(&cookiejar.Options{})
+	require.Nil(t, err)
+	jar.SetCookies(pingfedURL, []*http.Cookie{{
+		Name:    ".csrf",
+		Secure:  true,
+		Expires: time.Now().Add(time.Hour * 24 * 30),
+		Value:   "some-token",
+	}})
+
+	opts := &provider.HTTPClientOptions{IsWithRetries: false}
+	ac := Client{client: &provider.HTTPClient{Client: http.Client{Jar: jar}, Options: opts}}
+	_, req, err := ac.handleOTP(context.Background(), doc, pingfedURL)
 	require.Nil(t, err)
 
 	b, err := io.ReadAll(req.Body)
@@ -124,6 +132,7 @@ func TestHandleOTP(t *testing.T) {
 
 	s := string(b[:])
 	require.Contains(t, s, "otp=5309")
+	require.Contains(t, s, "csrfToken=some-token")
 }
 
 func TestHandleFormRedirect(t *testing.T) {
