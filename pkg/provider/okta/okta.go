@@ -827,51 +827,7 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 
 	case IdentifierPushMfa:
 
-		log.Println("Waiting for approval, please check your Okta Verify app ...")
-
-		// loop until success, error, or timeout
-		body := challengeContext.challengeResponseBody
-		for {
-			// on 'success' status
-			if gjson.Get(body, "status").String() == "SUCCESS" {
-				log.Println(" Approved")
-				logger.Debugf("func verifyMfa | okta exiry: %s", gjson.Get(body, "expiresAt").String()) // DEBUG
-				return gjson.Get(body, "sessionToken").String(), nil
-			}
-
-			// otherwise probably still waiting
-			switch gjson.Get(body, "factorResult").String() {
-
-			case "WAITING":
-				correctAnswer := gjson.Get(body, "_embedded.factor._embedded.challenge.correctAnswer")
-				displayedAnswer := false
-				if !displayedAnswer && correctAnswer.Exists() {
-					log.Printf("Number Challenge Value is %d", correctAnswer.Int())
-					displayedAnswer = true
-				}
-				time.Sleep(3 * time.Second)
-				logger.Debug("Waiting for user to authorize login")
-				updatedContext, err := getMfaChallengeContext(oc, mfaOption, resp)
-				if err != nil {
-					return "", err
-				}
-				body = updatedContext.challengeResponseBody
-
-			case "TIMEOUT":
-				log.Println(" Timeout")
-				return "", errors.New("User did not accept MFA in time")
-
-			case "REJECTED":
-				log.Println(" Rejected")
-				return "", errors.New("MFA rejected by user")
-
-			default:
-				log.Println(" Error")
-				return "", errors.New("Unsupported response from Okta, please raise ticket with saml2aws")
-
-			}
-
-		}
+		return verifyOktaPushMfa(oc, resp, mfaOption, challengeContext)
 
 	case IdentifierDuoMfa:
 		duoHost := gjson.Get(challengeContext.challengeResponseBody, "_embedded.factor._embedded.verification.host").String()
@@ -1150,6 +1106,55 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 	return "", errors.New("no mfa options provided")
 }
 
+func verifyOktaPushMfa(oc *Client, resp string, mfaOption int, challengeContext *mfaChallengeContext) (string, error) {
+
+	fmt.Print("Waiting for approval, please check your Okta Verify app ...")
+
+	displayedChallegePrompt := false
+	// loop until success, error, or timeout
+	body := challengeContext.challengeResponseBody
+	for {
+		// on 'success' status
+		if gjson.Get(body, "status").String() == "SUCCESS" {
+			fmt.Println(" Approved")
+			logger.Debugf("func verifyMfa | okta exiry: %s", gjson.Get(body, "expiresAt").String()) // DEBUG
+			return gjson.Get(body, "sessionToken").String(), nil
+		}
+
+		// otherwise probably still waiting
+		switch gjson.Get(body, "factorResult").String() {
+
+		case "WAITING":
+			correctAnswer := gjson.Get(body, "_embedded.factor._embedded.challenge.correctAnswer")
+			if !displayedChallegePrompt && correctAnswer.Exists() {
+				fmt.Printf(" Number Challenge Value is %d ...", correctAnswer.Int())
+				displayedChallegePrompt = true
+			}
+			time.Sleep(3 * time.Second)
+			logger.Debug("Waiting for user to authorize login")
+			updatedContext, err := getMfaChallengeContext(oc, mfaOption, resp)
+			if err != nil {
+				return "", err
+			}
+			body = updatedContext.challengeResponseBody
+
+		case "TIMEOUT":
+			log.Println(" Timeout")
+			return "", errors.New("User did not accept MFA in time")
+
+		case "REJECTED":
+			log.Println(" Rejected")
+			return "", errors.New("MFA rejected by user")
+
+		default:
+			log.Println(" Error")
+			return "", errors.New("Unsupported response from Okta, please raise ticket with saml2aws")
+
+		}
+
+	}
+
+}
 func extractSessionToken(r io.Reader) (string, error) {
 	bb, err := io.ReadAll(r)
 	if err != nil {
