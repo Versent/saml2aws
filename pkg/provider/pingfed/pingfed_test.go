@@ -4,14 +4,19 @@ import (
 	"bytes"
 	"context"
 	"io"
+	"net/http"
+	"net/http/cookiejar"
+	"net/url"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/stretchr/testify/require"
 	"github.com/versent/saml2aws/v2/mocks"
 	"github.com/versent/saml2aws/v2/pkg/creds"
 	"github.com/versent/saml2aws/v2/pkg/prompter"
+	"github.com/versent/saml2aws/v2/pkg/provider"
 )
 
 func TestMakeAbsoluteURL(t *testing.T) {
@@ -81,7 +86,7 @@ func TestHandleLogin(t *testing.T) {
 	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(data))
 	require.Nil(t, err)
 
-	_, req, err := ac.handleLogin(ctx, doc)
+	_, req, err := ac.handleLogin(ctx, doc, &url.URL{})
 	require.Nil(t, err)
 
 	b, err := io.ReadAll(req.Body)
@@ -103,8 +108,23 @@ func TestHandleOTP(t *testing.T) {
 	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(data))
 	require.Nil(t, err)
 
-	ac := Client{}
-	_, req, err := ac.handleOTP(context.Background(), doc)
+	pingfedURL := &url.URL{
+		Scheme: "https",
+		Host:   "authenticator.pingone.com",
+		Path:   "/pingid/ppm/auth/otp",
+	}
+	jar, err := cookiejar.New(&cookiejar.Options{})
+	require.Nil(t, err)
+	jar.SetCookies(pingfedURL, []*http.Cookie{{
+		Name:    ".csrf",
+		Secure:  true,
+		Expires: time.Now().Add(time.Hour * 24 * 30),
+		Value:   "some-token",
+	}})
+
+	opts := &provider.HTTPClientOptions{IsWithRetries: false}
+	ac := Client{client: &provider.HTTPClient{Client: http.Client{Jar: jar}, Options: opts}}
+	_, req, err := ac.handleOTP(context.Background(), doc, pingfedURL)
 	require.Nil(t, err)
 
 	b, err := io.ReadAll(req.Body)
@@ -112,6 +132,7 @@ func TestHandleOTP(t *testing.T) {
 
 	s := string(b[:])
 	require.Contains(t, s, "otp=5309")
+	require.Contains(t, s, "csrfToken=some-token")
 }
 
 func TestHandleFormRedirect(t *testing.T) {
@@ -122,7 +143,7 @@ func TestHandleFormRedirect(t *testing.T) {
 	require.Nil(t, err)
 
 	ac := Client{}
-	_, req, err := ac.handleFormRedirect(context.Background(), doc)
+	_, req, err := ac.handleFormRedirect(context.Background(), doc, &url.URL{})
 	require.Nil(t, err)
 
 	b, err := io.ReadAll(req.Body)
@@ -141,7 +162,7 @@ func TestHandleWebAuthn(t *testing.T) {
 	require.Nil(t, err)
 
 	ac := Client{}
-	_, req, err := ac.handleWebAuthn(context.Background(), doc)
+	_, req, err := ac.handleWebAuthn(context.Background(), doc, &url.URL{})
 	require.Nil(t, err)
 
 	b, err := io.ReadAll(req.Body)
