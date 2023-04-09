@@ -23,7 +23,7 @@ type JumpCloudPushResponse struct {
 func (jc *Client) jumpCloudProtectAuth(submitUrl string, xsrfToken string) (*http.Response, error) {
 	jumpCloudParsedURL, err := url.Parse(submitUrl)
 	if err != nil {
-		return nil, errors.Wrap(err, fmt.Sprintf("unable to parse submit url, url=%s", jumpCloudProtectSubmitURL))
+		return nil, errors.Wrap(err, fmt.Sprintf("unable to parse submit url, url=%s", submitUrl))
 	}
 
 	req, err := http.NewRequest("POST", jumpCloudParsedURL.String(), emptyJSONIOReader())
