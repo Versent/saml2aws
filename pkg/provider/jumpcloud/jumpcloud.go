@@ -23,12 +23,13 @@ import (
 )
 
 const (
-	jcSSOBaseURL              = "https://sso.jumpcloud.com/"
-	xsrfURL                   = "https://console.jumpcloud.com/userconsole/xsrf"
-	authSubmitURL             = "https://console.jumpcloud.com/userconsole/auth"
-	webauthnSubmitURL         = "https://console.jumpcloud.com/userconsole/auth/webauthn"
-	duoAuthSubmitURL          = "https://console.jumpcloud.com/userconsole/auth/duo"
-	jumpCloudProtectSubmitURL = "https://console.jumpcloud.com/userconsole/auth/push"
+	jcSSOBaseURL               = "https://sso.jumpcloud.com/"
+	jcBaseURL                  = "https://console.jumpcloud.com"
+	xsrfPath                   = "/xsrf"
+	authSubmitPath             = "/userconsole/auth"
+	webauthnSubmitPath         = "/userconsole/auth/webauthn"
+	duoAuthSubmitPath          = "/userconsole/auth/duo"
+	jumpCloudProtectSubmitPath = "/userconsole/auth/push"
 
 	IdentifierTotpMfa          = "totp"
 	IdentifierDuoMfa           = "duo"
@@ -49,8 +50,9 @@ var (
 type Client struct {
 	provider.ValidateBase
 
-	client *provider.HTTPClient
-	mfa    string
+	client    *provider.HTTPClient
+	mfa       string
+	jcBaseURL string
 }
 
 // XSRF is for unmarshalling the xsrf token in the response
@@ -87,8 +89,9 @@ func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 	}
 
 	return &Client{
-		client: client,
-		mfa:    idpAccount.MFA,
+		client:    client,
+		mfa:       idpAccount.MFA,
+		jcBaseURL: jcBaseURL,
 	}, nil
 }
 
@@ -99,9 +102,9 @@ func (jc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 	re := regexp.MustCompile(jcSSOBaseURL)
 
 	// Start by getting the XSRF Token
-	res, err := jc.client.Get(xsrfURL)
+	res, err := jc.client.Get(jc.jcBaseURL + xsrfPath)
 	if err != nil {
-		return samlAssertion, errors.Wrap(err, "error retieving XSRF Token")
+		return samlAssertion, errors.Wrap(err, "error retrieving XSRF Token")
 	}
 	defer res.Body.Close()
 
@@ -115,7 +118,7 @@ func (jc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 	var x = new(XSRF)
 	err = json.Unmarshal(xsrfBody, &x)
 	if err != nil {
-		log.Fatalf("Error unmarshalling xsrf response! %v", err)
+		log.Fatalf("Error unmarshalling XSRF response! %v", err)
 	}
 
 	// Populate our Auth body for the POST
@@ -130,7 +133,7 @@ func (jc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 	}
 
 	// Generate our auth request
-	req, err := http.NewRequest("POST", authSubmitURL, strings.NewReader(string(authBody)))
+	req, err := http.NewRequest("POST", jc.jcBaseURL+authSubmitPath, strings.NewReader(string(authBody)))
 	if err != nil {
 		return samlAssertion, errors.Wrap(err, "error building authentication request")
 	}
@@ -169,7 +172,7 @@ func (jc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 			return samlAssertion, errors.Wrap(err, errMsg)
 		}
 
-		res, err = jc.verifyMFA(authSubmitURL, loginDetails, a, messageBody, x.Token)
+		res, err = jc.verifyMFA(jc.jcBaseURL+authSubmitPath, loginDetails, a, messageBody, x.Token)
 		if err != nil {
 			return samlAssertion, err
 		}
@@ -252,7 +255,7 @@ func (jc *Client) verifyMFA(jumpCloudOrgHost string, loginDetails *creds.LoginDe
 			return nil, errors.Wrap(err, "error building authentication req body after getting MFA Token")
 		}
 
-		req, err := http.NewRequest("POST", authSubmitURL, strings.NewReader(string(authBody)))
+		req, err := http.NewRequest("POST", jc.jcBaseURL+authSubmitPath, strings.NewReader(string(authBody)))
 		if err != nil {
 			return nil, errors.Wrap(err, "error building MFA authentication request")
 		}
@@ -265,7 +268,7 @@ func (jc *Client) verifyMFA(jumpCloudOrgHost string, loginDetails *creds.LoginDe
 		// Resubmit
 		return jc.client.Do(req)
 	case IdentifierU2F:
-		res, err := jc.client.Get(webauthnSubmitURL)
+		res, err := jc.client.Get(jc.jcBaseURL + webauthnSubmitPath)
 		if err != nil {
 			return nil, errors.Wrap(err, "error submitting request for SAML value")
 		}
@@ -308,7 +311,7 @@ func (jc *Client) verifyMFA(jumpCloudOrgHost string, loginDetails *creds.LoginDe
 		if err != nil {
 			return nil, err
 		}
-		req, err := http.NewRequest("POST", webauthnSubmitURL, strings.NewReader(string(payload)))
+		req, err := http.NewRequest("POST", jc.jcBaseURL+webauthnSubmitPath, strings.NewReader(string(payload)))
 		if err != nil {
 			return nil, errors.Wrap(err, "error building authentication request")
 		}
@@ -319,10 +322,10 @@ func (jc *Client) verifyMFA(jumpCloudOrgHost string, loginDetails *creds.LoginDe
 		return jc.client.Do(req)
 
 	case IdentifierJumpCloudProtect:
-		return jc.jumpCloudProtectAuth(jumpCloudProtectSubmitURL, xsrfToken)
+		return jc.jumpCloudProtectAuth(jc.jcBaseURL+jumpCloudProtectSubmitPath, xsrfToken)
 	case IdentifierDuoMfa:
 		// Get Duo config
-		req, err := http.NewRequest("GET", duoAuthSubmitURL, nil)
+		req, err := http.NewRequest("GET", jc.jcBaseURL+duoAuthSubmitPath, nil)
 		if err != nil {
 			return nil, errors.Wrap(err, "error building MFA authentication request")
 		}
@@ -571,7 +574,7 @@ func (jc *Client) verifyMFA(jumpCloudOrgHost string, loginDetails *creds.LoginDe
 				fmt.Sprintf("%s:%s", duoTxCookie, duoSignatures[1])),
 		)
 
-		req, err = http.NewRequest("POST", duoAuthSubmitURL, bytes.NewBuffer(jumpCloudJsonPayload))
+		req, err = http.NewRequest("POST", jc.jcBaseURL+duoAuthSubmitPath, bytes.NewBuffer(jumpCloudJsonPayload))
 		if err != nil {
 			return nil, errors.Wrap(err, "error building authentication request")
 		}
@@ -589,8 +592,8 @@ func (jc *Client) verifyMFA(jumpCloudOrgHost string, loginDetails *creds.LoginDe
 func (jc *Client) getUserOption(body []byte) (string, error) {
 	mfaConfigData := gjson.GetBytes(body, "factors")
 	if mfaConfigData.Index == 0 {
-		log.Fatalln("Mfa Config option not found")
-		return "", errors.New("Mfa not configured")
+		log.Fatalln("MFA Config option not found")
+		return "", errors.New("MFA not configured")
 	}
 	var mfaOptionsAvailableAtJumpCloud []string
 	var mfaDisplayOptions []string
