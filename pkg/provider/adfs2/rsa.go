@@ -30,7 +30,7 @@ func (ac *Client) authenticateRsa(loginDetails *creds.LoginDetails) (string, err
 
 	passcodeForm, passcodeActionURL, err := extractFormData(doc)
 	if err != nil {
-		return "", errors.Wrap(err, "error extractign login data")
+		return "", errors.Wrap(err, "error extracting login data")
 	}
 
 	/**
