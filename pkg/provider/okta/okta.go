@@ -978,7 +978,7 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 
 			defer res.Body.Close()
 
-			body, err := ioutil.ReadAll(res.Body)
+			body, err := io.ReadAll(res.Body)
 			if err != nil {
 				return "", errors.Wrap(err, "error retrieving body from response")
 			}
@@ -1295,7 +1295,7 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 				return "", errors.Wrap(err, "error retrieving verify response")
 			}
 
-			body, err = ioutil.ReadAll(res.Body)
+			body, err = io.ReadAll(res.Body)
 			if err != nil {
 				return "", errors.Wrap(err, "error retrieving body from response")
 			}
@@ -1329,7 +1329,7 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 
 			defer res.Body.Close()
 
-			body, err = ioutil.ReadAll(res.Body)
+			body, err = io.ReadAll(res.Body)
 			if err != nil {
 				return "", errors.Wrap(err, "error retrieving body from response")
 			}
