@@ -1080,7 +1080,9 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 			req2.Header.Add("Origin", "https://"+duoHost)
 
 			res, err = oc.client.Do(req2)
-			defer res.Body.Close()
+			if err == nil {
+				defer res.Body.Close()
+			}
 
 			// Wait for check_endpoint_app_status to block
 			wg.Wait()
