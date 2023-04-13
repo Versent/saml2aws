@@ -44,7 +44,7 @@ endif
 ifeq ($(OS),Darwin)
 	goreleaser build --snapshot --clean --config $(CURDIR)/.goreleaser.macos-latest.yml
 else ifeq ($(OS),Linux)
-	goreleaser build --snapshot --clean --config $(CURDIR)/.goreleaser.ubuntu-latest.yml
+	goreleaser build --snapshot --clean --config $(CURDIR)/.goreleaser.ubuntu-20.04.yml
 else
 	$(error Unsupported build OS: $(OS))
 endif
