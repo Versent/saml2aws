@@ -1010,7 +1010,7 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 			}
 			defer res.Body.Close()
 
-			doc, err = goquery.NewDocumentFromResponse(res)
+			doc, err = goquery.NewDocumentFromReader(res.Body)
 			if err != nil {
 				return "", errors.Wrap(err, "error parsing document")
 			}
@@ -1039,7 +1039,7 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 			req.Header.Add("Referer", "https://"+duoHost+"/")
 			req.Header.Add("Origin", "https://"+duoHost)
 
-			res, err = oc.client.Do(req)
+			res, _ = oc.client.Do(req)
 
 			duoCheckEndpointAppURL := fmt.Sprintf("https://%s/frame/check_endpoint_app_status", duoHost)
 			req, _ = http.NewRequest("GET", duoCheckEndpointAppURL, nil)
@@ -1122,7 +1122,7 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 			}
 			defer res.Body.Close()
 
-			doc, err = goquery.NewDocumentFromResponse(res)
+			doc, err = goquery.NewDocumentFromReader(res.Body)
 			if err != nil {
 				return "", errors.Wrap(err, "error parsing document")
 			}

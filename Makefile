@@ -11,10 +11,19 @@ SOURCE_FILES?=$$(go list ./... | grep -v /vendor/)
 TEST_PATTERN?=.
 TEST_OPTIONS?=
 
-BIN_DIR := ./bin
+BIN_DIR := $(CURDIR)/bin
 
 ci: prepare test
 
+mod:
+	@go mod download
+	@go mod tidy
+.PHONY: mod
+
+lint:
+	@echo "--- lint all the things"
+	@docker run --rm -v $(shell pwd):/app -w /app golangci/golangci-lint:v$(GOLANGCI_VERSION) golangci-lint run -v
+.PHONY: lint
 
 lint-fix:
 	@echo "--- lint all the things"

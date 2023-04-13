@@ -85,7 +85,7 @@ func (d *FidoClient) ChallengeU2F() (*SignedAssertion, error) {
 	}
 	request := &u2fhost.AuthenticateRequest{
 		Challenge: d.ChallengeNonce,
-		Facet: d.AppID,
+		Facet:     d.AppID,
 		AppId:     d.AppID,
 		KeyHandle: d.KeyHandle,
 		WebAuthn:  false,

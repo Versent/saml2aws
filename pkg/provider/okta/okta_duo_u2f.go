@@ -87,10 +87,10 @@ func (d *DUOU2FClient) ChallengeU2F() (*ResponseData, error) {
 			response, err := d.Device.Authenticate(request)
 			if err == nil {
 				responsePayload = &ResponseData{
-					SessionId:         d.StateToken,
-					ClientData:        response.ClientData,
-					SignatureData:     response.SignatureData,
-					KeyHandle:         d.KeyHandle,
+					SessionId:     d.StateToken,
+					ClientData:    response.ClientData,
+					SignatureData: response.SignatureData,
+					KeyHandle:     d.KeyHandle,
 				}
 				fmt.Printf("  ==> Touch accepted. Proceeding with authentication\n")
 				return responsePayload, nil
