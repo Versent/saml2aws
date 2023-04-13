@@ -11,21 +11,9 @@ SOURCE_FILES?=$$(go list ./... | grep -v /vendor/)
 TEST_PATTERN?=.
 TEST_OPTIONS?=
 
-BIN_DIR := ./bin
+BIN_DIR := $(CURDIR)/bin
 
 ci: prepare test
-
-#$(BIN_DIR)/golangci-lint: $(BIN_DIR)/golangci-lint-${GOLANGCI_VERSION}
-#	@ln -sf golangci-lint-${GOLANGCI_VERSION} $(BIN_DIR)/golangci-lint
-#$(BIN_DIR)/golangci-lint-${GOLANGCI_VERSION}:
-#	@curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | BINARY=golangci-lint bash -s -- v${GOLANGCI_VERSION}
-#	@mv $(BIN_DIR)/golangci-lint $@
-#
-#$(BIN_DIR)/goreleaser: $(BIN_DIR)/goreleaser-${GORELEASER_VERSION}
-#	@ln -sf goreleaser-${GORELEASER_VERSION} $(BIN_DIR)/goreleaeer
-#$(BIN_DIR)/goreleaser-${GORELEASER_VERSION}:
-#	@curl -sfL https://install.goreleaser.com/github.com/goreleaser/goreleaser.sh | BINARY=goreleaser bash -s -- v${GORELEASER_VERSION}
-#	@mv $(BIN_DIR)/goreleaser $@
 
 mod:
 	@go mod download
