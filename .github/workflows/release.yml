@@ -19,6 +19,7 @@ jobs:
       max-parallel: 1
       matrix:
         os:
+        - ubuntu-latest
         - ubuntu-20.04
         - macos-latest
     runs-on: ${{ matrix.os }}
