@@ -224,8 +224,7 @@ func resolveLoginDetails(account *cfg.IDPAccount, loginFlags *flags.LoginExecFla
 		loginDetails.MFAIPAddress = loginFlags.CommonFlags.MFAIPAddress
 	}
 
-	// set Browser provider behavior if specified in either config or flag
-	// overly verbose for a boolean flag?
+	// set Browser provider behavior if specified in either flag or config, with flag taking precedence
 	if loginFlags.DownloadBrowser {
 		loginDetails.DownloadBrowser = loginFlags.DownloadBrowser
 	} else if account.DownloadBrowser {
