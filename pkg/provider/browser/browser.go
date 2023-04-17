@@ -30,8 +30,8 @@ func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 
 func (cl *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error) {
 
-	// Optionally download browser drivers if defined in config
-	if cl.DownloadBrowser {
+	// Optionally download browser drivers if defined in config or set by flag
+	if cl.DownloadBrowser || loginDetails.DownloadBrowser {
 		err := playwright.Install()
 		if err != nil {
 			return "", err
