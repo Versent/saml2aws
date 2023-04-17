@@ -24,7 +24,6 @@ jobs:
 
       - name: Test
         run: |
-          go run github.com/playwright-community/playwright-go/cmd/playwright install
           go test -v ./... -coverprofile=${{ matrix.os }}_coverage.txt -covermode=atomic
 
       - name: Upload coverage report

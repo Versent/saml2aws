@@ -39,7 +39,8 @@ func TestValidate(t *testing.T) {
 	client, err := New(account)
 	assert.Nil(t, err)
 	loginDetails := &creds.LoginDetails{
-		URL: "https://google.com/",
+		URL:             "https://google.com/",
+		DownloadBrowser: true,
 	}
 	resp, err := client.Authenticate(loginDetails)
 	assert.Nil(t, err)
