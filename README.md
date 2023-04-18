@@ -120,6 +120,10 @@ chmod u+x ~/.local/bin/saml2aws
 hash -r
 saml2aws --version
 ```
+If U2F support is required then there are separate builds for this - use the following download URL instead:
+```
+wget -c "https://github.com/Versent/saml2aws/releases/download/v${CURRENT_VERSION}/saml2aws-u2f_${CURRENT_VERSION}_linux_amd64.tar.gz" -O - | tar -xzv -C ~/.local/bin
+```
 
 #### Using Make
 

@@ -19,6 +19,7 @@ jobs:
       max-parallel: 1
       matrix:
         os:
+        - ubuntu-latest
         - ubuntu-20.04
         - macos-latest
     runs-on: ${{ matrix.os }}
@@ -47,7 +48,7 @@ jobs:
 
   windows-msi:
     name: Build Windows MSI and upload to release
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     needs: [release]
     if: >-  # https://github.com/actions/runner/issues/491
       always() &&
