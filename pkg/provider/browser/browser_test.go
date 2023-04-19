@@ -47,6 +47,21 @@ func TestValidate(t *testing.T) {
 	assert.Equal(t, resp, response)
 }
 
+// Test that if download directory does not have browsers, it fails with expected error message
+func TestNoBrowserDriverFail(t *testing.T) {
+	account := &cfg.IDPAccount{
+		Headless:         true,
+		BrowserDriverDir: t.TempDir(), // set up a directory we know won't have drivers
+	}
+	loginDetails := &creds.LoginDetails{
+		URL: "https://google.com/",
+	}
+	client, _ := New(account)
+	_, err := client.Authenticate(loginDetails)
+	assert.Error(t, err)
+	assert.ErrorContains(t, err, "could not start driver")
+}
+
 func fakeSAMLResponse(page playwright.Page, loginDetails *creds.LoginDetails) (string, error) {
 	return response, nil
 }

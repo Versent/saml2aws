@@ -17,26 +17,33 @@ var logger = logrus.WithField("provider", "browser")
 // Client client for browser based Identity Provider
 type Client struct {
 	Headless bool
+	// Setup alternative directory to download playwright browsers to
+	BrowserDriverDir string
 }
 
 // New create new browser based client
 func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 	return &Client{
-		Headless: idpAccount.Headless,
+		Headless:         idpAccount.Headless,
+		BrowserDriverDir: idpAccount.BrowserDriverDir,
 	}, nil
 }
 
 func (cl *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error) {
+	runOptions := playwright.RunOptions{}
+	if cl.BrowserDriverDir != "" {
+		runOptions.DriverDirectory = cl.BrowserDriverDir
+	}
 
 	// Optionally download browser drivers if specified
 	if loginDetails.DownloadBrowser {
-		err := playwright.Install()
+		err := playwright.Install(&runOptions)
 		if err != nil {
 			return "", err
 		}
 	}
 
-	pw, err := playwright.Run()
+	pw, err := playwright.Run(&runOptions)
 	if err != nil {
 		return "", err
 	}
