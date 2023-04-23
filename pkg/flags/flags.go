@@ -39,6 +39,7 @@ type CommonFlags struct {
 // LoginExecFlags flags for the Login / Exec commands
 type LoginExecFlags struct {
 	CommonFlags       *CommonFlags
+	DownloadBrowser   bool
 	Force             bool
 	DuoMFAOption      string
 	ExecProfile       string
