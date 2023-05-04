@@ -357,12 +357,11 @@ func TestGetStateToken(t *testing.T) {
 	assert.Equal(t, "token1", stateToken)
 }
 
-// stolen from my login page
-// but with all ids randomised
+
+// anonymised from actual endpoint
 const fakeEndpointForm = `
 <form method="post" id="endpoint-health-form">
-<input type="hidden" name="sid" value=
-HAlorymR7ZuV2CxZz9T10jABE4jzkWFBJYLEnlF4nUwCqQ&#x3d;&#x7c;1683218343&#x7c;2a46eb852b3ef9f662304cee03d008daed6d71f6>
+<input type="hidden" name="sid" value=HAlorymR7ZuV2CxZz9T10jABE4jzkWFBJYLEnlF4nUwCqQ&#x3d;&#x7c;1683218343&#x7c;2a46eb852b3ef9f662304cee03d008daed6d71f6>
 <input type="hidden" name="akey" value=UH7AkMtr7dqTzgeMefvQ>
 <input type="hidden" name="txid" value=0dcfcbe4-5e20-47a3-9037-cb1d1bf4ad5b>
 <input type="hidden" name="response_timeout" value=15>
@@ -378,12 +377,13 @@ HAlorymR7ZuV2CxZz9T10jABE4jzkWFBJYLEnlF4nUwCqQ&#x3d;&#x7c;1683218343&#x7c;2a46eb
 </form>
 `
 
-type endpointTestServer struct {
+
+type testServer struct {
 	handlers []http.HandlerFunc
 	t        *testing.T
 }
 
-func (s *endpointTestServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (s *testServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var h http.HandlerFunc
 	if len(s.handlers) == 0 {
 		s.t.Errorf("unexpected request: %v", r.URL.String())
@@ -393,8 +393,92 @@ func (s *endpointTestServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h, s.handlers = s.handlers[0], s.handlers[1:]
 	h(w, r)
 }
+func TestVerifyTrustedCert(t *testing.T) {
+	host := ""
 
-func TestVerifyEndpointHealt(t *testing.T) {
+	handlers := []http.HandlerFunc{
+		func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "/certifier-url", r.URL.Path)
+			assert.Equal(t, fmt.Sprintf("https://%s/", host), r.Header.Get("Referer"))
+
+			certURLRaw := r.URL.Query().Get("certUrl")
+			assert.NotEmpty(t, certURLRaw)
+			certURL, err := url.Parse(certURLRaw)
+			assert.NoError(t, err)
+
+			assert.Equal(t , "AJAX", certURL.Query().Get("type"))
+			assert.Equal(t, "HAlorymR7ZuV2CxZz9T10jABE4jzkWFBJYLEnlF4nUwCqQ=|1683218343|2a46eb852b3ef9f662304cee03d008daed6d71f6", certURL.Query().Get("sid"))
+
+			assert.Equal(t, "0dcfcbe4-5e20-47a3-9037-cb1d1bf4ad5b", certURL.Query().Get("certs_txid"))
+
+			w.Write([]byte(`{"stat":"OK"}`))
+		},
+
+		func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "/submit", r.URL.Path)
+			assert.Equal(t, http.MethodPost, r.Method)
+			assert.Equal(t, "1234567890", r.URL.Query().Get("tx"))
+			assert.Equal(t, "2.8", r.URL.Query().Get("v"))
+
+
+
+
+			assert.NoError(t, r.ParseForm())
+
+			assert.Equal(t, "HAlorymR7ZuV2CxZz9T10jABE4jzkWFBJYLEnlF4nUwCqQ=|1683218343|2a46eb852b3ef9f662304cee03d008daed6d71f6", r.Form.Get("sid"))
+			assert.Equal(t, "0dcfcbe4-5e20-47a3-9037-cb1d1bf4ad5b", r.Form.Get("certs_txid"))
+			assert.Equal(t, fmt.Sprintf("https://%s/certs-url", host), r.Form.Get("certs_url"))
+			assert.Equal(t, fmt.Sprintf("https://%s/certifier-url", host), r.Form.Get("certifier_url"))
+
+
+		},
+	}
+
+	mockServer := 		&testServer{handlers: handlers, t: t}
+
+
+
+	ts := httptest.NewTLSServer(mockServer)
+	defer ts.Close()
+
+	oc, _ := setupTestClient(t, ts, "PUSH")
+	upstreamURL, err := url.Parse(ts.URL)
+	if err != nil {
+		t.Fatalf("couldn't parse URL: %v", err)
+	}
+
+	host = upstreamURL.Host
+	submitURL := ts.URL + "/submit"
+
+	q := url.Values{}
+	q.Add("tx", "1234567890")
+	q.Add("parent", fmt.Sprintf("https://%s/signin/verify/duo/web", host))
+	q.Add("v", "2.8")
+
+
+	fakeForm := fmt.Sprintf(`
+<form method="post" id="client_cert_form">
+<input type="hidden" name="sid" value=HAlorymR7ZuV2CxZz9T10jABE4jzkWFBJYLEnlF4nUwCqQ&#x3d;&#x7c;1683218343&#x7c;2a46eb852b3ef9f662304cee03d008daed6d71f6>
+<input type="hidden" name="certs_txid" value=0dcfcbe4-5e20-47a3-9037-cb1d1bf4ad5b>
+<input type="hidden" name="certs_url" value=https&#x3a;&#x2f;&#x2f;%s&#x2f;certs-url>
+<input type="hidden" name="certifier_url" value=https&#x3a;&#x2f;&#x2f;%s&#x2f;certifier-url>
+
+<input type="hidden" name="_xsrf" value="630ef22d00af14086a3a39d62374ea80" />
+</form>
+`, host, host)
+
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(fakeForm))
+	if err != nil {
+		t.Fatalf("failed to validate document: %v, ", err)
+	}
+
+	_, err = verifyTrustedCert(oc, doc, host, submitURL, q)
+	assert.NoError(t, err)
+	assert.Empty(t, mockServer.handlers)
+}
+
+
+func TestVerifyEndpointHealth(t *testing.T) {
 	duoTX := "1234567890"
 	host := ""
 
@@ -442,7 +526,7 @@ func TestVerifyEndpointHealt(t *testing.T) {
 	}
 
 	ts := httptest.NewTLSServer(
-		&endpointTestServer{handlers: handlers, t: t})
+		&testServer{handlers: handlers, t: t})
 	defer ts.Close()
 
 	oc, _ := setupTestClient(t, ts, "PUSH")
@@ -459,7 +543,12 @@ func TestVerifyEndpointHealt(t *testing.T) {
 	host = upstreamURL.Host
 	submitURL := ts.URL + "/submit"
 
-	_, err = verifyEndpointHealth(oc, doc, host, host, host, host, submitURL, duoTX)
+	q := url.Values{}
+	q.Add("tx", "1234567890")
+	q.Add("parent", fmt.Sprintf("https://%s/signin/verify/duo/web", host))
+	q.Add("v", "2.8")
+
+	_, err = verifyEndpointHealth(oc, doc, host, host, host,  submitURL, q)
 	if err != nil {
 		t.Fatalf("failed to verify endpoint health: %v", err)
 	}

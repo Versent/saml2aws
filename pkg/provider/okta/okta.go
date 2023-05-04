@@ -929,7 +929,7 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 		} else if doc.Find("form[id=\"endpoint-health-form\"]").Length() > 0 {
 			origUrl := req.URL.String()
 			duoEndpointHost := "https://127.0.0.1:53100"
-			doc, err = verifyEndpointHealth(oc, doc, origUrl, duoEndpointHost, duoHost, oktaOrgHost, duoSubmitURL, duoSignatures[0])
+			doc, err = verifyEndpointHealth(oc, doc, origUrl, duoEndpointHost, duoHost, duoSubmitURL, q)
 
 			if err != nil {
 				return "", errors.Wrap(err, "couldn't validate endpoint health")
@@ -1415,7 +1415,7 @@ func verifyTrustedCert(oc *Client, doc *goquery.Document, duoHost string, duoSub
 		return nil, errors.Wrap(err, "error building cert validation request")
 	}
 
-	req.Header.Add("Referer", "https://"+duoHost)
+	req.Header.Add("Referer", "https://"+duoHost+"/")
 	res, err := oc.client.Do(req)
 	oc.client.Transport = originalTransport
 
@@ -1437,6 +1437,8 @@ func verifyTrustedCert(oc *Client, doc *goquery.Document, duoHost string, duoSub
 		}
 	}
 
+
+
 	defer res.Body.Close()
 
 	body, err := io.ReadAll(res.Body)
@@ -1444,11 +1446,14 @@ func verifyTrustedCert(oc *Client, doc *goquery.Document, duoHost string, duoSub
 		return nil, errors.Wrap(err, "error retrieving body from response")
 	}
 
+
+
+
 	resp := string(body)
 
 	duoStat := gjson.Get(resp, "stat").String()
 	if duoStat != "OK" {
-		return nil, errors.Wrap(err, "error validation certificate")
+		return nil, errors.New("error validation certificate")
 	}
 
 	certForm := url.Values{}
@@ -1462,6 +1467,7 @@ func verifyTrustedCert(oc *Client, doc *goquery.Document, duoHost string, duoSub
 	if err != nil {
 		return nil, errors.Wrap(err, "error building authentication request")
 	}
+
 	req.URL.RawQuery = q.Encode()
 
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
@@ -1477,10 +1483,11 @@ func verifyTrustedCert(oc *Client, doc *goquery.Document, duoHost string, duoSub
 		return nil, errors.Wrap(err, "error parsing document")
 	}
 
+
 	return doc, nil
 }
 
-func verifyEndpointHealth(oc *Client, doc *goquery.Document, origURL string, duoEndpointHost string, duoHost string, oktaOrgHost string, duoSubmitURL string, duoTX string) (*goquery.Document, error) {
+func verifyEndpointHealth(oc *Client, doc *goquery.Document, origURL string, duoEndpointHost string, duoHost string, duoSubmitURL string, postQuery url.Values) (*goquery.Document, error) {
 
 	txid, _ := doc.Find("input[name=\"txid\"]").Attr("value")
 	sid, _ := doc.Find("input[name=\"sid\"]").Attr("value")
@@ -1575,14 +1582,9 @@ func verifyEndpointHealth(oc *Client, doc *goquery.Document, origURL string, duo
 	if err != nil {
 		return nil, errors.Wrap(err, "error building authentication request")
 	}
-	q = req.URL.Query()
-	q.Add("tx", duoTX)
-	q.Add("parent", fmt.Sprintf("https://%s/signin/verify/duo/web", oktaOrgHost))
-	q.Add("v", "2.8")
-
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 
-	req.URL.RawQuery = q.Encode()
+	req.URL.RawQuery = postQuery.Encode()
 
 	res, err = oc.client.Do(req)
 	if err != nil {
