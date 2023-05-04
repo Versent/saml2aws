@@ -355,3 +355,7 @@ func TestGetStateToken(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, "token1", stateToken)
 }
+
+func TestVerifyMFA(t *testing.T) {
+
+}
