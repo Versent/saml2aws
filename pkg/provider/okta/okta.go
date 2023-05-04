@@ -1502,7 +1502,11 @@ func verifyEndpointHealth(oc *Client, doc *goquery.Document, origURL string, duo
 	req.Header.Add("Referer", "https://"+duoHost+"/")
 	req.Header.Add("Origin", "https://"+duoHost)
 
-	res, err := oc.client.Do(req)
+	_, err := oc.client.Do(req)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to query alive URL %s", duoAliveUrl)
+
+	}
 
 	duoCheckEndpointAppURL := fmt.Sprintf("https://%s/frame/check_endpoint_app_status", duoHost)
 	req, _ = http.NewRequest("GET", duoCheckEndpointAppURL, nil)
@@ -1542,7 +1546,7 @@ func verifyEndpointHealth(oc *Client, doc *goquery.Document, origURL string, duo
 	req2.Header.Add("Referer", "https://"+duoHost)
 	req2.Header.Add("Origin", "https://"+duoHost)
 
-	res, err = oc.client.Do(req2)
+	res, err := oc.client.Do(req2)
 	if err == nil {
 		defer res.Body.Close()
 	}
