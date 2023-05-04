@@ -928,7 +928,7 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 
 		} else if doc.Find("form[id=\"endpoint-health-form\"]").Length() > 0 {
 			origUrl := req.URL.String()
-			duoEndpointHost := "https://127.0.0.1:53100"
+			duoEndpointHost := "127.0.0.1:53100"
 			doc, err = verifyEndpointHealth(oc, doc, origUrl, duoEndpointHost, duoHost, duoSubmitURL, q)
 
 			if err != nil {
