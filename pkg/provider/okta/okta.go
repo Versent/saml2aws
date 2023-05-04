@@ -1437,17 +1437,12 @@ func verifyTrustedCert(oc *Client, doc *goquery.Document, duoHost string, duoSub
 		}
 	}
 
-
-
 	defer res.Body.Close()
 
 	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		return nil, errors.Wrap(err, "error retrieving body from response")
 	}
-
-
-
 
 	resp := string(body)
 
@@ -1482,7 +1477,6 @@ func verifyTrustedCert(oc *Client, doc *goquery.Document, duoHost string, duoSub
 	if err != nil {
 		return nil, errors.Wrap(err, "error parsing document")
 	}
-
 
 	return doc, nil
 }

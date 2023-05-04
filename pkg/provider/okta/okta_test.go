@@ -357,7 +357,6 @@ func TestGetStateToken(t *testing.T) {
 	assert.Equal(t, "token1", stateToken)
 }
 
-
 // anonymised from actual endpoint
 const fakeEndpointForm = `
 <form method="post" id="endpoint-health-form">
@@ -376,7 +375,6 @@ const fakeEndpointForm = `
 
 </form>
 `
-
 
 type testServer struct {
 	handlers []http.HandlerFunc
@@ -406,12 +404,13 @@ func TestVerifyTrustedCert(t *testing.T) {
 			certURL, err := url.Parse(certURLRaw)
 			assert.NoError(t, err)
 
-			assert.Equal(t , "AJAX", certURL.Query().Get("type"))
+			assert.Equal(t, "AJAX", certURL.Query().Get("type"))
 			assert.Equal(t, "HAlorymR7ZuV2CxZz9T10jABE4jzkWFBJYLEnlF4nUwCqQ=|1683218343|2a46eb852b3ef9f662304cee03d008daed6d71f6", certURL.Query().Get("sid"))
 
 			assert.Equal(t, "0dcfcbe4-5e20-47a3-9037-cb1d1bf4ad5b", certURL.Query().Get("certs_txid"))
 
-			w.Write([]byte(`{"stat":"OK"}`))
+			_, err = w.Write([]byte(`{"stat":"OK"}`))
+			assert.NoError(t, err)
 		},
 
 		func(w http.ResponseWriter, r *http.Request) {
@@ -420,9 +419,6 @@ func TestVerifyTrustedCert(t *testing.T) {
 			assert.Equal(t, "1234567890", r.URL.Query().Get("tx"))
 			assert.Equal(t, "2.8", r.URL.Query().Get("v"))
 
-
-
-
 			assert.NoError(t, r.ParseForm())
 
 			assert.Equal(t, "HAlorymR7ZuV2CxZz9T10jABE4jzkWFBJYLEnlF4nUwCqQ=|1683218343|2a46eb852b3ef9f662304cee03d008daed6d71f6", r.Form.Get("sid"))
@@ -430,13 +426,10 @@ func TestVerifyTrustedCert(t *testing.T) {
 			assert.Equal(t, fmt.Sprintf("https://%s/certs-url", host), r.Form.Get("certs_url"))
 			assert.Equal(t, fmt.Sprintf("https://%s/certifier-url", host), r.Form.Get("certifier_url"))
 
-
 		},
 	}
 
-	mockServer := 		&testServer{handlers: handlers, t: t}
-
-
+	mockServer := &testServer{handlers: handlers, t: t}
 
 	ts := httptest.NewTLSServer(mockServer)
 	defer ts.Close()
@@ -454,7 +447,6 @@ func TestVerifyTrustedCert(t *testing.T) {
 	q.Add("tx", "1234567890")
 	q.Add("parent", fmt.Sprintf("https://%s/signin/verify/duo/web", host))
 	q.Add("v", "2.8")
-
 
 	fakeForm := fmt.Sprintf(`
 <form method="post" id="client_cert_form">
@@ -476,7 +468,6 @@ func TestVerifyTrustedCert(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Empty(t, mockServer.handlers)
 }
-
 
 func TestVerifyEndpointHealth(t *testing.T) {
 	duoTX := "1234567890"
@@ -548,7 +539,7 @@ func TestVerifyEndpointHealth(t *testing.T) {
 	q.Add("parent", fmt.Sprintf("https://%s/signin/verify/duo/web", host))
 	q.Add("v", "2.8")
 
-	_, err = verifyEndpointHealth(oc, doc, host, host, host,  submitURL, q)
+	_, err = verifyEndpointHealth(oc, doc, host, host, host, submitURL, q)
 	if err != nil {
 		t.Fatalf("failed to verify endpoint health: %v", err)
 	}
