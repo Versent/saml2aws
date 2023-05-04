@@ -20,7 +20,7 @@ mod:
 	@go mod tidy
 .PHONY: mod
 
-lint:
+lint: 
 	@echo "--- lint all the things"
 	@docker run --rm -v $(shell pwd):/app -w /app golangci/golangci-lint:v$(GOLANGCI_VERSION) golangci-lint run -v
 .PHONY: lint
@@ -37,7 +37,18 @@ install:
 .PHONY: mod
 
 build:
-	goreleaser build --snapshot --rm-dist
+
+ifndef GORELEASER
+    $(error "goreleaser is not available please install and ensure it is on PATH")
+endif
+
+ifeq ($(OS),Darwin)
+	goreleaser build --snapshot --clean --config $(CURDIR)/.goreleaser.macos-latest.yml
+else ifeq ($(OS),Linux)
+	goreleaser build --snapshot --clean --config $(CURDIR)/.goreleaser.ubuntu-latest.yml
+else
+	$(error Unsupported build OS: $(OS))
+endif
 .PHONY: build
 
 clean:
