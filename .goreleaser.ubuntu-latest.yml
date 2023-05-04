@@ -1,5 +1,5 @@
 ---
-project_name: saml2aws-u2f
+project_name: saml2aws
 
 builds:
 - main: ./cmd/saml2aws/main.go
@@ -10,20 +10,24 @@ builds:
   ldflags:
     - -s -w -X main.Version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}}
   goos:
+    - windows
     - linux
   goarch:
     - amd64
+    - arm64
+    - arm
   overrides:
     - goos: linux
       goarch: amd64
       goamd64: v1
-      tags:
-        - hidraw
       env:
-        - CGO_ENABLED=1
+        - CGO_ENABLED=0
 archives:
   - format: tar.gz
     wrap_in_directory: false
+    format_overrides:
+      - goos: windows
+        format: zip
     # remove README and LICENSE
     files:
       - LICENSE.md
