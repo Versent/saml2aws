@@ -928,7 +928,8 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 
 		} else if doc.Find("form[id=\"endpoint-health-form\"]").Length() > 0 {
 			origUrl := req.URL.String()
-			doc, err = verifyEndpointHealth(oc, doc, origUrl, duoHost, oktaOrgHost, duoSubmitURL, duoSignatures[0])
+			duoEndpointHost := "https://127.0.0.1:53100"
+			doc, err = verifyEndpointHealth(oc, doc, origUrl, duoEndpointHost, duoHost, oktaOrgHost, duoSubmitURL, duoSignatures[0])
 
 			if err != nil {
 				return "", errors.Wrap(err, "couldn't validate endpoint health")
@@ -1479,7 +1480,7 @@ func verifyTrustedCert(oc *Client, doc *goquery.Document, duoHost string, duoSub
 	return doc, nil
 }
 
-func verifyEndpointHealth(oc *Client, doc *goquery.Document, origURL string, duoHost string, oktaOrgHost string, duoSubmitURL string, duoTX string) (*goquery.Document, error) {
+func verifyEndpointHealth(oc *Client, doc *goquery.Document, origURL string, duoEndpointHost string, duoHost string, oktaOrgHost string, duoSubmitURL string, duoTX string) (*goquery.Document, error) {
 
 	txid, _ := doc.Find("input[name=\"txid\"]").Attr("value")
 	sid, _ := doc.Find("input[name=\"sid\"]").Attr("value")
@@ -1489,10 +1490,10 @@ func verifyEndpointHealth(oc *Client, doc *goquery.Document, origURL string, duo
 	parent, _ := doc.Find("input[name=\"parent\"]").Attr("value")
 	duoAppUrl, _ := doc.Find("input[name=\"duo_app_url\"]").Attr("value")
 	ehDownloadLink, _ := doc.Find("input[name=\"eh_download_link\"]").Attr("value")
-	isSilentCollection, _ := doc.Find("input[name=\"is_silent_collection\"]").Attr("value")
+	// isSilentCollection, _ := doc.Find("input[name=\"is_silent_collection\"]").Attr("value")
 
 	timestamp := strconv.Itoa((int)(time.Now().Unix()))
-	duoAliveUrl := "https://127.0.0.1:53100/alive"
+	duoAliveUrl := fmt.Sprintf("https://%s/alive", duoEndpointHost)
 	req, _ := http.NewRequest("GET", duoAliveUrl, nil)
 
 	q := req.URL.Query()
@@ -1533,7 +1534,7 @@ func verifyEndpointHealth(oc *Client, doc *goquery.Document, origURL string, duo
 
 	// Separator
 
-	duoHealthURL := "https://127.0.0.1:53100/report"
+	duoHealthURL := fmt.Sprintf("https://%s/report", duoEndpointHost)
 
 	req2, _ := http.NewRequest("GET", duoHealthURL, nil)
 
@@ -1543,7 +1544,7 @@ func verifyEndpointHealth(oc *Client, doc *goquery.Document, origURL string, duo
 	q.Add("eh_service_url", ehServiceUrl+"?_="+timestamp+"101")
 
 	req2.URL.RawQuery = q.Encode()
-	req2.Header.Add("Referer", "https://"+duoHost)
+	req2.Header.Add("Referer", "https://"+duoHost+"/")
 	req2.Header.Add("Origin", "https://"+duoHost)
 
 	res, err := oc.client.Do(req2)
@@ -1565,7 +1566,7 @@ func verifyEndpointHealth(oc *Client, doc *goquery.Document, origURL string, duo
 	certForm.Add("parent", parent)
 	certForm.Add("duo_app_url", duoAppUrl)
 	certForm.Add("eh_download_link", ehDownloadLink)
-	certForm.Add("is_silent_collection", isSilentCollection)
+	// certForm.Add("is_silent_collection", isSilentCollection)
 
 	time.Sleep(2 * time.Second)
 

@@ -12,6 +12,7 @@ import (
 	"testing"
 	"testing/iotest"
 
+	"github.com/PuerkitoBio/goquery"
 	"github.com/stretchr/testify/assert"
 	"github.com/versent/saml2aws/v2/pkg/cfg"
 	"github.com/versent/saml2aws/v2/pkg/creds"
@@ -356,6 +357,110 @@ func TestGetStateToken(t *testing.T) {
 	assert.Equal(t, "token1", stateToken)
 }
 
-func TestVerifyMFA(t *testing.T) {
+// stolen from my login page
+// but with all ids randomised
+const fakeEndpointForm = `
+<form method="post" id="endpoint-health-form">
+<input type="hidden" name="sid" value=
+HAlorymR7ZuV2CxZz9T10jABE4jzkWFBJYLEnlF4nUwCqQ&#x3d;&#x7c;1683218343&#x7c;2a46eb852b3ef9f662304cee03d008daed6d71f6>
+<input type="hidden" name="akey" value=UH7AkMtr7dqTzgeMefvQ>
+<input type="hidden" name="txid" value=0dcfcbe4-5e20-47a3-9037-cb1d1bf4ad5b>
+<input type="hidden" name="response_timeout" value=15>
+<input type="hidden" name="parent" value=https&#x3a;&#x2f;&#x2f;login.example.com&#x2f;signin&#x2f;verify&#x2f;duo&#x2f;web>
+<input type="hidden" name="duo_app_url" value=https&#x3a;&#x2f;&#x2f;127.0.0.1&#x2f;report>
+<input type="hidden" name="eh_service_url" value=https&#x3a;&#x2f;&#x2f;1.endpointhealth.duosecurity.com&#x2f;v1&#x2f;healthapp&#x2f;device&#x2f;health&#x3f;_req_trace_group&#x3d;fa4659be389f1c724121f27a_587a98dc11576a7ab8416a32>
+<input type="hidden" name="eh_download_link" value=https&#x3a;&#x2f;&#x2f;dl.duosecurity.com&#x2f;DuoDeviceHealth-latest.pkg>
 
+<input type="hidden" name="_xsrf" value="630ef22d00af14086a3a39d62374ea80" />
+<input type="hidden" name="has_chromium_http_feature" value="true" />
+
+
+</form>
+`
+
+type endpointTestServer struct {
+	handlers []http.HandlerFunc
+	t        *testing.T
+}
+
+func (s *endpointTestServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	var h http.HandlerFunc
+	if len(s.handlers) == 0 {
+		s.t.Errorf("unexpected request: %v", r.URL.String())
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	h, s.handlers = s.handlers[0], s.handlers[1:]
+	h(w, r)
+}
+
+func TestVerifyEndpointHealt(t *testing.T) {
+	duoTX := "1234567890"
+	host := ""
+
+	handlers := []http.HandlerFunc{
+		// alive
+		func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "/alive", r.URL.Path)
+			assert.Equal(t, fmt.Sprintf("https://%s/", host), r.Header.Get("Referer"))
+			assert.Equal(t, fmt.Sprintf("https://%s", host), r.Header.Get("Origin"))
+			assert.NotEmpty(t, r.URL.Query().Get("_"))
+		},
+		func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "/report", r.URL.Path)
+			assert.Equal(t, fmt.Sprintf("https://%s/", host), r.Header.Get("Referer"))
+			assert.Equal(t, fmt.Sprintf("https://%s", host), r.Header.Get("Origin"))
+			assert.Equal(t, "0dcfcbe4-5e20-47a3-9037-cb1d1bf4ad5b", r.URL.Query().Get("txid"))
+			assert.NotEmpty(t, r.URL.Query().Get("eh_service_url"))
+		},
+		func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "/frame/check_endpoint_app_status", r.URL.Path)
+			assert.Equal(t, host, r.Header.Get("Referer"))
+			assert.Equal(t, "0dcfcbe4-5e20-47a3-9037-cb1d1bf4ad5b", r.URL.Query().Get("txid"))
+			assert.Equal(t, "HAlorymR7ZuV2CxZz9T10jABE4jzkWFBJYLEnlF4nUwCqQ=|1683218343|2a46eb852b3ef9f662304cee03d008daed6d71f6", r.URL.Query().Get("sid"))
+			assert.Equal(t, "XMLHttpRequest", r.Header.Get("X-Requested-With"))
+
+		},
+
+		func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "/submit", r.URL.Path)
+			assert.Equal(t, http.MethodPost, r.Method)
+			assert.Equal(t, duoTX, r.URL.Query().Get("tx"))
+			assert.Equal(t, "2.8", r.URL.Query().Get("v"))
+
+			assert.NoError(t, r.ParseForm())
+
+			assert.Equal(t, "HAlorymR7ZuV2CxZz9T10jABE4jzkWFBJYLEnlF4nUwCqQ=|1683218343|2a46eb852b3ef9f662304cee03d008daed6d71f6", r.Form.Get("sid"))
+			assert.Equal(t, "0dcfcbe4-5e20-47a3-9037-cb1d1bf4ad5b", r.Form.Get("txid"))
+			assert.Equal(t, "https://1.endpointhealth.duosecurity.com/v1/healthapp/device/health?_req_trace_group=fa4659be389f1c724121f27a_587a98dc11576a7ab8416a32", r.Form.Get("eh_service_url"))
+			assert.Equal(t, "UH7AkMtr7dqTzgeMefvQ", r.Form.Get("akey"))
+			assert.Equal(t, "15", r.Form.Get("response_timeout"))
+			assert.Equal(t, "https://login.example.com/signin/verify/duo/web", r.Form.Get("parent"))
+			assert.Equal(t, "https://127.0.0.1/report", r.Form.Get("duo_app_url"))
+			assert.Equal(t, "https://dl.duosecurity.com/DuoDeviceHealth-latest.pkg", r.Form.Get("eh_download_link"))
+		},
+	}
+
+	ts := httptest.NewTLSServer(
+		&endpointTestServer{handlers: handlers, t: t})
+	defer ts.Close()
+
+	oc, _ := setupTestClient(t, ts, "PUSH")
+	upstreamURL, err := url.Parse(ts.URL)
+	if err != nil {
+		t.Fatalf("couldn't parse URL: %v", err)
+	}
+
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(fakeEndpointForm))
+	if err != nil {
+		t.Fatalf("failed to validate document: %v, ", err)
+	}
+
+	host = upstreamURL.Host
+	submitURL := ts.URL + "/submit"
+
+	_, err = verifyEndpointHealth(oc, doc, host, host, host, host, submitURL, duoTX)
+	if err != nil {
+		t.Fatalf("failed to verify endpoint health: %v", err)
+	}
 }
