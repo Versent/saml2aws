@@ -45,7 +45,7 @@ func TestNewFidoClient(t *testing.T) {
 	}
 }
 
-func TestChallengeU2F(t *testing.T) {
+func TestChallengeWebAuthnU2F(t *testing.T) {
 	challengeNonce := "challengeNonce"
 	appID := "appID"
 	version := "version"

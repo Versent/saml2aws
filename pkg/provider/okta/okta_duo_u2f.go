@@ -107,5 +107,4 @@ func (d *DUOU2FClient) ChallengeU2F() (*ResponseData, error) {
 			}
 		}
 	}
-
 }
