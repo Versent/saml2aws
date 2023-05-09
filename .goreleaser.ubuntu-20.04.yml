@@ -66,8 +66,8 @@ dockers:
     ids:
     - saml2aws-static
     image_templates:
-      - ghcr.io/versent/saml2aws:{{ .Version }}-amd64
-      - ghcr.io/versent/saml2aws:latest-amd64
+      - ghcr.io/{{ .Env.IMAGE_NAME }}:{{ .Version }}-amd64
+      - ghcr.io/{{ .Env.IMAGE_NAME }}:latest-amd64
     build_flag_templates:
         - "--build-arg=BASE_IMAGE_ARCH=static-debian11"
         - "--platform=linux/amd64"
@@ -78,17 +78,17 @@ dockers:
     ids:
     - saml2aws-static
     image_templates:
-      - ghcr.io/versent/saml2aws:{{ .Version }}-arm64
-      - ghcr.io/versent/saml2aws:latest-arm64
+      - ghcr.io/{{ .Env.IMAGE_NAME }}:{{ .Version }}-arm64
+      - ghcr.io/{{ .Env.IMAGE_NAME }}:latest-arm64
     build_flag_templates:
         - "--build-arg=BASE_IMAGE_ARCH=static:latest-arm64"
         - "--platform=linux/arm64"
 docker_manifests:
-  - name_template: ghcr.io/versent/saml2aws:{{ .Version }}
+  - name_template: ghcr.io/{{ .Env.IMAGE_NAME }}:{{ .Version }}
     image_templates:
-    - ghcr.io/versent/saml2aws:{{ .Version }}-amd64
-    - ghcr.io/versent/saml2aws:{{ .Version }}-arm64
-  - name_template: ghcr.io/versent/saml2aws:latest
+    - ghcr.io/{{ .Env.IMAGE_NAME }}:{{ .Version }}-amd64
+    - ghcr.io/{{ .Env.IMAGE_NAME }}:{{ .Version }}-arm64
+  - name_template: ghcr.io/{{ .Env.IMAGE_NAME }}:latest
     image_templates:
-    - ghcr.io/versent/saml2aws:latest-amd64
-    - ghcr.io/versent/saml2aws:latest-arm64
+    - ghcr.io/{{ .Env.IMAGE_NAME }}:latest-amd64
+    - ghcr.io/{{ .Env.IMAGE_NAME }}:latest-arm64

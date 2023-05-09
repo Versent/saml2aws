@@ -24,6 +24,7 @@ jobs:
         - macos-latest
     runs-on: ${{ matrix.os }}
     if: github.event_name != 'workflow_dispatch'
+    permissions: write-all
     steps:
 
     - name: Set up Go 1.x
@@ -38,6 +39,10 @@ jobs:
       if: matrix.os == 'ubuntu-20.04'
       run: sudo apt-get update && sudo apt-get install -y libudev-dev
 
+    - name: Add Lowercase Repository Name to Environment
+      run: |
+        echo REPOSITORY_NAME_LOWERCASE=$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]') >> $GITHUB_ENV
+
     - name: GoReleaser
       uses: goreleaser/goreleaser-action@v4
       with:
@@ -45,6 +50,7 @@ jobs:
         args: release --clean --config .goreleaser.${{ matrix.os }}.yml
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        IMAGE_NAME: ${{ env.REPOSITORY_NAME_LOWERCASE }}
 
   windows-msi:
     name: Build Windows MSI and upload to release
