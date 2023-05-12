@@ -254,6 +254,9 @@ func (ac *Client) handleFormSelectDevice(ctx context.Context, doc *goquery.Docum
 	doc.Find("ul.device-list > li").Each(func(_ int, s *goquery.Selection) {
 		deviceId, _ := s.Attr("data-id")
 		deviceName, _ := s.Find("a > div.device-name").Html()
+		if deviceName == "" {
+			deviceName, _ = s.Find("button > div.device-name").Html()
+		}
 
 		logger.WithField("device name", deviceName).WithField("device id", deviceId).Debug("Select Device")
 		deviceList[deviceName] = deviceId
