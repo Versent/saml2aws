@@ -45,7 +45,7 @@ func TestNewFidoClient(t *testing.T) {
 	}
 }
 
-func TestChallengeU2F(t *testing.T) {
+func TestChallengeWebAuthnU2F(t *testing.T) {
 	challengeNonce := "challengeNonce"
 	appID := "appID"
 	version := "version"
@@ -66,12 +66,12 @@ func TestChallengeU2F(t *testing.T) {
 			request := &u2fhost.AuthenticateRequest{
 				Challenge:          challengeNonce,
 				AppId:              appID,
-				Facet:              "https://" + appID,
+				Facet:              appID,
 				KeyHandle:          keyHandle,
 				ChannelIdPublicKey: nil,
 				ChannelIdUnused:    false,
 				CheckOnly:          false,
-				WebAuthn:           true,
+				WebAuthn:           false,
 			}
 			response := &u2fhost.AuthenticateResponse{}
 			device.On("Authenticate", request).Return(response, nil)

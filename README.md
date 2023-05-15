@@ -120,6 +120,10 @@ chmod u+x ~/.local/bin/saml2aws
 hash -r
 saml2aws --version
 ```
+If U2F support is required then there are separate builds for this - use the following download URL instead:
+```
+wget -c "https://github.com/Versent/saml2aws/releases/download/v${CURRENT_VERSION}/saml2aws-u2f_${CURRENT_VERSION}_linux_amd64.tar.gz" -O - | tar -xzv -C ~/.local/bin
+```
 
 #### Using Make
 
@@ -244,6 +248,7 @@ Commands:
                                  The file that will cache the credentials retrieved from AWS. When not specified, will use the default AWS credentials file location. (env: SAML2AWS_CREDENTIALS_FILE)
         --cache-saml             Caches the SAML response (env: SAML2AWS_CACHE_SAML)
         --cache-file=CACHE-FILE  The location of the SAML cache file (env: SAML2AWS_SAML_CACHE_FILE)
+        --download-browser-driver  Automatically download browsers for Browser IDP. (env: SAML2AWS_AUTO_BROWSER_DOWNLOAD)
         --disable-sessions         Do not use Okta sessions. Uses Okta sessions by default. (env: SAML2AWS_OKTA_DISABLE_SESSIONS)
         --disable-remember-device  Do not remember Okta MFA device. Remembers MFA device by default. (env: SAML2AWS_OKTA_DISABLE_REMEMBER_DEVICE)
 
@@ -539,6 +544,18 @@ region                  = us-east-1
 ```
 
 To use this you will need to export `AWS_DEFAULT_PROFILE=customer-test` environment variable to target `test`.
+
+### Playwright Browser Drivers for Browser IDP
+
+If you are using the Browser Identity Provider, on first invocation of `saml2aws login` you need to remember to install
+the browser drivers in order for playwright-go to work. Otherwise you will see the following error message:
+
+`Error authenticating to IDP.: could not start driver: fork/exec  ... no such file or directory`
+
+To install the drivers, you can:
+* Pass `--download-browser-driver` to `saml2aws login`
+* Set in your shell environment `SAML2AWS_AUTO_BROWSER_DOWNLOAD=true`
+* Set `download_browser_driver = true` in your saml2aws config file, i.e. `~/.saml2aws`
 
 ## Advanced Configuration (Multiple AWS account access but SAML authenticate against a single 'SSO' AWS account)
 

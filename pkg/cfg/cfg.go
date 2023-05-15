@@ -56,9 +56,11 @@ type IDPAccount struct {
 	SAMLCache             bool   `ini:"saml_cache"`
 	SAMLCacheFile         string `ini:"saml_cache_file"`
 	TargetURL             string `ini:"target_url"`
-	DisableRememberDevice bool   `ini:"disable_remember_device"` // used by Okta
-	DisableSessions       bool   `ini:"disable_sessions"`        // used by Okta
-	Headless              bool   `ini:"headless"`                // used by browser
+	DisableRememberDevice bool   `ini:"disable_remember_device"`      // used by Okta
+	DisableSessions       bool   `ini:"disable_sessions"`             // used by Okta
+	DownloadBrowser       bool   `ini:"download_browser_driver"`      // used by browser
+	BrowserDriverDir      string `ini:"browser_driver_dir,omitempty"` // used by browser; hide from user if not set
+	Headless              bool   `ini:"headless"`                     // used by browser
 	Prompter              string `ini:"prompter"`
 }
 

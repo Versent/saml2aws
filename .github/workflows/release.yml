@@ -20,6 +20,7 @@ jobs:
       matrix:
         os:
         - ubuntu-latest
+        - ubuntu-20.04
         - macos-latest
     runs-on: ${{ matrix.os }}
     if: github.event_name != 'workflow_dispatch'
@@ -34,7 +35,7 @@ jobs:
       uses: actions/checkout@v3
 
     - name: Install dependency required for linux builds
-      if: matrix.os == 'ubuntu-latest'
+      if: matrix.os == 'ubuntu-20.04'
       run: sudo apt-get update && sudo apt-get install -y libudev-dev
 
     - name: GoReleaser
@@ -76,7 +77,7 @@ jobs:
 
     - name: Retrieve the release asset
       id: asset
-      uses: robinraju/release-downloader@768b85c8d69164800db5fc00337ab917daf3ce68  # v1.7
+      uses: robinraju/release-downloader@efa4cd07bd0195e6cc65e9e30c251b49ce4d3e51  # v1.8
       with:
         repository: ${{ github.repository }}
         tag: ${{ env.VER_TAG }}
