@@ -248,18 +248,13 @@ func (ac *Client) handleRefresh(ctx context.Context, doc *goquery.Document, _ *h
 }
 
 func (ac *Client) handleFormSelectDevice(ctx context.Context, doc *goquery.Document, res *http.Response) (context.Context, *http.Request, error) {
-	deviceList := make(map[string]string)
-	var deviceNameList []string
-
-	doc.Find("ul.device-list > li").Each(func(_ int, s *goquery.Selection) {
-		deviceId, _ := s.Attr("data-id")
-		deviceName, _ := s.Find("a > div.device-name").Html()
-
-		logger.WithField("device name", deviceName).WithField("device id", deviceId).Debug("Select Device")
-		deviceList[deviceName] = deviceId
-		deviceNameList = append(deviceNameList, deviceName)
-	})
-
+	var deviceMap = findDeviceMap(doc)
+	deviceNameList := make([]string, len(deviceMap))
+	i := 0
+	for key := range deviceMap {
+		deviceNameList[i] = key
+		i++
+	}
 	var chooseDevice = prompter.Choose("Select which MFA Device to use", deviceNameList)
 
 	form, err := page.NewFormFromDocument(doc, "")
@@ -267,7 +262,7 @@ func (ac *Client) handleFormSelectDevice(ctx context.Context, doc *goquery.Docum
 		return ctx, nil, errors.Wrap(err, "error extracting select device form")
 	}
 
-	form.Values.Set("deviceId", deviceList[deviceNameList[chooseDevice]])
+	form.Values.Set("deviceId", deviceMap[deviceNameList[chooseDevice]])
 	form.URL, err = makeAbsoluteURL(form.URL, makeBaseURL(res.Request.URL))
 	if err != nil {
 		return ctx, nil, err
@@ -346,4 +341,20 @@ func makeAbsoluteURL(v string, base string) (string, error) {
 		return pathURL.String(), nil
 	}
 	return baseURL.ResolveReference(pathURL).String(), nil
+}
+
+func findDeviceMap(doc *goquery.Document) map[string]string {
+	deviceList := make(map[string]string)
+
+	doc.Find("ul.device-list > li").Each(func(_ int, s *goquery.Selection) {
+		deviceId, _ := s.Attr("data-id")
+		deviceName, _ := s.Find("a > div.device-name").Html()
+		if deviceName == "" {
+			deviceName, _ = s.Find("button > div.device-name").Html()
+		}
+
+		logger.WithField("device name", deviceName).WithField("device id", deviceId).Debug("Select Device")
+		deviceList[deviceName] = deviceId
+	})
+	return deviceList
 }
