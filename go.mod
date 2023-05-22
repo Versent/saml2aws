@@ -10,7 +10,7 @@ require (
 	github.com/alecthomas/kingpin v2.2.6+incompatible
 	github.com/avast/retry-go v3.0.0+incompatible
 	github.com/aws/aws-sdk-go v1.44.259
-	github.com/beevik/etree v1.1.4
+	github.com/beevik/etree v1.2.0
 	github.com/danieljoos/wincred v1.2.0
 	github.com/google/uuid v1.3.0
 	github.com/h2non/gock v1.2.0
