@@ -2,7 +2,8 @@
 project_name: saml2aws-u2f
 
 builds:
-- main: ./cmd/saml2aws/main.go
+- id: saml2aws
+  main: ./cmd/saml2aws/main.go
   binary: saml2aws
   flags:
     - -trimpath
@@ -21,12 +22,73 @@ builds:
         - hidraw
       env:
         - CGO_ENABLED=1
+- id: saml2aws-static
+  main: ./cmd/saml2aws/main.go
+  binary: saml2aws
+  flags:
+    - -trimpath
+    - -v
+  ldflags:
+    - -s -w -X main.Version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}} -extldflags "-static"
+  goos:
+    - linux
+  goarch:
+    - amd64
+    - arm64
+    - arm
+  env:
+    - CGO_ENABLED=0
 archives:
-  - format: tar.gz
+  - id: saml2aws
+    format: tar.gz
+    builds: [saml2aws]
     wrap_in_directory: false
     # remove README and LICENSE
     files:
       - LICENSE.md
       - README.md
+  - id: saml2aws-static
+    format: tar.gz
+    builds: [saml2aws-static]
+    wrap_in_directory: false
+    # remove README and LICENSE
+    files:
+      - LICENSE.md
+      - README.md
+    name_template: "{{ .ProjectName }}_static_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
 checksum:
   name_template: "{{ .ProjectName }}_{{ .Version }}_checksums.txt"
+dockers:
+  - id: amd64
+    goos: linux
+    goarch: amd64
+    use: buildx
+    ids:
+    - saml2aws-static
+    image_templates:
+      - ghcr.io/{{ .Env.IMAGE_NAME }}:{{ .Version }}-amd64
+      - ghcr.io/{{ .Env.IMAGE_NAME }}:latest-amd64
+    build_flag_templates:
+        - "--build-arg=BASE_IMAGE_ARCH=static-debian11"
+        - "--platform=linux/amd64"
+  - id: arm64
+    goos: linux
+    goarch: arm64
+    use: buildx
+    ids:
+    - saml2aws-static
+    image_templates:
+      - ghcr.io/{{ .Env.IMAGE_NAME }}:{{ .Version }}-arm64
+      - ghcr.io/{{ .Env.IMAGE_NAME }}:latest-arm64
+    build_flag_templates:
+        - "--build-arg=BASE_IMAGE_ARCH=static:latest-arm64"
+        - "--platform=linux/arm64"
+docker_manifests:
+  - name_template: ghcr.io/{{ .Env.IMAGE_NAME }}:{{ .Version }}
+    image_templates:
+    - ghcr.io/{{ .Env.IMAGE_NAME }}:{{ .Version }}-amd64
+    - ghcr.io/{{ .Env.IMAGE_NAME }}:{{ .Version }}-arm64
+  - name_template: ghcr.io/{{ .Env.IMAGE_NAME }}:latest
+    image_templates:
+    - ghcr.io/{{ .Env.IMAGE_NAME }}:latest-amd64
+    - ghcr.io/{{ .Env.IMAGE_NAME }}:latest-arm64
