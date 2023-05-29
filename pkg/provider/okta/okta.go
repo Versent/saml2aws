@@ -621,7 +621,7 @@ func getStateTokenFromOktaPageBody(responseBody string) (string, error) {
 		}
 	}
 
-	return "", fmt.Errorf("cannot find state token in %v", responseBody)
+	return "", errors.New("cannot find state token")
 
 }
 
