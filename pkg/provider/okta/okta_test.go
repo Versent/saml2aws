@@ -316,7 +316,7 @@ func TestOktaParseMfaIdentifer(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.title, func(t *testing.T) {
-			identifier, authName := parseMfaIdentifer(resp, test.index)
+			identifier, authName, _ := parseMfaIdentifer(resp, test.index)
 			assert.Equal(t, test.identifier, identifier)
 			assert.Equal(t, test.authName, authName)
 		})

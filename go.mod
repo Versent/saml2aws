@@ -10,7 +10,7 @@ require (
 	github.com/alecthomas/kingpin v2.2.6+incompatible
 	github.com/avast/retry-go v3.0.0+incompatible
 	github.com/aws/aws-sdk-go v1.44.259
-	github.com/beevik/etree v1.1.4
+	github.com/beevik/etree v1.2.0
 	github.com/danieljoos/wincred v1.2.0
 	github.com/google/uuid v1.3.0
 	github.com/h2non/gock v1.2.0
@@ -19,9 +19,9 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/pkg/errors v0.9.1
 	github.com/playwright-community/playwright-go v0.2000.1
-	github.com/sirupsen/logrus v1.9.0
+	github.com/sirupsen/logrus v1.9.2
 	github.com/skratchdot/open-golang v0.0.0-20200116055534-eef842397966
-	github.com/stretchr/testify v1.8.2
+	github.com/stretchr/testify v1.8.3
 	github.com/tidwall/gjson v1.14.4
 	golang.org/x/net v0.10.0
 	gopkg.in/ini.v1 v1.67.0
