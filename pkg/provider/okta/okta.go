@@ -607,12 +607,22 @@ func (oc *Client) getStateToken(req *http.Request, loginDetails *creds.LoginDeta
 }
 
 func getStateTokenFromOktaPageBody(responseBody string) (string, error) {
-	re := regexp.MustCompile("var stateToken = [\"|'](.*)[\"|'];")
-	match := re.FindStringSubmatch(responseBody)
-	if len(match) < 2 {
-		return "", errors.New("cannot find state token")
+	regexes := []*regexp.Regexp{
+		regexp.MustCompile("var stateToken = [\"|'](.*)[\"|'];"),
+		// Found on the "extra verification" page
+		// hiding in a Javascript object
+		regexp.MustCompile(`"stateToken":"([^"]*)"`),
 	}
-	return strings.Replace(match[1], `\x2D`, "-", -1), nil
+
+	for _, re := range regexes {
+		match := re.FindStringSubmatch(responseBody)
+		if len(match) >= 2 {
+			return strings.Replace(match[1], `\x2D`, "-", -1), nil
+		}
+	}
+
+	return "", errors.New("cannot find state token")
+
 }
 
 func parseMfaIdentifer(json string, arrayPosition int) (string, string, string) {

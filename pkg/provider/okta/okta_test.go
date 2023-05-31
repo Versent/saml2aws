@@ -53,6 +53,12 @@ func TestGetStateTokenFromOktaPageBody(t *testing.T) {
 			stateToken: "12345-6789",
 			err:        nil,
 		},
+		{
+			title:      "javascript state token inside JSON",
+			body:       `U0h8","stateToken":"c0ffeeda7e","helpLinks":{"help"`,
+			stateToken: "c0ffeeda7e",
+			err:        nil,
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.title, func(t *testing.T) {
