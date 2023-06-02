@@ -78,6 +78,6 @@ test:
 # Note: Files written by the container will be owned by root.  This is a limitation of the Docker socket mount.
 # You may need to run `docker run --privileged --rm tonistiigi/binfmt --install all` to enable the buildx plugin.
 docker-build-environment:
-	docker build --platform=amd64 -t saml2aws/build -f Dockerfile.build .
+	docker build --platform=linux/amd64 -t saml2aws/build -f Dockerfile.build .
 	docker run -it --rm -v /var/run/docker.sock:/var/run/docker.sock -e BUILDX_CONFIG=$(PWD)/.buildtemp -e GOPATH=$(PWD)/.buildtemp -e GOTMPDIR=$(PWD)/.buildtemp -e GOCACHE=$(PWD)/.buildtemp/.cache -e GOENV=$(PWD)/.buildtemp/env -v $(PWD):$(PWD) -w $(PWD) saml2aws/build:latest
 .PHONY: docker-build-environment
