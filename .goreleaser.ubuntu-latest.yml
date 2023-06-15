@@ -11,7 +11,6 @@ builds:
     - -s -w -X main.Version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}}
   goos:
     - windows
-    - darwin
     - linux
   goarch:
     - amd64
@@ -21,10 +20,8 @@ builds:
     - goos: linux
       goarch: amd64
       goamd64: v1
-      tags:
-        - hidraw
       env:
-        - CGO_ENABLED=1
+        - CGO_ENABLED=0
 archives:
   - format: tar.gz
     wrap_in_directory: false
@@ -35,3 +32,5 @@ archives:
     files:
       - LICENSE.md
       - README.md
+checksum:
+  name_template: "{{ .ProjectName }}_{{ .Version }}_checksums.txt"

@@ -1,4 +1,7 @@
-# saml2aws [![GitHub Actions status](https://github.com/Versent/saml2aws/workflows/Go/badge.svg?branch=master)](https://github.com/Versent/saml2aws/actions?query=workflow%3AGo) [![Build status - Windows](https://ci.appveyor.com/api/projects/status/ptpi18kci16o4i82/branch/master?svg=true)](https://ci.appveyor.com/project/davidobrien1985/saml2aws/branch/master)
+# saml2aws
+
+[![GitHub Actions status](https://github.com/Versent/saml2aws/workflows/Go/badge.svg?branch=master)](https://github.com/Versent/saml2aws/actions?query=workflow%3AGo) [![Build status - Windows](https://ci.appveyor.com/api/projects/status/ptpi18kci16o4i82/branch/master?svg=true)](https://ci.appveyor.com/project/davidobrien1985/saml2aws/branch/master)
+[![codecov](https://codecov.io/gh/Versent/saml2aws/branch/master/graph/badge.svg)](https://codecov.io/gh/Versent/saml2aws)
 
 CLI tool which enables you to login and retrieve [AWS](https://aws.amazon.com/) temporary credentials using
 with [ADFS](https://msdn.microsoft.com/en-us/library/bb897402.aspx) or [PingFederate](https://www.pingidentity.com/en/products/pingfederate.html) Identity Providers.
@@ -18,25 +21,47 @@ The process goes something like this:
 
 ## Table of Contents
 
-- [Table of Contents](#table-of-contents)
-- [Requirements](#requirements)
-- [Caveats](#caveats)
-- [Install](#install)
+- [saml2aws](#saml2aws)
+  - [Table of Contents](#table-of-contents)
+  - [Requirements](#requirements)
+  - [Caveats](#caveats)
+  - [Install](#install)
     - [OSX](#osx)
     - [Windows](#windows)
     - [Linux](#linux)
-- [Autocomplete](#autocomplete)
-- [Dependency Setup](#dependency-setup)
-- [Usage](#usage)
+      - [Using Make](#using-make)
+      - [Arch Linux and its derivatives](#arch-linux-and-its-derivatives)
+      - [Void Linux](#void-linux)
+  - [Autocomplete](#autocomplete)
+    - [Bash](#bash)
+    - [Zsh](#zsh)
+  - [Dependency Setup](#dependency-setup)
+  - [Usage](#usage)
     - [`saml2aws script`](#saml2aws-script)
+    - [`saml2aws exec`](#saml2aws-exec)
     - [Configuring IDP Accounts](#configuring-idp-accounts)
-- [Example](#example)
-- [Advanced Configuration](#advanced-configuration)
-    - [Dev Account Setup](#dev-account-setup)
-    - [Test Account Setup](#test-account-setup)
-- [Building](#building)
-- [Environment vars](#environment-vars)
-- [Provider Specific Documentation](#provider-specific-documentation)
+  - [Example](#example)
+  - [Advanced Configuration](#advanced-configuration)
+    - [Windows Subsystem Linux (WSL) Configuration](#windows-subsystem-linux-wsl-configuration)
+      - [Option 1: Disable Keychain](#option-1-disable-keychain)
+      - [Option 2: Configure Pass to be the default keyring](#option-2-configure-pass-to-be-the-default-keyring)
+    - [Configuring Multiple Accounts](#configuring-multiple-accounts)
+      - [Dev Account Setup](#dev-account-setup)
+      - [Test Account Setup](#test-account-setup)
+  - [Advanced Configuration (Multiple AWS account access but SAML authenticate against a single 'SSO' AWS account)](#advanced-configuration-multiple-aws-account-access-but-saml-authenticate-against-a-single-sso-aws-account)
+  - [Advanced Configuration - additional parameters](#advanced-configuration---additional-parameters)
+  - [Building](#building)
+    - [macOS](#macos)
+    - [Linux](#linux-1)
+  - [Environment vars](#environment-vars)
+  - [Provider Specific Documentation](#provider-specific-documentation)
+- [Dependencies](#dependencies)
+- [Releasing](#releasing)
+- [Debugging Issues with IDPs](#debugging-issues-with-idps)
+- [Using saml2aws as credential process](#using-saml2aws-as-credential-process)
+- [Caching the saml2aws SAML assertion for immediate reuse](#caching-the-saml2aws-saml-assertion-for-immediate-reuse)
+- [Okta Sessions](#okta-sessions)
+- [License](#license)
 
 ## Requirements
 
@@ -52,7 +77,7 @@ The process goes something like this:
   * [Akamai](pkg/provider/akamai/README.md)
   * OneLogin
   * NetIQ
-  * Browser, this uses [playwright-go](github.com/mxschmitt/playwright-go) to run a sandbox chromium window.
+  * Browser, this uses [playwright-go](github.com/playwright-community/playwright-go) to run a sandbox chromium window.
   * [Auth0](pkg/provider/auth0/README.md) NOTE: Currently, MFA not supported
 * AWS SAML Provider configured
 
@@ -89,11 +114,29 @@ saml2aws --version
 While brew is available for Linux you can also run the following without using a package manager.
 
 ```
+mkdir -p ~/.local/bin
 CURRENT_VERSION=$(curl -Ls https://api.github.com/repos/Versent/saml2aws/releases/latest | grep 'tag_name' | cut -d'v' -f2 | cut -d'"' -f1)
-wget -c https://github.com/Versent/saml2aws/releases/download/v${CURRENT_VERSION}/saml2aws_${CURRENT_VERSION}_linux_amd64.tar.gz -O - | tar -xzv -C ~/.local/bin
+wget -c "https://github.com/Versent/saml2aws/releases/download/v${CURRENT_VERSION}/saml2aws_${CURRENT_VERSION}_linux_amd64.tar.gz" -O - | tar -xzv -C ~/.local/bin
 chmod u+x ~/.local/bin/saml2aws
 hash -r
 saml2aws --version
+```
+If U2F support is required then there are separate builds for this - use the following download URL instead:
+```
+wget -c "https://github.com/Versent/saml2aws/releases/download/v${CURRENT_VERSION}/saml2aws-u2f_${CURRENT_VERSION}_linux_amd64.tar.gz" -O - | tar -xzv -C ~/.local/bin
+```
+
+#### Using Make
+
+You will need [Go Tools](https://golang.org/doc/install) (you can check your package maintainer as well) installed and the [Go Lint tool](https://github.com/alecthomas/gometalinter)
+
+Clone this repo to your `$GOPATH/src` directory
+
+Now you can install by running 
+
+```
+make
+make install
 ```
 
 #### [Arch Linux](https://archlinux.org/) and its derivatives
@@ -154,6 +197,8 @@ Flags:
                                The configured IDP provider. (env: SAML2AWS_IDP_PROVIDER)
       --browser-type=BROWSER-TYPE
                                The browser type to use when IDP provider is set to 'Browser'. (env: SAML2AWS_BROWSER_TYPE)
+      --browser-executable-path=BROWSER-EXECUTABLE-PATH
+                               The browser full path when IDP provider is set to 'Browser'. (env: SAML2AWS_BROWSER_EXECUTABLE_PATH)
       --mfa=MFA                The name of the mfa. (env: SAML2AWS_MFA)
   -s, --skip-verify            Skip verification of server certificate. (env: SAML2AWS_SKIP_VERIFY)
       --url=URL                The URL of the SAML IDP server used to login. (env: SAML2AWS_URL)
@@ -208,6 +253,7 @@ Commands:
                                  The file that will cache the credentials retrieved from AWS. When not specified, will use the default AWS credentials file location. (env: SAML2AWS_CREDENTIALS_FILE)
         --cache-saml             Caches the SAML response (env: SAML2AWS_CACHE_SAML)
         --cache-file=CACHE-FILE  The location of the SAML cache file (env: SAML2AWS_SAML_CACHE_FILE)
+        --download-browser-driver  Automatically download browsers for Browser IDP. (env: SAML2AWS_AUTO_BROWSER_DOWNLOAD)
         --disable-sessions         Do not use Okta sessions. Uses Okta sessions by default. (env: SAML2AWS_OKTA_DISABLE_SESSIONS)
         --disable-remember-device  Do not remember Okta MFA device. Remembers MFA device by default. (env: SAML2AWS_OKTA_DISABLE_REMEMBER_DEVICE)
 
@@ -241,7 +287,7 @@ Commands:
     Emit a script that will export environment variables.
 
     -p, --profile=PROFILE      The AWS profile to save the temporary credentials. (env: SAML2AWS_PROFILE)
-        --shell=bash           Type of shell environment. Options include: bash, powershell, fish, env
+        --shell=bash           Type of shell environment. Options include: bash, /bin/sh, powershell, fish, env
         --credentials-file=CREDENTIALS-FILE
                                The file that will cache the credentials retrieved from AWS. When not specified, will use the default AWS credentials file location. (env: SAML2AWS_CREDENTIALS_FILE)
 
@@ -261,7 +307,7 @@ export AWS_CREDENTIAL_EXPIRATION="2016-09-04T38:27:00Z00:00"
 SAML2AWS_PROFILE=saml
 ```
 
-Powershell, and fish shells are supported as well.
+Powershell, sh and fish shells are supported as well.
 Env is useful for all AWS SDK compatible tools that can source an env file. It is a powerful combo with docker and the `--env-file` parameter.
 
 If you use `eval $(saml2aws script)` frequently, you may want to create a alias for it:
@@ -503,6 +549,18 @@ region                  = us-east-1
 ```
 
 To use this you will need to export `AWS_DEFAULT_PROFILE=customer-test` environment variable to target `test`.
+
+### Playwright Browser Drivers for Browser IDP
+
+If you are using the Browser Identity Provider, on first invocation of `saml2aws login` you need to remember to install
+the browser drivers in order for playwright-go to work. Otherwise you will see the following error message:
+
+`Error authenticating to IDP.: could not start driver: fork/exec  ... no such file or directory`
+
+To install the drivers, you can:
+* Pass `--download-browser-driver` to `saml2aws login`
+* Set in your shell environment `SAML2AWS_AUTO_BROWSER_DOWNLOAD=true`
+* Set `download_browser_driver = true` in your saml2aws config file, i.e. `~/.saml2aws`
 
 ## Advanced Configuration (Multiple AWS account access but SAML authenticate against a single 'SSO' AWS account)
 

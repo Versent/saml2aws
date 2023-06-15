@@ -2,7 +2,8 @@ package pingone
 
 import (
 	"bytes"
-	"io/ioutil"
+	"os"
+	"reflect"
 	"testing"
 
 	"github.com/PuerkitoBio/goquery"
@@ -29,7 +30,7 @@ func TestMakeAbsoluteURL(t *testing.T) {
 
 func TestDocTypes(t *testing.T) {
 	for _, tt := range docTests {
-		data, err := ioutil.ReadFile(tt.file)
+		data, err := os.ReadFile(tt.file)
 		require.Nil(t, err)
 
 		doc, err := goquery.NewDocumentFromReader(bytes.NewReader(data))
@@ -37,6 +38,32 @@ func TestDocTypes(t *testing.T) {
 
 		if tt.fn(doc) != tt.expected {
 			t.Errorf("expect doc check of %v to be %v", tt.file, tt.expected)
+		}
+	}
+}
+
+var deviceNameTests = []struct {
+	file     string
+	expected map[string]string
+}{
+	{"example/selectdevice.html", map[string]string{"iPhone": "3270134077889335000", "Android": "3964291169487703000"}},
+	{"example/selectdevicebutton.html", map[string]string{"iPhone": "3270134077889335000", "Android": "3964291169487703000"}},
+}
+
+func TestFindDeviceMap(t *testing.T) {
+	for _, tt := range deviceNameTests {
+		data, err := os.ReadFile(tt.file)
+		require.Nil(t, err)
+
+		doc, err := goquery.NewDocumentFromReader(bytes.NewReader(data))
+		require.Nil(t, err)
+
+		deviceMap := findDeviceMap(doc)
+
+		eq := reflect.DeepEqual(deviceMap, tt.expected)
+
+		if eq != true {
+			t.Errorf("expected deviceMap %v to be %v", deviceMap, tt.expected)
 		}
 	}
 }

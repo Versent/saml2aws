@@ -3,11 +3,12 @@ package okta
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"html"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"net/http/cookiejar"
@@ -15,6 +16,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
@@ -180,7 +182,7 @@ func (oc *Client) createSession(loginDetails *creds.LoginDetails, sessionToken s
 		return "", "", errors.Wrap(err, "error retrieving session response")
 	}
 
-	body, err := ioutil.ReadAll(res.Body)
+	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		return "", "", errors.Wrap(err, "error retrieving body from response")
 	}
@@ -257,7 +259,7 @@ func (oc *Client) validateSession(loginDetails *creds.LoginDetails) error {
 		return errors.Wrap(err, "error retrieving session response")
 	}
 
-	body, err := ioutil.ReadAll(res.Body)
+	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		return errors.Wrap(err, "error retrieving body from response")
 	}
@@ -314,7 +316,7 @@ func (oc *Client) authWithSession(loginDetails *creds.LoginDetails) (string, err
 		logger.Debugf("error authing with session: %v", err)
 	}
 
-	body, err := ioutil.ReadAll(res.Body)
+	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		logger.Debugf("error reading body for auth with session: %v", err)
 	}
@@ -426,7 +428,7 @@ func (oc *Client) primaryAuth(loginDetails *creds.LoginDetails) (string, string,
 		return "", "", "", errors.Wrap(err, "error retrieving auth response")
 	}
 
-	body, err := ioutil.ReadAll(res.Body)
+	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		return "", "", "", errors.Wrap(err, "error retrieving body from response")
 	}
@@ -557,21 +559,9 @@ func (oc *Client) follow(ctx context.Context, req *http.Request, loginDetails *c
 		logger.WithField("type", "saml-response").Debug("doc detect")
 		handler = oc.handleFormRedirect
 	} else {
-		req, err = http.NewRequest("GET", loginDetails.URL, nil)
+		stateToken, err := oc.getStateToken(req, loginDetails)
 		if err != nil {
-			return "", errors.Wrap(err, "error building app request")
-		}
-		res, err = oc.client.Do(req)
-		if err != nil {
-			return "", errors.Wrap(err, "error retrieving app response")
-		}
-		body, err := ioutil.ReadAll(res.Body)
-		if err != nil {
-			return "", errors.Wrap(err, "error retrieving body from response")
-		}
-		stateToken, err := getStateTokenFromOktaPageBody(string(body))
-		if err != nil {
-			return "", errors.Wrap(err, "error retrieving saml response")
+			return "", errors.Wrap(err, "failed to getStateToken")
 		}
 		loginDetails.StateToken = stateToken
 		return oc.Authenticate(loginDetails)
@@ -591,19 +581,58 @@ func (oc *Client) follow(ctx context.Context, req *http.Request, loginDetails *c
 
 }
 
-func getStateTokenFromOktaPageBody(responseBody string) (string, error) {
-	re := regexp.MustCompile("var stateToken = [\"|'](.*)[\"|'];")
-	match := re.FindStringSubmatch(responseBody)
-	if len(match) < 2 {
-		return "", errors.New("cannot find state token")
+func (oc *Client) getStateToken(req *http.Request, loginDetails *creds.LoginDetails) (string, error) {
+	url, err := url.Parse(loginDetails.URL)
+	if err != nil {
+		return "", errors.Wrap(err, "error building app request")
 	}
-	return strings.Replace(match[1], `\x2D`, "-", -1), nil
+
+	req.URL = url
+	req.Method = "GET"
+	req.Body = nil
+
+	res, err := oc.client.Do(req)
+	if err != nil {
+		return "", errors.Wrap(err, "error retrieving app response")
+	}
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		return "", errors.Wrap(err, "error retrieving body from response")
+	}
+	stateToken, err := getStateTokenFromOktaPageBody(string(body))
+	if err != nil {
+		return "", errors.Wrap(err, "error retrieving saml response")
+	}
+	return stateToken, nil
 }
 
-func parseMfaIdentifer(json string, arrayPosition int) string {
+func getStateTokenFromOktaPageBody(responseBody string) (string, error) {
+	regexes := []*regexp.Regexp{
+		regexp.MustCompile("var stateToken = [\"|'](.*)[\"|'];"),
+		// Found on the "extra verification" page
+		// hiding in a Javascript object
+		regexp.MustCompile(`"stateToken":"([^"]*)"`),
+	}
+
+	for _, re := range regexes {
+		match := re.FindStringSubmatch(responseBody)
+		if len(match) >= 2 {
+			return strings.Replace(match[1], `\x2D`, "-", -1), nil
+		}
+	}
+
+	return "", errors.New("cannot find state token")
+
+}
+
+func parseMfaIdentifer(json string, arrayPosition int) (string, string, string) {
 	mfaProvider := gjson.Get(json, fmt.Sprintf("_embedded.factors.%d.provider", arrayPosition)).String()
 	factorType := strings.ToUpper(gjson.Get(json, fmt.Sprintf("_embedded.factors.%d.factorType", arrayPosition)).String())
-	return fmt.Sprintf("%s %s", mfaProvider, factorType)
+	id := gjson.Get(json, fmt.Sprintf("_embedded.factors.%d.id", arrayPosition)).String()
+	// Okta gives names to some authentication methods
+	// displaying this name is useful when there's multiple auths of the same type. e.g. multiple FIDO options
+	authName := gjson.Get(json, fmt.Sprintf("_embedded.factors.%d.profile.authenticatorName", arrayPosition)).String()
+	return fmt.Sprintf("%s %s", mfaProvider, factorType), authName, id
 }
 
 func (oc *Client) handleFormRedirect(ctx context.Context, doc *goquery.Document) (context.Context, *http.Request, error) {
@@ -667,7 +696,15 @@ func getMfaChallengeContext(oc *Client, mfaOption int, resp string) (*mfaChallen
 	stateToken := gjson.Get(resp, "stateToken").String()
 	factorID := gjson.Get(resp, fmt.Sprintf("_embedded.factors.%d.id", mfaOption)).String()
 	oktaVerify := gjson.Get(resp, fmt.Sprintf("_embedded.factors.%d._links.verify.href", mfaOption)).String()
-	mfaIdentifer := parseMfaIdentifer(resp, mfaOption)
+	mfaIdentifer, _, _ := parseMfaIdentifer(resp, mfaOption)
+
+	if !strings.Contains(oktaVerify, "rememberDevice") {
+		separator := "?"
+		if strings.Contains(oktaVerify, "?") {
+			separator = "&"
+		}
+		oktaVerify = oktaVerify + separator + "rememberDevice=" + strconv.FormatBool(oc.rememberDevice)
+	}
 
 	logger.WithField("factorID", factorID).WithField("oktaVerify", oktaVerify).WithField("mfaIdentifer", mfaIdentifer).Debug("MFA")
 
@@ -707,7 +744,7 @@ func getMfaChallengeContext(oc *Client, mfaOption int, resp string) (*mfaChallen
 		return nil, errors.Wrap(err, "error retrieving verify response")
 	}
 
-	body, err := ioutil.ReadAll(res.Body)
+	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		return nil, errors.Wrap(err, "error retrieving body from response")
 	}
@@ -727,16 +764,41 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 	mfaOption := 0
 	var mfaOptions []string
 	for i := range gjson.Get(resp, "_embedded.factors").Array() {
-		identifier := parseMfaIdentifer(resp, i)
+		identifier, authName, id := parseMfaIdentifer(resp, i)
 		if val, ok := supportedMfaOptions[identifier]; ok {
-			mfaOptions = append(mfaOptions, val)
+			// If the authentication method as a name, we add it to the MFA option.
+			// This makes it possible to identify which method to choose
+			if len(authName) > 0 {
+				mfaOptions = append(mfaOptions, fmt.Sprintf("%s - %s (%s)", val, authName, id))
+			} else {
+				mfaOptions = append(mfaOptions, fmt.Sprintf("%s - %s", val, id))
+			}
+
 		} else {
 			mfaOptions = append(mfaOptions, "UNSUPPORTED: "+identifier)
 		}
 	}
 
 	if strings.ToUpper(oc.mfa) != "AUTO" {
-		mfaOption = findMfaOption(oc.mfa, mfaOptions, 0)
+		var mfaOptionsMatches []string
+		// Collect all options that match the chosen MFA
+		// It will be more than 1 when there's multiple MFA of the same type configured - e.g.: multiple FIDO methods
+		for _, option := range mfaOptions {
+			if strings.HasPrefix(strings.ToUpper(option), oc.mfa) {
+				mfaOptionsMatches = append(mfaOptionsMatches, option)
+			}
+		}
+		// If multiple MFA of the same type are found, we prompt the user to pick which one to use
+		if len(mfaOptionsMatches) > 1 {
+			matchOptionIndex := prompter.Choose(fmt.Sprintf("Multiple %s MFA options found. Select which MFA option to use", oc.mfa), mfaOptionsMatches)
+			for i := range mfaOptions {
+				if mfaOptions[i] == mfaOptionsMatches[matchOptionIndex] {
+					mfaOption = i
+				}
+			}
+		} else {
+			mfaOption = findMfaOption(oc.mfa, mfaOptions, 0)
+		}
 	} else if len(mfaOptions) > 1 {
 		mfaOption = prompter.Choose("Select which MFA option to use", mfaOptions)
 	}
@@ -774,14 +836,7 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 			return "", errors.Wrap(err, "error retrieving token post response")
 		}
 
-		body, err := ioutil.ReadAll(res.Body)
-		if err != nil {
-			return "", errors.Wrap(err, "error retrieving body from response")
-		}
-
-		resp = string(body)
-
-		return gjson.Get(resp, "sessionToken").String(), nil
+		return extractSessionToken(res.Body)
 
 	case IdentifierPushMfa:
 
@@ -828,7 +883,7 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 	case IdentifierDuoMfa:
 		duoHost := gjson.Get(challengeContext.challengeResponseBody, "_embedded.factor._embedded.verification.host").String()
 		duoSignature := gjson.Get(challengeContext.challengeResponseBody, "_embedded.factor._embedded.verification.signature").String()
-		duoSiguatres := strings.Split(duoSignature, ":")
+		duoSignatures := strings.Split(duoSignature, ":")
 		//duoSignatures[0] = TX
 		//duoSignatures[1] = APP
 		duoCallback := gjson.Get(challengeContext.challengeResponseBody, "_embedded.factor._embedded.verification._links.complete.href").String()
@@ -839,18 +894,27 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 		duoForm := url.Values{}
 		duoForm.Add("parent", fmt.Sprintf("https://%s/signin/verify/duo/web", oktaOrgHost))
 		duoForm.Add("java_version", "")
-		duoForm.Add("java_version", "")
 		duoForm.Add("flash_version", "")
 		duoForm.Add("screen_resolution_width", "3008")
 		duoForm.Add("screen_resolution_height", "1692")
 		duoForm.Add("color_depth", "24")
+		duoForm.Add("is_cef_browser", "false")
+		duoForm.Add("is_ipad_os", "false")
+		duoForm.Add("is_ie_compatability_mode", "")
+		duoForm.Add("acting_ie_version", "")
+		duoForm.Add("react_support", "true")
+		duoForm.Add("react_support_error_message", "")
+		duoForm.Add("tx", duoSignatures[0])
 
 		req, err := http.NewRequest("POST", duoSubmitURL, strings.NewReader(duoForm.Encode()))
 		if err != nil {
 			return "", errors.Wrap(err, "error building authentication request")
 		}
+
 		q := req.URL.Query()
-		q.Add("tx", duoSiguatres[0])
+		q.Add("tx", duoSignatures[0])
+		q.Add("parent", fmt.Sprintf("https://%s/signin/verify/duo/web", oktaOrgHost))
+		q.Add("v", "2.8")
 		req.URL.RawQuery = q.Encode()
 
 		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
@@ -860,10 +924,29 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 			return "", errors.Wrap(err, "error retrieving verify response")
 		}
 
-		//try to extract sid
+		// At this point, if device trust is enabled we need to go on that tangent
 		doc, err := goquery.NewDocumentFromReader(res.Body)
+
 		if err != nil {
 			return "", errors.Wrap(err, "error parsing document")
+		}
+
+		if doc.Find("form[id=\"client_cert_form\"]").Length() > 0 {
+			doc, err = verifyTrustedCert(oc, doc, duoHost, duoSubmitURL, q)
+			if err != nil {
+				return "", errors.Wrap(err, "couldn't validate client cert")
+			}
+
+		} else if doc.Find("form[id=\"endpoint-health-form\"]").Length() > 0 {
+			origUrl := req.URL.String()
+			duoEndpointHost := "127.0.0.1:53100"
+			doc, err = verifyEndpointHealth(oc, doc, origUrl, duoEndpointHost, duoHost, duoSubmitURL, q)
+
+			if err != nil {
+				return "", errors.Wrap(err, "couldn't validate endpoint health")
+
+			}
+
 		}
 
 		duoSID, ok := doc.Find("input[name=\"sid\"]").Attr("value")
@@ -872,21 +955,30 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 		}
 		duoSID = html.UnescapeString(duoSID)
 
-		//prompt for mfa type
-		//only supporting push or passcode for now
+		var duoMfaOptions = []string{}
 		var token string
 
-		var duoMfaOptions = []string{
-			"Duo Push",
-			"Passcode",
+		webauthnOption := doc.Find("option[name=\"webauthn\"]")
+
+		if webauthnOption.Length() > 0 {
+			token, _ = webauthnOption.Attr("value")
+			duoMfaOptions = append(duoMfaOptions, "U2F Key")
+		}
+
+		if doc.Find("option[value=\"phone1\"]").Length() > 0 {
+			duoMfaOptions = append(duoMfaOptions, "Duo Push")
+		}
+
+		if doc.Find("option[value=\"token\"]").Length() > 0 {
+			duoMfaOptions = append(duoMfaOptions, "Passcode")
 		}
 
 		duoMfaOption := 0
 
 		if loginDetails.DuoMFAOption == "Duo Push" {
-			duoMfaOption = 0
-		} else if loginDetails.DuoMFAOption == "Passcode" {
 			duoMfaOption = 1
+		} else if loginDetails.DuoMFAOption == "Passcode" {
+			duoMfaOption = 2
 		} else {
 			duoMfaOption = prompter.Choose("Select a DUO MFA Option", duoMfaOptions)
 		}
@@ -901,11 +993,19 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 
 		duoForm = url.Values{}
 		duoForm.Add("sid", duoSID)
-		duoForm.Add("device", "phone1")
-		duoForm.Add("factor", duoMfaOptions[duoMfaOption])
 		duoForm.Add("out_of_date", "false")
-		if duoMfaOptions[duoMfaOption] == "Passcode" {
+
+		switch duoMfaOptions[duoMfaOption] {
+		case "Passcode":
 			duoForm.Add("passcode", token)
+			duoForm.Add("device", "phone1")
+			duoForm.Add("factor", "Passcode")
+		case "Duo Push":
+			duoForm.Add("device", "phone1")
+			duoForm.Add("factor", "Duo Push")
+		case "U2F Key":
+			duoForm.Add("device", "u2f_token")
+			duoForm.Add("factor", "U2F Token")
 		}
 
 		req, err = http.NewRequest("POST", duoSubmitURL, strings.NewReader(duoForm.Encode()))
@@ -920,7 +1020,7 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 			return "", errors.Wrap(err, "error retrieving verify response")
 		}
 
-		body, err := ioutil.ReadAll(res.Body)
+		body, err := io.ReadAll(res.Body)
 		if err != nil {
 			return "", errors.Wrap(err, "error retrieving body from response")
 		}
@@ -952,7 +1052,7 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 			return "", errors.Wrap(err, "error retrieving verify response")
 		}
 
-		body, err = ioutil.ReadAll(res.Body)
+		body, err = io.ReadAll(res.Body)
 		if err != nil {
 			return "", errors.Wrap(err, "error retrieving body from response")
 		}
@@ -966,7 +1066,105 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 			duoSID = newSID
 		}
 
-		log.Println(gjson.Get(resp, "response.status").String())
+		// Do the webauthn
+		duoRestStatusCode := gjson.Get(resp, "response.status_code").String()
+
+		if duoRestStatusCode == "u2f_sent" {
+			appId := gjson.Get(resp, "response.u2f_sign_request.0.appId").String()
+			//appId := "api-23a9854b.duosecurity.com"
+			version := gjson.Get(resp, "response.u2f_sign_request.0.version").String()
+			challengeNonce := gjson.Get(resp, "response.u2f_sign_request.0.challenge").String()
+			keyHandle := gjson.Get(resp, "response.u2f_sign_request.0.keyHandle").String()
+			sessionId := gjson.Get(resp, "response.u2f_sign_request.0.sessionId").String()
+
+			u2fClient, err := NewDUOU2FClient(challengeNonce, appId, version, keyHandle, sessionId, new(U2FDeviceFinder))
+
+			if err != nil {
+				return "", err
+			}
+
+			rd, err := u2fClient.ChallengeU2F()
+			if err != nil {
+				return "", err
+			}
+
+			payload, err := json.Marshal(rd)
+			if err != nil {
+				return "", err
+			}
+
+			duoForm = url.Values{}
+			duoForm.Add("sid", duoSID)
+			duoForm.Add("device", "u2f_token")
+			duoForm.Add("factor", "u2f_finish")
+			duoForm.Add("days_to_block", "None")
+			duoForm.Add("out_of_date", "False")
+			duoForm.Add("days_out_of_date", "0")
+			duoForm.Add("response_data", string(payload))
+
+			duoSubmitURL = fmt.Sprintf("https://%s/frame/prompt", duoHost)
+
+			req, err = http.NewRequest("POST", duoSubmitURL, strings.NewReader(duoForm.Encode()))
+			if err != nil {
+				return "", errors.Wrap(err, "error building authentication request")
+			}
+
+			req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+
+			res, err = oc.client.Do(req)
+			if err != nil {
+				return "", errors.Wrap(err, "error retrieving verify response")
+			}
+
+			body, err = io.ReadAll(res.Body)
+			if err != nil {
+				return "", errors.Wrap(err, "error retrieving body from response")
+			}
+
+			resp = string(body)
+
+			duoTxStat := gjson.Get(resp, "stat").String()
+			duoTxID := gjson.Get(resp, "response.txid").String()
+			if duoTxStat != "OK" {
+				return "", errors.New("error authenticating mfa device")
+			}
+
+			// get duo cookie
+			duoSubmitURL = fmt.Sprintf("https://%s/frame/status", duoHost)
+
+			duoForm = url.Values{}
+			duoForm.Add("sid", duoSID)
+			duoForm.Add("txid", duoTxID)
+
+			req, err = http.NewRequest("POST", duoSubmitURL, strings.NewReader(duoForm.Encode()))
+			if err != nil {
+				return "", errors.Wrap(err, "error building authentication request")
+			}
+
+			req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+
+			res, err = oc.client.Do(req)
+			if err != nil {
+				return "", errors.Wrap(err, "error retrieving verify response")
+			}
+
+			defer res.Body.Close()
+
+			body, err = io.ReadAll(res.Body)
+			if err != nil {
+				return "", errors.Wrap(err, "error retrieving body from response")
+			}
+
+			resp = string(body)
+
+			duoTxResult = gjson.Get(resp, "response.result").String()
+			duoResultURL = gjson.Get(resp, "response.result_url").String()
+			newSID = gjson.Get(resp, "response.sid").String()
+			if newSID != "" {
+				duoSID = newSID
+			}
+
+		}
 
 		if duoTxResult != "SUCCESS" {
 			//poll as this is likely a push request
@@ -985,7 +1183,7 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 					return "", errors.Wrap(err, "error retrieving verify response")
 				}
 
-				body, err = ioutil.ReadAll(res.Body)
+				body, err = io.ReadAll(res.Body)
 				if err != nil {
 					return "", errors.Wrap(err, "error retrieving body from response")
 				}
@@ -1028,12 +1226,12 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 			return "", errors.Wrap(err, "error retrieving duo result response")
 		}
 
-		body, err = ioutil.ReadAll(res.Body)
+		body, err = io.ReadAll(res.Body)
 		if err != nil {
 			return "", errors.Wrap(err, "duoResultSubmit: error retrieving body from response")
 		}
 
-		resp := string(body)
+		resp = string(body)
 
 		duoTxStat = gjson.Get(resp, "stat").String()
 		if duoTxStat != "OK" {
@@ -1050,7 +1248,7 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 		oktaForm := url.Values{}
 		oktaForm.Add("id", challengeContext.factorID)
 		oktaForm.Add("stateToken", stateToken)
-		oktaForm.Add("sig_response", fmt.Sprintf("%s:%s", duoTxCookie, duoSiguatres[1]))
+		oktaForm.Add("sig_response", fmt.Sprintf("%s:%s", duoTxCookie, duoSignatures[1]))
 
 		req, err = http.NewRequest("POST", duoCallback, strings.NewReader(oktaForm.Encode()))
 		if err != nil {
@@ -1087,7 +1285,7 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 			return "", errors.Wrap(err, "error retrieving verify response")
 		}
 
-		body, err = ioutil.ReadAll(res.Body)
+		body, err = io.ReadAll(res.Body)
 		if err != nil {
 			return "", errors.Wrap(err, "error retrieving body from response")
 		}
@@ -1100,6 +1298,25 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 
 	// catch all
 	return "", errors.New("no mfa options provided")
+}
+
+func extractSessionToken(r io.Reader) (string, error) {
+	bb, err := io.ReadAll(r)
+	if err != nil {
+		return "", errors.Wrap(err, "error retrieving body from response")
+	}
+
+	resp := string(bb)
+	sessionToken := gjson.Get(resp, "sessionToken").String()
+	if sessionToken == "" {
+		status := gjson.Get(resp, "status").String()
+		if status != "" {
+			return "", errors.Errorf("response does not contain session token, received status is: %q", status)
+		}
+		return "", errors.Errorf("response does not contain session token")
+	}
+
+	return gjson.Get(resp, "sessionToken").String(), nil
 }
 
 func fidoWebAuthn(oc *Client, oktaOrgHost string, challengeContext *mfaChallengeContext, mfaOption int, stateToken string, mfaOptions []string, resp string) (string, error) {
@@ -1168,10 +1385,221 @@ func fidoWebAuthn(oc *Client, oktaOrgHost string, challengeContext *mfaChallenge
 		return "", errors.Wrap(err, "error retrieving verify response")
 	}
 
-	body, err := ioutil.ReadAll(res.Body)
+	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		return "", errors.Wrap(err, "error retrieving body from response")
 	}
 
 	return gjson.GetBytes(body, "sessionToken").String(), nil
+}
+
+func verifyTrustedCert(oc *Client, doc *goquery.Document, duoHost string, duoSubmitURL string, q url.Values) (*goquery.Document, error) {
+	// If you enable DUO trusted cert validation, it requires an extra step before continuing.
+	// The way the validation process works is it attempts to send a request to a localhost:15310
+	// where the DUO cert proxy may be running.  This returns a JSON blob if it was successful.
+	// If that isn't running, there is also a public DUO endpoint you can use for the validation.
+	// This code attempts to hit the local validator, then the remote one if it is not available,
+	// which is the same flow the webpage does if you validate through a browser.
+
+	// We then follow up again with a POST request to /frame/web/v1/auth, this time with the
+	// cert validation parameters in the POST body.  If that succeeds, then we can continue
+	// along the existing request path.
+
+	sid, _ := doc.Find("input[name=\"sid\"]").Attr("value")
+	certUrl, _ := doc.Find("input[name=\"certs_url\"]").Attr("value")
+	txid, _ := doc.Find("input[name=\"certs_txid\"]").Attr("value")
+	certifierUrl, _ := doc.Find("input[name=\"certifier_url\"]").Attr("value")
+
+	duoUrl := fmt.Sprintf("%s?type=AJAX&sid=%s&certs_txid=%s", certUrl, url.QueryEscape(sid), txid)
+	duoCertifierURL := fmt.Sprintf("%s?certUrl=%s", certifierUrl, url.QueryEscape(duoUrl))
+
+	// The locally running certifier does not have a valid certificate, so we have to skip verification
+	customTransport := http.DefaultTransport.(*http.Transport).Clone()
+	customTransport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+	originalTransport := oc.client.Transport
+
+	oc.client.Transport = customTransport
+
+	req, err := http.NewRequest("GET", duoCertifierURL, nil)
+
+	if err != nil {
+		return nil, errors.Wrap(err, "error building cert validation request")
+	}
+
+	req.Header.Add("Referer", "https://"+duoHost+"/")
+	res, err := oc.client.Do(req)
+	oc.client.Transport = originalTransport
+
+	if err != nil {
+		// Local certifier not running, try online one
+		duoCertURL := fmt.Sprintf("%s?sid=%s&certs_txid=%s&type=AJAX", certUrl, url.QueryEscape(sid), txid)
+
+		req, err = http.NewRequest("GET", duoCertURL, nil)
+
+		if err != nil {
+			return nil, errors.Wrap(err, "error building cert validation request ")
+		}
+
+		req.Header.Add("Referer", "https://"+duoHost)
+		res, err = oc.client.Do(req)
+
+		if err != nil {
+			return nil, errors.Wrap(err, "error retrieving cert validation response")
+		}
+	}
+
+	defer res.Body.Close()
+
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		return nil, errors.Wrap(err, "error retrieving body from response")
+	}
+
+	resp := string(body)
+
+	duoStat := gjson.Get(resp, "stat").String()
+	if duoStat != "OK" {
+		return nil, errors.New("error validation certificate")
+	}
+
+	certForm := url.Values{}
+	certForm.Add("sid", sid)
+	certForm.Add("certs_url", certUrl)
+	certForm.Add("certs_txid", txid)
+	certForm.Add("certifier_url", certifierUrl)
+
+	// Try POST again
+	req, err = http.NewRequest("POST", duoSubmitURL, strings.NewReader(certForm.Encode()))
+	if err != nil {
+		return nil, errors.Wrap(err, "error building authentication request")
+	}
+
+	req.URL.RawQuery = q.Encode()
+
+	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+
+	res, err = oc.client.Do(req)
+	if err != nil {
+		return nil, errors.Wrap(err, "error retrieving verify response")
+	}
+	defer res.Body.Close()
+
+	doc, err = goquery.NewDocumentFromReader(res.Body)
+	if err != nil {
+		return nil, errors.Wrap(err, "error parsing document")
+	}
+
+	return doc, nil
+}
+
+func verifyEndpointHealth(oc *Client, doc *goquery.Document, origURL string, duoEndpointHost string, duoHost string, duoSubmitURL string, postQuery url.Values) (*goquery.Document, error) {
+
+	txid, _ := doc.Find("input[name=\"txid\"]").Attr("value")
+	sid, _ := doc.Find("input[name=\"sid\"]").Attr("value")
+	ehServiceUrl, _ := doc.Find("input[name=\"eh_service_url\"]").Attr("value")
+	akey, _ := doc.Find("input[name=\"akey\"]").Attr("value")
+	responseTimeout, _ := doc.Find("input[name=\"response_timeout\"]").Attr("value")
+	parent, _ := doc.Find("input[name=\"parent\"]").Attr("value")
+	duoAppUrl, _ := doc.Find("input[name=\"duo_app_url\"]").Attr("value")
+	ehDownloadLink, _ := doc.Find("input[name=\"eh_download_link\"]").Attr("value")
+	// isSilentCollection, _ := doc.Find("input[name=\"is_silent_collection\"]").Attr("value")
+
+	timestamp := strconv.Itoa((int)(time.Now().Unix()))
+	duoAliveUrl := fmt.Sprintf("https://%s/alive", duoEndpointHost)
+	req, _ := http.NewRequest("GET", duoAliveUrl, nil)
+
+	q := req.URL.Query()
+	q.Add("_", timestamp+"100")
+
+	req.URL.RawQuery = q.Encode()
+	req.Header.Add("Referer", "https://"+duoHost+"/")
+	req.Header.Add("Origin", "https://"+duoHost)
+
+	_, err := oc.client.Do(req)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to query alive URL %s", duoAliveUrl)
+
+	}
+
+	duoCheckEndpointAppURL := fmt.Sprintf("https://%s/frame/check_endpoint_app_status", duoHost)
+	req, _ = http.NewRequest("GET", duoCheckEndpointAppURL, nil)
+
+	q = req.URL.Query()
+
+	q.Add("txid", txid)
+	q.Add("sid", sid)
+
+	req.URL.RawQuery = q.Encode()
+
+	req.Header.Add("Referer", origURL)
+	req.Header.Add("X-Requested-With", "XMLHttpRequest")
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+
+	// check_endpoint_app_status blocks until the healthurl report is queried, so we need to use goroutines.
+	go func(r *http.Request) {
+		res, _ := oc.client.Do(req)
+		defer res.Body.Close()
+		wg.Done()
+	}(req)
+
+	// Separator
+
+	duoHealthURL := fmt.Sprintf("https://%s/report", duoEndpointHost)
+
+	req2, _ := http.NewRequest("GET", duoHealthURL, nil)
+
+	q = req2.URL.Query()
+
+	q.Add("txid", txid)
+	q.Add("eh_service_url", ehServiceUrl+"?_="+timestamp+"101")
+
+	req2.URL.RawQuery = q.Encode()
+	req2.Header.Add("Referer", "https://"+duoHost+"/")
+	req2.Header.Add("Origin", "https://"+duoHost)
+
+	res, err := oc.client.Do(req2)
+	if err == nil {
+		defer res.Body.Close()
+	}
+
+	// Wait for check_endpoint_app_status to block
+	wg.Wait()
+
+	// Try the call to /v1/frame/auth again
+
+	certForm := url.Values{}
+	certForm.Add("sid", sid)
+	certForm.Add("txid", txid)
+	certForm.Add("eh_service_url", ehServiceUrl)
+	certForm.Add("akey", akey)
+	certForm.Add("response_timeout", responseTimeout)
+	certForm.Add("parent", parent)
+	certForm.Add("duo_app_url", duoAppUrl)
+	certForm.Add("eh_download_link", ehDownloadLink)
+	// certForm.Add("is_silent_collection", isSilentCollection)
+
+	time.Sleep(2 * time.Second)
+
+	// Try POST again
+	req, err = http.NewRequest("POST", duoSubmitURL, strings.NewReader(certForm.Encode()))
+	if err != nil {
+		return nil, errors.Wrap(err, "error building authentication request")
+	}
+	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+
+	req.URL.RawQuery = postQuery.Encode()
+
+	res, err = oc.client.Do(req)
+	if err != nil {
+		return nil, errors.Wrap(err, "error retrieving verify response")
+	}
+	defer res.Body.Close()
+
+	doc, err = goquery.NewDocumentFromReader(res.Body)
+	if err != nil {
+		return nil, errors.Wrap(err, "error parsing document")
+	}
+	return doc, nil
 }
