@@ -68,23 +68,28 @@ func (cl *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		Headless: playwright.Bool(cl.Headless),
 	}
 
-	browserTypeName := cl.BrowserType
-	if browserTypeName != "" {
-		logger.Info(fmt.Sprintf("Setting browser type: %s", browserTypeName))
-		launchOptions.Channel = playwright.String(browserTypeName)
-	}
 	validBrowserTypes := []string{"chromium", "firefox", "webkit", "chrome", "chrome-beta", "chrome-dev", "chrome-canary", "msedge", "msedge-beta", "msedge-dev", "msedge-canary"}
-	if len(browserTypeName) > 0 && !contains(validBrowserTypes, browserTypeName) {
-		return "", errors.New(fmt.Sprintf("invalid browser-type: '%s', only %s are allowed", browserTypeName, validBrowserTypes))
+	if len(cl.BrowserType) > 0 && !contains(validBrowserTypes, cl.BrowserType) {
+		return "", errors.New(fmt.Sprintf("invalid browser-type: '%s', only %s are allowed", cl.BrowserType, validBrowserTypes))
 	}
-	// default browser is Chromium as it is widely supported for Identity providers,
-	// it can also be set to the other playwright browsers: Firefox and WebKit
+
+	if cl.BrowserType != "" {
+		logger.Info(fmt.Sprintf("Setting browser type: %s", cl.BrowserType))
+		launchOptions.Channel = playwright.String(cl.BrowserType)
+	}
+
+	// Default browser is Chromium as it is widely supported for Identity providers,
+	// It can also be set to the other playwright browsers: Firefox and WebKit
 	browserType := pw.Chromium
-	if browserTypeName == "firefox" {
+	if cl.BrowserType == "firefox" {
 		browserType = pw.Firefox
-	} else if browserTypeName == "webkit" {
+	} else if cl.BrowserType == "webkit" {
 		browserType = pw.WebKit
 	}
+
+	// You can set the path to a browser executable to run instead of the playwright-go bundled one. If `executablePath`
+	// is a relative path, then it is resolved relative to the current working directory.
+	// Note that Playwright only works with the bundled Chromium, Firefox or WebKit, use at your own risk. see:
 	if len(cl.BrowserExecutablePath) > 0 {
 		logger.Info(fmt.Sprintf("Setting browser executable path: %s", cl.BrowserExecutablePath))
 		launchOptions.ExecutablePath = &cl.BrowserExecutablePath
