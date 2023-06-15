@@ -70,7 +70,7 @@ func (cl *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 
 	validBrowserTypes := []string{"chromium", "firefox", "webkit", "chrome", "chrome-beta", "chrome-dev", "chrome-canary", "msedge", "msedge-beta", "msedge-dev", "msedge-canary"}
 	if len(cl.BrowserType) > 0 && !contains(validBrowserTypes, cl.BrowserType) {
-		return "", errors.New(fmt.Sprintf("invalid browser-type: '%s', only %s are allowed", cl.BrowserType, validBrowserTypes))
+		return "", fmt.Errorf("invalid browser-type: '%s', only %s are allowed", cl.BrowserType, validBrowserTypes)
 	}
 
 	if cl.BrowserType != "" {
