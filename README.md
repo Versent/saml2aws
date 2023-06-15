@@ -196,9 +196,9 @@ Flags:
       --idp-provider=IDP-PROVIDER
                                The configured IDP provider. (env: SAML2AWS_IDP_PROVIDER)
       --browser-type=BROWSER-TYPE
-                               The browser type to use when IDP provider is set to 'Browser'. (env: SAML2AWS_BROWSER_TYPE)
+                               The browser type to use when IDP provider is set to 'Browser'. if not set 'chromium' will be used. (env: SAML2AWS_BROWSER_TYPE) 
       --browser-executable-path=BROWSER-EXECUTABLE-PATH
-                               The browser full path when IDP provider is set to 'Browser'. (env: SAML2AWS_BROWSER_EXECUTABLE_PATH)
+                               The browser full path when IDP provider is set to 'Browser'. If set, no browser download will be performed and the executable path will be used instead. (env: SAML2AWS_BROWSER_EXECUTABLE_PATH)
       --mfa=MFA                The name of the mfa. (env: SAML2AWS_MFA)
   -s, --skip-verify            Skip verification of server certificate. (env: SAML2AWS_SKIP_VERIFY)
       --url=URL                The URL of the SAML IDP server used to login. (env: SAML2AWS_URL)
