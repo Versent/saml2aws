@@ -66,12 +66,12 @@ func TestChallengeWebAuthnU2F(t *testing.T) {
 			request := &u2fhost.AuthenticateRequest{
 				Challenge:          challengeNonce,
 				AppId:              appID,
-				Facet:              appID,
+				Facet:              "https://" + appID,
 				KeyHandle:          keyHandle,
 				ChannelIdPublicKey: nil,
 				ChannelIdUnused:    false,
 				CheckOnly:          false,
-				WebAuthn:           false,
+				WebAuthn:           true,
 			}
 			response := &u2fhost.AuthenticateResponse{}
 			device.On("Authenticate", request).Return(response, nil)
