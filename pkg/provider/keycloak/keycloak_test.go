@@ -2,10 +2,10 @@ package keycloak
 
 import (
 	"bytes"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"testing"
 
 	"github.com/PuerkitoBio/goquery"
@@ -23,7 +23,7 @@ const (
 
 func TestClient_getLoginForm(t *testing.T) {
 
-	data, err := ioutil.ReadFile("example/loginpage.html")
+	data, err := os.ReadFile("example/loginpage.html")
 	require.Nil(t, err)
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -47,10 +47,10 @@ func TestClient_getLoginForm(t *testing.T) {
 
 func TestClient_getLoginFormRedirect(t *testing.T) {
 
-	redirectData, err := ioutil.ReadFile("example/redirect.html")
+	redirectData, err := os.ReadFile("example/redirect.html")
 	require.Nil(t, err)
 
-	data, err := ioutil.ReadFile("example/loginpage.html")
+	data, err := os.ReadFile("example/loginpage.html")
 	require.Nil(t, err)
 
 	count := 0
@@ -82,7 +82,7 @@ func TestClient_getLoginFormRedirect(t *testing.T) {
 
 func TestClient_postLoginForm(t *testing.T) {
 
-	data, err := ioutil.ReadFile("example/mfapage.html")
+	data, err := os.ReadFile("example/mfapage.html")
 	require.Nil(t, err)
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -106,7 +106,7 @@ func TestClient_postLoginForm(t *testing.T) {
 
 func TestClient_postTotpForm(t *testing.T) {
 
-	data, err := ioutil.ReadFile("example/assertion.html")
+	data, err := os.ReadFile("example/assertion.html")
 	require.Nil(t, err)
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -114,7 +114,7 @@ func TestClient_postTotpForm(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	mfapage, err := ioutil.ReadFile("example/mfapage.html")
+	mfapage, err := os.ReadFile("example/mfapage.html")
 	require.Nil(t, err)
 	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(mfapage))
 	require.Nil(t, err)
@@ -138,7 +138,7 @@ func TestClient_postTotpForm(t *testing.T) {
 
 func TestClient_postTotpFormWithProvidedMFAToken(t *testing.T) {
 
-	data, err := ioutil.ReadFile("example/assertion.html")
+	data, err := os.ReadFile("example/assertion.html")
 	require.Nil(t, err)
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -146,7 +146,7 @@ func TestClient_postTotpFormWithProvidedMFAToken(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	mfapage, err := ioutil.ReadFile("example/mfapage.html")
+	mfapage, err := os.ReadFile("example/mfapage.html")
 	require.Nil(t, err)
 	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(mfapage))
 	require.Nil(t, err)
@@ -167,7 +167,7 @@ func TestClient_postTotpFormWithProvidedMFAToken(t *testing.T) {
 }
 
 func TestClient_postTotpFormWithMultipleAuthenticators(t *testing.T) {
-	data, err := ioutil.ReadFile("example/assertion.html")
+	data, err := os.ReadFile("example/assertion.html")
 	require.Nil(t, err)
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -175,7 +175,7 @@ func TestClient_postTotpFormWithMultipleAuthenticators(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	mfapage, err := ioutil.ReadFile("example/mfapage2authenticators.html")
+	mfapage, err := os.ReadFile("example/mfapage2authenticators.html")
 	require.Nil(t, err)
 	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(mfapage))
 	require.Nil(t, err)
@@ -203,7 +203,7 @@ func TestClient_postTotpFormWithMultipleAuthenticators(t *testing.T) {
 }
 
 func TestClient_extractSamlResponse(t *testing.T) {
-	data, err := ioutil.ReadFile("example/assertion.html")
+	data, err := os.ReadFile("example/assertion.html")
 	require.Nil(t, err)
 
 	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(data))
@@ -215,7 +215,7 @@ func TestClient_extractSamlResponse(t *testing.T) {
 }
 
 func TestClient_containsTotpForm(t *testing.T) {
-	data, err := ioutil.ReadFile("example/mfapage.html")
+	data, err := os.ReadFile("example/mfapage.html")
 	require.Nil(t, err)
 
 	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(data))
@@ -225,7 +225,7 @@ func TestClient_containsTotpForm(t *testing.T) {
 }
 
 func TestClient_extractWebauthnParameters(t *testing.T) {
-	data, err := ioutil.ReadFile("example/webauthnPage.html")
+	data, err := os.ReadFile("example/webauthnPage.html")
 	require.Nil(t, err)
 
 	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(data))
