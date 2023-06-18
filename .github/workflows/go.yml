@@ -24,7 +24,6 @@ jobs:
 
       - name: Test
         run: |
-          go run github.com/playwright-community/playwright-go/cmd/playwright install
           go test -v ./... -coverprofile=${{ matrix.os }}_coverage.txt -covermode=atomic
 
       - name: Upload coverage report
@@ -53,7 +52,8 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v3
         with:
-          version: v1.51.2
+          version: v1.53.2
+          args: --timeout=2m
 
   coverage:
     name: coverage
@@ -81,6 +81,7 @@ jobs:
       matrix:
         os:
           - ubuntu-latest
+          - ubuntu-20.04
           - macos-latest
     runs-on: ${{ matrix.os }}
     steps:
@@ -93,7 +94,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Install dependency required for linux builds
-        if: matrix.os == 'ubuntu-latest'
+        if: matrix.os == 'ubuntu-20.04'
         run: sudo apt-get update && sudo apt-get install -y libudev-dev
 
       - name: GoReleaser

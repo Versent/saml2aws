@@ -20,10 +20,8 @@ builds:
     - goos: linux
       goarch: amd64
       goamd64: v1
-      tags:
-        - hidraw
       env:
-        - CGO_ENABLED=1
+        - CGO_ENABLED=0
 archives:
   - format: tar.gz
     wrap_in_directory: false
