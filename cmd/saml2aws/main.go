@@ -116,6 +116,7 @@ func main() {
 	cmdLogin.Flag("credentials-file", "The file that will cache the credentials retrieved from AWS. When not specified, will use the default AWS credentials file location. (env: SAML2AWS_CREDENTIALS_FILE)").Envar("SAML2AWS_CREDENTIALS_FILE").StringVar(&commonFlags.CredentialsFile)
 	cmdLogin.Flag("cache-saml", "Caches the SAML response (env: SAML2AWS_CACHE_SAML)").Envar("SAML2AWS_CACHE_SAML").BoolVar(&commonFlags.SAMLCache)
 	cmdLogin.Flag("cache-file", "The location of the SAML cache file (env: SAML2AWS_SAML_CACHE_FILE)").Envar("SAML2AWS_SAML_CACHE_FILE").StringVar(&commonFlags.SAMLCacheFile)
+	cmdLogin.Flag("download-browser-driver", "Automatically download browsers for Browser IDP. (env: SAML2AWS_AUTO_BROWSER_DOWNLOAD)").Envar("SAML2AWS_AUTO_BROWSER_DOWNLOAD").BoolVar(&loginFlags.DownloadBrowser)
 	cmdLogin.Flag("disable-sessions", "Do not use Okta sessions. Uses Okta sessions by default. (env: SAML2AWS_OKTA_DISABLE_SESSIONS)").Envar("SAML2AWS_OKTA_DISABLE_SESSIONS").BoolVar(&commonFlags.DisableSessions)
 	cmdLogin.Flag("disable-remember-device", "Do not remember Okta MFA device. Remembers MFA device by default. (env: SAML2AWS_OKTA_DISABLE_REMEMBER_DEVICE)").Envar("SAML2AWS_OKTA_DISABLE_REMEMBER_DEVICE").BoolVar(&commonFlags.DisableRememberDevice)
 
@@ -154,9 +155,9 @@ func main() {
 	cmdScript.Flag("credentials-file", "The file that will cache the credentials retrieved from AWS. When not specified, will use the default AWS credentials file location. (env: SAML2AWS_CREDENTIALS_FILE)").Envar("SAML2AWS_CREDENTIALS_FILE").StringVar(&commonFlags.CredentialsFile)
 	var shell string
 	cmdScript.
-		Flag("shell", "Type of shell environment. Options include: bash, powershell, fish, env").
+		Flag("shell", "Type of shell environment. Options include: bash, /bin/sh, powershell, fish, env").
 		Default("bash").
-		EnumVar(&shell, "bash", "powershell", "fish", "env")
+		EnumVar(&shell, "bash", "/bin/sh", "powershell", "fish", "env")
 
 	// Trigger the parsing of the command line inputs via kingpin
 	command := kingpin.MustParse(app.Parse(os.Args[1:]))

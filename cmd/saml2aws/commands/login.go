@@ -224,6 +224,12 @@ func resolveLoginDetails(account *cfg.IDPAccount, loginFlags *flags.LoginExecFla
 		loginDetails.MFAIPAddress = loginFlags.CommonFlags.MFAIPAddress
 	}
 
+	if loginFlags.DownloadBrowser {
+		loginDetails.DownloadBrowser = loginFlags.DownloadBrowser
+	} else if account.DownloadBrowser {
+		loginDetails.DownloadBrowser = account.DownloadBrowser
+	}
+
 	// log.Printf("loginDetails %+v", loginDetails)
 
 	// if skip prompt was passed just pass back the flag values
