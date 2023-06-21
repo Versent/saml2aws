@@ -4,7 +4,7 @@ go 1.20
 
 require (
 	github.com/99designs/keyring v1.2.2
-	github.com/AlecAivazis/survey/v2 v2.3.6
+	github.com/AlecAivazis/survey/v2 v2.3.7
 	github.com/Azure/go-ntlmssp v0.0.0-20211209120228-48547f28849e
 	github.com/PuerkitoBio/goquery v1.8.1
 	github.com/alecthomas/kingpin v2.2.6+incompatible
