@@ -393,6 +393,8 @@ func updateKeyCloakFormData(authForm url.Values, s *goquery.Selection, user *cre
 		authForm.Add(name, user.Username)
 	} else if strings.Contains(lname, "password") {
 		authForm.Add(name, user.Password)
+	} else if strings.Contains(lname, "tryanotherway") {
+		// not implemented
 	} else {
 		// pass through any hidden fields
 		val, ok := s.Attr("value")
