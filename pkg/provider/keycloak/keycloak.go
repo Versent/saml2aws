@@ -14,12 +14,15 @@ import (
 	"github.com/PuerkitoBio/goquery"
 	"github.com/marshallbrekka/go-u2fhost"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 	"github.com/versent/saml2aws/v2/pkg/cfg"
 	"github.com/versent/saml2aws/v2/pkg/creds"
 	"github.com/versent/saml2aws/v2/pkg/prompter"
 	"github.com/versent/saml2aws/v2/pkg/provider"
 	"github.com/versent/saml2aws/v2/pkg/provider/okta"
 )
+
+var logger = logrus.WithField("provider", "Keycloak")
 
 // Client wrapper around KeyCloak.
 type Client struct {
@@ -394,7 +397,7 @@ func updateKeyCloakFormData(authForm url.Values, s *goquery.Selection, user *cre
 	} else if strings.Contains(lname, "password") {
 		authForm.Add(name, user.Password)
 	} else if strings.Contains(lname, "tryanotherway") {
-		// not implemented
+		logger.Debug("Ignoring other ways to log in (not implemented)")
 	} else {
 		// pass through any hidden fields
 		val, ok := s.Attr("value")
