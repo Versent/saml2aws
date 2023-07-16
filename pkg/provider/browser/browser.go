@@ -95,7 +95,7 @@ var getSAMLResponse = func(page playwright.Page, loginDetails *creds.LoginDetail
 	}
 
 	fmt.Println("waiting ...")
-	r := page.WaitForRequest(signin_re)
+	r, _ := page.WaitForRequest(signin_re)
 	data, err := r.PostData()
 	if err != nil {
 		return "", err
