@@ -237,7 +237,7 @@ Commands:
 
     -p, --profile=PROFILE        The AWS profile to save the temporary credentials. (env: SAML2AWS_PROFILE)
         --duo-mfa-option=DUO-MFA-OPTION
-                                 The MFA option you want to use to authenticate with
+                                 The MFA option you want to use to authenticate (supported providers: okta)(env: SAML_DUO_MFA_OPTION)
         --client-id=CLIENT-ID    OneLogin client id, used to generate API access token. (env: ONELOGIN_CLIENT_ID)
         --client-secret=CLIENT-SECRET
                                  OneLogin client secret, used to generate API access token. (env: ONELOGIN_CLIENT_SECRET)
