@@ -172,6 +172,16 @@ func TestWrongPassword(t *testing.T) {
 	require.NotEqual(t, "", txt)
 }
 
+func TestMustEnable2StepVerification(t *testing.T) {
+	html := `<html><body><section class="aN1Vld "><div class="yOnVIb" jsname="MZArnb"><div jsname="x2WF9"><p class="vOZun">Your sign-in settings donâ€™t meet your organizationâ€™s 2-Step Verification policy.</p><p class="vOZun">Contact your admin for more info.</p></div><input type="hidden" name="identifierInput" value="" id="identifierId"></div></section></body></html>`
+
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(html))
+	require.Nil(t, err)
+	twoStepIsMissingErr := isMissing2StepSetup(doc)
+	require.Error(t, twoStepIsMissingErr)
+	require.Equal(t, twoStepIsMissingErr.Error(), "Because of your organization settings, you must set-up 2-Step Verification in your account")
+}
+
 func TestExtractDevicePushExtraNumber(t *testing.T) {
 	data1, err := os.ReadFile("example/challenge-extra-number.html")
 	require.Nil(t, err)
