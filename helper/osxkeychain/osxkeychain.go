@@ -9,6 +9,7 @@ import (
 
 	"github.com/keybase/go-keychain"
 	"github.com/sirupsen/logrus"
+
 	"github.com/versent/saml2aws/v2/helper/credentials"
 )
 
@@ -45,24 +46,22 @@ func (h Osxkeychain) Add(creds *credentials.Credentials) error {
 }
 
 // Delete removes credentials from the keychain.
-func (h Osxkeychain) Delete(idpName string) error {
-
+func (h Osxkeychain) Delete(keyName string) error {
 	item := keychain.NewItem()
 	item.SetSecClass(keychain.SecClassInternetPassword)
-	item.SetLabel(credentials.GetKeyFromAccount(idpName))
+	item.SetLabel(keyName)
 	return keychain.DeleteItem(item)
 }
 
 // Get returns the username and secret to use for a given registry server URL.
-func (h Osxkeychain) Get(idpName string) (string, string, error) {
-
-	logger.WithField("Credential Key", idpName).Debug("Get credentials")
+func (h Osxkeychain) Get(keyName string) (string, string, error) {
+	logger.WithField("Credential Key", keyName).Debug("Get credentials")
 
 	query := keychain.NewItem()
 	query.SetSecClass(keychain.SecClassInternetPassword)
 
 	// only search on the idp name
-	query.SetLabel(credentials.GetKeyFromAccount(idpName))
+	query.SetLabel(keyName)
 	query.SetMatchLimit(keychain.MatchLimitOne)
 	query.SetReturnAttributes(true)
 	query.SetReturnData(true)

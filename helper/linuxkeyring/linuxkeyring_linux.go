@@ -5,6 +5,7 @@ import (
 
 	"github.com/99designs/keyring"
 	"github.com/sirupsen/logrus"
+
 	"github.com/versent/saml2aws/v2/helper/credentials"
 )
 
@@ -35,7 +36,6 @@ func NewKeyringHelper(config Configuration) (*KeyringHelper, error) {
 	}
 
 	kr, err := keyring.Open(c)
-
 	if err != nil {
 		return nil, err
 	}
@@ -59,12 +59,12 @@ func (kr *KeyringHelper) Add(creds *credentials.Credentials) error {
 	})
 }
 
-func (kr *KeyringHelper) Delete(idpName string) error {
-	return kr.keyring.Remove(credentials.GetKeyFromAccount(idpName))
+func (kr *KeyringHelper) Delete(keyName string) error {
+	return kr.keyring.Remove(keyName)
 }
 
-func (kr *KeyringHelper) Get(idpName string) (string, string, error) {
-	item, err := kr.keyring.Get(credentials.GetKeyFromAccount(idpName))
+func (kr *KeyringHelper) Get(keyName string) (string, string, error) {
+	item, err := kr.keyring.Get(keyName)
 	if err != nil {
 		logger.WithField("err", err).Error("keychain Get returned error")
 		return "", "", credentials.ErrCredentialsNotFound

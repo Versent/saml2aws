@@ -27,6 +27,7 @@ import (
 	"strings"
 
 	winc "github.com/danieljoos/wincred"
+
 	"github.com/versent/saml2aws/v2/helper/credentials"
 )
 
@@ -45,8 +46,8 @@ func (h Wincred) Add(creds *credentials.Credentials) error {
 }
 
 // Delete removes credentials from the windows credentials manager.
-func (h Wincred) Delete(idpName string) error {
-	g, err := winc.GetGenericCredential(credentials.GetKeyFromAccount(idpName))
+func (h Wincred) Delete(keyName string) error {
+	g, err := winc.GetGenericCredential(keyName)
 	if g == nil {
 		return nil
 	}
@@ -57,8 +58,8 @@ func (h Wincred) Delete(idpName string) error {
 }
 
 // Get retrieves credentials from the windows credentials manager.
-func (h Wincred) Get(idpName string) (string, string, error) {
-	g, _ := winc.GetGenericCredential(credentials.GetKeyFromAccount(idpName))
+func (h Wincred) Get(keyname string) (string, string, error) {
+	g, _ := winc.GetGenericCredential(keyname)
 	if g == nil {
 		return "", "", credentials.ErrCredentialsNotFound
 	}

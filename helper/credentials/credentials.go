@@ -40,10 +40,10 @@ type Helper interface {
 	// Add appends credentials to the store.
 	Add(*Credentials) error
 	// Delete removes credentials from the store.
-	Delete(idpName string) error
+	Delete(keyName string) error
 	// Get retrieves credentials from the store.
 	// It returns username and secret as strings.
-	Get(idpName string) (string, string, error)
+	Get(keyName string) (string, string, error)
 	// SupportsCredentialStorage returns true or false if there is credential storage.
 	SupportsCredentialStorage() bool
 }
@@ -60,11 +60,11 @@ func (defaultHelper) Add(*Credentials) error {
 	return nil
 }
 
-func (defaultHelper) Delete(serverURL string) error {
+func (defaultHelper) Delete(keyName string) error {
 	return nil
 }
 
-func (defaultHelper) Get(serverURL string) (string, string, error) {
+func (defaultHelper) Get(keyName string) (string, string, error) {
 	return "", "", ErrCredentialsNotFound
 }
 
