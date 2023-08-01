@@ -29,6 +29,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
 	"github.com/versent/saml2aws/v2/helper/credentials"
 )
 
@@ -50,7 +51,9 @@ func TestOSXKeychainHelper(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	username, secret, err := helper.Get(creds.IdpName)
+	credsKey, creds1Key := credentials.GetKeyFromAccount(creds.IdpName), credentials.GetKeyFromAccount(creds1.IdpName)
+
+	username, secret, err := helper.Get(credsKey)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -67,10 +70,10 @@ func TestOSXKeychainHelper(t *testing.T) {
 	require.Nil(t, err)
 
 	defer func() {
-		_ = helper.Delete(creds1.IdpName)
+		_ = helper.Delete(creds1Key)
 	}()
 
-	if err := helper.Delete(creds.IdpName); err != nil {
+	if err := helper.Delete(credsKey); err != nil {
 		t.Fatal(err)
 	}
 }
