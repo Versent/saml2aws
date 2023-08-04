@@ -73,6 +73,12 @@ func (h Wincred) Get(keyname string) (string, string, error) {
 	return "", "", credentials.ErrCredentialsNotFound
 }
 
+// Legacy Get retrieves credentials from the windows credentials manager.
+// this function is preserved for backward compatibility reasons
+func (h Wincred) LegacyGet(serverURL string) (string, string, error) {
+	return h.Get(serverURL)
+}
+
 // List returns the stored URLs and corresponding usernames for a given credentials label.
 func (h Wincred) List() (map[string]string, error) {
 	creds, err := winc.List()

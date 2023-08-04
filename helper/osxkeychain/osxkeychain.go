@@ -53,7 +53,7 @@ func (h Osxkeychain) Delete(keyName string) error {
 	return keychain.DeleteItem(item)
 }
 
-// Get returns the username and secret to use for a given registry server URL.
+// Get returns the username and secret to use for a given keyName
 func (h Osxkeychain) Get(keyName string) (string, string, error) {
 	logger.WithField("Credential Key", keyName).Debug("Get credentials")
 
@@ -62,6 +62,37 @@ func (h Osxkeychain) Get(keyName string) (string, string, error) {
 
 	// only search on the idp name
 	query.SetLabel(keyName)
+	query.SetMatchLimit(keychain.MatchLimitOne)
+	query.SetReturnAttributes(true)
+	query.SetReturnData(true)
+
+	results, err := keychain.QueryItem(query)
+	if err != nil {
+		return "", "", err
+	}
+
+	if len(results) == 0 {
+		return "", "", credentials.ErrCredentialsNotFound
+	}
+
+	logger.WithField("user", results[0].Account).Debug("Get credentials")
+
+	return results[0].Account, string(results[0].Data), nil
+}
+
+// Legacy  Get returns the username and secret to use for a given registry server URL.
+// this function is preserved for backward compatibility reasons
+func (h Osxkeychain) LegacyGet(serverURL string) (string, string, error) {
+	logger.WithField("serverURL", serverURL).Debug("Get credentials")
+
+	query := keychain.NewItem()
+	query.SetSecClass(keychain.SecClassInternetPassword)
+
+	err := splitServer3(serverURL, query)
+	if err != nil {
+		return "", "", err
+	}
+
 	query.SetMatchLimit(keychain.MatchLimitOne)
 	query.SetReturnAttributes(true)
 	query.SetReturnData(true)

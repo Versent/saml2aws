@@ -78,6 +78,11 @@ func (kr *KeyringHelper) Get(keyName string) (string, string, error) {
 	return creds.Username, creds.Secret, nil
 }
 
+// this function is preserved for backward compatibility reasons
+func (kr *KeyringHelper) LegacyGet(serverURL string) (string, string, error) {
+	return kr.Get(serverURL)
+}
+
 func (KeyringHelper) SupportsCredentialStorage() bool {
 	return true
 }

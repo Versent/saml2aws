@@ -44,6 +44,9 @@ type Helper interface {
 	// Get retrieves credentials from the store.
 	// It returns username and secret as strings.
 	Get(keyName string) (string, string, error)
+	// Legacy Get retrieves previously stored credentials
+	// this function is preserved for backward compatibility
+	LegacyGet(serverURL string) (string, string, error)
 	// SupportsCredentialStorage returns true or false if there is credential storage.
 	SupportsCredentialStorage() bool
 }
@@ -65,6 +68,10 @@ func (defaultHelper) Delete(keyName string) error {
 }
 
 func (defaultHelper) Get(keyName string) (string, string, error) {
+	return "", "", ErrCredentialsNotFound
+}
+
+func (defaultHelper) LegacyGet(serverURL string) (string, string, error) {
 	return "", "", ErrCredentialsNotFound
 }
 
