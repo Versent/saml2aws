@@ -1,6 +1,7 @@
 package credentials
 
 import (
+	"errors"
 	"path"
 
 	"github.com/versent/saml2aws/v2/pkg/creds"
@@ -67,6 +68,9 @@ func SaveCredentials(idpName, url, username, password string) error {
 		Secret:    password,
 	}
 
+	if idpName == "" {
+		return errors.New("idpName is empty")
+	}
 	return CurrentHelper.Add(creds)
 }
 

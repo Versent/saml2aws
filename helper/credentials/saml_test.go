@@ -15,6 +15,12 @@ type MockHelper struct {
 	DeleteFailError error
 }
 
+func NewMockHelper() *MockHelper {
+	return &MockHelper{
+		Credentials: make(map[string]*Credentials),
+	}
+}
+
 func (m *MockHelper) Add(c *Credentials) error {
 	if m.AddFailError != nil {
 		return m.AddFailError
@@ -230,7 +236,7 @@ func TestLookupCredentials(t *testing.T) {
 	for _, testCase := range testCases {
 		t.Run(testCase.CaseName, func(t *testing.T) {
 			t.Log(testCase.CaseName)
-			m := &MockHelper{}
+			m := NewMockHelper()
 			CurrentHelper = m
 			m.Credentials = testCase.initialCredentials
 			t.Log(testCase.initialCredentials)
@@ -244,6 +250,57 @@ func TestLookupCredentials(t *testing.T) {
 				assert.EqualValues(t, testCase.expectedOktaCookie, testCase.loginDetails.OktaSessionCookie)
 				assert.EqualValues(t, testCase.expectedClientID, testCase.loginDetails.ClientID)
 				assert.EqualValues(t, testCase.expectedClientSecret, testCase.loginDetails.ClientSecret)
+			}
+		})
+	}
+
+	// restoring the old Helper
+	CurrentHelper = oldHelper
+}
+
+func TestSaveCredentials(t *testing.T) {
+	oldHelper := CurrentHelper
+
+	testCases := []struct {
+		CaseName                  string
+		IdpName                   string
+		URL                       string
+		Username                  string
+		Password                  string
+		expectedCredentialKeyName string
+		expectedError             bool
+	}{
+		{
+			CaseName:                  "SaveCredentials",
+			IdpName:                   "test",
+			URL:                       "http://test.com/",
+			Username:                  "user1",
+			Password:                  "password1",
+			expectedCredentialKeyName: "saml2aws_credentials_test",
+		},
+		{
+			CaseName:      "EmptyIdpNameRaisesError",
+			IdpName:       "",
+			URL:           "http://test.com/",
+			Username:      "user2",
+			Password:      "password2",
+			expectedError: true,
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.CaseName, func(t *testing.T) {
+			m := NewMockHelper()
+			CurrentHelper = m
+			err := SaveCredentials(testCase.IdpName, testCase.URL, testCase.Username, testCase.Password)
+			if testCase.expectedError {
+				assert.NotNil(t, err)
+			} else {
+				assert.Nil(t, err)
+				_, ok := m.Credentials[testCase.expectedCredentialKeyName]
+				assert.True(t, ok)
+				assert.EqualValues(t, testCase.Username, m.Credentials[testCase.expectedCredentialKeyName].Username)
+				assert.EqualValues(t, testCase.Password, m.Credentials[testCase.expectedCredentialKeyName].Secret)
 			}
 		})
 	}
