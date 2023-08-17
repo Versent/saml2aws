@@ -1,10 +1,11 @@
 package samlcache
 
 import (
-	"io/ioutil"
+	b64 "encoding/base64"
 	"os"
 	"path"
 	"testing"
+	"text/template"
 	"time"
 )
 
@@ -48,7 +49,7 @@ func TestCanWrite(t *testing.T) {
 		Filename: "testdir/cache_file",
 	}
 
-	err := p.Write("test_write_cache")
+	err := p.WriteRaw("test_write_cache")
 	if err != nil {
 		t.Error("Could not write cache:", err)
 	}
@@ -64,13 +65,13 @@ func TestCanWrite(t *testing.T) {
 func TestCanRead(t *testing.T) {
 
 	// create a dummy file
-	_ = ioutil.WriteFile("example_cache", []byte("testing output"), 0700)
+	_ = os.WriteFile("example_cache", []byte("testing output"), 0700)
 
 	p := SAMLCacheProvider{
 		Filename: "example_cache",
 	}
 
-	output, err := p.Read()
+	output, err := p.ReadRaw()
 	if err != nil {
 		t.Error("Could not read cache:", err)
 	}
@@ -83,27 +84,125 @@ func TestCanRead(t *testing.T) {
 
 }
 
+type AssertionTemplateData struct {
+	ExpiryRFC3339Time string
+}
+
+func templateAssertion(t time.Time) (string, error) {
+
+	newfile, _ := os.CreateTemp("", "assert_tmpl_")
+
+	data := AssertionTemplateData{
+		ExpiryRFC3339Time: t.Format(time.RFC3339),
+	}
+
+	content, _ := os.ReadFile("./assertion_validity_template.gotmpl")
+	tmpl, err := template.New("assertion_validity_template").Parse(string(content))
+	if err != nil {
+		defer os.Remove(newfile.Name())
+		return "", err
+	}
+
+	encodeWriter := b64.NewEncoder(b64.StdEncoding, newfile)
+	err = tmpl.Execute(encodeWriter, data)
+	if err != nil {
+		defer os.Remove(newfile.Name())
+		return "", err
+	}
+
+	encodeWriter.Close()
+	return newfile.Name(), nil
+}
+
 func TestIsValid(t *testing.T) {
 
-	// create a dummy file
-	_ = ioutil.WriteFile("example_cache", []byte("testing output"), 0700)
+	expiresIn10Minutes := time.Now().Add(10 * time.Minute)
+	tmpFile, err := templateAssertion(expiresIn10Minutes)
+	t.Log(tmpFile)
+	defer os.Remove(tmpFile)
+	if err != nil {
+		t.Error(err)
+	}
+
 	p := SAMLCacheProvider{
-		Filename: "example_cache",
+		Filename: tmpFile,
 	}
 
 	if !p.IsValid() {
 		t.Error("Cache file is not valid!")
 	}
 
-	// changing the file timestamp to validate expiry
-	// new_time := time.Now().Sub(24 * time.Hour)
-	new_time := time.Now().Add(-24 * time.Hour)
-	_ = os.Chtimes("example_cache", new_time, new_time)
+}
 
-	if p.IsValid() {
-		t.Error("Cache file should be expired!")
+func TestIsValid2(t *testing.T) {
+
+	// a date _really_ close to the expiration should still work
+	expiresIn10Minutes := time.Now().Add(2 * time.Second)
+	tmpFile, err := templateAssertion(expiresIn10Minutes)
+	t.Log(tmpFile)
+	defer os.Remove(tmpFile)
+	if err != nil {
+		t.Error(err)
 	}
 
-	os.Remove("example_cache")
+	p := SAMLCacheProvider{
+		Filename: tmpFile,
+	}
+
+	if !p.IsValid() {
+		t.Error("Cache file is not valid!")
+	}
+
+}
+
+func TestIsNotValid1(t *testing.T) {
+
+	expiresIn10Minutes := time.Now().Add(-10 * time.Minute)
+	tmpFile, err := templateAssertion(expiresIn10Minutes)
+	defer os.Remove(tmpFile)
+	if err != nil {
+		t.Error(err)
+	}
+
+	p := SAMLCacheProvider{
+		Filename: tmpFile,
+	}
+
+	if p.IsValid() {
+		t.Error("The cache has expired 10 minutes ago and should be invalid!")
+	}
+
+}
+
+func TestIsNotValid2(t *testing.T) {
+
+	// verifies that the cache is expired if the data is too close to now.
+	expiresIn10Minutes := time.Now()
+	tmpFile, err := templateAssertion(expiresIn10Minutes)
+	defer os.Remove(tmpFile)
+	if err != nil {
+		t.Error(err)
+	}
+
+	p := SAMLCacheProvider{
+		Filename: tmpFile,
+	}
+
+	if p.IsValid() {
+		t.Error("Should be invalid; will expire imminently")
+	}
+
+}
+
+func TestIsNotValid3(t *testing.T) {
+
+	// if the cache file doesn't exist, it should be invalid
+	p := SAMLCacheProvider{
+		Filename: "This_file_does_not_exist",
+	}
+
+	if p.IsValid() {
+		t.Error("There is no valid cache")
+	}
 
 }

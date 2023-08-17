@@ -3,14 +3,20 @@ package pingfed
 import (
 	"bytes"
 	"context"
-	"io/ioutil"
+	"io"
+	"net/http"
+	"net/http/cookiejar"
+	"net/url"
+	"os"
 	"testing"
+	"time"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/stretchr/testify/require"
 	"github.com/versent/saml2aws/v2/mocks"
 	"github.com/versent/saml2aws/v2/pkg/creds"
 	"github.com/versent/saml2aws/v2/pkg/prompter"
+	"github.com/versent/saml2aws/v2/pkg/provider"
 )
 
 func TestMakeAbsoluteURL(t *testing.T) {
@@ -53,7 +59,7 @@ var docTests = []struct {
 
 func TestDocTypes(t *testing.T) {
 	for _, tt := range docTests {
-		data, err := ioutil.ReadFile(tt.file)
+		data, err := os.ReadFile(tt.file)
 		require.Nil(t, err)
 
 		doc, err := goquery.NewDocumentFromReader(bytes.NewReader(data))
@@ -74,16 +80,16 @@ func TestHandleLogin(t *testing.T) {
 	}
 	ctx := context.WithValue(context.Background(), ctxKey("login"), &loginDetails)
 
-	data, err := ioutil.ReadFile("example/login.html")
+	data, err := os.ReadFile("example/login.html")
 	require.Nil(t, err)
 
 	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(data))
 	require.Nil(t, err)
 
-	_, req, err := ac.handleLogin(ctx, doc)
+	_, req, err := ac.handleLogin(ctx, doc, &url.URL{})
 	require.Nil(t, err)
 
-	b, err := ioutil.ReadAll(req.Body)
+	b, err := io.ReadAll(req.Body)
 	require.Nil(t, err)
 
 	s := string(b[:])
@@ -96,35 +102,51 @@ func TestHandleOTP(t *testing.T) {
 	prompter.SetPrompter(pr)
 	pr.Mock.On("StringRequired", "Enter passcode").Return("5309")
 
-	data, err := ioutil.ReadFile("example/otp.html")
+	data, err := os.ReadFile("example/otp.html")
 	require.Nil(t, err)
 
 	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(data))
 	require.Nil(t, err)
 
-	ac := Client{}
-	_, req, err := ac.handleOTP(context.Background(), doc)
+	pingfedURL := &url.URL{
+		Scheme: "https",
+		Host:   "authenticator.pingone.com",
+		Path:   "/pingid/ppm/auth/otp",
+	}
+	jar, err := cookiejar.New(&cookiejar.Options{})
+	require.Nil(t, err)
+	jar.SetCookies(pingfedURL, []*http.Cookie{{
+		Name:    ".csrf",
+		Secure:  true,
+		Expires: time.Now().Add(time.Hour * 24 * 30),
+		Value:   "some-token",
+	}})
+
+	opts := &provider.HTTPClientOptions{IsWithRetries: false}
+	ac := Client{client: &provider.HTTPClient{Client: http.Client{Jar: jar}, Options: opts}}
+	_, req, err := ac.handleOTP(context.Background(), doc, pingfedURL)
 	require.Nil(t, err)
 
-	b, err := ioutil.ReadAll(req.Body)
+	b, err := io.ReadAll(req.Body)
 	require.Nil(t, err)
 
 	s := string(b[:])
 	require.Contains(t, s, "otp=5309")
+	require.Contains(t, s, "csrfToken=some-token")
 }
 
 func TestHandleFormRedirect(t *testing.T) {
-	data, err := ioutil.ReadFile("example/form-redirect.html")
+	data, err := os.ReadFile("example/form-redirect.html")
 	require.Nil(t, err)
 
 	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(data))
 	require.Nil(t, err)
 
 	ac := Client{}
-	_, req, err := ac.handleFormRedirect(context.Background(), doc)
+	_, req, err := ac.handleFormRedirect(context.Background(), doc, &url.URL{})
 	require.Nil(t, err)
 
-	b, err := ioutil.ReadAll(req.Body)
+	b, err := io.ReadAll(req.Body)
 	require.Nil(t, err)
 
 	s := string(b[:])
@@ -133,17 +155,17 @@ func TestHandleFormRedirect(t *testing.T) {
 }
 
 func TestHandleWebAuthn(t *testing.T) {
-	data, err := ioutil.ReadFile("example/webauthn.html")
+	data, err := os.ReadFile("example/webauthn.html")
 	require.Nil(t, err)
 
 	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(data))
 	require.Nil(t, err)
 
 	ac := Client{}
-	_, req, err := ac.handleWebAuthn(context.Background(), doc)
+	_, req, err := ac.handleWebAuthn(context.Background(), doc, &url.URL{})
 	require.Nil(t, err)
 
-	b, err := ioutil.ReadAll(req.Body)
+	b, err := io.ReadAll(req.Body)
 	require.Nil(t, err)
 
 	s := string(b[:])

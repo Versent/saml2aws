@@ -1,8 +1,8 @@
 package samlcache
 
 import (
+	b64 "encoding/base64"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -12,6 +12,7 @@ import (
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+	saml2aws "github.com/versent/saml2aws/v2"
 )
 
 var (
@@ -20,10 +21,12 @@ var (
 )
 
 const (
-	SAMLAssertionValidityTimeout = 5 * time.Minute
-	SAMLCacheFilePermissions     = 0600
-	SAMLCacheDirPermissions      = 0700
-	SAMLCacheDir                 = "saml2aws"
+	// SAMLAssertionValidityJitter is a small time delta used to avoid the race condition
+	// where a token expires between the time it's validated and re-used.
+	SAMLAssertionValidityJitter = -1 * time.Second
+	SAMLCacheFilePermissions    = 0600
+	SAMLCacheDirPermissions     = 0700
+	SAMLCacheDir                = "saml2aws"
 )
 
 // SAMLCacheProvider  loads aws credentials file
@@ -49,21 +52,40 @@ func resolveSymlink(filename string) (string, error) {
 func (p *SAMLCacheProvider) IsValid() bool {
 	var cache_path string
 	var err error
+
+	logger := logger.WithField("IdpAccount", p.Account)
 	if p.Filename == "" {
 		cache_path, err = locateCacheFile(p.Account)
 		if err != nil {
+			logger.Debug("Could not retrieve cache file location", err)
 			return false
 		}
 	} else {
 		cache_path = p.Filename
 	}
+	logger = logger.WithField("Cache_file", cache_path)
 
-	fileInfo, err := os.Stat(cache_path)
+	raw, err := os.ReadFile(cache_path)
 	if err != nil {
+		logger.Debug("Could not read cache content", err)
 		return false
 	}
 
-	return time.Since(fileInfo.ModTime()) < SAMLAssertionValidityTimeout
+	data, err := b64.StdEncoding.DecodeString(string(raw))
+	if err != nil {
+		logger.Debug("Could not decode cache content", err)
+		return false
+	}
+
+	ValidUntil, err := saml2aws.ExtractMFATokenExpiryTime(data)
+	if err != nil {
+		logger.Debug("Could not extract a valid expiry time for the MFA token", err)
+		return false
+	}
+
+	logger.Debug("MFA Token expiry date:", ValidUntil.Format(time.RFC3339))
+
+	return time.Now().Before(ValidUntil.Add(SAMLAssertionValidityJitter))
 }
 
 func locateCacheFile(account string) (string, error) {
@@ -94,7 +116,7 @@ func locateCacheFile(account string) (string, error) {
 	return name, nil
 }
 
-func (p *SAMLCacheProvider) Read() (string, error) {
+func (p *SAMLCacheProvider) ReadRaw() (string, error) {
 
 	var cache_path string
 	var err error
@@ -107,7 +129,7 @@ func (p *SAMLCacheProvider) Read() (string, error) {
 		cache_path = p.Filename
 	}
 
-	content, err := ioutil.ReadFile(cache_path)
+	content, err := os.ReadFile(cache_path)
 	if err != nil {
 		return "", errors.Wrap(err, "Could not read the cache file path")
 	}
@@ -115,7 +137,7 @@ func (p *SAMLCacheProvider) Read() (string, error) {
 	return string(content), nil
 }
 
-func (p *SAMLCacheProvider) Write(samlAssertion string) error {
+func (p *SAMLCacheProvider) WriteRaw(samlAssertion string) error {
 
 	var cache_path string
 	var err error
@@ -133,7 +155,7 @@ func (p *SAMLCacheProvider) Write(samlAssertion string) error {
 	if err != nil {
 		return errors.Wrap(err, "Could not write the cache file directory")
 	}
-	err = ioutil.WriteFile(cache_path, []byte(samlAssertion), SAMLCacheFilePermissions)
+	err = os.WriteFile(cache_path, []byte(samlAssertion), SAMLCacheFilePermissions)
 	if err != nil {
 		return errors.Wrap(err, "Could not write the cache file path")
 	}

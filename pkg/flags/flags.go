@@ -13,6 +13,7 @@ type CommonFlags struct {
 	IdpAccount            string
 	IdpProvider           string
 	MFA                   string
+	MFAIPAddress          string
 	MFAToken              string
 	URL                   string
 	Username              string
@@ -32,11 +33,13 @@ type CommonFlags struct {
 	SAMLCacheFile         string
 	DisableRememberDevice bool
 	DisableSessions       bool
+	Prompter              string
 }
 
 // LoginExecFlags flags for the Login / Exec commands
 type LoginExecFlags struct {
 	CommonFlags       *CommonFlags
+	DownloadBrowser   bool
 	Force             bool
 	DuoMFAOption      string
 	ExecProfile       string
@@ -72,6 +75,10 @@ func ApplyFlagOverrides(commonFlags *CommonFlags, account *cfg.IDPAccount) {
 
 	if commonFlags.MFA != "" {
 		account.MFA = commonFlags.MFA
+	}
+
+	if commonFlags.MFAIPAddress != "" {
+		account.MFAIPAddress = commonFlags.MFAIPAddress
 	}
 
 	if commonFlags.AmazonWebservicesURN != "" {
@@ -113,5 +120,13 @@ func ApplyFlagOverrides(commonFlags *CommonFlags, account *cfg.IDPAccount) {
 	}
 	if commonFlags.DisableSessions {
 		account.DisableSessions = commonFlags.DisableSessions
+	}
+	if commonFlags.Prompter != "" {
+		account.Prompter = commonFlags.Prompter
+	}
+
+	// select the prompter
+	if commonFlags.Prompter != "" {
+		account.Prompter = commonFlags.Prompter
 	}
 }

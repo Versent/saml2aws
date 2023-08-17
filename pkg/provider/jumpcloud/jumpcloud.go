@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"html"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"net/url"
@@ -23,22 +23,25 @@ import (
 )
 
 const (
-	jcSSOBaseURL      = "https://sso.jumpcloud.com/"
-	xsrfURL           = "https://console.jumpcloud.com/userconsole/xsrf"
-	authSubmitURL     = "https://console.jumpcloud.com/userconsole/auth"
-	webauthnSubmitURL = "https://console.jumpcloud.com/userconsole/auth/webauthn"
-	duoAuthSubmitURL  = "https://console.jumpcloud.com/userconsole/auth/duo"
+	jcSSOBaseURL              = "https://sso.jumpcloud.com/"
+	xsrfURL                   = "https://console.jumpcloud.com/userconsole/xsrf"
+	authSubmitURL             = "https://console.jumpcloud.com/userconsole/auth"
+	webauthnSubmitURL         = "https://console.jumpcloud.com/userconsole/auth/webauthn"
+	duoAuthSubmitURL          = "https://console.jumpcloud.com/userconsole/auth/duo"
+	jumpCloudProtectSubmitURL = "https://console.jumpcloud.com/userconsole/auth/push"
 
-	IdentifierTotpMfa = "totp"
-	IdentifierDuoMfa  = "duo"
-	IdentifierU2F     = "webauthn"
+	IdentifierTotpMfa          = "totp"
+	IdentifierDuoMfa           = "duo"
+	IdentifierU2F              = "webauthn"
+	IdentifierJumpCloudProtect = "push"
 )
 
 var (
 	supportedMfaOptions = map[string]string{
-		IdentifierTotpMfa: "TOTP MFA authentication",
-		IdentifierDuoMfa:  "DUO MFA authentication",
-		IdentifierU2F:     "FIDO WebAuthn authentication",
+		IdentifierTotpMfa:          "TOTP MFA authentication",
+		IdentifierDuoMfa:           "DUO MFA authentication",
+		IdentifierU2F:              "FIDO WebAuthn authentication",
+		IdentifierJumpCloudProtect: "PUSH MFA authentication (JumpCloud Protect)",
 	}
 )
 
@@ -103,7 +106,7 @@ func (jc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 	defer res.Body.Close()
 
 	// Grab the web response that has the xsrf in it
-	xsrfBody, err := ioutil.ReadAll(res.Body)
+	xsrfBody, err := io.ReadAll(res.Body)
 	if err != nil {
 		return samlAssertion, errors.Wrap(err, "error reading body of XSRF response")
 	}
@@ -148,7 +151,7 @@ func (jc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 	if res.StatusCode == 401 {
 
 		// Grab the body from the response that has the message in it.
-		messageBody, err := ioutil.ReadAll(res.Body)
+		messageBody, err := io.ReadAll(res.Body)
 		if err != nil {
 			return samlAssertion, errors.Wrap(err, "Error reading body")
 		}
@@ -172,10 +175,14 @@ func (jc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		}
 	}
 
+	if res == nil {
+		return samlAssertion, fmt.Errorf("mfa timed out or denied")
+	}
+
 	// Check if our auth was successful
 	if res.StatusCode == 200 {
 		// Grab the body from the response that has the redirect in it.
-		reDirBody, err := ioutil.ReadAll(res.Body)
+		reDirBody, err := io.ReadAll(res.Body)
 		if err != nil {
 			return samlAssertion, errors.Wrap(err, "Error reading body")
 		}
@@ -264,7 +271,7 @@ func (jc *Client) verifyMFA(jumpCloudOrgHost string, loginDetails *creds.LoginDe
 		}
 		defer res.Body.Close()
 
-		respBody, err := ioutil.ReadAll(res.Body)
+		respBody, err := io.ReadAll(res.Body)
 		if err != nil {
 			return nil, err
 		}
@@ -310,6 +317,9 @@ func (jc *Client) verifyMFA(jumpCloudOrgHost string, loginDetails *creds.LoginDe
 		req.Header.Add("Accept", "application/json")
 		req.Header.Add("Content-Type", "application/json")
 		return jc.client.Do(req)
+
+	case IdentifierJumpCloudProtect:
+		return jc.jumpCloudProtectAuth(jumpCloudProtectSubmitURL, xsrfToken)
 	case IdentifierDuoMfa:
 		// Get Duo config
 		req, err := http.NewRequest("GET", duoAuthSubmitURL, nil)
@@ -329,7 +339,7 @@ func (jc *Client) verifyMFA(jumpCloudOrgHost string, loginDetails *creds.LoginDe
 		if res.StatusCode != 200 {
 			return nil, errors.New("error retrieving Duo configuration, non 200 status returned")
 		}
-		duoResp, err := ioutil.ReadAll(res.Body)
+		duoResp, err := io.ReadAll(res.Body)
 		if err != nil {
 			return nil, errors.Wrap(err, "error retrieving Duo configuration")
 		}
@@ -426,7 +436,7 @@ func (jc *Client) verifyMFA(jumpCloudOrgHost string, loginDetails *creds.LoginDe
 		}
 		defer res.Body.Close()
 
-		body, err := ioutil.ReadAll(res.Body)
+		body, err := io.ReadAll(res.Body)
 		if err != nil {
 			return nil, errors.Wrap(err, "error retrieving body from response")
 		}
@@ -459,7 +469,7 @@ func (jc *Client) verifyMFA(jumpCloudOrgHost string, loginDetails *creds.LoginDe
 		}
 		defer res.Body.Close()
 
-		body, err = ioutil.ReadAll(res.Body)
+		body, err = io.ReadAll(res.Body)
 		if err != nil {
 			return nil, errors.Wrap(err, "error retrieving body from response")
 		}
@@ -493,7 +503,7 @@ func (jc *Client) verifyMFA(jumpCloudOrgHost string, loginDetails *creds.LoginDe
 				}
 				defer res.Body.Close()
 
-				body, err = ioutil.ReadAll(res.Body)
+				body, err = io.ReadAll(res.Body)
 				if err != nil {
 					return nil, errors.Wrap(err, "error retrieving body from response")
 				}
@@ -537,7 +547,7 @@ func (jc *Client) verifyMFA(jumpCloudOrgHost string, loginDetails *creds.LoginDe
 		}
 		defer res.Body.Close()
 
-		body, err = ioutil.ReadAll(res.Body)
+		body, err = io.ReadAll(res.Body)
 		if err != nil {
 			return nil, errors.Wrap(err, "duoResultSubmit: error retrieving body from response")
 		}
@@ -577,7 +587,6 @@ func (jc *Client) verifyMFA(jumpCloudOrgHost string, loginDetails *creds.LoginDe
 }
 
 func (jc *Client) getUserOption(body []byte) (string, error) {
-	// data =>map[factors:[map[status:available type:totp] map[status:available type:webauthn]] message:MFA required.]
 	mfaConfigData := gjson.GetBytes(body, "factors")
 	if mfaConfigData.Index == 0 {
 		log.Fatalln("Mfa Config option not found")
