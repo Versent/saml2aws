@@ -1,13 +1,16 @@
 package okta
 
 import (
+	"bytes"
 	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"strings"
 	"testing"
 	"testing/iotest"
@@ -188,6 +191,76 @@ func TestGetMfaChallengeContext(t *testing.T) {
 		assert.Nil(t, err)
 
 		assert.Equal(t, ts.URL+"/verify?p=1&rememberDevice=true", context.oktaVerify)
+	})
+}
+
+func TestVerifyMfa(t *testing.T) {
+	verifyCounter := 0
+	ts := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/verify":
+			switch verifyCounter {
+			case 0, 1:
+				_, err := w.Write([]byte(`{
+					"stateToken": "TOKEN_2",
+					"status": "MFA_CHALLENGE",
+					"factorResult": "WAITING",
+					"_embedded": {
+						"factor": {
+							"id": "PUSH",
+							"provider": "OKTA",
+							"factorType": "PUSH",
+							"_embedded": {
+								"challenge": {
+									"correctAnswer": 92
+								}
+							}
+						}
+					}
+				}`))
+				assert.Nil(t, err)
+			case 2:
+				_, err := w.Write([]byte(`{
+					"sessionToken": "TOKEN_3",
+					"status": "SUCCESS"
+				}`))
+				assert.Nil(t, err)
+			}
+			verifyCounter++
+		default:
+			http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		}
+	}))
+	defer ts.Close()
+
+	t.Run("Push", func(t *testing.T) {
+		oc, loginDetails := setupTestClient(t, ts, "PUSH")
+
+		err := oc.setDeviceTokenCookie(loginDetails)
+		assert.Nil(t, err)
+
+		var out bytes.Buffer
+		log.SetOutput(&out)
+		context, err := verifyMfa(oc, "", &creds.LoginDetails{}, fmt.Sprintf(`{
+			"stateToken": "TOKEN_1",
+			"_embedded": {
+				"factors": [
+					{
+						"id": "PUSH",
+						"provider": "OKTA",
+						"factorType": "PUSH",
+						"_links": {
+							"verify": { "href": "%s/verify" }
+						}
+					}
+				]
+			}
+		}`, ts.URL))
+		log.SetOutput(os.Stderr)
+		assert.Nil(t, err)
+		assert.Contains(t, out.String(), "Correct Answer: 92")
+
+		assert.Equal(t, context, "TOKEN_3")
 	})
 }
 
