@@ -154,10 +154,22 @@ func (kc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		if responseDoc.Selection.Find("#passwordError").Text() != "" {
 			return "", errors.New("Password error")
 		}
+
+		if err := isMissing2StepSetup(responseDoc); err != nil {
+			return "", err
+		}
+
 		return "", errors.New("page is missing saml assertion")
 	}
 
 	return samlAssertion, nil
+}
+
+func isMissing2StepSetup(responseDoc *goquery.Document) error {
+	if responseDoc.Selection.Find("section.aN1Vld ").Text() != "" {
+		return errors.New("Because of your organization settings, you must set-up 2-Step Verification in your account")
+	}
+	return nil
 }
 
 func (kc *Client) tryDisplayCaptcha(captchaPictureURL string) (string, error) {
