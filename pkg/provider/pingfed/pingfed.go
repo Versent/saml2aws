@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"time"
@@ -170,6 +171,10 @@ func (ac *Client) handleSwipe(ctx context.Context, doc *goquery.Document, _ *url
 	form, err := page.NewFormFromDocument(doc, "#form1")
 	if err != nil {
 		return ctx, nil, errors.Wrap(err, "error extracting swipe status form")
+	}
+
+	if number := doc.Find("div.numbermatching").Text(); number != "" {
+		log.Printf("Select %v in your PingID mobile app ...\n", number)
 	}
 
 	// poll status. request must specifically be a GET
