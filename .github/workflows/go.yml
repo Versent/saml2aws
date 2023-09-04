@@ -20,7 +20,7 @@ jobs:
           go-version: 1.20.x
 
       - name: Check out code into the Go module directory
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Test
         run: |
@@ -47,7 +47,7 @@ jobs:
           go-version: 1.20.x
 
       - name: Check out code into the Go module directory
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v3
@@ -62,7 +62,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Download coverage reports
         uses: actions/download-artifact@v3
         with:
@@ -91,7 +91,7 @@ jobs:
           go-version: 1.20.x
 
       - name: Check out code into the Go module directory
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install dependency required for linux builds
         if: matrix.os == 'ubuntu-20.04'
