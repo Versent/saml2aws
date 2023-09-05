@@ -863,6 +863,12 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 					return "", err
 				}
 				body = updatedContext.challengeResponseBody
+				if gjson.Get(body, "status").String() == "MFA_CHALLENGE" {
+					correctAnswer := gjson.Get(body, "_embedded.factor._embedded.challenge.correctAnswer").String()
+					if correctAnswer != "" {
+						log.Printf("Correct Answer: %s", correctAnswer)
+					}
+				}
 
 			case "TIMEOUT":
 				log.Println(" Timeout")
