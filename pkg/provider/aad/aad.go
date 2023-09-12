@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
@@ -465,7 +466,10 @@ func (ac *Client) processMfa(mfas []userProof, convergedResponse *ConvergedRespo
 			if mfaResp.Entropy == 0 {
 				log.Println("Phone approval required.")
 			} else {
+				prevWriter := log.Writer()
+				log.SetOutput(os.Stderr)
 				log.Printf("Phone approval required. Entropy is: %d", mfaResp.Entropy)
+				log.SetOutput(prevWriter)
 			}
 		}
 
