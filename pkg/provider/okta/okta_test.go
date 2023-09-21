@@ -264,6 +264,165 @@ func TestVerifyMfa(t *testing.T) {
 	})
 }
 
+func TestVerifyMfa_Duo(t *testing.T) {
+	verifyCounter := 0
+	statusCounter := 0
+	ts := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/frame/web/v1/auth":
+			_, err := w.Write([]byte(`<!DOCTYPE html>
+			<html lang="en">
+			  <head>
+				<meta charset="utf-8">
+				<title>
+				  Two-Factor Authentication
+				</title>
+			  </head>
+			  <body>
+				<form action="/frame/prompt" method="post" id="login-form" class="inline login-form hidden">
+				  <input type="hidden" name="sid" value="secret_sid">
+				  <input type="hidden" name="url" value="/frame/prompt">
+				  <input type="hidden" name="enrollment_message" value="">
+				  <input type="hidden" name="itype" value="okta">
+				  <input type="hidden" name="_xsrf" value="_xsrf_foobaz" />
+				  <input type="hidden" name="ukey" value="ukey?who?key?">
+				  <input type="hidden" name="out_of_date" value="False">
+				  <input type="hidden" name="days_out_of_date" value="0">
+				  <input type="hidden" name="should_update_dm" value="False">
+				  <input type="hidden" name="preferred_factor" value="Duo&#x20;Push">
+				  <input type="hidden" name="preferred_device" value="phone1">
+				  <input type="hidden" name="days_to_block" value="None">
+				  <input type="hidden" name="should_retry_u2f_timeouts" value="True">
+				  <input type="hidden" id="has_phone_that_requires_compliance_text" name="has_phone_that_requires_compliance_text" value="False">
+				  <select name="device">
+					<option value="phone1"></option>
+				  </select>
+				  <input type="hidden" name="has-token" value="false">
+				</form>
+			  </body>
+			</html>`))
+			assert.Nil(t, err)
+		case "/frame/prompt":
+			_, err := w.Write([]byte(`{"stat": "OK", "response": {"txid": "txid_1234"}}`))
+			assert.Nil(t, err)
+		case "/frame/status":
+			switch statusCounter {
+			case 0:
+				_, err := w.Write([]byte(`{
+				   "stat": "OK",
+				   "response": {
+					 "status": "Pushed a login request to your device...",
+					 "status_code": "pushed"
+				   }
+				 }`))
+				assert.Nil(t, err)
+			case 1:
+				_, err := w.Write([]byte(`{
+					"stat": "OK",
+					"response": {
+					  "status": "Success. Logging you in...",
+					  "status_code": "allow",
+					  "result": "SUCCESS",
+					  "result_url": "/frame/status/txid_1234",
+					  "reason": "User approved",
+					  "parent": "https://okta.com/signin/verify/duo/web"
+					}
+				  }`))
+				assert.Nil(t, err)
+			}
+			statusCounter++
+		case "/frame/status/txid_1234":
+			_, err := w.Write([]byte(`{
+				"stat": "OK",
+				"response": {
+				  "cookie": "AUTH|yumyum",
+				  "parent": "https://okta.com/signin/verify/duo/web"
+				}
+			  }`))
+			assert.Nil(t, err)
+		case "/verify":
+			switch verifyCounter {
+			case 0:
+				_, err := fmt.Fprintf(w, `{
+					"stateToken": "TOKEN_2",
+					"status": "MFA_CHALLENGE",
+					"factorResult": "WAITING",
+					"_embedded": {
+						"factor": {
+							"id": "factor_id",
+							"provider": "DUO",
+							"factorType": "web",
+							"_embedded": {
+							  "verification": {
+								"host": "%s",
+								"signature": "TX|blah_tx_blah:APP|blah_app_blah",
+								"factorResult": "WAITING",
+								"_links": {
+								  "complete": {
+									"href": "https://%s/api/v1/authn/factors/factor_id/lifecycle/duoCallback",
+									"hints": {
+									  "allow": [
+										"POST"
+									  ]
+									}
+								  }
+								}
+							  }
+							}
+						}
+					}
+				}`, r.Host, r.Host)
+				assert.Nil(t, err)
+			case 1:
+				_, err := w.Write([]byte(`{
+				"sessionToken": "session-token-fffffff",
+			}`))
+				assert.Nil(t, err)
+			}
+			verifyCounter++
+		default:
+			http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		}
+	}))
+	defer ts.Close()
+
+	t.Run("Duo", func(t *testing.T) {
+		oc, loginDetails := setupTestClient(t, ts, "DUO")
+
+		err := oc.setDeviceTokenCookie(loginDetails)
+		assert.Nil(t, err)
+
+		var out bytes.Buffer
+		log.SetOutput(&out)
+		context, err := verifyMfa(oc, "", &creds.LoginDetails{DuoMFAOption: "Duo Push"}, fmt.Sprintf(`{
+			"stateToken": "TOKEN_1",
+			"status": "MFA_REQUIRED",
+			"_embedded": {
+				"factors": [
+					{
+						"id": "factor_id",
+						"provider": "DUO",
+						"factorType": "web",
+						"_links": {
+						  "verify": {
+							"href": "%s/verify",
+							"hints": {
+							  "allow": [
+								"POST"
+							  ]
+							}
+						  }
+					   }
+					}
+				]
+			}
+		}`, ts.URL))
+		log.SetOutput(os.Stderr)
+		assert.Nil(t, err)
+		assert.Equal(t, "session-token-fffffff", context)
+	})
+}
+
 func setupTestClient(t *testing.T, ts *httptest.Server, mfa string) (*Client, *creds.LoginDetails) {
 	testTransport := http.DefaultTransport.(*http.Transport).Clone()
 	testTransport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
