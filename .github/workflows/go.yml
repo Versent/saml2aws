@@ -98,7 +98,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y libudev-dev
 
       - name: GoReleaser
-        uses: goreleaser/goreleaser-action@v4
+        uses: goreleaser/goreleaser-action@v5
         with:
           version: latest
           args: build --snapshot --clean --config .goreleaser.${{ matrix.os }}.yml
