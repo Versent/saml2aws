@@ -3,6 +3,7 @@ package okta
 import (
 	"bytes"
 	"crypto/tls"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -270,7 +271,37 @@ func TestVerifyMfa_Duo(t *testing.T) {
 	ts := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/frame/web/v1/auth":
-			_, err := w.Write([]byte(`<!DOCTYPE html>
+			query, err := url.ParseQuery(r.URL.RawQuery)
+			assert.Equal(t, url.Values{
+				"parent": {"https://host-from-argument/signin/verify/duo/web"},
+				"tx":     {"TX|blah_tx_blah"},
+				"v":      {"2.8"}},
+				query)
+			assert.Nil(t, err)
+
+			body, err := io.ReadAll(r.Body)
+			defer r.Body.Close()
+			assert.Nil(t, err)
+
+			query, err = url.ParseQuery(string(body))
+			assert.Equal(t, url.Values{
+				"acting_ie_version":           {""},
+				"color_depth":                 {"24"},
+				"flash_version":               {""},
+				"is_cef_browser":              {"false"},
+				"is_ie_compatability_mode":    {""},
+				"is_ipad_os":                  {"false"},
+				"java_version":                {""},
+				"parent":                      {"https://host-from-argument/signin/verify/duo/web"},
+				"react_support":               {"true"},
+				"react_support_error_message": {""},
+				"screen_resolution_height":    {"1692"},
+				"screen_resolution_width":     {"3008"},
+				"tx":                          {"TX|blah_tx_blah"}},
+				query)
+			assert.Nil(t, err)
+
+			_, err = w.Write([]byte(`<!DOCTYPE html>
 			<html lang="en">
 			  <body>
 				<form>
@@ -283,12 +314,44 @@ func TestVerifyMfa_Duo(t *testing.T) {
 			</html>`))
 			assert.Nil(t, err)
 		case "/frame/prompt":
-			_, err := w.Write([]byte(`{"stat": "OK", "response": {"txid": "txid_1234"}}`))
+			query, err := url.ParseQuery(r.URL.RawQuery)
+			assert.Equal(t, url.Values{}, query)
+			assert.Nil(t, err)
+
+			body, err := io.ReadAll(r.Body)
+			defer r.Body.Close()
+			assert.Nil(t, err)
+
+			query, err = url.ParseQuery(string(body))
+			assert.Equal(t, url.Values{
+				"device":      {"phone1"},
+				"factor":      {"Duo Push"},
+				"out_of_date": {"false"},
+				"sid":         {"secret_sid"},
+			}, query)
+			assert.Nil(t, err)
+
+			_, err = w.Write([]byte(`{"stat": "OK", "response": {"txid": "txid_1234"}}`))
 			assert.Nil(t, err)
 		case "/frame/status":
 			switch statusCounter {
 			case 0:
-				_, err := w.Write([]byte(`{
+				query, err := url.ParseQuery(r.URL.RawQuery)
+				assert.Equal(t, url.Values{}, query)
+				assert.Nil(t, err)
+
+				body, err := io.ReadAll(r.Body)
+				defer r.Body.Close()
+				assert.Nil(t, err)
+
+				query, err = url.ParseQuery(string(body))
+				assert.Equal(t, url.Values{
+					"sid":  {"secret_sid"},
+					"txid": {"txid_1234"},
+				}, query)
+				assert.Nil(t, err)
+
+				_, err = w.Write([]byte(`{
 				   "stat": "OK",
 				   "response": {
 					 "status": "Pushed a login request to your device...",
@@ -297,7 +360,21 @@ func TestVerifyMfa_Duo(t *testing.T) {
 				 }`))
 				assert.Nil(t, err)
 			case 1:
-				_, err := w.Write([]byte(`{
+				query, err := url.ParseQuery(r.URL.RawQuery)
+				assert.Equal(t, url.Values{}, query)
+				assert.Nil(t, err)
+
+				body, err := io.ReadAll(r.Body)
+				defer r.Body.Close()
+				assert.Nil(t, err)
+
+				query, err = url.ParseQuery(string(body))
+				assert.Equal(t, url.Values{
+					"sid":  {"secret_sid"},
+					"txid": {"txid_1234"},
+				}, query)
+				assert.Nil(t, err)
+				_, err = w.Write([]byte(`{
 					"stat": "OK",
 					"response": {
 					  "status": "Success. Logging you in...",
@@ -310,7 +387,21 @@ func TestVerifyMfa_Duo(t *testing.T) {
 			}
 			statusCounter++
 		case "/frame/status/txid_1234":
-			_, err := w.Write([]byte(`{
+			query, err := url.ParseQuery(r.URL.RawQuery)
+			assert.Equal(t, url.Values{}, query)
+			assert.Nil(t, err)
+
+			body, err := io.ReadAll(r.Body)
+			defer r.Body.Close()
+			assert.Nil(t, err)
+
+			query, err = url.ParseQuery(string(body))
+			assert.Equal(t, url.Values{
+				"sid": {"secret_sid"},
+			}, query)
+			assert.Nil(t, err)
+
+			_, err = w.Write([]byte(`{
 				"stat": "OK",
 				"response": {
 				  "cookie": "AUTH|yumyum"
@@ -320,7 +411,25 @@ func TestVerifyMfa_Duo(t *testing.T) {
 		case "/verify":
 			switch verifyCounter {
 			case 0:
-				_, err := fmt.Fprintf(w, `{
+				query, err := url.ParseQuery(r.URL.RawQuery)
+				assert.Equal(t, url.Values{
+					"rememberDevice": {"true"},
+				}, query)
+				assert.Nil(t, err)
+
+				body, err := io.ReadAll(r.Body)
+				defer r.Body.Close()
+				assert.Nil(t, err)
+
+				var requestBody interface{} = nil
+				err = json.Unmarshal(body, &requestBody)
+				assert.Equal(t, map[string]interface{}(map[string]interface{}{
+					"rememberDevice": "true",
+					"stateToken":     "TOKEN_1",
+				}), requestBody)
+				assert.Nil(t, err)
+
+				_, err = fmt.Fprintf(w, `{
 					"stateToken": "TOKEN_2",
 					"status": "MFA_CHALLENGE",
 					"factorResult": "WAITING",
@@ -345,7 +454,25 @@ func TestVerifyMfa_Duo(t *testing.T) {
 				}`, r.Host, r.Host)
 				assert.Nil(t, err)
 			case 1:
-				_, err := w.Write([]byte(`{
+				query, err := url.ParseQuery(r.URL.RawQuery)
+				assert.Equal(t, url.Values{
+					"rememberDevice": {"true"},
+				}, query)
+				assert.Nil(t, err)
+
+				body, err := io.ReadAll(r.Body)
+				defer r.Body.Close()
+				assert.Nil(t, err)
+
+				var requestBody interface{} = nil
+				err = json.Unmarshal(body, &requestBody)
+				assert.Equal(t, map[string]interface{}(map[string]interface{}{
+					"rememberDevice": "true",
+					"stateToken":     "TOKEN_1",
+				}), requestBody)
+				assert.Nil(t, err)
+
+				_, err = w.Write([]byte(`{
 				"sessionToken": "session-token-fffffff",
 			}`))
 				assert.Nil(t, err)
@@ -365,7 +492,7 @@ func TestVerifyMfa_Duo(t *testing.T) {
 
 		var out bytes.Buffer
 		log.SetOutput(&out)
-		context, err := verifyMfa(oc, "", &creds.LoginDetails{DuoMFAOption: "Duo Push"}, fmt.Sprintf(`{
+		context, err := verifyMfa(oc, "host-from-argument", &creds.LoginDetails{DuoMFAOption: "Duo Push"}, fmt.Sprintf(`{
 			"stateToken": "TOKEN_1",
 			"status": "MFA_REQUIRED",
 			"_embedded": {
