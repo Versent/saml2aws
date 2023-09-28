@@ -333,15 +333,9 @@ func TestVerifyMfa_Duo(t *testing.T) {
 							  "verification": {
 								"host": "%s",
 								"signature": "TX|blah_tx_blah:APP|blah_app_blah",
-								"factorResult": "WAITING",
 								"_links": {
 								  "complete": {
-									"href": "https://%s/api/v1/authn/factors/factor_id/lifecycle/duoCallback",
-									"hints": {
-									  "allow": [
-										"POST"
-									  ]
-									}
+									"href": "https://%s/api/v1/authn/factors/factor_id/lifecycle/duoCallback"
 								  }
 								}
 							  }
