@@ -272,32 +272,12 @@ func TestVerifyMfa_Duo(t *testing.T) {
 		case "/frame/web/v1/auth":
 			_, err := w.Write([]byte(`<!DOCTYPE html>
 			<html lang="en">
-			  <head>
-				<meta charset="utf-8">
-				<title>
-				  Two-Factor Authentication
-				</title>
-			  </head>
 			  <body>
-				<form action="/frame/prompt" method="post" id="login-form" class="inline login-form hidden">
+				<form>
 				  <input type="hidden" name="sid" value="secret_sid">
-				  <input type="hidden" name="url" value="/frame/prompt">
-				  <input type="hidden" name="enrollment_message" value="">
-				  <input type="hidden" name="itype" value="okta">
-				  <input type="hidden" name="_xsrf" value="_xsrf_foobaz" />
-				  <input type="hidden" name="ukey" value="ukey?who?key?">
-				  <input type="hidden" name="out_of_date" value="False">
-				  <input type="hidden" name="days_out_of_date" value="0">
-				  <input type="hidden" name="should_update_dm" value="False">
-				  <input type="hidden" name="preferred_factor" value="Duo&#x20;Push">
-				  <input type="hidden" name="preferred_device" value="phone1">
-				  <input type="hidden" name="days_to_block" value="None">
-				  <input type="hidden" name="should_retry_u2f_timeouts" value="True">
-				  <input type="hidden" id="has_phone_that_requires_compliance_text" name="has_phone_that_requires_compliance_text" value="False">
 				  <select name="device">
 					<option value="phone1"></option>
 				  </select>
-				  <input type="hidden" name="has-token" value="false">
 				</form>
 			  </body>
 			</html>`))
@@ -323,9 +303,7 @@ func TestVerifyMfa_Duo(t *testing.T) {
 					  "status": "Success. Logging you in...",
 					  "status_code": "allow",
 					  "result": "SUCCESS",
-					  "result_url": "/frame/status/txid_1234",
-					  "reason": "User approved",
-					  "parent": "https://okta.com/signin/verify/duo/web"
+					  "result_url": "/frame/status/txid_1234"
 					}
 				  }`))
 				assert.Nil(t, err)
@@ -335,8 +313,7 @@ func TestVerifyMfa_Duo(t *testing.T) {
 			_, err := w.Write([]byte(`{
 				"stat": "OK",
 				"response": {
-				  "cookie": "AUTH|yumyum",
-				  "parent": "https://okta.com/signin/verify/duo/web"
+				  "cookie": "AUTH|yumyum"
 				}
 			  }`))
 			assert.Nil(t, err)
