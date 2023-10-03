@@ -3,6 +3,7 @@ package okta
 import (
 	"bytes"
 	"crypto/tls"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -261,6 +262,262 @@ func TestVerifyMfa(t *testing.T) {
 		assert.Contains(t, out.String(), "Correct Answer: 92")
 
 		assert.Equal(t, context, "TOKEN_3")
+	})
+}
+
+func TestVerifyMfa_Duo(t *testing.T) {
+	verifyCounter := 0
+	statusCounter := 0
+	ts := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/frame/web/v1/auth":
+			query, err := url.ParseQuery(r.URL.RawQuery)
+			assert.Equal(t, url.Values{
+				"parent": {"https://host-from-argument/signin/verify/duo/web"},
+				"tx":     {"TX|blah_tx_blah"},
+				"v":      {"2.8"}},
+				query)
+			assert.Nil(t, err)
+
+			body, err := io.ReadAll(r.Body)
+			defer r.Body.Close()
+			assert.Nil(t, err)
+
+			query, err = url.ParseQuery(string(body))
+			assert.Equal(t, url.Values{
+				"acting_ie_version":           {""},
+				"color_depth":                 {"24"},
+				"flash_version":               {""},
+				"is_cef_browser":              {"false"},
+				"is_ie_compatability_mode":    {""},
+				"is_ipad_os":                  {"false"},
+				"java_version":                {""},
+				"parent":                      {"https://host-from-argument/signin/verify/duo/web"},
+				"react_support":               {"true"},
+				"react_support_error_message": {""},
+				"screen_resolution_height":    {"1692"},
+				"screen_resolution_width":     {"3008"},
+				"tx":                          {"TX|blah_tx_blah"}},
+				query)
+			assert.Nil(t, err)
+
+			_, err = w.Write([]byte(`<!DOCTYPE html>
+			<html lang="en">
+			  <body>
+				<form>
+				  <input type="hidden" name="sid" value="secret_sid">
+				  <select name="device">
+					<option value="phone1"></option>
+				  </select>
+				</form>
+			  </body>
+			</html>`))
+			assert.Nil(t, err)
+		case "/frame/prompt":
+			query, err := url.ParseQuery(r.URL.RawQuery)
+			assert.Equal(t, url.Values{}, query)
+			assert.Nil(t, err)
+
+			body, err := io.ReadAll(r.Body)
+			defer r.Body.Close()
+			assert.Nil(t, err)
+
+			query, err = url.ParseQuery(string(body))
+			assert.Equal(t, url.Values{
+				"device":      {"phone1"},
+				"factor":      {"Duo Push"},
+				"out_of_date": {"false"},
+				"sid":         {"secret_sid"},
+			}, query)
+			assert.Nil(t, err)
+
+			_, err = w.Write([]byte(`{"stat": "OK", "response": {"txid": "txid_1234"}}`))
+			assert.Nil(t, err)
+		case "/frame/status":
+			switch statusCounter {
+			case 0:
+				query, err := url.ParseQuery(r.URL.RawQuery)
+				assert.Equal(t, url.Values{}, query)
+				assert.Nil(t, err)
+
+				body, err := io.ReadAll(r.Body)
+				defer r.Body.Close()
+				assert.Nil(t, err)
+
+				query, err = url.ParseQuery(string(body))
+				assert.Equal(t, url.Values{
+					"sid":  {"secret_sid"},
+					"txid": {"txid_1234"},
+				}, query)
+				assert.Nil(t, err)
+
+				_, err = w.Write([]byte(`{
+				   "stat": "OK",
+				   "response": {
+					 "status": "Pushed a login request to your device...",
+					 "status_code": "pushed"
+				   }
+				 }`))
+				assert.Nil(t, err)
+			case 1:
+				query, err := url.ParseQuery(r.URL.RawQuery)
+				assert.Equal(t, url.Values{}, query)
+				assert.Nil(t, err)
+
+				body, err := io.ReadAll(r.Body)
+				defer r.Body.Close()
+				assert.Nil(t, err)
+
+				query, err = url.ParseQuery(string(body))
+				assert.Equal(t, url.Values{
+					"sid":  {"secret_sid"},
+					"txid": {"txid_1234"},
+				}, query)
+				assert.Nil(t, err)
+				_, err = w.Write([]byte(`{
+					"stat": "OK",
+					"response": {
+					  "status": "Success. Logging you in...",
+					  "status_code": "allow",
+					  "result": "SUCCESS",
+					  "result_url": "/frame/status/txid_1234"
+					}
+				  }`))
+				assert.Nil(t, err)
+			}
+			statusCounter++
+		case "/frame/status/txid_1234":
+			query, err := url.ParseQuery(r.URL.RawQuery)
+			assert.Equal(t, url.Values{}, query)
+			assert.Nil(t, err)
+
+			body, err := io.ReadAll(r.Body)
+			defer r.Body.Close()
+			assert.Nil(t, err)
+
+			query, err = url.ParseQuery(string(body))
+			assert.Equal(t, url.Values{
+				"sid": {"secret_sid"},
+			}, query)
+			assert.Nil(t, err)
+
+			_, err = w.Write([]byte(`{
+				"stat": "OK",
+				"response": {
+				  "cookie": "AUTH|yumyum"
+				}
+			  }`))
+			assert.Nil(t, err)
+		case "/verify":
+			switch verifyCounter {
+			case 0:
+				query, err := url.ParseQuery(r.URL.RawQuery)
+				assert.Equal(t, url.Values{
+					"rememberDevice": {"true"},
+				}, query)
+				assert.Nil(t, err)
+
+				body, err := io.ReadAll(r.Body)
+				defer r.Body.Close()
+				assert.Nil(t, err)
+
+				var requestBody interface{} = nil
+				err = json.Unmarshal(body, &requestBody)
+				assert.Equal(t, map[string]interface{}(map[string]interface{}{
+					"rememberDevice": "true",
+					"stateToken":     "TOKEN_1",
+				}), requestBody)
+				assert.Nil(t, err)
+
+				_, err = fmt.Fprintf(w, `{
+					"stateToken": "TOKEN_2",
+					"status": "MFA_CHALLENGE",
+					"factorResult": "WAITING",
+					"_embedded": {
+						"factor": {
+							"id": "factor_id",
+							"provider": "DUO",
+							"factorType": "web",
+							"_embedded": {
+							  "verification": {
+								"host": "%s",
+								"signature": "TX|blah_tx_blah:APP|blah_app_blah",
+								"_links": {
+								  "complete": {
+									"href": "https://%s/api/v1/authn/factors/factor_id/lifecycle/duoCallback"
+								  }
+								}
+							  }
+							}
+						}
+					}
+				}`, r.Host, r.Host)
+				assert.Nil(t, err)
+			case 1:
+				query, err := url.ParseQuery(r.URL.RawQuery)
+				assert.Equal(t, url.Values{
+					"rememberDevice": {"true"},
+				}, query)
+				assert.Nil(t, err)
+
+				body, err := io.ReadAll(r.Body)
+				defer r.Body.Close()
+				assert.Nil(t, err)
+
+				var requestBody interface{} = nil
+				err = json.Unmarshal(body, &requestBody)
+				assert.Equal(t, map[string]interface{}(map[string]interface{}{
+					"rememberDevice": "true",
+					"stateToken":     "TOKEN_1",
+				}), requestBody)
+				assert.Nil(t, err)
+
+				_, err = w.Write([]byte(`{
+				"sessionToken": "session-token-fffffff",
+			}`))
+				assert.Nil(t, err)
+			}
+			verifyCounter++
+		default:
+			http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		}
+	}))
+	defer ts.Close()
+
+	t.Run("Duo", func(t *testing.T) {
+		oc, loginDetails := setupTestClient(t, ts, "DUO")
+
+		err := oc.setDeviceTokenCookie(loginDetails)
+		assert.Nil(t, err)
+
+		var out bytes.Buffer
+		log.SetOutput(&out)
+		context, err := verifyMfa(oc, "host-from-argument", &creds.LoginDetails{DuoMFAOption: "Duo Push"}, fmt.Sprintf(`{
+			"stateToken": "TOKEN_1",
+			"status": "MFA_REQUIRED",
+			"_embedded": {
+				"factors": [
+					{
+						"id": "factor_id",
+						"provider": "DUO",
+						"factorType": "web",
+						"_links": {
+						  "verify": {
+							"href": "%s/verify",
+							"hints": {
+							  "allow": [
+								"POST"
+							  ]
+							}
+						  }
+					   }
+					}
+				]
+			}
+		}`, ts.URL))
+		log.SetOutput(os.Stderr)
+		assert.Nil(t, err)
+		assert.Equal(t, "session-token-fffffff", context)
 	})
 }
 
