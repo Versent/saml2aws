@@ -438,57 +438,57 @@ func writeFixtureBytes(t *testing.T, w http.ResponseWriter, r *http.Request, tem
 	template, err := template.ParseFiles("testdata/" + templateFile)
 	require.Nil(t, err)
 	var tpl bytes.Buffer
-	err = template.Execute(&tpl, urlFixtures(r.Host, variableFixture))
+	err = template.Execute(&tpl, responseFixtures(r.Host, variableFixture))
 	require.Nil(t, err)
 	_, _ = w.Write(tpl.Bytes())
 }
 
-func urlFixtures(host string, urls FixtureData) *FixtureData {
+func responseFixtures(host string, variableFixture FixtureData) *FixtureData {
 	const scheme = "https://"
 	fixtureData := genFixtureData()
-	fixtureData.SErrorCode = urls.SErrorCode
-	if urls.UrlFederationRedirect != "" {
-		fixtureData.UrlFederationRedirect = scheme + host + urls.UrlFederationRedirect
+	fixtureData.SErrorCode = variableFixture.SErrorCode
+	if variableFixture.UrlFederationRedirect != "" {
+		fixtureData.UrlFederationRedirect = scheme + host + variableFixture.UrlFederationRedirect
 	} else {
 		fixtureData.UrlFederationRedirect = ""
 	}
-	if urls.UrlSkipMfaRegistration != "" {
-		fixtureData.UrlSkipMfaRegistration = scheme + host + urls.UrlSkipMfaRegistration
+	if variableFixture.UrlSkipMfaRegistration != "" {
+		fixtureData.UrlSkipMfaRegistration = scheme + host + variableFixture.UrlSkipMfaRegistration
 	} else {
 		fixtureData.UrlSkipMfaRegistration = ""
 	}
-	if urls.UrlGetCredentialType != "" {
-		fixtureData.UrlGetCredentialType = scheme + host + urls.UrlGetCredentialType
+	if variableFixture.UrlGetCredentialType != "" {
+		fixtureData.UrlGetCredentialType = scheme + host + variableFixture.UrlGetCredentialType
 	} else {
 		fixtureData.UrlGetCredentialType = ""
 	}
-	if urls.UrlPost != "" {
-		fixtureData.UrlPost = scheme + host + urls.UrlPost
+	if variableFixture.UrlPost != "" {
+		fixtureData.UrlPost = scheme + host + variableFixture.UrlPost
 	} else {
 		fixtureData.UrlPost = ""
 	}
-	if urls.UrlBeginAuth != "" {
-		fixtureData.UrlBeginAuth = scheme + host + urls.UrlBeginAuth
+	if variableFixture.UrlBeginAuth != "" {
+		fixtureData.UrlBeginAuth = scheme + host + variableFixture.UrlBeginAuth
 	} else {
 		fixtureData.UrlBeginAuth = ""
 	}
-	if urls.UrlEndAuth != "" {
-		fixtureData.UrlEndAuth = scheme + host + urls.UrlEndAuth
+	if variableFixture.UrlEndAuth != "" {
+		fixtureData.UrlEndAuth = scheme + host + variableFixture.UrlEndAuth
 	} else {
 		fixtureData.UrlEndAuth = ""
 	}
-	if urls.UrlProcessAuth != "" {
-		fixtureData.UrlProcessAuth = scheme + host + urls.UrlProcessAuth
+	if variableFixture.UrlProcessAuth != "" {
+		fixtureData.UrlProcessAuth = scheme + host + variableFixture.UrlProcessAuth
 	} else {
 		fixtureData.UrlProcessAuth = ""
 	}
-	if urls.UrlHiddenForm != "" {
-		fixtureData.UrlHiddenForm = scheme + host + urls.UrlHiddenForm
+	if variableFixture.UrlHiddenForm != "" {
+		fixtureData.UrlHiddenForm = scheme + host + variableFixture.UrlHiddenForm
 	} else {
 		fixtureData.UrlHiddenForm = ""
 	}
-	if urls.UrlSamlRequest != "" {
-		fixtureData.UrlSamlRequest = scheme + host + urls.UrlSamlRequest
+	if variableFixture.UrlSamlRequest != "" {
+		fixtureData.UrlSamlRequest = scheme + host + variableFixture.UrlSamlRequest
 	} else {
 		fixtureData.UrlSamlRequest = ""
 	}
