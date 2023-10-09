@@ -657,6 +657,11 @@ func (ac *Client) processConvergedProofUpRedirect(res *http.Response, srcBodyStr
 		return res, errors.Wrap(err, "skip MFA response unmarshal error")
 	}
 
+	// 50058: user is not signed in (yet)
+	if convergedResponse.SErrorCode != "" && convergedResponse.SErrorCode != "50058" {
+		return res, fmt.Errorf("login error %s", convergedResponse.SErrorCode)
+	}
+
 	if convergedResponse.URLSkipMfaRegistration == "" {
 		return res, errors.Wrap(err, "skip MFA not possible")
 	}

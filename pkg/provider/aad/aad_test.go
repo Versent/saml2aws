@@ -62,6 +62,7 @@ type FixtureData struct {
 	ProofUpToken                          string // UVrFbiiZj6kdD6oWm4k87CkipgjEbKhlq_dKoMTo8p0TRCf4utimEAnOizRQ7qAoHaotT08os5kctHfJhXw7dkactSsYjtYo9Lt_1vlPPmZ8i0FtfrwjMeztp0sMY6PHkfRO_sWIHR2bsvIpjaKqqNTJ8PZCuwNmfR8Tx2Jdud3F1FcUgkF3-MG5omxJR7oaueRn1SvnjR-sWEleKptBqLTFnVwNeY8kVfpiKV4liNACZkWc9N5CJRC7HO4aLHVUkKcWaCERUZWeaHh0Bdk_aHSZFll1C6yBv0v4IIJfTQuCOdRMXmqvSpxpRUcwgZ7vdY6krAYUAV8SG926Fptr3if69AM5GHxKN4AlyNNJZ5ghv0yqwI4aGTg1vsanq0q8ZE80TOCBZdMz39Tr_J5MKMW2HO7lEMPtZYBCYwz3Z4nzbgWo9aB65GcxNcnzXgBMeiwjgxQphpFahbj89Rc8H0PWbN4Yhh-aDlv_UMwd2lp1I98hxdEn-8uA56xCE4l1647RuwSiCIfzE_6dYxXm8Q
 	UserName                              string // exampleuser@exampledomain.com
 	UserNameUrlEncoded                    string // exampleuser%40exampledomain.com
+	SErrorCode                            string // 50058
 	AuthMethodId                          string // OneWaySMS
 	Entropy                               string // 0
 }
@@ -313,6 +314,57 @@ func Test_Authenticate(t *testing.T) {
 		require.Nil(t, err)
 		require.NotEmpty(t, got)
 	})
+	t.Run("Default login with KMSI and MFA but Authenticator required", func(t *testing.T) {
+		ts := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			switch r.URL.Path {
+			case "/index", "/applications/redirecttofederatedapplication.aspx":
+				writeFixtureBytes(t, w, r, "ConvergedSignIn.html", FixtureData{
+					UrlPost:              "/defaultLogin",
+					UrlGetCredentialType: "/getCredentialType",
+				})
+			case "/getCredentialType":
+				writeFixtureBytes(t, w, r, "GetCredentialType_default.json", FixtureData{})
+			case "/defaultLogin":
+				writeFixtureBytes(t, w, r, "KmsiInterrupt.html", FixtureData{
+					UrlPost: "/hForm",
+				})
+			case "/hForm":
+				writeFixtureBytes(t, w, r, "HiddenForm.html", FixtureData{
+					UrlHiddenForm: "/sRequest",
+				})
+			case "/sRequest":
+				writeFixtureBytes(t, w, r, "SAMLRequest.html", FixtureData{
+					UrlSamlRequest: "/sResponse?SAMLRequest=ExampleValue",
+				})
+			case "/sResponse":
+				writeFixtureBytes(t, w, r, "ConvergedTFA.html", FixtureData{
+					UrlPost:      "/processAuth",
+					UrlBeginAuth: "/beginAuth",
+					UrlEndAuth:   "/endAuth",
+				})
+			case "/beginAuth":
+				writeFixtureBytes(t, w, r, "BeginAuth.json", FixtureData{})
+			case "/endAuth":
+				writeFixtureBytes(t, w, r, "EndAuth.json", FixtureData{})
+			case "/processAuth":
+				writeFixtureBytes(t, w, r, "ConvergedProofUpRedirect.html", FixtureData{
+					SErrorCode: "502031",
+				})
+			default:
+				http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+			}
+		}))
+		defer ts.Close()
+
+		pr := &mocks.Prompter{}
+		prompter.SetPrompter(pr)
+		pr.Mock.On("StringRequired", "Enter verification code").Return("000000")
+
+		ac, loginDetails := setupTestClient(t, ts)
+		_, err := ac.Authenticate(loginDetails)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "502031")
+	})
 	t.Run("Default login with KMSI and MFA with entropy", func(t *testing.T) {
 		entropy := genIntFixture(2)
 		ts := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -454,64 +506,65 @@ func writeFixtureBytes(t *testing.T, w http.ResponseWriter, r *http.Request, tem
 	template, err := template.ParseFiles("testdata/" + templateFile)
 	require.Nil(t, err)
 	var tpl bytes.Buffer
-	err = template.Execute(&tpl, overlayFixtures(r.Host, variableFixture))
+	err = template.Execute(&tpl, responseFixtures(r.Host, variableFixture))
 	require.Nil(t, err)
 	_, _ = w.Write(tpl.Bytes())
 }
 
-func overlayFixtures(host string, overlay FixtureData) *FixtureData {
+func responseFixtures(host string, variableFixture FixtureData) *FixtureData {
 	const scheme = "https://"
 	fixtureData := genFixtureData()
-	if overlay.UrlFederationRedirect != "" {
-		fixtureData.UrlFederationRedirect = scheme + host + overlay.UrlFederationRedirect
+	fixtureData.SErrorCode = variableFixture.SErrorCode
+	if variableFixture.UrlFederationRedirect != "" {
+		fixtureData.UrlFederationRedirect = scheme + host + variableFixture.UrlFederationRedirect
 	} else {
 		fixtureData.UrlFederationRedirect = ""
 	}
-	if overlay.UrlSkipMfaRegistration != "" {
-		fixtureData.UrlSkipMfaRegistration = scheme + host + overlay.UrlSkipMfaRegistration
+	if variableFixture.UrlSkipMfaRegistration != "" {
+		fixtureData.UrlSkipMfaRegistration = scheme + host + variableFixture.UrlSkipMfaRegistration
 	} else {
 		fixtureData.UrlSkipMfaRegistration = ""
 	}
-	if overlay.UrlGetCredentialType != "" {
-		fixtureData.UrlGetCredentialType = scheme + host + overlay.UrlGetCredentialType
+	if variableFixture.UrlGetCredentialType != "" {
+		fixtureData.UrlGetCredentialType = scheme + host + variableFixture.UrlGetCredentialType
 	} else {
 		fixtureData.UrlGetCredentialType = ""
 	}
-	if overlay.UrlPost != "" {
-		fixtureData.UrlPost = scheme + host + overlay.UrlPost
+	if variableFixture.UrlPost != "" {
+		fixtureData.UrlPost = scheme + host + variableFixture.UrlPost
 	} else {
 		fixtureData.UrlPost = ""
 	}
-	if overlay.UrlBeginAuth != "" {
-		fixtureData.UrlBeginAuth = scheme + host + overlay.UrlBeginAuth
+	if variableFixture.UrlBeginAuth != "" {
+		fixtureData.UrlBeginAuth = scheme + host + variableFixture.UrlBeginAuth
 	} else {
 		fixtureData.UrlBeginAuth = ""
 	}
-	if overlay.UrlEndAuth != "" {
-		fixtureData.UrlEndAuth = scheme + host + overlay.UrlEndAuth
+	if variableFixture.UrlEndAuth != "" {
+		fixtureData.UrlEndAuth = scheme + host + variableFixture.UrlEndAuth
 	} else {
 		fixtureData.UrlEndAuth = ""
 	}
-	if overlay.UrlProcessAuth != "" {
-		fixtureData.UrlProcessAuth = scheme + host + overlay.UrlProcessAuth
+	if variableFixture.UrlProcessAuth != "" {
+		fixtureData.UrlProcessAuth = scheme + host + variableFixture.UrlProcessAuth
 	} else {
 		fixtureData.UrlProcessAuth = ""
 	}
-	if overlay.UrlHiddenForm != "" {
-		fixtureData.UrlHiddenForm = scheme + host + overlay.UrlHiddenForm
+	if variableFixture.UrlHiddenForm != "" {
+		fixtureData.UrlHiddenForm = scheme + host + variableFixture.UrlHiddenForm
 	} else {
 		fixtureData.UrlHiddenForm = ""
 	}
-	if overlay.UrlSamlRequest != "" {
-		fixtureData.UrlSamlRequest = scheme + host + overlay.UrlSamlRequest
+	if variableFixture.UrlSamlRequest != "" {
+		fixtureData.UrlSamlRequest = scheme + host + variableFixture.UrlSamlRequest
 	} else {
 		fixtureData.UrlSamlRequest = ""
 	}
-	if overlay.AuthMethodId != "" {
-		fixtureData.AuthMethodId = overlay.AuthMethodId
+	if variableFixture.AuthMethodId != "" {
+		fixtureData.AuthMethodId = variableFixture.AuthMethodId
 	}
-	if overlay.Entropy != "" {
-		fixtureData.Entropy = overlay.Entropy
+	if variableFixture.Entropy != "" {
+		fixtureData.Entropy = variableFixture.Entropy
 	}
 	return fixtureData
 }
