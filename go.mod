@@ -23,7 +23,7 @@ require (
 	github.com/skratchdot/open-golang v0.0.0-20200116055534-eef842397966
 	github.com/stretchr/testify v1.8.4
 	github.com/tidwall/gjson v1.17.0
-	golang.org/x/net v0.16.0
+	golang.org/x/net v0.17.0
 	gopkg.in/ini.v1 v1.67.0
 )
 
