@@ -43,14 +43,14 @@ jobs:
       run: |
         echo REPOSITORY_NAME_LOWERCASE=$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]') >> $GITHUB_ENV
 
-    - uses: "docker/login-action@v2"
+    - uses: "docker/login-action@v3"
       if: matrix.os == 'ubuntu-20.04'
       with:
         registry: "ghcr.io"
         username: "${{ github.actor }}"
         password: "${{ secrets.GITHUB_TOKEN }}"
     - name: GoReleaser
-      uses: goreleaser/goreleaser-action@v4
+      uses: goreleaser/goreleaser-action@v5
       with:
         version: latest
         args: release --clean --config .goreleaser.${{ matrix.os }}.yml
