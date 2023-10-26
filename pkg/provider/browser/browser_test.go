@@ -107,7 +107,7 @@ func TestGetSAMLResponse(t *testing.T) {
 	regex, err := signinRegex()
 	assert.Nil(t, err)
 	page.Mock.On("Goto", url).Return(resp, nil)
-	page.Mock.On("WaitForRequest", regex).Return(req)
+	page.Mock.On("WaitForRequest", regex, TimeoutPageWaitForRequest).Return(req)
 	req.Mock.On("PostData").Return(params.Encode(), nil)
 	// loginDetails := &creds.LoginDetails{
 	//	URL: url,

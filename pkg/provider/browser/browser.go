@@ -13,6 +13,8 @@ import (
 
 var logger = logrus.WithField("provider", "browser")
 
+var TimeoutPageWaitForRequest = newPageWaitForRequestOptions(300000)
+
 // Client client for browser based Identity Provider
 type Client struct {
 	Headless bool
@@ -94,7 +96,7 @@ var getSAMLResponse = func(page playwright.Page, loginDetails *creds.LoginDetail
 	}
 
 	logger.Info("waiting ...")
-	r, _ := page.WaitForRequest(signin_re)
+	r, _ := page.WaitForRequest(signin_re, TimeoutPageWaitForRequest)
 	data, err := r.PostData()
 	if err != nil {
 		return "", err
@@ -122,4 +124,8 @@ func (cl *Client) Validate(loginDetails *creds.LoginDetails) error {
 	}
 
 	return nil
+}
+
+func newPageWaitForRequestOptions(timeout float64) playwright.PageWaitForRequestOptions {
+	return playwright.PageWaitForRequestOptions{Timeout: &timeout}
 }
