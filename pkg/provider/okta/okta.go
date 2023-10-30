@@ -979,14 +979,20 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 			duoMfaOptions = append(duoMfaOptions, "Passcode")
 		}
 
-		duoMfaOption := 0
+		duoMfaOption := -1
 
-		if loginDetails.DuoMFAOption == "Duo Push" {
-			duoMfaOption = 1
-		} else if loginDetails.DuoMFAOption == "Passcode" {
-			duoMfaOption = 2
+		if loginDetails.DuoMFAOption != "" {
+			for i, v := range duoMfaOptions {
+				if loginDetails.DuoMFAOption == v {
+					duoMfaOption = i
+				}
+			}
 		} else {
 			duoMfaOption = prompter.Choose("Select a DUO MFA Option", duoMfaOptions)
+		}
+
+		if duoMfaOption == -1 {
+			return "", errors.Errorf("error unsupported MFA option '%s'", loginDetails.DuoMFAOption)
 		}
 
 		if duoMfaOptions[duoMfaOption] == "Passcode" {
