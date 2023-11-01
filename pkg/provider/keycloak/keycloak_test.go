@@ -45,6 +45,29 @@ func TestClient_getLoginForm(t *testing.T) {
 	}, authForm)
 }
 
+func TestClient_getLoginFormTryAnotherWay(t *testing.T) {
+	data, err := os.ReadFile("example/loginpage-another-way.html")
+	require.Nil(t, err)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write(data)
+	}))
+	defer ts.Close()
+
+	opts := &provider.HTTPClientOptions{IsWithRetries: false}
+	kc := Client{client: &provider.HTTPClient{Client: http.Client{}, Options: opts}}
+	loginDetails := &creds.LoginDetails{URL: ts.URL, Username: "test", Password: "test123"}
+
+	submitURL, authForm, err := kc.getLoginForm(loginDetails)
+	require.Nil(t, err)
+	require.Equal(t, exampleLoginURL, submitURL)
+	require.Equal(t, url.Values{
+		"username": []string{"test"},
+		"password": []string{"test123"},
+		"login":    []string{"Log in"},
+	}, authForm)
+}
+
 func TestClient_getLoginFormRedirect(t *testing.T) {
 
 	redirectData, err := os.ReadFile("example/redirect.html")

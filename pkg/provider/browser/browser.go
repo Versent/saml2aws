@@ -2,7 +2,6 @@ package browser
 
 import (
 	"errors"
-	"fmt"
 	"net/url"
 	"regexp"
 	"strings"
@@ -136,8 +135,8 @@ var getSAMLResponse = func(page playwright.Page, loginDetails *creds.LoginDetail
 		return "", err
 	}
 
-	fmt.Println("waiting ...")
-	r := page.WaitForRequest(signin_re)
+	logger.Info("waiting ...")
+	r, _ := page.WaitForRequest(signin_re)
 	data, err := r.PostData()
 	if err != nil {
 		return "", err
