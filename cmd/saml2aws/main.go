@@ -12,6 +12,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/versent/saml2aws/v2/cmd/saml2aws/commands"
 	"github.com/versent/saml2aws/v2/pkg/flags"
+	"github.com/versent/saml2aws/v2/pkg/prompter"
 )
 
 var (
@@ -46,6 +47,7 @@ func buildCmdList(s kingpin.Settings) (target *[]string) {
 func main() {
 
 	log.SetOutput(os.Stderr)
+	prompter.SetOutputWriter(os.Stderr)
 	log.SetFlags(0)
 	logrus.SetOutput(os.Stderr)
 
