@@ -26,7 +26,7 @@ type ResponseData struct {
 	KeyHandle     string `json:"keyHandle"`
 }
 
-// NewFidoClient returns a new initialized FIDO1-based WebAuthnClient, representing a single device
+// NewDUOU2FClient returns a new initialized DUOU2F-based WebAuthnClient, representing a single device
 func NewDUOU2FClient(challengeNonce, appID, version, keyHandle, stateToken string, deviceFinder DeviceFinder) (*DUOU2FClient, error) {
 	var device u2fhost.Device
 	var err error

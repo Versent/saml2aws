@@ -78,7 +78,7 @@ func (cli *CliPrompter) Choose(pr string, options []string) int {
 	return 0
 }
 
-// StringRequired prompt for string which is required
+// String prompt for string with a default
 func (cli *CliPrompter) String(pr string, defaultValue string) string {
 	val := ""
 	prompt := &survey.Input{

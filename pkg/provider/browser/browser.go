@@ -2,7 +2,6 @@ package browser
 
 import (
 	"errors"
-	"fmt"
 	"net/url"
 	"regexp"
 
@@ -14,11 +13,14 @@ import (
 
 var logger = logrus.WithField("provider", "browser")
 
+const DEFAULT_TIMEOUT float64 = 300000
+
 // Client client for browser based Identity Provider
 type Client struct {
 	Headless bool
 	// Setup alternative directory to download playwright browsers to
 	BrowserDriverDir string
+	Timeout          int
 }
 
 // New create new browser based client
@@ -26,6 +28,7 @@ func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 	return &Client{
 		Headless:         idpAccount.Headless,
 		BrowserDriverDir: idpAccount.BrowserDriverDir,
+		Timeout:          idpAccount.Timeout,
 	}, nil
 }
 
@@ -76,10 +79,10 @@ func (cl *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		}
 	}()
 
-	return getSAMLResponse(page, loginDetails)
+	return getSAMLResponse(page, loginDetails, cl)
 }
 
-var getSAMLResponse = func(page playwright.Page, loginDetails *creds.LoginDetails) (string, error) {
+var getSAMLResponse = func(page playwright.Page, loginDetails *creds.LoginDetails, client *Client) (string, error) {
 	logger.WithField("URL", loginDetails.URL).Info("opening browser")
 
 	if _, err := page.Goto(loginDetails.URL); err != nil {
@@ -94,8 +97,8 @@ var getSAMLResponse = func(page playwright.Page, loginDetails *creds.LoginDetail
 		return "", err
 	}
 
-	fmt.Println("waiting ...")
-	r := page.WaitForRequest(signin_re)
+	logger.Info("waiting ...")
+	r, _ := page.WaitForRequest(signin_re, client.waitForRequestTimeout())
 	data, err := r.PostData()
 	if err != nil {
 		return "", err
@@ -123,4 +126,12 @@ func (cl *Client) Validate(loginDetails *creds.LoginDetails) error {
 	}
 
 	return nil
+}
+
+func (cl *Client) waitForRequestTimeout() playwright.PageWaitForRequestOptions {
+	timeout := float64(cl.Timeout)
+	if timeout < 30000 {
+		timeout = DEFAULT_TIMEOUT
+	}
+	return playwright.PageWaitForRequestOptions{Timeout: &timeout}
 }
