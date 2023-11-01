@@ -62,7 +62,7 @@ func TestNoBrowserDriverFail(t *testing.T) {
 	assert.ErrorContains(t, err, "could not start driver")
 }
 
-func fakeSAMLResponse(page playwright.Page, loginDetails *creds.LoginDetails) (string, error) {
+func fakeSAMLResponse(page playwright.Page, loginDetails *creds.LoginDetails, client *Client) (string, error) {
 	return response, nil
 }
 
@@ -96,6 +96,14 @@ func TestGetSAMLResponse(t *testing.T) {
 			</saml:EncryptedAssertion>
 	</samlp:Response>
 `
+
+	idpAccount := cfg.IDPAccount{
+		Headless: true,
+		Timeout:  100000,
+	}
+
+	client, err := New(&idpAccount)
+	assert.Nil(t, err)
 	params := url.Values{}
 	params.Add("foo1", "bar1")
 	params.Add("SAMLResponse", samlp)
@@ -107,12 +115,46 @@ func TestGetSAMLResponse(t *testing.T) {
 	regex, err := signinRegex()
 	assert.Nil(t, err)
 	page.Mock.On("Goto", url).Return(resp, nil)
-	page.Mock.On("WaitForRequest", regex).Return(req)
+	page.Mock.On("WaitForRequest", regex, client.waitForRequestTimeout()).Return(req)
 	req.Mock.On("PostData").Return(params.Encode(), nil)
 	// loginDetails := &creds.LoginDetails{
 	//	URL: url,
 	//}
-	// samlResp, err := getSAMLResponse(page, loginDetails)
+	// samlResp, err := getSAMLResponse(page, loginDetails, client)
 	// assert.Nil(t, err)
 	// assert.Equal(t, samlp, samlResp)
+}
+
+func TestWaitForRequestOptions(t *testing.T) {
+	timeout := float64(100000)
+	idpAccount := cfg.IDPAccount{
+		Headless: true,
+		Timeout:  int(timeout),
+	}
+
+	client, err := New(&idpAccount)
+	assert.Nil(t, err)
+
+	options := client.waitForRequestTimeout()
+	if *options.Timeout != timeout {
+		t.Errorf("Unexpected value for timeout [%.0f]: expected [%.0f]", *options.Timeout, timeout)
+	}
+}
+
+func TestWaitForRequestOptionsDefaultTimeout(t *testing.T) {
+	idpAccount := cfg.IDPAccount{
+		Headless: true,
+		Timeout:  1000,
+	}
+
+	client, err := New(&idpAccount)
+
+	if err != nil {
+		t.Errorf("Unable to create browser")
+	}
+
+	options := client.waitForRequestTimeout()
+	if *options.Timeout != DEFAULT_TIMEOUT {
+		t.Errorf("Unexpected value for timeout [%.0f]: expected [%.0f]", *options.Timeout, DEFAULT_TIMEOUT)
+	}
 }
