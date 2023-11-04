@@ -339,6 +339,26 @@ func (kc *Client) loadChallengePage(submitURL string, referer string, authForm u
 			return kc.loadResponsePage(secondActionURL, submitURL, responseForm)
 		case strings.Contains(secondActionURL, "challenge/ipp/"): // handle SMS challenge
 
+			if extractNodeText(doc, "button", "Send text message") != "" {
+				responseForm.Set("SendMethod", "SMS") // extractInputsByFormID does not extract the name and value from <button> tag that is the form submit
+				doc, err = kc.loadResponsePage(secondActionURL, submitURL, responseForm)
+				if err != nil {
+					return nil, errors.Wrap(err, "failed to post sms request form")
+				}
+				doc.Url, err = url.Parse(submitURL)
+				if err != nil {
+					return nil, errors.Wrap(err, "failed to define URL for html doc")
+				}
+
+				submitURL = secondActionURL
+				responseForm, secondActionURL, err = extractInputsByFormID(doc, "challenge")
+				if err != nil {
+					return nil, errors.Wrap(err, "unable to extract challenge form")
+				}
+
+				logger.Debugf("After sms request secondActionURL: %s", secondActionURL)
+			}
+
 			var token = prompter.StringRequired("Enter SMS token: G-")
 
 			responseForm.Set("Pin", token)
