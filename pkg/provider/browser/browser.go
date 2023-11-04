@@ -98,7 +98,10 @@ var getSAMLResponse = func(page playwright.Page, loginDetails *creds.LoginDetail
 	}
 
 	logger.Info("waiting ...")
-	r, _ := page.WaitForRequest(signin_re, client.waitForRequestTimeout())
+	r, _ := page.ExpectRequest(signin_re, func() error {
+		_, err := page.Goto("about:blank")
+		return err
+	}, client.expectRequestTimeout())
 	data, err := r.PostData()
 	if err != nil {
 		return "", err
@@ -128,10 +131,10 @@ func (cl *Client) Validate(loginDetails *creds.LoginDetails) error {
 	return nil
 }
 
-func (cl *Client) waitForRequestTimeout() playwright.PageWaitForRequestOptions {
+func (cl *Client) expectRequestTimeout() playwright.PageExpectRequestOptions {
 	timeout := float64(cl.Timeout)
 	if timeout < 30000 {
 		timeout = DEFAULT_TIMEOUT
 	}
-	return playwright.PageWaitForRequestOptions{Timeout: &timeout}
+	return playwright.PageExpectRequestOptions{Timeout: &timeout}
 }
