@@ -115,7 +115,7 @@ func TestGetSAMLResponse(t *testing.T) {
 	regex, err := signinRegex()
 	assert.Nil(t, err)
 	page.Mock.On("Goto", url).Return(resp, nil)
-	page.Mock.On("WaitForRequest", regex, client.waitForRequestTimeout()).Return(req)
+	page.Mock.On("ExpectRequest", regex, client.expectRequestTimeout()).Return(req)
 	req.Mock.On("PostData").Return(params.Encode(), nil)
 	// loginDetails := &creds.LoginDetails{
 	//	URL: url,
@@ -125,7 +125,7 @@ func TestGetSAMLResponse(t *testing.T) {
 	// assert.Equal(t, samlp, samlResp)
 }
 
-func TestWaitForRequestOptions(t *testing.T) {
+func TestExpectRequestOptions(t *testing.T) {
 	timeout := float64(100000)
 	idpAccount := cfg.IDPAccount{
 		Headless: true,
@@ -135,13 +135,13 @@ func TestWaitForRequestOptions(t *testing.T) {
 	client, err := New(&idpAccount)
 	assert.Nil(t, err)
 
-	options := client.waitForRequestTimeout()
+	options := client.expectRequestTimeout()
 	if *options.Timeout != timeout {
 		t.Errorf("Unexpected value for timeout [%.0f]: expected [%.0f]", *options.Timeout, timeout)
 	}
 }
 
-func TestWaitForRequestOptionsDefaultTimeout(t *testing.T) {
+func TestExpectRequestOptionsDefaultTimeout(t *testing.T) {
 	idpAccount := cfg.IDPAccount{
 		Headless: true,
 		Timeout:  1000,
@@ -153,7 +153,7 @@ func TestWaitForRequestOptionsDefaultTimeout(t *testing.T) {
 		t.Errorf("Unable to create browser")
 	}
 
-	options := client.waitForRequestTimeout()
+	options := client.expectRequestTimeout()
 	if *options.Timeout != DEFAULT_TIMEOUT {
 		t.Errorf("Unexpected value for timeout [%.0f]: expected [%.0f]", *options.Timeout, DEFAULT_TIMEOUT)
 	}
