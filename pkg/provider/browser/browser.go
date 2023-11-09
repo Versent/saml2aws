@@ -2,6 +2,7 @@ package browser
 
 import (
 	"errors"
+	"fmt"
 	"net/url"
 	"regexp"
 	"strings"
@@ -14,6 +15,8 @@ import (
 
 var logger = logrus.WithField("provider", "browser")
 
+const DEFAULT_TIMEOUT float64 = 300000
+
 // Client client for browser based Identity Provider
 type Client struct {
 	BrowserType           string
@@ -21,6 +24,7 @@ type Client struct {
 	Headless              bool
 	// Setup alternative directory to download playwright browsers to
 	BrowserDriverDir string
+	Timeout          int
 }
 
 // New create new browser based client
@@ -30,6 +34,7 @@ func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 		BrowserDriverDir:      idpAccount.BrowserDriverDir,
 		BrowserType:           strings.ToLower(idpAccount.BrowserType),
 		BrowserExecutablePath: idpAccount.BrowserExecutablePath,
+		Timeout:               idpAccount.Timeout,
 	}, nil
 }
 
@@ -117,10 +122,10 @@ func (cl *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		}
 	}()
 
-	return getSAMLResponse(page, loginDetails)
+	return getSAMLResponse(page, loginDetails, cl)
 }
 
-var getSAMLResponse = func(page playwright.Page, loginDetails *creds.LoginDetails) (string, error) {
+var getSAMLResponse = func(page playwright.Page, loginDetails *creds.LoginDetails, client *Client) (string, error) {
 	logger.WithField("URL", loginDetails.URL).Info("opening browser")
 
 	if _, err := page.Goto(loginDetails.URL); err != nil {
@@ -136,7 +141,10 @@ var getSAMLResponse = func(page playwright.Page, loginDetails *creds.LoginDetail
 	}
 
 	logger.Info("waiting ...")
-	r, _ := page.WaitForRequest(signin_re)
+	r, _ := page.ExpectRequest(signin_re, func() error {
+		_, err := page.Goto("about:blank")
+		return err
+	}, client.expectRequestTimeout())
 	data, err := r.PostData()
 	if err != nil {
 		return "", err
@@ -164,4 +172,12 @@ func (cl *Client) Validate(loginDetails *creds.LoginDetails) error {
 	}
 
 	return nil
+}
+
+func (cl *Client) expectRequestTimeout() playwright.PageExpectRequestOptions {
+	timeout := float64(cl.Timeout)
+	if timeout < 30000 {
+		timeout = DEFAULT_TIMEOUT
+	}
+	return playwright.PageExpectRequestOptions{Timeout: &timeout}
 }

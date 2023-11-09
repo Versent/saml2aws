@@ -83,7 +83,7 @@ func TestInvalidBrowserExecutablePath(t *testing.T) {
 	}
 	_, err = client.Authenticate(loginDetails)
 	assert.Error(t, err)
-	assert.ErrorContains(t, err, "could not send message: could not send message to server: Failed to launch chromium because executable doesn't exist at FAKEPATH")
+	assert.ErrorContains(t, err, "Failed to launch chromium because executable doesn't exist at FAKEPATH")
 }
 
 // Test that if download directory does not have browsers, it fails with expected error message
@@ -101,7 +101,7 @@ func TestNoBrowserDriverFail(t *testing.T) {
 	assert.ErrorContains(t, err, "could not start driver")
 }
 
-func fakeSAMLResponse(page playwright.Page, loginDetails *creds.LoginDetails) (string, error) {
+func fakeSAMLResponse(page playwright.Page, loginDetails *creds.LoginDetails, client *Client) (string, error) {
 	return response, nil
 }
 
@@ -135,6 +135,14 @@ func TestGetSAMLResponse(t *testing.T) {
 			</saml:EncryptedAssertion>
 	</samlp:Response>
 `
+
+	idpAccount := cfg.IDPAccount{
+		Headless: true,
+		Timeout:  100000,
+	}
+
+	client, err := New(&idpAccount)
+	assert.Nil(t, err)
 	params := url.Values{}
 	params.Add("foo1", "bar1")
 	params.Add("SAMLResponse", samlp)
@@ -146,12 +154,46 @@ func TestGetSAMLResponse(t *testing.T) {
 	regex, err := signinRegex()
 	assert.Nil(t, err)
 	page.Mock.On("Goto", url).Return(resp, nil)
-	page.Mock.On("WaitForRequest", regex).Return(req)
+	page.Mock.On("ExpectRequest", regex, client.expectRequestTimeout()).Return(req)
 	req.Mock.On("PostData").Return(params.Encode(), nil)
 	// loginDetails := &creds.LoginDetails{
 	//	URL: url,
 	//}
-	// samlResp, err := getSAMLResponse(page, loginDetails)
+	// samlResp, err := getSAMLResponse(page, loginDetails, client)
 	// assert.Nil(t, err)
 	// assert.Equal(t, samlp, samlResp)
+}
+
+func TestExpectRequestOptions(t *testing.T) {
+	timeout := float64(100000)
+	idpAccount := cfg.IDPAccount{
+		Headless: true,
+		Timeout:  int(timeout),
+	}
+
+	client, err := New(&idpAccount)
+	assert.Nil(t, err)
+
+	options := client.expectRequestTimeout()
+	if *options.Timeout != timeout {
+		t.Errorf("Unexpected value for timeout [%.0f]: expected [%.0f]", *options.Timeout, timeout)
+	}
+}
+
+func TestExpectRequestOptionsDefaultTimeout(t *testing.T) {
+	idpAccount := cfg.IDPAccount{
+		Headless: true,
+		Timeout:  1000,
+	}
+
+	client, err := New(&idpAccount)
+
+	if err != nil {
+		t.Errorf("Unable to create browser")
+	}
+
+	options := client.expectRequestTimeout()
+	if *options.Timeout != DEFAULT_TIMEOUT {
+		t.Errorf("Unexpected value for timeout [%.0f]: expected [%.0f]", *options.Timeout, DEFAULT_TIMEOUT)
+	}
 }
