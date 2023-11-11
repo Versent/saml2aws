@@ -47,6 +47,45 @@ func TestValidate(t *testing.T) {
 	assert.Equal(t, resp, response)
 }
 
+func TestInvalidBrowserType(t *testing.T) {
+	currentSAMLResponse := getSAMLResponse
+	defer func() {
+		getSAMLResponse = currentSAMLResponse
+	}()
+	getSAMLResponse = fakeSAMLResponse
+	account := &cfg.IDPAccount{
+		BrowserType: "invalid",
+	}
+	client, err := New(account)
+	assert.Nil(t, err)
+	loginDetails := &creds.LoginDetails{
+		URL:             "https://google.com/",
+		DownloadBrowser: true,
+	}
+	_, err = client.Authenticate(loginDetails)
+	assert.Error(t, err)
+	assert.ErrorContains(t, err, "invalid browser-type: 'invalid', only [chromium firefox webkit chrome chrome-beta chrome-dev chrome-canary msedge msedge-beta msedge-dev msedge-canary] are allowed")
+}
+
+func TestInvalidBrowserExecutablePath(t *testing.T) {
+	currentSAMLResponse := getSAMLResponse
+	defer func() {
+		getSAMLResponse = currentSAMLResponse
+	}()
+	getSAMLResponse = fakeSAMLResponse
+	account := &cfg.IDPAccount{
+		BrowserExecutablePath: "FAKEPATH",
+	}
+	client, err := New(account)
+	assert.Nil(t, err)
+	loginDetails := &creds.LoginDetails{
+		URL: "https://google.com/",
+	}
+	_, err = client.Authenticate(loginDetails)
+	assert.Error(t, err)
+	assert.ErrorContains(t, err, "Failed to launch chromium because executable doesn't exist at FAKEPATH")
+}
+
 // Test that if download directory does not have browsers, it fails with expected error message
 func TestNoBrowserDriverFail(t *testing.T) {
 	account := &cfg.IDPAccount{
