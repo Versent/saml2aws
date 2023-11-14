@@ -141,10 +141,7 @@ var getSAMLResponse = func(page playwright.Page, loginDetails *creds.LoginDetail
 	}
 
 	logger.Info("waiting ...")
-	r, _ := page.ExpectRequest(signin_re, func() error {
-		_, err := page.Goto("about:blank")
-		return err
-	}, client.expectRequestTimeout())
+	r, _ := page.ExpectRequest(signin_re, nil, client.expectRequestTimeout())
 	data, err := r.PostData()
 	if err != nil {
 		return "", err
