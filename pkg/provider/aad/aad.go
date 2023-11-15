@@ -6,10 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
-	"os"
 	"strings"
 	"time"
 
@@ -464,12 +462,9 @@ func (ac *Client) processMfa(mfas []userProof, convergedResponse *ConvergedRespo
 		}
 		if mfaReq.AuthMethodID == "PhoneAppNotification" && i == 0 {
 			if mfaResp.Entropy == 0 {
-				log.Println("Phone approval required.")
+				prompter.Display("Phone approval required.")
 			} else {
-				prevWriter := log.Writer()
-				log.SetOutput(os.Stderr)
-				log.Printf("Phone approval required. Entropy is: %d", mfaResp.Entropy)
-				log.SetOutput(prevWriter)
+				prompter.Display(fmt.Sprintf("Phone approval required. Entropy is: %d", mfaResp.Entropy))
 			}
 		}
 

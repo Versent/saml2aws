@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/stretchr/testify/mock"
 	"io"
 	"math"
 	mrand "math/rand"
@@ -412,6 +413,9 @@ func Test_Authenticate(t *testing.T) {
 		}))
 		defer ts.Close()
 
+		pr := prompter.NewCli()
+		prompter.SetPrompter(pr)
+
 		ac, loginDetails := setupTestClient(t, ts)
 
 		orig := os.Stderr
@@ -481,6 +485,7 @@ func Test_Authenticate(t *testing.T) {
 		pr := &mocks.Prompter{}
 		prompter.SetPrompter(pr)
 		pr.Mock.On("StringRequired", "Enter verification code").Return("000000")
+		pr.Mock.On("Display", mock.Anything).Return()
 
 		ac, loginDetails := setupTestClient(t, ts)
 		got, err := ac.Authenticate(loginDetails)
