@@ -8,7 +8,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/stretchr/testify/mock"
 	"io"
 	"math"
 	mrand "math/rand"
@@ -19,6 +18,8 @@ import (
 	"sync"
 	"testing"
 	"text/template"
+
+	"github.com/stretchr/testify/mock"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
