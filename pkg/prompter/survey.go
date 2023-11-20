@@ -108,3 +108,7 @@ func (cli *CliPrompter) Password(pr string) string {
 	_ = survey.AskOne(prompt, &val, stdioOption())
 	return val
 }
+
+func (cli *CliPrompter) Display(pr string) {
+	_, _ = os.Stderr.WriteString(pr + "\n")
+}
