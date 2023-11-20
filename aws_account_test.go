@@ -1,14 +1,14 @@
 package saml2aws
 
 import (
-	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
 func TestExtractAWSAccounts(t *testing.T) {
-	data, err := ioutil.ReadFile("testdata/saml.html")
+	data, err := os.ReadFile("testdata/saml.html")
 	assert.Nil(t, err)
 
 	accounts, err := ExtractAWSAccounts(data)

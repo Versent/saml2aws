@@ -27,6 +27,9 @@ const (
 
 	// DefaultProfile this is the default profile name used to save the credentials in the aws cli
 	DefaultProfile = "saml"
+
+	// Environment Variable used to define the Keyring Backend for Linux based distro
+	KeyringBackEnvironmentVariableName = "SAML2AWS_KEYRING_BACKEND"
 )
 
 // IDPAccount saml IDP account
@@ -36,7 +39,10 @@ type IDPAccount struct {
 	URL                   string `ini:"url"`
 	Username              string `ini:"username"`
 	Provider              string `ini:"provider"`
+	BrowserType           string `ini:"browser_type,omitempty"`            // used by 'Browser' Provider
+	BrowserExecutablePath string `ini:"browser_executable_path,omitempty"` // used by 'Browser' Provider
 	MFA                   string `ini:"mfa"`
+	MFAIPAddress          string `ini:"mfa_ip_address"` // used by OneLogin
 	SkipVerify            bool   `ini:"skip_verify"`
 	Timeout               int    `ini:"timeout"`
 	AmazonWebservicesURN  string `ini:"aws_urn"`
@@ -52,8 +58,11 @@ type IDPAccount struct {
 	SAMLCache             bool   `ini:"saml_cache"`
 	SAMLCacheFile         string `ini:"saml_cache_file"`
 	TargetURL             string `ini:"target_url"`
-	DisableRememberDevice bool   `ini:"disable_remember_device"` // used by Okta
-	DisableSessions       bool   `ini:"disable_sessions"`        // used by Okta
+	DisableRememberDevice bool   `ini:"disable_remember_device"`      // used by Okta
+	DisableSessions       bool   `ini:"disable_sessions"`             // used by Okta
+	DownloadBrowser       bool   `ini:"download_browser_driver"`      // used by browser
+	BrowserDriverDir      string `ini:"browser_driver_dir,omitempty"` // used by browser; hide from user if not set
+	Headless              bool   `ini:"headless"`                     // used by browser
 	Prompter              string `ini:"prompter"`
 }
 

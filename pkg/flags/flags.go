@@ -12,7 +12,10 @@ type CommonFlags struct {
 	ConfigFile            string
 	IdpAccount            string
 	IdpProvider           string
+	BrowserType           string
+	BrowserExecutablePath string
 	MFA                   string
+	MFAIPAddress          string
 	MFAToken              string
 	URL                   string
 	Username              string
@@ -38,6 +41,7 @@ type CommonFlags struct {
 // LoginExecFlags flags for the Login / Exec commands
 type LoginExecFlags struct {
 	CommonFlags       *CommonFlags
+	DownloadBrowser   bool
 	Force             bool
 	DuoMFAOption      string
 	ExecProfile       string
@@ -71,8 +75,20 @@ func ApplyFlagOverrides(commonFlags *CommonFlags, account *cfg.IDPAccount) {
 		account.Provider = commonFlags.IdpProvider
 	}
 
+	if commonFlags.BrowserType != "" {
+		account.BrowserType = commonFlags.BrowserType
+	}
+
+	if commonFlags.BrowserExecutablePath != "" {
+		account.BrowserExecutablePath = commonFlags.BrowserExecutablePath
+	}
+
 	if commonFlags.MFA != "" {
 		account.MFA = commonFlags.MFA
+	}
+
+	if commonFlags.MFAIPAddress != "" {
+		account.MFAIPAddress = commonFlags.MFAIPAddress
 	}
 
 	if commonFlags.AmazonWebservicesURN != "" {

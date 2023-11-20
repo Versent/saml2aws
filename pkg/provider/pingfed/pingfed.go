@@ -4,7 +4,8 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"io/ioutil"
+	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"time"
@@ -73,7 +74,7 @@ func (ac *Client) follow(ctx context.Context, req *http.Request) (string, error)
 		return "", errors.Wrap(err, "failed to build document from response")
 	}
 
-	var handler func(context.Context, *goquery.Document) (context.Context, *http.Request, error)
+	var handler func(context.Context, *goquery.Document, *url.URL) (context.Context, *http.Request, error)
 
 	if docIsFormRedirectToTarget(doc, ac.idpAccount.TargetURL) {
 		logger.WithField("type", "saml-response-to-aws").Debug("doc detect")
@@ -119,14 +120,14 @@ func (ac *Client) follow(ctx context.Context, req *http.Request) (string, error)
 		return "", fmt.Errorf("Unknown document type")
 	}
 
-	ctx, req, err = handler(ctx, doc)
+	ctx, req, err = handler(ctx, doc, res.Request.URL)
 	if err != nil {
 		return "", err
 	}
 	return ac.follow(ctx, req)
 }
 
-func (ac *Client) handleLogin(ctx context.Context, doc *goquery.Document) (context.Context, *http.Request, error) {
+func (ac *Client) handleLogin(ctx context.Context, doc *goquery.Document, _ *url.URL) (context.Context, *http.Request, error) {
 	loginDetails, ok := ctx.Value(ctxKey("login")).(*creds.LoginDetails)
 	if !ok {
 		return ctx, nil, fmt.Errorf("no context value for 'login'")
@@ -147,10 +148,17 @@ func (ac *Client) handleLogin(ctx context.Context, doc *goquery.Document) (conte
 	return ctx, req, err
 }
 
-func (ac *Client) handleOTP(ctx context.Context, doc *goquery.Document) (context.Context, *http.Request, error) {
+func (ac *Client) handleOTP(ctx context.Context, doc *goquery.Document, requestURL *url.URL) (context.Context, *http.Request, error) {
 	form, err := page.NewFormFromDocument(doc, "#otp-form")
 	if err != nil {
 		return ctx, nil, errors.Wrap(err, "error extracting OTP form")
+	}
+
+	for _, v := range ac.client.Jar.Cookies(requestURL) {
+		if v.Name == ".csrf" {
+			form.Values.Set("csrfToken", v.Value)
+			break
+		}
 	}
 
 	token := prompter.StringRequired("Enter passcode")
@@ -159,10 +167,14 @@ func (ac *Client) handleOTP(ctx context.Context, doc *goquery.Document) (context
 	return ctx, req, err
 }
 
-func (ac *Client) handleSwipe(ctx context.Context, doc *goquery.Document) (context.Context, *http.Request, error) {
+func (ac *Client) handleSwipe(ctx context.Context, doc *goquery.Document, _ *url.URL) (context.Context, *http.Request, error) {
 	form, err := page.NewFormFromDocument(doc, "#form1")
 	if err != nil {
 		return ctx, nil, errors.Wrap(err, "error extracting swipe status form")
+	}
+
+	if number := doc.Find("div.numbermatching").Text(); number != "" {
+		log.Printf("Select %v in your PingID mobile app ...\n", number)
 	}
 
 	// poll status. request must specifically be a GET
@@ -180,7 +192,7 @@ func (ac *Client) handleSwipe(ctx context.Context, doc *goquery.Document) (conte
 			return ctx, nil, errors.Wrap(err, "error polling swipe status")
 		}
 
-		body, err := ioutil.ReadAll(res.Body)
+		body, err := io.ReadAll(res.Body)
 		if err != nil {
 			return ctx, nil, errors.Wrap(err, "error parsing body from swipe status response")
 		}
@@ -208,7 +220,7 @@ func (ac *Client) handleSwipe(ctx context.Context, doc *goquery.Document) (conte
 	return ctx, req, err
 }
 
-func (ac *Client) handleRefresh(ctx context.Context, doc *goquery.Document) (context.Context, *http.Request, error) {
+func (ac *Client) handleRefresh(ctx context.Context, doc *goquery.Document, _ *url.URL) (context.Context, *http.Request, error) {
 	loginDetails, ok := ctx.Value(ctxKey("login")).(*creds.LoginDetails)
 	if !ok {
 		return ctx, nil, fmt.Errorf("no context value for login")
@@ -223,7 +235,7 @@ func (ac *Client) handleRefresh(ctx context.Context, doc *goquery.Document) (con
 	return ctx, req, err
 }
 
-func (ac *Client) handleFormRedirect(ctx context.Context, doc *goquery.Document) (context.Context, *http.Request, error) {
+func (ac *Client) handleFormRedirect(ctx context.Context, doc *goquery.Document, _ *url.URL) (context.Context, *http.Request, error) {
 	form, err := page.NewFormFromDocument(doc, "")
 	if err != nil {
 		return ctx, nil, errors.Wrap(err, "error extracting redirect form")
@@ -232,7 +244,7 @@ func (ac *Client) handleFormRedirect(ctx context.Context, doc *goquery.Document)
 	return ctx, req, err
 }
 
-func (ac *Client) handleWebAuthn(ctx context.Context, doc *goquery.Document) (context.Context, *http.Request, error) {
+func (ac *Client) handleWebAuthn(ctx context.Context, doc *goquery.Document, _ *url.URL) (context.Context, *http.Request, error) {
 	form, err := page.NewFormFromDocument(doc, "")
 	if err != nil {
 		return ctx, nil, errors.Wrap(err, "error extracting webauthn form")

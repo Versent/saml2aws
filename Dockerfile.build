@@ -1,0 +1,37 @@
+# base image
+FROM ubuntu:jammy
+ENV TZ=Australia/Sydney
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
+# add arm64 architecture
+RUN apt-get update
+RUN dpkg --add-architecture arm64
+
+## arch-qualify the current repositories
+RUN sed -i "s/deb h/deb [arch=amd64] h/g" /etc/apt/sources.list
+
+## add arm64's repos
+RUN echo "# arm64 repositories" >> /etc/apt/sources.list
+RUN echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy main restricted" >> /etc/apt/sources.list
+RUN echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy-updates main restricted" >> /etc/apt/sources.list
+RUN echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy universe" >> /etc/apt/sources.list
+RUN echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy-updates universe" >> /etc/apt/sources.list
+RUN echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy multiverse" >> /etc/apt/sources.list
+RUN echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy-updates multiverse" >> /etc/apt/sources.list
+RUN echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy-backports main restricted universe multiverse" >> /etc/apt/sources.list
+RUN echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy-security main restricted" >> /etc/apt/sources.list
+RUN echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy-security universe" >> /etc/apt/sources.list
+RUN echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy-security multiverse" >> /etc/apt/sources.list
+
+RUN apt-get update && apt-get install -y build-essential git ca-certificates golang libudev-dev curl gnupg lsb-release curl gcc-arm* binutils-arm-linux-gnueabi crossbuild-essential-arm64 wget
+
+RUN echo \
+      "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu \
+      $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+RUN curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+RUN apt-get update && apt-get install -y docker-ce-cli
+# Replicate install of the same version of Golang that we are using in Github actions
+RUN wget  https://go.dev/dl/go1.20.2.linux-amd64.tar.gz && tar -C /usr/local -xzf go1.20.2.linux-amd64.tar.gz && rm go1.20.2.linux-amd64.tar.gz
+ENV GOROOT="/usr/local/go"
+ENV PATH="/root/go/bin:$GOROOT/bin:${PATH}"
+RUN go install github.com/goreleaser/goreleaser@v1.20.0 # supports golang 1.20

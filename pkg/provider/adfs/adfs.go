@@ -86,8 +86,34 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		authSubmitURL = action
 	})
 
+	// Trim whitespace and discard empty values from Kmsi field
+	if val, ok := authForm["Kmsi"]; ok {
+		var trimmedKmsi []string
+		var t string
+		for _, s := range val {
+			t = strings.TrimSpace(s)
+			if len(t) > 0 {
+				trimmedKmsi = append(trimmedKmsi, t)
+			}
+		}
+		authForm["Kmsi"] = trimmedKmsi
+	}
+
 	if authSubmitURL == "" {
 		return samlAssertion, fmt.Errorf("unable to locate IDP authentication form submit URL")
+	} else if strings.HasPrefix(authSubmitURL, "/") {
+		//
+		// The server returned a relative URL. Make it absolute.
+		//
+		parsedUrl, err := url.Parse(adfsURL)
+		if err != nil {
+			return "", errors.Wrap(err, "failed to parse ADFS URL")
+		}
+		parsedPath, err := url.Parse(authSubmitURL)
+		if err != nil {
+			return "", errors.Wrap(err, "failed to parse authSubmitURL fragment")
+		}
+		authSubmitURL = parsedUrl.ResolveReference(parsedPath).String()
 	}
 
 	doc, err = ac.submit(authSubmitURL, authForm)
@@ -122,7 +148,15 @@ func (ac *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 			doc.Find("input").Each(func(i int, s *goquery.Selection) {
 				updatePassthroughFormData(azureForm, s)
 			})
-			sel := doc.Find("p#instructions")
+			sel := doc.Find("p#validEntropyNumber")
+			if sel.Index() != -1 {
+				if instructions != sel.Text() {
+					instructions = sel.Text()
+					log.Println("Open your Microsoft Authenticator app and tap the number you see below to sign in.")
+					log.Println(instructions)
+				}
+			}
+			sel = doc.Find("p#instructions")
 			if sel.Index() != -1 {
 				if instructions != sel.Text() {
 					instructions = sel.Text()
