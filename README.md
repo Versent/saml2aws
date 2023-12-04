@@ -79,6 +79,7 @@ The process goes something like this:
   * NetIQ
   * Browser, this uses [playwright-go](github.com/playwright-community/playwright-go) to run a sandbox chromium window.
   * [Auth0](pkg/provider/auth0/README.md) NOTE: Currently, MFA not supported
+  * [JumpCloud](doc/provider/jumpcloud/README.md)
 * AWS SAML Provider configured
 
 ## Caveats
@@ -752,11 +753,6 @@ The exec sub command will export the following environment variables.
 * AWS_CREDENTIAL_EXPIRATION
 
 Note: That profile environment variables enable you to use `exec` with a script or command which requires an explicit profile.
-
-## Provider Specific Documentation
-
-* [Azure Active Directory](./doc/provider/aad)
-* [JumpCloud](./doc/provider/jumpcloud)
 
 # Dependencies
 
