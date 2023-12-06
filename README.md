@@ -766,17 +766,11 @@ This tool would not be possible without some great opensource libraries.
 
 # Releasing
 
-Install `github-release`.
-
-```
-go get github.com/buildkite/github-release
-```
-
-To release run.
-
-```
-make release
-```
+1. Create a git tag locally with `git tag -as vX.X.X`
+2. Run build with `make build`
+3. Test the newly created binary nested in the `dist/` of the project root directory
+4. If testing pass, push the tag `git push origin vX.X.X`
+5. Make an announcement in "Discussions"
 
 # Debugging Issues with IDPs
 
