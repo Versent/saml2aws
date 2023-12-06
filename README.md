@@ -54,7 +54,6 @@ The process goes something like this:
     - [macOS](#macos)
     - [Linux](#linux-1)
   - [Environment vars](#environment-vars)
-  - [Provider Specific Documentation](#provider-specific-documentation)
 - [Dependencies](#dependencies)
 - [Releasing](#releasing)
 - [Debugging Issues with IDPs](#debugging-issues-with-idps)
