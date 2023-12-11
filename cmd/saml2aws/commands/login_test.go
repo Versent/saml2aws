@@ -6,7 +6,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/versent/saml2aws/v2"
+
+	saml2aws "github.com/versent/saml2aws/v2"
 	"github.com/versent/saml2aws/v2/pkg/awsconfig"
 	"github.com/versent/saml2aws/v2/pkg/cfg"
 	"github.com/versent/saml2aws/v2/pkg/creds"
@@ -14,11 +15,18 @@ import (
 )
 
 func TestResolveLoginDetailsWithFlags(t *testing.T) {
+	commonFlags := &flags.CommonFlags{
+		URL:        "https://id.example.com",
+		Username:   "wolfeidau",
+		Password:   "testtestlol",
+		MFAToken:   "123456",
+		SkipPrompt: true,
+	}
 
-	commonFlags := &flags.CommonFlags{URL: "https://id.example.com", Username: "wolfeidau", Password: "testtestlol", MFAIPAddress: "127.0.0.1", MFAToken: "123456", SkipPrompt: true}
 	loginFlags := &flags.LoginExecFlags{CommonFlags: commonFlags}
 
 	idpa := &cfg.IDPAccount{
+		Name:     "AccountName",
 		URL:      "https://id.example.com",
 		MFA:      "none",
 		Provider: "Ping",
@@ -27,16 +35,30 @@ func TestResolveLoginDetailsWithFlags(t *testing.T) {
 	loginDetails, err := resolveLoginDetails(idpa, loginFlags)
 
 	assert.Empty(t, err)
-	assert.Equal(t, &creds.LoginDetails{Username: "wolfeidau", Password: "testtestlol", URL: "https://id.example.com", MFAToken: "123456", MFAIPAddress: "127.0.0.1"}, loginDetails)
+	assert.Equal(t,
+		&creds.LoginDetails{
+			IdpName:     "AccountName",
+			IdpProvider: "Ping",
+			Username:    "wolfeidau",
+			Password:    "testtestlol",
+			URL:         "https://id.example.com",
+			MFAToken:    "123456",
+		}, loginDetails)
 }
 
 func TestOktaResolveLoginDetailsWithFlags(t *testing.T) {
-
 	// Default state - user did not supply values for DisableSessions and DisableSessions
-	commonFlags := &flags.CommonFlags{URL: "https://id.example.com", Username: "testuser", Password: "testtestlol", MFAToken: "123456", SkipPrompt: true}
+	commonFlags := &flags.CommonFlags{
+		URL:        "https://id.example.com",
+		Username:   "testuser",
+		Password:   "testtestlol",
+		MFAToken:   "123456",
+		SkipPrompt: true,
+	}
 	loginFlags := &flags.LoginExecFlags{CommonFlags: commonFlags}
 
 	idpa := &cfg.IDPAccount{
+		Name:     "AnotherAccountName",
 		URL:      "https://id.example.com",
 		MFA:      "none",
 		Provider: "Okta",
@@ -47,11 +69,26 @@ func TestOktaResolveLoginDetailsWithFlags(t *testing.T) {
 	assert.Nil(t, err)
 	assert.False(t, idpa.DisableSessions, fmt.Errorf("default state, DisableSessions should be false"))
 	assert.False(t, idpa.DisableRememberDevice, fmt.Errorf("default state, DisableRememberDevice should be false"))
-	assert.Equal(t, &creds.LoginDetails{Username: "testuser", Password: "testtestlol", URL: "https://id.example.com", MFAToken: "123456"}, loginDetails)
+	assert.Equal(t,
+		&creds.LoginDetails{
+			IdpName:     "AnotherAccountName",
+			IdpProvider: "Okta",
+			Username:    "testuser",
+			Password:    "testtestlol",
+			URL:         "https://id.example.com",
+			MFAToken:    "123456",
+		}, loginDetails)
 
 	// User disabled keychain, resolveLoginDetails should set the account's DisableSessions and DisableSessions fields to true
 
-	commonFlags = &flags.CommonFlags{URL: "https://id.example.com", Username: "testuser", Password: "testtestlol", MFAToken: "123456", SkipPrompt: true, DisableKeychain: true}
+	commonFlags = &flags.CommonFlags{
+		URL:             "https://id.example.com",
+		Username:        "testuser",
+		Password:        "testtestlol",
+		MFAToken:        "123456",
+		SkipPrompt:      true,
+		DisableKeychain: true,
+	}
 	loginFlags = &flags.LoginExecFlags{CommonFlags: commonFlags}
 
 	loginDetails, err = resolveLoginDetails(idpa, loginFlags)
@@ -59,12 +96,18 @@ func TestOktaResolveLoginDetailsWithFlags(t *testing.T) {
 	assert.Nil(t, err)
 	assert.True(t, idpa.DisableSessions, fmt.Errorf("user disabled keychain, DisableSessions should be true"))
 	assert.True(t, idpa.DisableRememberDevice, fmt.Errorf("user disabled keychain, DisableRememberDevice should be true"))
-	assert.Equal(t, &creds.LoginDetails{Username: "testuser", Password: "testtestlol", URL: "https://id.example.com", MFAToken: "123456"}, loginDetails)
-
+	assert.Equal(t,
+		&creds.LoginDetails{
+			IdpName:     "AnotherAccountName",
+			IdpProvider: "Okta",
+			Username:    "testuser",
+			Password:    "testtestlol",
+			URL:         "https://id.example.com",
+			MFAToken:    "123456",
+		}, loginDetails)
 }
 
 func TestResolveRoleSingleEntry(t *testing.T) {
-
 	adminRole := &saml2aws.AWSRole{
 		Name:         "admin",
 		RoleARN:      "arn:aws:iam::456456456456:saml-provider/example-idp,arn:aws:iam::456456456456:role/admin",
@@ -81,7 +124,6 @@ func TestResolveRoleSingleEntry(t *testing.T) {
 }
 
 func TestCredentialsToCredentialProcess(t *testing.T) {
-
 	aws_creds := &awsconfig.AWSCredentials{
 		AWSAccessKey:    "someawsaccesskey",
 		AWSSecretKey:    "somesecretkey",

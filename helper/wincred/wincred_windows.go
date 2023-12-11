@@ -27,6 +27,7 @@ import (
 	"strings"
 
 	winc "github.com/danieljoos/wincred"
+
 	"github.com/versent/saml2aws/v2/helper/credentials"
 )
 
@@ -35,7 +36,7 @@ type Wincred struct{}
 
 // Add adds new credentials to the windows credentials manager.
 func (h Wincred) Add(creds *credentials.Credentials) error {
-	g := winc.NewGenericCredential(creds.ServerURL)
+	g := winc.NewGenericCredential(credentials.GetKeyFromAccount(creds.IdpName))
 	g.UserName = creds.Username
 	g.CredentialBlob = []byte(creds.Secret)
 	g.Persist = winc.PersistLocalMachine
@@ -45,8 +46,8 @@ func (h Wincred) Add(creds *credentials.Credentials) error {
 }
 
 // Delete removes credentials from the windows credentials manager.
-func (h Wincred) Delete(serverURL string) error {
-	g, err := winc.GetGenericCredential(serverURL)
+func (h Wincred) Delete(keyName string) error {
+	g, err := winc.GetGenericCredential(keyName)
 	if g == nil {
 		return nil
 	}
@@ -57,8 +58,8 @@ func (h Wincred) Delete(serverURL string) error {
 }
 
 // Get retrieves credentials from the windows credentials manager.
-func (h Wincred) Get(serverURL string) (string, string, error) {
-	g, _ := winc.GetGenericCredential(serverURL)
+func (h Wincred) Get(keyname string) (string, string, error) {
+	g, _ := winc.GetGenericCredential(keyname)
 	if g == nil {
 		return "", "", credentials.ErrCredentialsNotFound
 	}
@@ -70,6 +71,12 @@ func (h Wincred) Get(serverURL string) (string, string, error) {
 		}
 	}
 	return "", "", credentials.ErrCredentialsNotFound
+}
+
+// Legacy Get retrieves credentials from the windows credentials manager.
+// this function is preserved for backward compatibility reasons
+func (h Wincred) LegacyGet(serverURL string) (string, string, error) {
+	return h.Get(serverURL)
 }
 
 // List returns the stored URLs and corresponding usernames for a given credentials label.

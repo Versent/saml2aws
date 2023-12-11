@@ -5,6 +5,7 @@ import (
 
 	"github.com/99designs/keyring"
 	"github.com/sirupsen/logrus"
+
 	"github.com/versent/saml2aws/v2/helper/credentials"
 )
 
@@ -35,7 +36,6 @@ func NewKeyringHelper(config Configuration) (*KeyringHelper, error) {
 	}
 
 	kr, err := keyring.Open(c)
-
 	if err != nil {
 		return nil, err
 	}
@@ -52,19 +52,19 @@ func (kr *KeyringHelper) Add(creds *credentials.Credentials) error {
 	}
 
 	return kr.keyring.Set(keyring.Item{
-		Key:                         creds.ServerURL,
+		Key:                         credentials.GetKeyFromAccount(creds.IdpName),
 		Label:                       credentials.CredsLabel,
 		Data:                        encoded,
 		KeychainNotTrustApplication: false,
 	})
 }
 
-func (kr *KeyringHelper) Delete(serverURL string) error {
-	return kr.keyring.Remove(serverURL)
+func (kr *KeyringHelper) Delete(keyName string) error {
+	return kr.keyring.Remove(keyName)
 }
 
-func (kr *KeyringHelper) Get(serverURL string) (string, string, error) {
-	item, err := kr.keyring.Get(serverURL)
+func (kr *KeyringHelper) Get(keyName string) (string, string, error) {
+	item, err := kr.keyring.Get(keyName)
 	if err != nil {
 		logger.WithField("err", err).Error("keychain Get returned error")
 		return "", "", credentials.ErrCredentialsNotFound
@@ -76,6 +76,11 @@ func (kr *KeyringHelper) Get(serverURL string) (string, string, error) {
 	}
 
 	return creds.Username, creds.Secret, nil
+}
+
+// this function is preserved for backward compatibility reasons
+func (kr *KeyringHelper) LegacyGet(serverURL string) (string, string, error) {
+	return kr.Get(serverURL)
 }
 
 func (KeyringHelper) SupportsCredentialStorage() bool {

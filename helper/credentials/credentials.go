@@ -2,6 +2,7 @@ package credentials
 
 import (
 	"errors"
+	"fmt"
 )
 
 var (
@@ -14,25 +15,38 @@ var (
 
 // Credentials holds the information shared between saml2aws and the credentials store.
 type Credentials struct {
+	IdpName   string
 	ServerURL string
 	Username  string
 	Secret    string
 }
 
-// CredsLabel saml2aws credentials should be labeled as such in credentials stores that allow labelling.
-// That label allows to filter out non-Docker credentials too at lookup/search in macOS keychain,
-// Windows credentials manager and Linux libsecret. Default value is "saml2aws Credentials"
-var CredsLabel = "saml2aws Credentials"
+const (
+	// CredsLabel saml2aws credentials should be labeled as such in credentials stores that allow labelling.
+	// That label allows to filter out non-Docker credentials too at lookup/search in macOS keychain,
+	// Windows credentials manager and Linux libsecret. Default value is "saml2aws Credentials"
+	CredsLabel              = "saml2aws Credentials"
+	CredsKeyPrefix          = "saml2aws_credentials"
+	OktaSessionCookieSuffix = "_okta_session"
+	OneLoginTokenSuffix     = "_onelogin_token"
+)
+
+func GetKeyFromAccount(accountName string) string {
+	return fmt.Sprintf("%s_%s", CredsKeyPrefix, accountName)
+}
 
 // Helper is the interface a credentials store helper must implement.
 type Helper interface {
 	// Add appends credentials to the store.
 	Add(*Credentials) error
 	// Delete removes credentials from the store.
-	Delete(serverURL string) error
+	Delete(keyName string) error
 	// Get retrieves credentials from the store.
 	// It returns username and secret as strings.
-	Get(serverURL string) (string, string, error)
+	Get(keyName string) (string, string, error)
+	// Legacy Get retrieves previously stored credentials
+	// this function is preserved for backward compatibility
+	LegacyGet(serverURL string) (string, string, error)
 	// SupportsCredentialStorage returns true or false if there is credential storage.
 	SupportsCredentialStorage() bool
 }
@@ -49,11 +63,15 @@ func (defaultHelper) Add(*Credentials) error {
 	return nil
 }
 
-func (defaultHelper) Delete(serverURL string) error {
+func (defaultHelper) Delete(keyName string) error {
 	return nil
 }
 
-func (defaultHelper) Get(serverURL string) (string, string, error) {
+func (defaultHelper) Get(keyName string) (string, string, error) {
+	return "", "", ErrCredentialsNotFound
+}
+
+func (defaultHelper) LegacyGet(serverURL string) (string, string, error) {
 	return "", "", ErrCredentialsNotFound
 }
 

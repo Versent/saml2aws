@@ -201,7 +201,7 @@ func (oc *Client) createSession(loginDetails *creds.LoginDetails, sessionToken s
 
 	oktaSessionCookie := gjson.Get(resp, "id").String()
 
-	err = credentials.SaveCredentials(loginDetails.URL+"/sessionCookie", loginDetails.Username, oktaSessionCookie)
+	err = credentials.SaveCredentials(loginDetails.IdpName+credentials.OktaSessionCookieSuffix, loginDetails.URL+"/sessionCookie", loginDetails.Username, oktaSessionCookie)
 	if err != nil {
 		return "", "", fmt.Errorf("error storing okta session token | err: %v", err)
 	}
@@ -570,7 +570,7 @@ func (oc *Client) follow(ctx context.Context, req *http.Request, loginDetails *c
 	if handler == nil {
 		html, _ := doc.Selection.Html()
 		logger.WithField("doc", html).Debug("Unknown document type")
-		return "", fmt.Errorf("Unknown document type")
+		return "", fmt.Errorf("unknown document type")
 	}
 
 	ctx, req, err = handler(ctx, doc)
