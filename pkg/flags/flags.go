@@ -14,6 +14,7 @@ type CommonFlags struct {
 	IdpProvider           string
 	BrowserType           string
 	BrowserExecutablePath string
+	BrowserAutoFill       bool
 	MFA                   string
 	MFAIPAddress          string
 	MFAToken              string
@@ -81,6 +82,10 @@ func ApplyFlagOverrides(commonFlags *CommonFlags, account *cfg.IDPAccount) {
 
 	if commonFlags.BrowserExecutablePath != "" {
 		account.BrowserExecutablePath = commonFlags.BrowserExecutablePath
+	}
+
+	if commonFlags.BrowserAutoFill {
+		account.BrowserAutoFill = commonFlags.BrowserAutoFill
 	}
 
 	if commonFlags.MFA != "" {

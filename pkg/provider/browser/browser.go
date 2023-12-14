@@ -25,6 +25,7 @@ type Client struct {
 	// Setup alternative directory to download playwright browsers to
 	BrowserDriverDir string
 	Timeout          int
+	BrowserAutoFill  bool
 }
 
 // New create new browser based client
@@ -35,6 +36,7 @@ func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 		BrowserType:           strings.ToLower(idpAccount.BrowserType),
 		BrowserExecutablePath: idpAccount.BrowserExecutablePath,
 		Timeout:               idpAccount.Timeout,
+		BrowserAutoFill:       idpAccount.BrowserAutoFill,
 	}, nil
 }
 
@@ -132,6 +134,13 @@ var getSAMLResponse = func(page playwright.Page, loginDetails *creds.LoginDetail
 		return "", err
 	}
 
+	if client.BrowserAutoFill {
+		err := autoFill(page, loginDetails)
+		if err != nil {
+			logger.Error("error when auto filling", err)
+		}
+	}
+
 	// https://docs.aws.amazon.com/general/latest/gr/signin-service.html
 	// https://docs.amazonaws.cn/en_us/aws/latest/userguide/endpoints-Ningxia.html
 	// https://docs.amazonaws.cn/en_us/aws/latest/userguide/endpoints-Beijing.html
@@ -153,6 +162,40 @@ var getSAMLResponse = func(page playwright.Page, loginDetails *creds.LoginDetail
 	}
 
 	return values.Get("SAMLResponse"), nil
+}
+
+var autoFill = func(page playwright.Page, loginDetails *creds.LoginDetails) error {
+	passwordField := page.Locator("input[type='password']")
+	err := passwordField.WaitFor(playwright.LocatorWaitForOptions{
+		State: playwright.WaitForSelectorStateVisible,
+	})
+
+	if err != nil {
+		return err
+	}
+
+	err = passwordField.Fill(loginDetails.Password)
+	if err != nil {
+		return err
+	}
+
+	keyboard := page.Keyboard()
+
+	// move to username field which is above password field
+	err = keyboard.Press("Shift+Tab")
+	if err != nil {
+		return err
+	}
+
+	err = keyboard.InsertText(loginDetails.Username)
+	if err != nil {
+		return err
+	}
+
+	// Find the submit button of the form that the password field is in
+	return page.Locator("form", playwright.PageLocatorOptions{
+		Has: passwordField,
+	}).Locator("input[type='submit']").Click()
 }
 
 func signinRegex() (*regexp.Regexp, error) {
