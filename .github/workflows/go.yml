@@ -27,7 +27,7 @@ jobs:
           go test -v ./... -coverprofile=${{ matrix.os }}_coverage.txt -covermode=atomic
 
       - name: Upload coverage report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: reports
           path: ${{ matrix.os }}_coverage.txt
@@ -104,7 +104,7 @@ jobs:
           args: build --snapshot --clean --config .goreleaser.${{ matrix.os }}.yml
 
       - name: Upload
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: saml2aws
           path: dist/
