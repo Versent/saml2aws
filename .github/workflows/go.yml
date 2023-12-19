@@ -29,7 +29,7 @@ jobs:
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
         with:
-          name: reports
+          name: ${{ matrix.os }}_reports
           path: ${{ matrix.os }}_coverage.txt
           if-no-files-found: error
           retention-days: 1
@@ -63,10 +63,17 @@ jobs:
     needs: [build]
     steps:
       - uses: actions/checkout@v4
-      - name: Download coverage reports
-        uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
-          name: reports
+          name: ubuntu-latest_reports
+          path: reports
+      - uses: actions/download-artifact@v4
+        with:
+          name: macOS-latest_reports
+          path: reports
+      - uses: actions/download-artifact@v4
+        with:
+          name: macos-11_reports
           path: reports
 
       - name: Codecov
@@ -106,5 +113,5 @@ jobs:
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: saml2aws
+          name: ${{ matrix.os }}_saml2aws
           path: dist/
