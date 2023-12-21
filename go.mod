@@ -11,8 +11,8 @@ require (
 	github.com/avast/retry-go v3.0.0+incompatible
 	github.com/aws/aws-sdk-go v1.49.0
 	github.com/beevik/etree v1.2.0
-	github.com/danieljoos/wincred v1.2.0
-	github.com/google/uuid v1.4.0
+	github.com/danieljoos/wincred v1.2.1
+	github.com/google/uuid v1.5.0
 	github.com/h2non/gock v1.2.0
 	github.com/keybase/go-keychain v0.0.0-20211119201326-e02f34051621
 	github.com/marshallbrekka/go-u2fhost v0.0.0-20210111072507-3ccdec8c8105
@@ -52,7 +52,7 @@ require (
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.1 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	golang.org/x/crypto v0.16.0 // indirect
+	golang.org/x/crypto v0.17.0 // indirect
 	golang.org/x/sys v0.15.0 // indirect
 	golang.org/x/term v0.15.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
