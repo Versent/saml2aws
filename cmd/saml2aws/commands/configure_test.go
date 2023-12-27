@@ -109,7 +109,11 @@ func TestStoreCredentialsOnMissingOneLoginClientIdExitsProgram(t *testing.T) {
 	credentials.CurrentHelper = helperMock
 
 	if os.Getenv("BE_CRASHER") == "1" {
-		storeCredentials(commonFlags, idpAccount, "password")
+		err := storeCredentials(commonFlags, idpAccount, "password")
+		// making linter happy
+		if err != nil {
+			return
+		}
 		return
 	}
 	cmd := exec.Command(os.Args[0], "-test.run=TestStoreCredentialsOnMissingOneLoginClientIdExitsProgram")
@@ -136,7 +140,11 @@ func TestStoreCredentialsOnMissingOneLoginClientSecretExitsProgram(t *testing.T)
 	credentials.CurrentHelper = helperMock
 
 	if os.Getenv("BE_CRASHER") == "1" {
-		storeCredentials(commonFlags, idpAccount, "password")
+		err := storeCredentials(commonFlags, idpAccount, "password")
+		// making linter happy
+		if err != nil {
+			return
+		}
 		return
 	}
 	cmd := exec.Command(os.Args[0], "-test.run=TestStoreCredentialsOnMissingOneLoginClientSecretExitsProgram")
