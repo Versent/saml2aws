@@ -16,6 +16,26 @@ import (
 	"github.com/versent/saml2aws/v2/pkg/provider/onelogin"
 )
 
+// Configure module
+func TestConfigureStoresCredentialOnSupportedStorage(t *testing.T) {
+	commonFlags := &flags.CommonFlags{URL: "https://id.example.com", Username: "some-username", Password: "password", SkipPrompt: true}
+	creds := &credentials.Credentials{ServerURL: "https://id.example.com", Username: "some-username", Secret: "password"}
+	helperMock := &mocks.Helper{}
+	helperMock.Mock.On("Add", creds).Return(nil).Once()
+	helperMock.Mock.On("SupportsCredentialStorage").Return(true).Once()
+	oldCurrentHelper := credentials.CurrentHelper
+	credentials.CurrentHelper = helperMock
+
+	err := Configure(commonFlags)
+	// making linter happy
+	if err != nil {
+		credentials.CurrentHelper = oldCurrentHelper
+	}
+
+	helperMock.AssertCalled(t, "Add", creds)
+	credentials.CurrentHelper = oldCurrentHelper
+}
+
 // Store Credentials module
 func TestStoreCredentialsOnDisabledKeychainFlagReturnsNil(t *testing.T) {
 	commonFlags := &flags.CommonFlags{DisableKeychain: true}
