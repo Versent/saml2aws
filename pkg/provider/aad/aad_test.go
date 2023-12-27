@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"math"
 	mrand "math/rand"
 	"net/http"
@@ -17,6 +18,8 @@ import (
 	"sync"
 	"testing"
 	"text/template"
+
+	"github.com/stretchr/testify/mock"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
@@ -62,6 +65,8 @@ type FixtureData struct {
 	UserName                              string // exampleuser@exampledomain.com
 	UserNameUrlEncoded                    string // exampleuser%40exampledomain.com
 	SErrorCode                            string // 50058
+	AuthMethodId                          string // OneWaySMS
+	Entropy                               string // 0
 }
 
 var fixtureData *FixtureData
@@ -89,6 +94,8 @@ func genFixtureData() *FixtureData {
 			ProofUpToken:                          genBase64Fixture(400),
 			UserName:                              "exampleuser@exampledomain.com",
 			UserNameUrlEncoded:                    "exampleuser%40exampledomain.com",
+			AuthMethodId:                          "OneWaySMS",
+			Entropy:                               "0",
 		}
 	})
 	return fixtureData
@@ -360,6 +367,72 @@ func Test_Authenticate(t *testing.T) {
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "502031")
 	})
+	t.Run("Default login with KMSI and MFA with entropy", func(t *testing.T) {
+		entropy := genIntFixture(2)
+		ts := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			switch r.URL.Path {
+			case "/index", "/applications/redirecttofederatedapplication.aspx":
+				writeFixtureBytes(t, w, r, "ConvergedSignIn.html", FixtureData{
+					UrlPost:              "/defaultLogin",
+					UrlGetCredentialType: "/getCredentialType",
+				})
+			case "/getCredentialType":
+				writeFixtureBytes(t, w, r, "GetCredentialType_default.json", FixtureData{})
+			case "/defaultLogin":
+				writeFixtureBytes(t, w, r, "KmsiInterrupt.html", FixtureData{
+					UrlPost: "/hForm",
+				})
+			case "/hForm":
+				writeFixtureBytes(t, w, r, "HiddenForm.html", FixtureData{
+					UrlHiddenForm: "/sRequest",
+				})
+			case "/sRequest":
+				writeFixtureBytes(t, w, r, "SAMLRequest.html", FixtureData{
+					UrlSamlRequest: "/sResponse?SAMLRequest=ExampleValue",
+				})
+			case "/sResponse":
+				writeFixtureBytes(t, w, r, "ConvergedTFA.html", FixtureData{
+					UrlPost:      "/processAuth",
+					UrlBeginAuth: "/beginAuth",
+					UrlEndAuth:   "/endAuth",
+				})
+			case "/beginAuth":
+				writeFixtureBytes(t, w, r, "BeginAuth.json", FixtureData{
+					AuthMethodId: "PhoneAppNotification",
+					Entropy:      entropy,
+				})
+			case "/endAuth":
+				writeFixtureBytes(t, w, r, "EndAuth.json", FixtureData{
+					AuthMethodId: "PhoneAppNotification",
+					Entropy:      entropy,
+				})
+			case "/processAuth":
+				writeFixtureBytes(t, w, r, "SAMLResponse.html", FixtureData{})
+			default:
+				http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+			}
+		}))
+		defer ts.Close()
+
+		pr := prompter.NewCli()
+		prompter.SetPrompter(pr)
+
+		ac, loginDetails := setupTestClient(t, ts)
+
+		orig := os.Stderr
+		r, w, _ := os.Pipe()
+		os.Stderr = w
+
+		got, err := ac.Authenticate(loginDetails)
+
+		os.Stderr = orig
+		w.Close()
+		out, _ := io.ReadAll(r)
+
+		require.Contains(t, string(out), "Phone approval required. Entropy is: "+entropy)
+		require.Nil(t, err)
+		require.NotEmpty(t, got)
+	})
 	t.Run("ADFS login with KMSI and MFA", func(t *testing.T) {
 		ts := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			switch r.URL.Path {
@@ -413,6 +486,7 @@ func Test_Authenticate(t *testing.T) {
 		pr := &mocks.Prompter{}
 		prompter.SetPrompter(pr)
 		pr.Mock.On("StringRequired", "Enter verification code").Return("000000")
+		pr.Mock.On("Display", mock.Anything).Return()
 
 		ac, loginDetails := setupTestClient(t, ts)
 		got, err := ac.Authenticate(loginDetails)
@@ -491,6 +565,12 @@ func responseFixtures(host string, variableFixture FixtureData) *FixtureData {
 		fixtureData.UrlSamlRequest = scheme + host + variableFixture.UrlSamlRequest
 	} else {
 		fixtureData.UrlSamlRequest = ""
+	}
+	if variableFixture.AuthMethodId != "" {
+		fixtureData.AuthMethodId = variableFixture.AuthMethodId
+	}
+	if variableFixture.Entropy != "" {
+		fixtureData.Entropy = variableFixture.Entropy
 	}
 	return fixtureData
 }

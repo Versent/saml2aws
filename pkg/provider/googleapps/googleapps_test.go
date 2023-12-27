@@ -11,7 +11,9 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/stretchr/testify/require"
+	"github.com/versent/saml2aws/v2/mocks"
 	"github.com/versent/saml2aws/v2/pkg/creds"
+	"github.com/versent/saml2aws/v2/pkg/prompter"
 	"github.com/versent/saml2aws/v2/pkg/provider"
 )
 
@@ -149,6 +151,48 @@ func TestChallengePage(t *testing.T) {
 	challengeDoc, err := kc.loadChallengePage(ts.URL, "https://accounts.google.com/signin/challenge/sl/password", authForm, loginDetails)
 	require.Nil(t, err)
 	require.NotNil(t, challengeDoc)
+}
+
+func TestSMSChallengePage(t *testing.T) {
+	pr := &mocks.Prompter{}
+	prompter.SetPrompter(pr)
+	pr.Mock.On("StringRequired", "Enter SMS token: G-").Return("000000")
+
+	step1, err := os.ReadFile("example/challenge-sms-send.html")
+	require.Nil(t, err)
+	step2, err := os.ReadFile("example/challenge-sms.html")
+	require.Nil(t, err)
+
+	calls := 0
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() { calls++ }()
+		err := r.ParseForm()
+		require.Nil(t, err)
+
+		switch calls {
+		case 0:
+			_, _ = w.Write(step1)
+		case 1:
+			require.Equal(t, r.Form.Get("SendMethod"), "SMS")
+			_, _ = w.Write(step2)
+		case 2:
+			require.Equal(t, r.Form.Get("Pin"), "000000")
+			_, _ = w.Write(step2)
+		default:
+			require.Fail(t, "too many calls")
+		}
+	}))
+	defer ts.Close()
+
+	opts := &provider.HTTPClientOptions{IsWithRetries: false}
+	kc := Client{client: &provider.HTTPClient{Client: http.Client{}, Options: opts}}
+	loginDetails := &creds.LoginDetails{URL: ts.URL, Username: "test", Password: "test123"}
+	authForm := url.Values{}
+
+	challengeDoc, err := kc.loadChallengePage(ts.URL, "https://accounts.google.com/signin/challenge/sl/password", authForm, loginDetails)
+	require.Nil(t, err)
+	require.NotNil(t, challengeDoc)
+	require.Equal(t, 3, calls)
 }
 
 func TestExtractDataAttributes(t *testing.T) {

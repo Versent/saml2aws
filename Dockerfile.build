@@ -31,7 +31,7 @@ RUN echo \
 RUN curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
 RUN apt-get update && apt-get install -y docker-ce-cli
 # Replicate install of the same version of Golang that we are using in Github actions
-RUN wget  https://go.dev/dl/go1.20.2.linux-amd64.tar.gz && tar -C /usr/local -xzf go1.20.2.linux-amd64.tar.gz && rm go1.20.2.linux-amd64.tar.gz
-RUN go install github.com/goreleaser/goreleaser@latest
+RUN wget  https://go.dev/dl/go1.20.5.linux-amd64.tar.gz && tar -C /usr/local -xzf go1.21.5.linux-amd64.tar.gz && rm go1.20.2.linux-amd64.tar.gz
 ENV GOROOT="/usr/local/go"
 ENV PATH="/root/go/bin:$GOROOT/bin:${PATH}"
+RUN go install github.com/goreleaser/goreleaser@v1.22.1 # supports golang 1.21
