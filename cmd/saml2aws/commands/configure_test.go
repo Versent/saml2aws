@@ -63,13 +63,15 @@ func TestStoreCredentialsOnProvidedPasswordSavesCredentials(t *testing.T) {
 	helperMock := &mocks.Helper{}
 	helperMock.Mock.On("Add", creds).Return(nil).Once()
 	oldCurrentHelper := credentials.CurrentHelper
+	defer func() {
+		credentials.CurrentHelper = oldCurrentHelper
+	}()
 	credentials.CurrentHelper = helperMock
 
 	result := storeCredentials(commonFlags, idpAccount, "password")
 
 	helperMock.AssertCalled(t, "Add", creds)
 	assert.Nil(t, result)
-	credentials.CurrentHelper = oldCurrentHelper
 }
 
 func TestStoreCredentialsOnProvidedPasswordHandlesErrorOnSavesCredentials(t *testing.T) {
@@ -84,6 +86,9 @@ func TestStoreCredentialsOnProvidedPasswordHandlesErrorOnSavesCredentials(t *tes
 	helperMock := &mocks.Helper{}
 	helperMock.Mock.On("Add", creds).Return(errors.New("i am an error")).Once()
 	oldCurrentHelper := credentials.CurrentHelper
+	defer func() {
+		credentials.CurrentHelper = oldCurrentHelper
+	}()
 	credentials.CurrentHelper = helperMock
 
 	result := storeCredentials(commonFlags, idpAccount, "password")
@@ -91,7 +96,6 @@ func TestStoreCredentialsOnProvidedPasswordHandlesErrorOnSavesCredentials(t *tes
 	helperMock.AssertCalled(t, "Add", creds)
 	assert.ErrorContains(t, result, "i am an error")
 	assert.ErrorContains(t, result, "error storing password in keychain")
-	credentials.CurrentHelper = oldCurrentHelper
 }
 
 func TestStoreCredentialsOnMissingPasswordSkipsSavingCredentials(t *testing.T) {
@@ -106,13 +110,15 @@ func TestStoreCredentialsOnMissingPasswordSkipsSavingCredentials(t *testing.T) {
 	helperMock := &mocks.Helper{}
 	helperMock.Mock.On("Add", creds).Return(nil).Once()
 	oldCurrentHelper := credentials.CurrentHelper
+	defer func() {
+		credentials.CurrentHelper = oldCurrentHelper
+	}()
 	credentials.CurrentHelper = helperMock
 
 	result := storeCredentials(commonFlags, idpAccount, "")
 
 	helperMock.AssertNotCalled(t, "Add")
 	assert.Nil(t, result)
-	credentials.CurrentHelper = oldCurrentHelper
 }
 
 func TestStoreCredentialsOnMissingOneLoginClientIdExitsProgram(t *testing.T) {
@@ -126,6 +132,9 @@ func TestStoreCredentialsOnMissingOneLoginClientIdExitsProgram(t *testing.T) {
 	helperMock := &mocks.Helper{}
 	helperMock.Mock.On("Add", mock.Anything).Return(nil).Once()
 	oldCurrentHelper := credentials.CurrentHelper
+	defer func() {
+		credentials.CurrentHelper = oldCurrentHelper
+	}()
 	credentials.CurrentHelper = helperMock
 
 	if os.Getenv("BE_CRASHER") == "1" {
@@ -140,7 +149,6 @@ func TestStoreCredentialsOnMissingOneLoginClientIdExitsProgram(t *testing.T) {
 	cmd.Env = append(os.Environ(), "BE_CRASHER=1")
 	err := cmd.Run()
 	if e, ok := err.(*exec.ExitError); ok && !e.Success() {
-		credentials.CurrentHelper = oldCurrentHelper
 		return
 	}
 	t.Fatalf("process ran with err %v, want exit status 1", err)
@@ -157,6 +165,9 @@ func TestStoreCredentialsOnMissingOneLoginClientSecretExitsProgram(t *testing.T)
 	helperMock := &mocks.Helper{}
 	helperMock.Mock.On("Add", mock.Anything).Return(nil).Once()
 	oldCurrentHelper := credentials.CurrentHelper
+	defer func() {
+		credentials.CurrentHelper = oldCurrentHelper
+	}()
 	credentials.CurrentHelper = helperMock
 
 	if os.Getenv("BE_CRASHER") == "1" {
@@ -171,7 +182,6 @@ func TestStoreCredentialsOnMissingOneLoginClientSecretExitsProgram(t *testing.T)
 	cmd.Env = append(os.Environ(), "BE_CRASHER=1")
 	err := cmd.Run()
 	if e, ok := err.(*exec.ExitError); ok && !e.Success() {
-		credentials.CurrentHelper = oldCurrentHelper
 		return
 	}
 	t.Fatalf("process ran with err %v, want exit status 1", err)
@@ -189,13 +199,15 @@ func TestStoreCredentialsOnProvidedOneLoginSavesCredentials(t *testing.T) {
 	helperMock.Mock.On("Add", &credentials.Credentials{ServerURL: "https://id.example.com", Username: "wolfeidau", Secret: "password"}).Return(nil).Once()
 	helperMock.Mock.On("Add", &credentials.Credentials{ServerURL: path.Join("https://id.example.com", OneLoginOAuthPath), Username: "oneloginId", Secret: "oneloginSecret"}).Return(nil).Once()
 	oldCurrentHelper := credentials.CurrentHelper
+	defer func() {
+		credentials.CurrentHelper = oldCurrentHelper
+	}()
 	credentials.CurrentHelper = helperMock
 
 	result := storeCredentials(commonFlags, idpAccount, "password")
 
 	helperMock.AssertNumberOfCalls(t, "Add", 2)
 	assert.Nil(t, result)
-	credentials.CurrentHelper = oldCurrentHelper
 }
 
 func TestStoreCredentialsOnProvidedOneLoginHandlesErrorOnSavesCredentials(t *testing.T) {
@@ -210,11 +222,13 @@ func TestStoreCredentialsOnProvidedOneLoginHandlesErrorOnSavesCredentials(t *tes
 	helperMock.Mock.On("Add", &credentials.Credentials{ServerURL: "https://id.example.com", Username: "wolfeidau", Secret: "password"}).Return(nil).Once()
 	helperMock.Mock.On("Add", &credentials.Credentials{ServerURL: path.Join("https://id.example.com", OneLoginOAuthPath), Username: "oneloginId", Secret: "oneloginSecret"}).Return(errors.New("failed again")).Once()
 	oldCurrentHelper := credentials.CurrentHelper
+	defer func() {
+		credentials.CurrentHelper = oldCurrentHelper
+	}()
 	credentials.CurrentHelper = helperMock
 
 	result := storeCredentials(commonFlags, idpAccount, "password")
 
 	assert.ErrorContains(t, result, "failed again")
 	assert.ErrorContains(t, result, "error storing client_id and client_secret in keychain")
-	credentials.CurrentHelper = oldCurrentHelper
 }
