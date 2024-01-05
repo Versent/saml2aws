@@ -82,6 +82,11 @@ func (p *PinentryPrompter) Password(pr string) string {
 	return p.DefaultPrompter.Password(pr)
 }
 
+// Display is runniner the default Cli Display
+func (p *PinentryPrompter) Display(pr string) {
+	p.DefaultPrompter.Display(pr)
+}
+
 // Run wraps a pinentry run. It sends the query to pinentry via stdin and
 // reads its stdout to determine the user PIN.
 // Pinentry uses an Assuan protocol

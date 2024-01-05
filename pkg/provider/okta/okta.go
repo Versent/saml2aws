@@ -607,12 +607,22 @@ func (oc *Client) getStateToken(req *http.Request, loginDetails *creds.LoginDeta
 }
 
 func getStateTokenFromOktaPageBody(responseBody string) (string, error) {
-	re := regexp.MustCompile("var stateToken = [\"|'](.*)[\"|'];")
-	match := re.FindStringSubmatch(responseBody)
-	if len(match) < 2 {
-		return "", errors.New("cannot find state token")
+	regexes := []*regexp.Regexp{
+		regexp.MustCompile("var stateToken = [\"|'](.*)[\"|'];"),
+		// Found on the "extra verification" page
+		// hiding in a Javascript object
+		regexp.MustCompile(`"stateToken":"([^"]*)"`),
 	}
-	return strings.Replace(match[1], `\x2D`, "-", -1), nil
+
+	for _, re := range regexes {
+		match := re.FindStringSubmatch(responseBody)
+		if len(match) >= 2 {
+			return strings.Replace(match[1], `\x2D`, "-", -1), nil
+		}
+	}
+
+	return "", errors.New("cannot find state token")
+
 }
 
 func parseMfaIdentifer(json string, arrayPosition int) (string, string, string) {
@@ -853,6 +863,12 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 					return "", err
 				}
 				body = updatedContext.challengeResponseBody
+				if gjson.Get(body, "status").String() == "MFA_CHALLENGE" {
+					correctAnswer := gjson.Get(body, "_embedded.factor._embedded.challenge.correctAnswer").String()
+					if correctAnswer != "" {
+						log.Printf("Correct Answer: %s", correctAnswer)
+					}
+				}
 
 			case "TIMEOUT":
 				log.Println(" Timeout")
@@ -963,14 +979,20 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 			duoMfaOptions = append(duoMfaOptions, "Passcode")
 		}
 
-		duoMfaOption := 0
+		duoMfaOption := -1
 
-		if loginDetails.DuoMFAOption == "Duo Push" {
-			duoMfaOption = 1
-		} else if loginDetails.DuoMFAOption == "Passcode" {
-			duoMfaOption = 2
+		if loginDetails.DuoMFAOption != "" {
+			for i, v := range duoMfaOptions {
+				if loginDetails.DuoMFAOption == v {
+					duoMfaOption = i
+				}
+			}
 		} else {
 			duoMfaOption = prompter.Choose("Select a DUO MFA Option", duoMfaOptions)
+		}
+
+		if duoMfaOption == -1 {
+			return "", errors.Errorf("error unsupported MFA option '%s'", loginDetails.DuoMFAOption)
 		}
 
 		if duoMfaOptions[duoMfaOption] == "Passcode" {

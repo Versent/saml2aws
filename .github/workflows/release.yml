@@ -28,12 +28,12 @@ jobs:
     steps:
 
     - name: Set up Go 1.x
-      uses: actions/setup-go@v4
+      uses: actions/setup-go@v5
       with:
-        go-version: 1.20.x
+        go-version: 1.21.x
 
     - name: Check out code into the Go module directory
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Install dependency required for linux builds
       if: matrix.os == 'ubuntu-20.04'
@@ -43,14 +43,14 @@ jobs:
       run: |
         echo REPOSITORY_NAME_LOWERCASE=$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]') >> $GITHUB_ENV
 
-    - uses: "docker/login-action@v2"
+    - uses: "docker/login-action@v3"
       if: matrix.os == 'ubuntu-20.04'
       with:
         registry: "ghcr.io"
         username: "${{ github.actor }}"
         password: "${{ secrets.GITHUB_TOKEN }}"
     - name: GoReleaser
-      uses: goreleaser/goreleaser-action@v4
+      uses: goreleaser/goreleaser-action@v5
       with:
         version: latest
         args: release --clean --config .goreleaser.${{ matrix.os }}.yml
@@ -87,7 +87,7 @@ jobs:
         echo "ASSET=saml2aws_${VERSION}_windows_amd64.zip" >> $GITHUB_ENV
 
     - name: Check out code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Retrieve the release asset
       id: asset

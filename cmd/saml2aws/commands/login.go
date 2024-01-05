@@ -57,6 +57,8 @@ func Login(loginFlags *flags.LoginExecFlags) error {
 		previousCreds, err := sharedCreds.Load()
 		if err != nil {
 			log.Println("Unable to load cached credentials.")
+		} else {
+			logger.Debug("Credentials will expire at ", previousCreds.Expires)
 		}
 		if loginFlags.CredentialProcess {
 			err = PrintCredentialProcess(previousCreds)

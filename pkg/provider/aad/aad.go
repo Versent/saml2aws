@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
 	"strings"
@@ -463,9 +462,9 @@ func (ac *Client) processMfa(mfas []userProof, convergedResponse *ConvergedRespo
 		}
 		if mfaReq.AuthMethodID == "PhoneAppNotification" && i == 0 {
 			if mfaResp.Entropy == 0 {
-				log.Println("Phone approval required.")
+				prompter.Display("Phone approval required.")
 			} else {
-				log.Printf("Phone approval required. Entropy is: %d", mfaResp.Entropy)
+				prompter.Display(fmt.Sprintf("Phone approval required. Entropy is: %d", mfaResp.Entropy))
 			}
 		}
 
@@ -651,6 +650,11 @@ func (ac *Client) processConvergedProofUpRedirect(res *http.Response, srcBodyStr
 
 	if err := ac.unmarshalEmbeddedJson(srcBodyStr, &convergedResponse); err != nil {
 		return res, errors.Wrap(err, "skip MFA response unmarshal error")
+	}
+
+	// 50058: user is not signed in (yet)
+	if convergedResponse.SErrorCode != "" && convergedResponse.SErrorCode != "50058" {
+		return res, fmt.Errorf("login error %s", convergedResponse.SErrorCode)
 	}
 
 	if convergedResponse.URLSkipMfaRegistration == "" {
