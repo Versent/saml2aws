@@ -36,6 +36,7 @@ type FakeDefaultPrompter struct {
 	CalledString              bool
 	CalledStringRequired      bool
 	CalledPassword            bool
+	CalledDisplay             bool
 }
 
 // all the functions to implement the Prompter interface
@@ -63,7 +64,9 @@ func (f *FakeDefaultPrompter) Password(p string) string {
 	f.CalledPassword = true
 	return ""
 }
-
+func (f *FakeDefaultPrompter) Display(p string) {
+	f.CalledDisplay = true
+}
 func TestValidateAndSetPrompterShouldFailWithWrongInput(t *testing.T) {
 
 	// backing up the current prompters for the other tests
@@ -125,6 +128,9 @@ func TestChecksPinentryPrompterDefault(t *testing.T) {
 
 	_ = p.Password("random")
 	assert.True(t, fakeDefaultPrompter.CalledPassword)
+
+	p.Display("random")
+	assert.True(t, fakeDefaultPrompter.CalledDisplay)
 }
 
 func TestChecksPinentryPrompterCallsPinentryForRequestSecurityCode(t *testing.T) {

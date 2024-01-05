@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"net/url"
@@ -14,6 +14,7 @@ import (
 	"github.com/PuerkitoBio/goquery"
 	"github.com/marshallbrekka/go-u2fhost"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 	"github.com/versent/saml2aws/v2/pkg/cfg"
 	"github.com/versent/saml2aws/v2/pkg/creds"
 	"github.com/versent/saml2aws/v2/pkg/prompter"
@@ -21,11 +22,19 @@ import (
 	"github.com/versent/saml2aws/v2/pkg/provider/okta"
 )
 
+var logger = logrus.WithField("provider", "Keycloak")
+
 // Client wrapper around KeyCloak.
 type Client struct {
 	provider.ValidateBase
 
 	client *provider.HTTPClient
+}
+
+type authContext struct {
+	mfaToken                string
+	authenticatorIndex      uint
+	authenticatorIndexValid bool
 }
 
 // New create a new KeyCloakClient
@@ -45,7 +54,10 @@ func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 
 // Authenticate logs into KeyCloak and returns a SAML response
 func (kc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error) {
+	return kc.doAuthenticate(&authContext{loginDetails.MFAToken, 0, true}, loginDetails)
+}
 
+func (kc *Client) doAuthenticate(authCtx *authContext, loginDetails *creds.LoginDetails) (string, error) {
 	authSubmitURL, authForm, err := kc.getLoginForm(loginDetails)
 	if err != nil {
 		return "", errors.Wrap(err, "error retrieving login form from idp")
@@ -70,7 +82,7 @@ func (kc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 			return "", errors.Wrap(err, "unable to locate IDP totp form submit URL")
 		}
 
-		doc, err = kc.postTotpForm(totpSubmitURL, loginDetails.MFAToken, doc)
+		doc, err = kc.postTotpForm(authCtx, totpSubmitURL, doc)
 		if err != nil {
 			return "", errors.Wrap(err, "error posting totp form")
 		}
@@ -91,7 +103,11 @@ func (kc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		}
 	}
 
-	return extractSamlResponse(doc), nil
+	samlResponse, err := extractSamlResponse(doc)
+	if err != nil && authCtx.authenticatorIndexValid && passwordValid(doc) {
+		return kc.doAuthenticate(authCtx, loginDetails)
+	}
+	return samlResponse, err
 }
 
 func extractWebauthnParameters(doc *goquery.Document) (credentialIDs []string, challenge string, rpID string, err error) {
@@ -180,7 +196,7 @@ func (kc *Client) postLoginForm(authSubmitURL string, authForm url.Values) ([]by
 		return nil, errors.Wrap(err, "error retrieving login form")
 	}
 
-	data, err := ioutil.ReadAll(res.Body)
+	data, err := io.ReadAll(res.Body)
 	if err != nil {
 		return nil, errors.Wrap(err, "error retrieving body")
 	}
@@ -188,16 +204,16 @@ func (kc *Client) postLoginForm(authSubmitURL string, authForm url.Values) ([]by
 	return data, nil
 }
 
-func (kc *Client) postTotpForm(totpSubmitURL string, mfaToken string, doc *goquery.Document) (*goquery.Document, error) {
+func (kc *Client) postTotpForm(authCtx *authContext, totpSubmitURL string, doc *goquery.Document) (*goquery.Document, error) {
 
 	otpForm := url.Values{}
 
-	if mfaToken == "" {
-		mfaToken = prompter.RequestSecurityCode("000000")
+	if authCtx.mfaToken == "" {
+		authCtx.mfaToken = prompter.RequestSecurityCode("000000")
 	}
 
 	doc.Find("input").Each(func(i int, s *goquery.Selection) {
-		updateOTPFormData(otpForm, s, mfaToken)
+		updateOTPFormData(authCtx, otpForm, s)
 	})
 
 	req, err := http.NewRequest("POST", totpSubmitURL, strings.NewReader(otpForm.Encode()))
@@ -206,6 +222,11 @@ func (kc *Client) postTotpForm(totpSubmitURL string, mfaToken string, doc *goque
 	}
 
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+
+	// Check if the next authenticator is available
+	authCtx.authenticatorIndex = authCtx.authenticatorIndex + 1
+	nextAuthenticatorSelector := fmt.Sprintf("input#%s", generateAuthenticatorElementId(authCtx.authenticatorIndex))
+	authCtx.authenticatorIndexValid = doc.Find(nextAuthenticatorSelector).Length() == 1
 
 	res, err := kc.client.Do(req)
 	if err != nil {
@@ -315,25 +336,35 @@ func extractSubmitURL(doc *goquery.Document) (string, error) {
 	return submitURL, nil
 }
 
-func extractSamlResponse(doc *goquery.Document) string {
-	var samlAssertion string
+func extractSamlResponse(doc *goquery.Document) (string, error) {
+	var samlAssertion = ""
+	var err = fmt.Errorf("unable to locate saml response field")
 
 	doc.Find("input").Each(func(i int, s *goquery.Selection) {
 		name, ok := s.Attr("name")
 		if ok && name == "SAMLResponse" {
 			val, ok := s.Attr("value")
 			if !ok {
-				log.Fatalf("unable to locate saml assertion value")
+				err = fmt.Errorf("unable to locate saml assertion value")
+				return
 			}
+			err = nil
 			samlAssertion = val
 		}
 	})
+	return samlAssertion, err
+}
 
-	if samlAssertion == "" {
-		log.Fatalf("unable to locate saml response field")
-	}
-
-	return samlAssertion
+func passwordValid(doc *goquery.Document) bool {
+	var valid = true
+	doc.Find("span#input-error").Each(func(i int, s *goquery.Selection) {
+		text := s.Text()
+		if strings.Contains(text, "Invalid username or password.") {
+			valid = false
+			return
+		}
+	})
+	return valid
 }
 
 func containsTotpForm(doc *goquery.Document) bool {
@@ -365,6 +396,8 @@ func updateKeyCloakFormData(authForm url.Values, s *goquery.Selection, user *cre
 		authForm.Add(name, user.Username)
 	} else if strings.Contains(lname, "password") {
 		authForm.Add(name, user.Password)
+	} else if strings.Contains(lname, "tryanotherway") {
+		logger.Debug("Ignoring other ways to log in (not implemented)")
 	} else {
 		// pass through any hidden fields
 		val, ok := s.Attr("value")
@@ -375,7 +408,7 @@ func updateKeyCloakFormData(authForm url.Values, s *goquery.Selection, user *cre
 	}
 }
 
-func updateOTPFormData(otpForm url.Values, s *goquery.Selection, token string) {
+func updateOTPFormData(authCtx *authContext, otpForm url.Values, s *goquery.Selection) {
 	name, ok := s.Attr("name")
 	// log.Printf("name = %s ok = %v", name, ok)
 	if !ok {
@@ -385,9 +418,21 @@ func updateOTPFormData(otpForm url.Values, s *goquery.Selection, token string) {
 	lname := strings.ToLower(name)
 	// search otp field at Keycloak >= 8.0.1
 	if strings.Contains(lname, "totp") {
-		otpForm.Add(name, token)
+		otpForm.Add(name, authCtx.mfaToken)
 	} else if strings.Contains(lname, "otp") {
-		otpForm.Add(name, token)
+		otpForm.Add(name, authCtx.mfaToken)
+	} else if strings.Contains(lname, "selectedcredentialid") {
+		id, ok := s.Attr("id")
+		if ok && id == generateAuthenticatorElementId(authCtx.authenticatorIndex) {
+			val, ok := s.Attr("value")
+			if ok {
+				otpForm.Add(name, val)
+			}
+		}
 	}
 
+}
+
+func generateAuthenticatorElementId(authenticatorIndex uint) string {
+	return fmt.Sprintf("kc-otp-credential-%d", authenticatorIndex)
 }

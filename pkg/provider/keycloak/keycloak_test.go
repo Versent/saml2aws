@@ -2,10 +2,10 @@ package keycloak
 
 import (
 	"bytes"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"testing"
 
 	"github.com/PuerkitoBio/goquery"
@@ -23,7 +23,30 @@ const (
 
 func TestClient_getLoginForm(t *testing.T) {
 
-	data, err := ioutil.ReadFile("example/loginpage.html")
+	data, err := os.ReadFile("example/loginpage.html")
+	require.Nil(t, err)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write(data)
+	}))
+	defer ts.Close()
+
+	opts := &provider.HTTPClientOptions{IsWithRetries: false}
+	kc := Client{client: &provider.HTTPClient{Client: http.Client{}, Options: opts}}
+	loginDetails := &creds.LoginDetails{URL: ts.URL, Username: "test", Password: "test123"}
+
+	submitURL, authForm, err := kc.getLoginForm(loginDetails)
+	require.Nil(t, err)
+	require.Equal(t, exampleLoginURL, submitURL)
+	require.Equal(t, url.Values{
+		"username": []string{"test"},
+		"password": []string{"test123"},
+		"login":    []string{"Log in"},
+	}, authForm)
+}
+
+func TestClient_getLoginFormTryAnotherWay(t *testing.T) {
+	data, err := os.ReadFile("example/loginpage-another-way.html")
 	require.Nil(t, err)
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -47,10 +70,10 @@ func TestClient_getLoginForm(t *testing.T) {
 
 func TestClient_getLoginFormRedirect(t *testing.T) {
 
-	redirectData, err := ioutil.ReadFile("example/redirect.html")
+	redirectData, err := os.ReadFile("example/redirect.html")
 	require.Nil(t, err)
 
-	data, err := ioutil.ReadFile("example/loginpage.html")
+	data, err := os.ReadFile("example/loginpage.html")
 	require.Nil(t, err)
 
 	count := 0
@@ -82,7 +105,7 @@ func TestClient_getLoginFormRedirect(t *testing.T) {
 
 func TestClient_postLoginForm(t *testing.T) {
 
-	data, err := ioutil.ReadFile("example/mfapage.html")
+	data, err := os.ReadFile("example/mfapage.html")
 	require.Nil(t, err)
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -106,7 +129,7 @@ func TestClient_postLoginForm(t *testing.T) {
 
 func TestClient_postTotpForm(t *testing.T) {
 
-	data, err := ioutil.ReadFile("example/assertion.html")
+	data, err := os.ReadFile("example/assertion.html")
 	require.Nil(t, err)
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -114,7 +137,9 @@ func TestClient_postTotpForm(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(data))
+	mfapage, err := os.ReadFile("example/mfapage.html")
+	require.Nil(t, err)
+	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(mfapage))
 	require.Nil(t, err)
 
 	pr := &mocks.Prompter{}
@@ -122,19 +147,21 @@ func TestClient_postTotpForm(t *testing.T) {
 
 	pr.Mock.On("RequestSecurityCode", "000000").Return("123456")
 
-	mfaToken := ""
+	authCtx := &authContext{"", 0, true}
 	opts := &provider.HTTPClientOptions{IsWithRetries: false}
 	kc := Client{client: &provider.HTTPClient{Client: http.Client{}, Options: opts}}
 
-	_, err = kc.postTotpForm(ts.URL, mfaToken, doc)
+	_, err = kc.postTotpForm(authCtx, ts.URL, doc)
 	require.Nil(t, err)
+	require.Equal(t, false, authCtx.authenticatorIndexValid)
+	require.Equal(t, "123456", authCtx.mfaToken)
 
 	pr.Mock.AssertCalled(t, "RequestSecurityCode", "000000")
 }
 
 func TestClient_postTotpFormWithProvidedMFAToken(t *testing.T) {
 
-	data, err := ioutil.ReadFile("example/assertion.html")
+	data, err := os.ReadFile("example/assertion.html")
 	require.Nil(t, err)
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -142,33 +169,76 @@ func TestClient_postTotpFormWithProvidedMFAToken(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(data))
+	mfapage, err := os.ReadFile("example/mfapage.html")
+	require.Nil(t, err)
+	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(mfapage))
 	require.Nil(t, err)
 
 	pr := &mocks.Prompter{}
 	prompter.SetPrompter(pr)
 
-	mfaToken := "123456"
+	authCtx := &authContext{"123456", 0, true}
 	opts := &provider.HTTPClientOptions{IsWithRetries: false}
 	kc := Client{client: &provider.HTTPClient{Client: http.Client{}, Options: opts}}
 
-	_, err = kc.postTotpForm(ts.URL, mfaToken, doc)
+	_, err = kc.postTotpForm(authCtx, ts.URL, doc)
 	require.Nil(t, err)
+	require.Equal(t, false, authCtx.authenticatorIndexValid)
+	require.Equal(t, "123456", authCtx.mfaToken)
+
+	pr.Mock.AssertNumberOfCalls(t, "RequestSecurityCode", 0)
+}
+
+func TestClient_postTotpFormWithMultipleAuthenticators(t *testing.T) {
+	data, err := os.ReadFile("example/assertion.html")
+	require.Nil(t, err)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write(data)
+	}))
+	defer ts.Close()
+
+	mfapage, err := os.ReadFile("example/mfapage2authenticators.html")
+	require.Nil(t, err)
+	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(mfapage))
+	require.Nil(t, err)
+
+	pr := &mocks.Prompter{}
+	prompter.SetPrompter(pr)
+
+	authCtx := &authContext{"123456", 0, true}
+	opts := &provider.HTTPClientOptions{IsWithRetries: false}
+	kc := Client{client: &provider.HTTPClient{Client: http.Client{}, Options: opts}}
+
+	_, err = kc.postTotpForm(authCtx, ts.URL, doc)
+	require.Nil(t, err)
+	require.Equal(t, uint(1), authCtx.authenticatorIndex)
+	require.Equal(t, true, authCtx.authenticatorIndexValid)
+	require.Equal(t, "123456", authCtx.mfaToken)
+
+	_, err = kc.postTotpForm(authCtx, ts.URL, doc)
+	require.Nil(t, err)
+	require.Equal(t, uint(2), authCtx.authenticatorIndex)
+	require.Equal(t, false, authCtx.authenticatorIndexValid)
+	require.Equal(t, "123456", authCtx.mfaToken)
+
 	pr.Mock.AssertNumberOfCalls(t, "RequestSecurityCode", 0)
 }
 
 func TestClient_extractSamlResponse(t *testing.T) {
-	data, err := ioutil.ReadFile("example/assertion.html")
+	data, err := os.ReadFile("example/assertion.html")
 	require.Nil(t, err)
 
 	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(data))
 	require.Nil(t, err)
 
-	require.Equal(t, extractSamlResponse(doc), "abc123")
+	samlResponse, err := extractSamlResponse(doc)
+	require.Nil(t, err)
+	require.Equal(t, samlResponse, "abc123")
 }
 
 func TestClient_containsTotpForm(t *testing.T) {
-	data, err := ioutil.ReadFile("example/mfapage.html")
+	data, err := os.ReadFile("example/mfapage.html")
 	require.Nil(t, err)
 
 	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(data))
@@ -178,7 +248,7 @@ func TestClient_containsTotpForm(t *testing.T) {
 }
 
 func TestClient_extractWebauthnParameters(t *testing.T) {
-	data, err := ioutil.ReadFile("example/webauthnPage.html")
+	data, err := os.ReadFile("example/webauthnPage.html")
 	require.Nil(t, err)
 
 	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(data))

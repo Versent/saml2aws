@@ -2,16 +2,18 @@ package googleapps
 
 import (
 	"bytes"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"strings"
 	"testing"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/stretchr/testify/require"
+	"github.com/versent/saml2aws/v2/mocks"
 	"github.com/versent/saml2aws/v2/pkg/creds"
+	"github.com/versent/saml2aws/v2/pkg/prompter"
 	"github.com/versent/saml2aws/v2/pkg/provider"
 )
 
@@ -77,9 +79,63 @@ func TestContentContainsMessage2(t *testing.T) {
 	require.Equal(t, "This extra step shows that it’s really you trying to sign in", txt)
 }
 
+func TestPasswordFormChallengeId1(t *testing.T) {
+	data, err := os.ReadFile("example/form-password-challengeid-1.html")
+	require.Nil(t, err)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write(data)
+	}))
+	defer ts.Close()
+
+	opts := &provider.HTTPClientOptions{IsWithRetries: false}
+	kc := Client{client: &provider.HTTPClient{Client: http.Client{}, Options: opts}}
+	loginDetails := &creds.LoginDetails{URL: ts.URL, Username: "test-id1@example.com", Password: "test123"}
+
+	authForm := url.Values{}
+	authForm.Set("bgresponse", "js_enabled")
+	authForm.Set("Email", loginDetails.Username)
+
+	passwordURL, passwordForm, err := kc.loadLoginPage(ts.URL, loginDetails.URL+"&hl=en&loc=US", authForm)
+	require.Nil(t, err)
+	require.NotEmpty(t, passwordURL)
+	require.Equal(t, "1", passwordForm.Get("challengeId"))
+	// check pre-filled email
+	require.NotEmpty(t, passwordForm.Get("Email"))
+	// check password form
+	require.Empty(t, passwordForm.Get("Passwd"))
+}
+
+func TestPasswordFormChallengeId2(t *testing.T) {
+	data, err := os.ReadFile("example/form-password-challengeid-2.html")
+	require.Nil(t, err)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write(data)
+	}))
+	defer ts.Close()
+
+	opts := &provider.HTTPClientOptions{IsWithRetries: false}
+	kc := Client{client: &provider.HTTPClient{Client: http.Client{}, Options: opts}}
+	loginDetails := &creds.LoginDetails{URL: ts.URL, Username: "test-id2@example.com", Password: "test123"}
+
+	authForm := url.Values{}
+	authForm.Set("bgresponse", "js_enabled")
+	authForm.Set("Email", loginDetails.Username)
+
+	passwordURL, passwordForm, err := kc.loadLoginPage(ts.URL, loginDetails.URL+"&hl=en&loc=US", authForm)
+	require.Nil(t, err)
+	require.NotEmpty(t, passwordURL)
+	require.Equal(t, "2", passwordForm.Get("challengeId"))
+	// check pre-filled email
+	require.NotEmpty(t, passwordForm.Get("Email"))
+	// check password form
+	require.Empty(t, passwordForm.Get("Passwd"))
+}
+
 func TestChallengePage(t *testing.T) {
 
-	data, err := ioutil.ReadFile("example/challenge-totp.html")
+	data, err := os.ReadFile("example/challenge-totp.html")
 	require.Nil(t, err)
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -97,8 +153,50 @@ func TestChallengePage(t *testing.T) {
 	require.NotNil(t, challengeDoc)
 }
 
+func TestSMSChallengePage(t *testing.T) {
+	pr := &mocks.Prompter{}
+	prompter.SetPrompter(pr)
+	pr.Mock.On("StringRequired", "Enter SMS token: G-").Return("000000")
+
+	step1, err := os.ReadFile("example/challenge-sms-send.html")
+	require.Nil(t, err)
+	step2, err := os.ReadFile("example/challenge-sms.html")
+	require.Nil(t, err)
+
+	calls := 0
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() { calls++ }()
+		err := r.ParseForm()
+		require.Nil(t, err)
+
+		switch calls {
+		case 0:
+			_, _ = w.Write(step1)
+		case 1:
+			require.Equal(t, r.Form.Get("SendMethod"), "SMS")
+			_, _ = w.Write(step2)
+		case 2:
+			require.Equal(t, r.Form.Get("Pin"), "000000")
+			_, _ = w.Write(step2)
+		default:
+			require.Fail(t, "too many calls")
+		}
+	}))
+	defer ts.Close()
+
+	opts := &provider.HTTPClientOptions{IsWithRetries: false}
+	kc := Client{client: &provider.HTTPClient{Client: http.Client{}, Options: opts}}
+	loginDetails := &creds.LoginDetails{URL: ts.URL, Username: "test", Password: "test123"}
+	authForm := url.Values{}
+
+	challengeDoc, err := kc.loadChallengePage(ts.URL, "https://accounts.google.com/signin/challenge/sl/password", authForm, loginDetails)
+	require.Nil(t, err)
+	require.NotNil(t, challengeDoc)
+	require.Equal(t, 3, calls)
+}
+
 func TestExtractDataAttributes(t *testing.T) {
-	data, err := ioutil.ReadFile("example/challenge-prompt.html")
+	data, err := os.ReadFile("example/challenge-prompt.html")
 	require.Nil(t, err)
 	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(data))
 	require.Nil(t, err)
@@ -116,4 +214,30 @@ func TestWrongPassword(t *testing.T) {
 	require.Nil(t, err)
 	txt := doc.Selection.Find("#" + passwordErrorId).Text()
 	require.NotEqual(t, "", txt)
+}
+
+func TestMustEnable2StepVerification(t *testing.T) {
+	html := `<html><body><section class="aN1Vld "><div class="yOnVIb" jsname="MZArnb"><div jsname="x2WF9"><p class="vOZun">Your sign-in settings donâ€™t meet your organizationâ€™s 2-Step Verification policy.</p><p class="vOZun">Contact your admin for more info.</p></div><input type="hidden" name="identifierInput" value="" id="identifierId"></div></section></body></html>`
+
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(html))
+	require.Nil(t, err)
+	twoStepIsMissingErr := isMissing2StepSetup(doc)
+	require.Error(t, twoStepIsMissingErr)
+	require.Equal(t, twoStepIsMissingErr.Error(), "Because of your organization settings, you must set-up 2-Step Verification in your account")
+}
+
+func TestExtractDevicePushExtraNumber(t *testing.T) {
+	data1, err := os.ReadFile("example/challenge-extra-number.html")
+	require.Nil(t, err)
+	doc1, err := goquery.NewDocumentFromReader(bytes.NewReader(data1))
+	require.Nil(t, err)
+	require.Equal(t, "89", extractDevicePushExtraNumber(doc1))
+
+	for _, filename := range []string{"example/challenge-prompt.html", "example/challenge-totp.html"} {
+		data2, err := os.ReadFile(filename)
+		require.Nil(t, err)
+		doc2, err := goquery.NewDocumentFromReader(bytes.NewReader(data2))
+		require.Nil(t, err)
+		require.Equal(t, "", extractDevicePushExtraNumber(doc2))
+	}
 }

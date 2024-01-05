@@ -55,8 +55,12 @@ func (kc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		return "", errors.Wrap(err, "error loading first page")
 	}
 
+	// Google supports only JavaScript-enabled clients
+	authForm.Set("bgresponse", "js_enabled")
+
 	authForm.Set("Email", loginDetails.Username)
 
+	// Post email address w/o password, then Get the password-input page
 	passwordURL, passwordForm, err := kc.loadLoginPage(authURL+"?hl=en&loc=US", loginDetails.URL+"&hl=en&loc=US", authForm)
 	if err != nil {
 		return "", errors.Wrap(err, "error loading login page")
@@ -64,23 +68,12 @@ func (kc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 
 	logger.Debugf("loginURL: %s", passwordURL)
 
-	authForm.Set("Passwd", loginDetails.Password)
+	passwordForm.Set("Passwd", loginDetails.Password)
+	passwordForm.Set("TrustDevice", "on")
 
 	referingURL := passwordURL
 
-	if _, rawIdPresent := passwordForm["rawidentifier"]; rawIdPresent {
-		authForm.Set("rawidentifier", loginDetails.Username)
-		referingURL = authURL
-	}
-
-	if v, tlPresent := passwordForm["TL"]; tlPresent {
-		authForm.Set("TL", v[0])
-	}
-	if v, gxfPresent := passwordForm["gxf"]; gxfPresent {
-		authForm.Set("gxf", v[0])
-	}
-
-	responseDoc, err := kc.loadChallengePage(passwordURL+"?hl=en&loc=US", referingURL, authForm, loginDetails)
+	responseDoc, err := kc.loadChallengePage(passwordURL+"?hl=en&loc=US", referingURL, passwordForm, loginDetails)
 	if err != nil {
 		return "", errors.Wrap(err, "error loading challenge page")
 	}
@@ -161,10 +154,22 @@ func (kc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		if responseDoc.Selection.Find("#passwordError").Text() != "" {
 			return "", errors.New("Password error")
 		}
+
+		if err := isMissing2StepSetup(responseDoc); err != nil {
+			return "", err
+		}
+
 		return "", errors.New("page is missing saml assertion")
 	}
 
 	return samlAssertion, nil
+}
+
+func isMissing2StepSetup(responseDoc *goquery.Document) error {
+	if responseDoc.Selection.Find("section.aN1Vld ").Text() != "" {
+		return errors.New("Because of your organization settings, you must set-up 2-Step Verification in your account")
+	}
+	return nil
 }
 
 func (kc *Client) tryDisplayCaptcha(captchaPictureURL string) (string, error) {
@@ -231,62 +236,7 @@ func (kc *Client) loadFirstPage(loginDetails *creds.LoginDetails) (string, url.V
 		return "", nil, errors.Wrap(err, "failed to build login form data")
 	}
 
-	_, loginPageV1 := authForm["GALX"]
-
-	var postForm url.Values
-	// using a field which is known to be in the original login page
-	if loginPageV1 {
-		// Login page v1
-		postForm = url.Values{
-			"bgresponse":               []string{"js_disabled"},
-			"checkConnection":          []string{""},
-			"checkedDomains":           []string{"youtube"},
-			"continue":                 []string{authForm.Get("continue")},
-			"gxf":                      []string{authForm.Get("gxf")},
-			"identifier-captcha-input": []string{""},
-			"identifiertoken":          []string{""},
-			"identifiertoken_audio":    []string{""},
-			"ltmpl":                    []string{"popup"},
-			"oauth":                    []string{"1"},
-			"Page":                     []string{authForm.Get("Page")},
-			"Passwd":                   []string{""},
-			"PersistentCookie":         []string{"yes"},
-			"ProfileInformation":       []string{""},
-			"pstMsg":                   []string{"0"},
-			"sarp":                     []string{"1"},
-			"scc":                      []string{"1"},
-			"SessionState":             []string{authForm.Get("SessionState")},
-			"signIn":                   []string{authForm.Get("signIn")},
-			"_utf8":                    []string{authForm.Get("_utf8")},
-			"GALX":                     []string{authForm.Get("GALX")},
-		}
-	} else {
-		// Login page v2
-		postForm = url.Values{
-			"challengeId":     []string{"1"},
-			"challengeType":   []string{"1"},
-			"continue":        []string{authForm.Get("continue")},
-			"scc":             []string{"1"},
-			"sarp":            []string{"1"},
-			"checkeddomains":  []string{"youtube"},
-			"checkConnection": []string{"youtube:930:1"},
-			"pstMessage":      []string{"1"},
-			"oauth":           []string{authForm.Get("oauth")},
-			"flowName":        []string{authForm.Get("flowName")},
-			"faa":             []string{"1"},
-			"Email":           []string{""},
-			"Passwd":          []string{""},
-			"TrustDevice":     []string{"on"},
-			"bgresponse":      []string{"js_disabled"},
-		}
-		for _, k := range []string{"TL", "gxf"} {
-			if v, ok := authForm[k]; ok {
-				postForm.Set(k, v[0])
-			}
-		}
-	}
-
-	return submitURL, postForm, err
+	return submitURL, authForm, err
 }
 
 func (kc *Client) loadLoginPage(submitURL string, referer string, authForm url.Values) (string, url.Values, error) {
@@ -325,6 +275,8 @@ func (kc *Client) loadLoginPage(submitURL string, referer string, authForm url.V
 }
 
 func (kc *Client) loadChallengePage(submitURL string, referer string, authForm url.Values, loginDetails *creds.LoginDetails) (*goquery.Document, error) {
+
+	authForm.Set("bgresponse", "js_enabled")
 
 	req, err := http.NewRequest("POST", submitURL, strings.NewReader(authForm.Encode()))
 	if err != nil {
@@ -387,6 +339,26 @@ func (kc *Client) loadChallengePage(submitURL string, referer string, authForm u
 			return kc.loadResponsePage(secondActionURL, submitURL, responseForm)
 		case strings.Contains(secondActionURL, "challenge/ipp/"): // handle SMS challenge
 
+			if extractNodeText(doc, "button", "Send text message") != "" {
+				responseForm.Set("SendMethod", "SMS") // extractInputsByFormID does not extract the name and value from <button> tag that is the form submit
+				doc, err = kc.loadResponsePage(secondActionURL, submitURL, responseForm)
+				if err != nil {
+					return nil, errors.Wrap(err, "failed to post sms request form")
+				}
+				doc.Url, err = url.Parse(submitURL)
+				if err != nil {
+					return nil, errors.Wrap(err, "failed to define URL for html doc")
+				}
+
+				submitURL = secondActionURL
+				responseForm, secondActionURL, err = extractInputsByFormID(doc, "challenge")
+				if err != nil {
+					return nil, errors.Wrap(err, "unable to extract challenge form")
+				}
+
+				logger.Debugf("After sms request secondActionURL: %s", secondActionURL)
+			}
+
 			var token = prompter.StringRequired("Enter SMS token: G-")
 
 			responseForm.Set("Pin", token)
@@ -440,7 +412,14 @@ func (kc *Client) loadChallengePage(submitURL string, referer string, authForm u
 			return kc.loadResponsePage(secondActionURL, submitURL, responseForm)
 
 		case strings.Contains(secondActionURL, "challenge/dp/"): // handle device push challenge
-			log.Print("Check your phone - after you have confirmed response press ENTER to continue.")
+			if extraNumber := extractDevicePushExtraNumber(doc); extraNumber != "" {
+				log.Println("Check your phone and tap 'Yes' on the prompt, then tap the number:")
+				log.Printf("\t%v\n", extraNumber)
+				log.Println("Then press ENTER to continue.")
+			} else {
+				log.Print("Check your phone and tap 'Yes' on the prompt. Then press ENTER to continue.")
+			}
+
 			_, err := bufio.NewReader(os.Stdin).ReadBytes('\n')
 			if err != nil {
 				return nil, errors.Wrap(err, "error reading new line \\n")
@@ -796,4 +775,12 @@ func isAppId(val string) string {
 		return ""
 	}
 	return appId
+}
+
+func extractDevicePushExtraNumber(doc *goquery.Document) string {
+	extraNumber := ""
+	doc.Find("div[jsname=feLNVc]").Each(func(_ int, s *goquery.Selection) {
+		extraNumber = s.Text()
+	})
+	return extraNumber
 }

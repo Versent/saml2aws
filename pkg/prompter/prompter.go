@@ -16,6 +16,7 @@ type Prompter interface {
 	StringRequired(string) string
 	String(string, string) string
 	Password(string) string
+	Display(string)
 }
 
 // SetPrompter configure an aternate prompter to the default one
@@ -78,4 +79,9 @@ func String(pr string, defaultValue string) string {
 // Password prompt for password which is required
 func Password(pr string) string {
 	return ActivePrompter.Password(pr)
+}
+
+// Display prompt, no user input required
+func Display(pr string) {
+	ActivePrompter.Display(pr)
 }

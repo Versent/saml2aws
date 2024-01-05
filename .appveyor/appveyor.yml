@@ -1,4 +1,5 @@
 skip_non_tags: true
+image: Visual Studio 2019
 clone_folder: c:\gopath\src\github.com\versent\saml2aws
 environment:
   GOPATH: c:\gopath
@@ -6,7 +7,8 @@ environment:
     secure: 3kWTz99Qj+ipyaR73CxcJeGRRbmk84MF2ERDu6MyY10cjHAi6s3AVZ2Ccoa+Ioyt
   appName: saml2aws
 install:
-- set PATH=C:\msys64\mingw64\bin;%PATH%
+- set PATH=C:\msys64\mingw64\bin;C:\go121\bin;%PATH%
+- set GOROOT=C:\go121
 - ps: >-
     $VerbosePreference = 'Continue'
 
