@@ -814,7 +814,7 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 	case IdentifierSmsMfa, IdentifierTotpMfa, IdentifierOktaTotpMfa, IdentifierSymantecTotpMfa:
 		var verifyCode = loginDetails.MFAToken
 		if verifyCode == "" {
-			verifyCode = prompter.StringRequired("Enter verification code")
+			verifyCode = prompter.RequestSecurityCode("000000")
 		}
 		tokenReq := VerifyRequest{StateToken: stateToken, PassCode: verifyCode, RememberDevice: strconv.FormatBool(oc.rememberDevice)}
 		tokenBody := new(bytes.Buffer)
