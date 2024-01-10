@@ -9,8 +9,8 @@ require (
 	github.com/PuerkitoBio/goquery v1.8.1
 	github.com/alecthomas/kingpin v2.2.6+incompatible
 	github.com/avast/retry-go v3.0.0+incompatible
-	github.com/aws/aws-sdk-go v1.49.9
-	github.com/beevik/etree v1.2.0
+	github.com/aws/aws-sdk-go v1.49.17
+	github.com/beevik/etree v1.3.0
 	github.com/danieljoos/wincred v1.2.1
 	github.com/google/uuid v1.5.0
 	github.com/h2non/gock v1.2.0
@@ -23,7 +23,7 @@ require (
 	github.com/skratchdot/open-golang v0.0.0-20200116055534-eef842397966
 	github.com/stretchr/testify v1.8.4
 	github.com/tidwall/gjson v1.17.0
-	golang.org/x/net v0.19.0
+	golang.org/x/net v0.20.0
 	gopkg.in/ini.v1 v1.67.0
 )
 
@@ -35,7 +35,7 @@ require (
 	github.com/bearsh/hid v1.3.0 // indirect
 	github.com/danwakefield/fnmatch v0.0.0-20160403171240-cbb64ac3d964 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/dvsekhvalnov/jose2go v1.5.0 // indirect
+	github.com/dvsekhvalnov/jose2go v1.6.0 // indirect
 	github.com/go-jose/go-jose/v3 v3.0.1 // indirect
 	github.com/go-stack/stack v1.8.1 // indirect
 	github.com/godbus/dbus v0.0.0-20190726142602-4481cbc300e2 // indirect
@@ -52,9 +52,9 @@ require (
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.1 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	golang.org/x/crypto v0.17.0 // indirect
-	golang.org/x/sys v0.15.0 // indirect
-	golang.org/x/term v0.15.0 // indirect
+	golang.org/x/crypto v0.18.0 // indirect
+	golang.org/x/sys v0.16.0 // indirect
+	golang.org/x/term v0.16.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
