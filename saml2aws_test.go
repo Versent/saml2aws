@@ -12,7 +12,7 @@ import (
 func TestProviderList_Keys(t *testing.T) {
 	names := MFAsByProvider.Names()
 
-	require.Len(t, names, 18)
+	require.Len(t, names, 19)
 }
 
 func TestProviderList_Mfas(t *testing.T) {
@@ -41,6 +41,26 @@ func TestProviderAzureADMFA(t *testing.T) {
 	account := &cfg.IDPAccount{
 		Provider: "AzureAD",
 		MFA:      "PhoneAppOTP",
+	}
+	client, err := NewSAMLClient(account)
+	assert.Nil(t, err)
+	loginDetails := &creds.LoginDetails{Username: "testuser", Password: "testtestlol", URL: "https://id.example.com", MFAToken: "123456"}
+	err = client.Validate(loginDetails)
+	assert.Nil(t, err)
+}
+
+func TestProviderPingNTLMInvalidMFA(t *testing.T) {
+	account := &cfg.IDPAccount{
+		Provider: "PingNTLM",
+	}
+	_, err := NewSAMLClient(account)
+	assert.ErrorContains(t, err, "Invalid MFA type: ")
+}
+
+func TestProviderPingNTLMMFA(t *testing.T) {
+	account := &cfg.IDPAccount{
+		Provider: "PingNTLM",
+		MFA:      "Auto",
 	}
 	client, err := NewSAMLClient(account)
 	assert.Nil(t, err)

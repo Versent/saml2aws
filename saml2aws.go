@@ -37,6 +37,7 @@ var MFAsByProvider = ProviderList{
 	"ADFS":          []string{"Auto", "VIP", "Azure", "Defender"},
 	"ADFS2":         []string{"Auto", "RSA"}, // nothing automatic about ADFS 2.x
 	"Ping":          []string{"Auto"},        // automatically detects PingID
+	"PingNTLM":      []string{"Auto"},        // automatically detects PingID
 	"PingOne":       []string{"Auto"},        // automatically detects PingID
 	"JumpCloud":     []string{"Auto", "TOTP", "WEBAUTHN", "DUO", "PUSH"},
 	"Okta":          []string{"Auto", "PUSH", "DUO", "SMS", "TOTP", "OKTA", "FIDO", "YUBICO TOKEN:HARDWARE", "SYMANTEC"}, // automatically detects DUO, SMS, ToTP, and FIDO
