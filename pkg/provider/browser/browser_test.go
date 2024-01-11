@@ -215,7 +215,7 @@ func TestAutoFill(t *testing.T) {
 	browser, _ := pw.Chromium.Launch()
 	context, _ := browser.NewContext()
 	page, _ := context.NewPage()
-	page.Goto(ts.URL)
+	_, _ = page.Goto(ts.URL)
 
 	loginDetails := &creds.LoginDetails{URL: ts.URL, Username: "golang", Password: "gopher"}
 	autoFill(page, loginDetails)
