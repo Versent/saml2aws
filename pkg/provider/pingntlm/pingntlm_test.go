@@ -403,11 +403,11 @@ func TestClient_follow(t *testing.T) {
 	}{
 		{
 			name: "invalid request",
-			args: args {
+			args: args{
 				ctx: context.TODO(),
 				req: &http.Request{},
 			},
-			want: "",
+			want:    "",
 			wantErr: true,
 		},
 	}
