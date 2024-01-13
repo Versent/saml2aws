@@ -1,11 +1,15 @@
 package browser
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"net/url"
+	"os"
 	"testing"
 
 	"github.com/playwright-community/playwright-go"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/versent/saml2aws/v2/mocks"
 	"github.com/versent/saml2aws/v2/pkg/cfg"
 	"github.com/versent/saml2aws/v2/pkg/creds"
@@ -196,4 +200,31 @@ func TestExpectRequestOptionsDefaultTimeout(t *testing.T) {
 	if *options.Timeout != DEFAULT_TIMEOUT {
 		t.Errorf("Unexpected value for timeout [%.0f]: expected [%.0f]", *options.Timeout, DEFAULT_TIMEOUT)
 	}
+}
+
+func TestAutoFill(t *testing.T) {
+	data, err := os.ReadFile("example/loginpage.html")
+	require.Nil(t, err)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write(data)
+	}))
+	defer ts.Close()
+
+	pw, _ := playwright.Run()
+	browser, _ := pw.Chromium.Launch()
+	context, _ := browser.NewContext()
+	page, _ := context.NewPage()
+	_, _ = page.Goto(ts.URL)
+
+	loginDetails := &creds.LoginDetails{URL: ts.URL, Username: "golang", Password: "gopher"}
+	_ = autoFill(page, loginDetails)
+
+	username, _ := page.Locator("input[name='username']").First().InputValue()
+	assert.Equal(t, "golang", username)
+	password, _ := page.Locator("input[type='password']").First().InputValue()
+	assert.Equal(t, "gopher", password)
+
+	result, _ := page.Locator("div#result").Evaluate("el => el.innerText", nil)
+	assert.Equal(t, "golang:gopher", result)
 }
