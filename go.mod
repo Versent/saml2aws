@@ -12,7 +12,7 @@ require (
 	github.com/aws/aws-sdk-go v1.50.6
 	github.com/beevik/etree v1.3.0
 	github.com/danieljoos/wincred v1.2.1
-	github.com/google/uuid v1.5.0
+	github.com/google/uuid v1.6.0
 	github.com/h2non/gock v1.2.0
 	github.com/keybase/go-keychain v0.0.0-20211119201326-e02f34051621
 	github.com/marshallbrekka/go-u2fhost v0.0.0-20210111072507-3ccdec8c8105
