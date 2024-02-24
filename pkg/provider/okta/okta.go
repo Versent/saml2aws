@@ -973,6 +973,7 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 
 		if doc.Find("option[value=\"phone1\"]").Length() > 0 {
 			duoMfaOptions = append(duoMfaOptions, "Duo Push")
+			duoMfaOptions = append(duoMfaOptions, "Passcode")
 		}
 
 		if doc.Find("option[value=\"token\"]").Length() > 0 {
