@@ -20,34 +20,49 @@ jobs:
       matrix:
         os:
         - ubuntu-latest
+        - ubuntu-20.04
         - macos-latest
     runs-on: ${{ matrix.os }}
     if: github.event_name != 'workflow_dispatch'
+    permissions: write-all
     steps:
 
     - name: Set up Go 1.x
-      uses: actions/setup-go@v4
+      uses: actions/setup-go@v5
       with:
-        go-version: 1.20.x
+        go-version: 1.21.x
 
     - name: Check out code into the Go module directory
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Install dependency required for linux builds
-      if: matrix.os == 'ubuntu-latest'
+      if: matrix.os == 'ubuntu-20.04'
       run: sudo apt-get update && sudo apt-get install -y libudev-dev
 
+    - name: Add Lowercase Repository Name to Environment
+      run: |
+        echo REPOSITORY_NAME_LOWERCASE=$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]') >> $GITHUB_ENV
+
+    - uses: "docker/login-action@v3"
+      if: matrix.os == 'ubuntu-20.04'
+      with:
+        registry: "ghcr.io"
+        username: "${{ github.actor }}"
+        password: "${{ secrets.GITHUB_TOKEN }}"
     - name: GoReleaser
-      uses: goreleaser/goreleaser-action@v4
+      uses: goreleaser/goreleaser-action@v5
       with:
         version: latest
         args: release --clean --config .goreleaser.${{ matrix.os }}.yml
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        IMAGE_NAME: ${{ env.REPOSITORY_NAME_LOWERCASE }}
 
   windows-msi:
     name: Build Windows MSI and upload to release
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     needs: [release]
     if: >-  # https://github.com/actions/runner/issues/491
       always() &&
@@ -72,11 +87,11 @@ jobs:
         echo "ASSET=saml2aws_${VERSION}_windows_amd64.zip" >> $GITHUB_ENV
 
     - name: Check out code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Retrieve the release asset
       id: asset
-      uses: robinraju/release-downloader@768b85c8d69164800db5fc00337ab917daf3ce68  # v1.7
+      uses: robinraju/release-downloader@368754b9c6f47c345fcfbf42bcb577c2f0f5f395  # v1.9
       with:
         repository: ${{ github.repository }}
         tag: ${{ env.VER_TAG }}

@@ -26,7 +26,7 @@ The process goes something like this:
   - [Requirements](#requirements)
   - [Caveats](#caveats)
   - [Install](#install)
-    - [OSX](#osx)
+    - [macOS](#macOS)
     - [Windows](#windows)
     - [Linux](#linux)
       - [Using Make](#using-make)
@@ -54,7 +54,6 @@ The process goes something like this:
     - [macOS](#macos)
     - [Linux](#linux-1)
   - [Environment vars](#environment-vars)
-  - [Provider Specific Documentation](#provider-specific-documentation)
 - [Dependencies](#dependencies)
 - [Releasing](#releasing)
 - [Debugging Issues with IDPs](#debugging-issues-with-idps)
@@ -79,6 +78,7 @@ The process goes something like this:
   * NetIQ
   * Browser, this uses [playwright-go](github.com/playwright-community/playwright-go) to run a sandbox chromium window.
   * [Auth0](pkg/provider/auth0/README.md) NOTE: Currently, MFA not supported
+  * [JumpCloud](doc/provider/jumpcloud/README.md)
 * AWS SAML Provider configured
 
 ## Caveats
@@ -91,9 +91,9 @@ Aside from Okta, most of the providers in this project are using screen scraping
 
 ## Install
 
-### OSX
+### macOS
 
-If you're on OSX you can install saml2aws using homebrew!
+If you're on macOS you can install saml2aws using homebrew!
 
 ```
 brew install saml2aws
@@ -114,11 +114,16 @@ saml2aws --version
 While brew is available for Linux you can also run the following without using a package manager.
 
 ```
+mkdir -p ~/.local/bin
 CURRENT_VERSION=$(curl -Ls https://api.github.com/repos/Versent/saml2aws/releases/latest | grep 'tag_name' | cut -d'v' -f2 | cut -d'"' -f1)
-wget -c https://github.com/Versent/saml2aws/releases/download/v${CURRENT_VERSION}/saml2aws_${CURRENT_VERSION}_linux_amd64.tar.gz -O - | tar -xzv -C ~/.local/bin
+wget -c "https://github.com/Versent/saml2aws/releases/download/v${CURRENT_VERSION}/saml2aws_${CURRENT_VERSION}_linux_amd64.tar.gz" -O - | tar -xzv -C ~/.local/bin
 chmod u+x ~/.local/bin/saml2aws
 hash -r
 saml2aws --version
+```
+If U2F support is required then there are separate builds for this - use the following download URL instead:
+```
+wget -c "https://github.com/Versent/saml2aws/releases/download/v${CURRENT_VERSION}/saml2aws-u2f_${CURRENT_VERSION}_linux_amd64.tar.gz" -O - | tar -xzv -C ~/.local/bin
 ```
 
 #### Using Make
@@ -127,7 +132,7 @@ You will need [Go Tools](https://golang.org/doc/install) (you can check your pac
 
 Clone this repo to your `$GOPATH/src` directory
 
-Now you can install by running 
+Now you can install by running
 
 ```
 make
@@ -168,7 +173,7 @@ eval "$(saml2aws --completion-script-zsh)"
 
 ## Dependency Setup
 
-Install the AWS CLI [see](https://docs.aws.amazon.com/cli/latest/userguide/installing.html), in our case we are using [homebrew](http://brew.sh/) on OSX.
+Install the AWS CLI [see](https://docs.aws.amazon.com/cli/latest/userguide/installing.html), in our case we are using [homebrew](http://brew.sh/) on macOS.
 
 ```
 brew install awscli
@@ -184,9 +189,10 @@ A command line tool to help with SAML access to the AWS token service.
 Flags:
       --help                   Show context-sensitive help (also try --help-long and --help-man).
       --version                Show application version.
-      --quiet                  silences logs
       --verbose                Enable verbose logging
+      --quiet                  silences logs
   -i, --provider=PROVIDER      This flag is obsolete. See: https://github.com/Versent/saml2aws#configuring-idp-accounts
+      --config=CONFIG          Path/filename of saml2aws config file (env: SAML2AWS_CONFIGFILE)
   -a, --idp-account="default"  The name of the configured IDP account. (env: SAML2AWS_IDP_ACCOUNT)
       --idp-provider=IDP-PROVIDER
                                The configured IDP provider. (env: SAML2AWS_IDP_PROVIDER)
@@ -195,14 +201,15 @@ Flags:
       --url=URL                The URL of the SAML IDP server used to login. (env: SAML2AWS_URL)
       --username=USERNAME      The username used to login. (env: SAML2AWS_USERNAME)
       --password=PASSWORD      The password used to login. (env: SAML2AWS_PASSWORD)
-      --mfa-token=MFA-TOKEN    The current MFA token (supported in Keycloak, ADFS, GoogleApps, Okta). (env: SAML2AWS_MFA_TOKEN)
+      --mfa-token=MFA-TOKEN    The current MFA token (supported in Keycloak, ADFS, GoogleApps). (env: SAML2AWS_MFA_TOKEN)
       --role=ROLE              The ARN of the role to assume. (env: SAML2AWS_ROLE)
       --aws-urn=AWS-URN        The URN used by SAML when you login. (env: SAML2AWS_AWS_URN)
       --skip-prompt            Skip prompting for parameters during login.
       --session-duration=SESSION-DURATION
                                The duration of your AWS Session. (env: SAML2AWS_SESSION_DURATION)
-      --disable-keychain       Do not use keychain at all. (env: SAML2AWS_DISABLE_KEYCHAIN)
+      --disable-keychain       Do not use keychain at all. This will also disable Okta sessions & remembering MFA device. (env: SAML2AWS_DISABLE_KEYCHAIN)
   -r, --region=REGION          AWS region to use for API requests, e.g. us-east-1, us-gov-west-1, cn-north-1 (env: SAML2AWS_REGION)
+      --prompter=PROMPTER      The prompter to use for user input (default, pinentry)
 
 Commands:
   help [<command>...]
@@ -221,7 +228,8 @@ Commands:
                                    IP address whitelisting defined in OneLogin MFA policies. (env: ONELOGIN_MFA_IP_ADDRESS)
     -p, --profile=PROFILE          The AWS profile to save the temporary credentials. (env: SAML2AWS_PROFILE)
         --resource-id=RESOURCE-ID  F5APM SAML resource ID of your company account. (env: SAML2AWS_F5APM_RESOURCE_ID)
-        --config=CONFIG            Path/filename of saml2aws config file (env: SAML2AWS_CONFIGFILE)
+        --credentials-file=CREDENTIALS-FILE
+                                   The file that will cache the credentials retrieved from AWS. When not specified, will use the default AWS credentials file location. (env: SAML2AWS_CREDENTIALS_FILE)
         --cache-saml               Caches the SAML response (env: SAML2AWS_CACHE_SAML)
         --cache-file=CACHE-FILE    The location of the SAML cache file (env: SAML2AWS_SAML_CACHE_FILE)
         --disable-sessions         Do not use Okta sessions. Uses Okta sessions by default. (env: SAML2AWS_OKTA_DISABLE_SESSIONS)
@@ -232,7 +240,7 @@ Commands:
 
     -p, --profile=PROFILE        The AWS profile to save the temporary credentials. (env: SAML2AWS_PROFILE)
         --duo-mfa-option=DUO-MFA-OPTION
-                                 The MFA option you want to use to authenticate with
+                                 The MFA option you want to use to authenticate with (supported providers: okta). (env: SAML2AWS_DUO_MFA_OPTION)
         --client-id=CLIENT-ID    OneLogin client id, used to generate API access token. (env: ONELOGIN_CLIENT_ID)
         --client-secret=CLIENT-SECRET
                                  OneLogin client secret, used to generate API access token. (env: ONELOGIN_CLIENT_SECRET)
@@ -244,6 +252,7 @@ Commands:
                                  The file that will cache the credentials retrieved from AWS. When not specified, will use the default AWS credentials file location. (env: SAML2AWS_CREDENTIALS_FILE)
         --cache-saml             Caches the SAML response (env: SAML2AWS_CACHE_SAML)
         --cache-file=CACHE-FILE  The location of the SAML cache file (env: SAML2AWS_SAML_CACHE_FILE)
+        --download-browser-driver  Automatically download browsers for Browser IDP. (env: SAML2AWS_AUTO_BROWSER_DOWNLOAD)
         --disable-sessions         Do not use Okta sessions. Uses Okta sessions by default. (env: SAML2AWS_OKTA_DISABLE_SESSIONS)
         --disable-remember-device  Do not remember Okta MFA device. Remembers MFA device by default. (env: SAML2AWS_OKTA_DISABLE_REMEMBER_DEVICE)
 
@@ -277,9 +286,9 @@ Commands:
     Emit a script that will export environment variables.
 
     -p, --profile=PROFILE      The AWS profile to save the temporary credentials. (env: SAML2AWS_PROFILE)
-        --shell=bash           Type of shell environment. Options include: bash, powershell, fish, env
         --credentials-file=CREDENTIALS-FILE
                                The file that will cache the credentials retrieved from AWS. When not specified, will use the default AWS credentials file location. (env: SAML2AWS_CREDENTIALS_FILE)
+        --shell=bash           Type of shell environment. Options include: bash, /bin/sh, powershell, fish, env
 
 
 ```
@@ -297,7 +306,7 @@ export AWS_CREDENTIAL_EXPIRATION="2016-09-04T38:27:00Z00:00"
 SAML2AWS_PROFILE=saml
 ```
 
-Powershell, and fish shells are supported as well.
+Powershell, sh and fish shells are supported as well.
 Env is useful for all AWS SDK compatible tools that can source an env file. It is a powerful combo with docker and the `--env-file` parameter.
 
 If you use `eval $(saml2aws script)` frequently, you may want to create a alias for it:
@@ -540,6 +549,18 @@ region                  = us-east-1
 
 To use this you will need to export `AWS_DEFAULT_PROFILE=customer-test` environment variable to target `test`.
 
+### Playwright Browser Drivers for Browser IDP
+
+If you are using the Browser Identity Provider, on first invocation of `saml2aws login` you need to remember to install
+the browser drivers in order for playwright-go to work. Otherwise you will see the following error message:
+
+`Error authenticating to IDP.: could not start driver: fork/exec  ... no such file or directory`
+
+To install the drivers, you can:
+* Pass `--download-browser-driver` to `saml2aws login`
+* Set in your shell environment `SAML2AWS_AUTO_BROWSER_DOWNLOAD=true`
+* Set `download_browser_driver = true` in your saml2aws config file, i.e. `~/.saml2aws`
+
 ## Advanced Configuration (Multiple AWS account access but SAML authenticate against a single 'SSO' AWS account)
 
 Example:
@@ -673,7 +694,7 @@ region                  = us-east-1
 
 ### macOS
 
-To build this software on osx clone to the repo to `$GOPATH/src/github.com/versent/saml2aws` and ensure you have `$GOPATH/bin` in your `$PATH`.
+To build this software on macOS, clone the repo to `$GOPATH/src/github.com/versent/saml2aws` and ensure you have `$GOPATH/bin` in your `$PATH`. You will also need [GoReleaser](https://github.com/goreleaser/goreleaser) installed.
 
 ```
 make mod
@@ -732,11 +753,6 @@ The exec sub command will export the following environment variables.
 
 Note: That profile environment variables enable you to use `exec` with a script or command which requires an explicit profile.
 
-## Provider Specific Documentation
-
-* [Azure Active Directory](./doc/provider/aad)
-* [JumpCloud](./doc/provider/jumpcloud)
-
 # Dependencies
 
 This tool would not be possible without some great opensource libraries.
@@ -750,17 +766,11 @@ This tool would not be possible without some great opensource libraries.
 
 # Releasing
 
-Install `github-release`.
-
-```
-go get github.com/buildkite/github-release
-```
-
-To release run.
-
-```
-make release
-```
+1. Create a git tag locally with `git tag -as vX.X.X`
+2. Run build with `make build`
+3. Test the newly created binary nested in the `dist/` of the project root directory
+4. If testing pass, push the tag `git push origin vX.X.X`
+5. Make an announcement in "Discussions"
 
 # Debugging Issues with IDPs
 

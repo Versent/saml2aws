@@ -117,12 +117,7 @@ func ListRoles(loginFlags *flags.LoginExecFlags) error {
 }
 
 func listRoles(awsRoles []*saml2aws.AWSRole, samlAssertion string, loginFlags *flags.LoginExecFlags) error {
-	if len(awsRoles) == 1 {
-		log.Println("")
-		log.Println("Only one role to assume. Will be automatically assumed on login")
-		log.Println(awsRoles[0].RoleARN)
-		return nil
-	} else if len(awsRoles) == 0 {
+	if len(awsRoles) == 0 {
 		return errors.New("no roles available")
 	}
 

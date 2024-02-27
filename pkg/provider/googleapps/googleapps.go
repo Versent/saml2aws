@@ -154,10 +154,22 @@ func (kc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		if responseDoc.Selection.Find("#passwordError").Text() != "" {
 			return "", errors.New("Password error")
 		}
+
+		if err := isMissing2StepSetup(responseDoc); err != nil {
+			return "", err
+		}
+
 		return "", errors.New("page is missing saml assertion")
 	}
 
 	return samlAssertion, nil
+}
+
+func isMissing2StepSetup(responseDoc *goquery.Document) error {
+	if responseDoc.Selection.Find("section.aN1Vld ").Text() != "" {
+		return errors.New("Because of your organization settings, you must set-up 2-Step Verification in your account")
+	}
+	return nil
 }
 
 func (kc *Client) tryDisplayCaptcha(captchaPictureURL string) (string, error) {
@@ -327,6 +339,26 @@ func (kc *Client) loadChallengePage(submitURL string, referer string, authForm u
 			return kc.loadResponsePage(secondActionURL, submitURL, responseForm)
 		case strings.Contains(secondActionURL, "challenge/ipp/"): // handle SMS challenge
 
+			if extractNodeText(doc, "button", "Send text message") != "" {
+				responseForm.Set("SendMethod", "SMS") // extractInputsByFormID does not extract the name and value from <button> tag that is the form submit
+				doc, err = kc.loadResponsePage(secondActionURL, submitURL, responseForm)
+				if err != nil {
+					return nil, errors.Wrap(err, "failed to post sms request form")
+				}
+				doc.Url, err = url.Parse(submitURL)
+				if err != nil {
+					return nil, errors.Wrap(err, "failed to define URL for html doc")
+				}
+
+				submitURL = secondActionURL
+				responseForm, secondActionURL, err = extractInputsByFormID(doc, "challenge")
+				if err != nil {
+					return nil, errors.Wrap(err, "unable to extract challenge form")
+				}
+
+				logger.Debugf("After sms request secondActionURL: %s", secondActionURL)
+			}
+
 			var token = prompter.StringRequired("Enter SMS token: G-")
 
 			responseForm.Set("Pin", token)
@@ -380,7 +412,14 @@ func (kc *Client) loadChallengePage(submitURL string, referer string, authForm u
 			return kc.loadResponsePage(secondActionURL, submitURL, responseForm)
 
 		case strings.Contains(secondActionURL, "challenge/dp/"): // handle device push challenge
-			log.Print("Check your phone - after you have confirmed response press ENTER to continue.")
+			if extraNumber := extractDevicePushExtraNumber(doc); extraNumber != "" {
+				log.Println("Check your phone and tap 'Yes' on the prompt, then tap the number:")
+				log.Printf("\t%v\n", extraNumber)
+				log.Println("Then press ENTER to continue.")
+			} else {
+				log.Print("Check your phone and tap 'Yes' on the prompt. Then press ENTER to continue.")
+			}
+
 			_, err := bufio.NewReader(os.Stdin).ReadBytes('\n')
 			if err != nil {
 				return nil, errors.Wrap(err, "error reading new line \\n")
@@ -736,4 +775,12 @@ func isAppId(val string) string {
 		return ""
 	}
 	return appId
+}
+
+func extractDevicePushExtraNumber(doc *goquery.Document) string {
+	extraNumber := ""
+	doc.Find("div[jsname=feLNVc]").Each(func(_ int, s *goquery.Selection) {
+		extraNumber = s.Text()
+	})
+	return extraNumber
 }

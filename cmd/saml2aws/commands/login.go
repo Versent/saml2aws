@@ -57,6 +57,8 @@ func Login(loginFlags *flags.LoginExecFlags) error {
 		previousCreds, err := sharedCreds.Load()
 		if err != nil {
 			log.Println("Unable to load cached credentials.")
+		} else {
+			logger.Debug("Credentials will expire at ", previousCreds.Expires)
 		}
 		if loginFlags.CredentialProcess {
 			err = PrintCredentialProcess(previousCreds)
@@ -222,6 +224,12 @@ func resolveLoginDetails(account *cfg.IDPAccount, loginFlags *flags.LoginExecFla
 		loginDetails.MFAIPAddress = account.MFAIPAddress
 	} else if loginFlags.CommonFlags.MFAIPAddress != "" {
 		loginDetails.MFAIPAddress = loginFlags.CommonFlags.MFAIPAddress
+	}
+
+	if loginFlags.DownloadBrowser {
+		loginDetails.DownloadBrowser = loginFlags.DownloadBrowser
+	} else if account.DownloadBrowser {
+		loginDetails.DownloadBrowser = account.DownloadBrowser
 	}
 
 	// log.Printf("loginDetails %+v", loginDetails)

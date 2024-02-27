@@ -7,8 +7,8 @@ environment:
     secure: 3kWTz99Qj+ipyaR73CxcJeGRRbmk84MF2ERDu6MyY10cjHAi6s3AVZ2Ccoa+Ioyt
   appName: saml2aws
 install:
-- set PATH=C:\msys64\mingw64\bin;C:\go120\bin;%PATH%
-- set GOROOT=C:\go120
+- set PATH=C:\msys64\mingw64\bin;C:\go121\bin;%PATH%
+- set GOROOT=C:\go121
 - ps: >-
     $VerbosePreference = 'Continue'
 

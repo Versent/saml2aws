@@ -1,0 +1,94 @@
+<samlp:Response ID="_a80fa312-e5e3-43d2-bf81-ad745d5b4826" Version="2.0" IssueInstant="2020-01-01T00:00:00.000Z" Destination="https://signin.aws.amazon.com/saml"
+	xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol">
+	<Issuer
+		xmlns="urn:oasis:names:tc:SAML:2.0:assertion">https://sts.windows.net/25f4519b-eca5-405d-b516-123af862c268/
+	</Issuer>
+	<samlp:Status>
+		<samlp:StatusCode Value="urn:oasis:names:tc:SAML:2.0:status:Success"/>
+	</samlp:Status>
+	<Assertion ID="_5f426af7-149d-4ab9-beeb-b1aa2e50787b" IssueInstant="2020-01-01T00:00:00.000Z" Version="2.0"
+		xmlns="urn:oasis:names:tc:SAML:2.0:assertion">
+		<Issuer>https://sts.windows.net/25f4519b-eca5-405d-b516-123af862c268/</Issuer>
+		<Signature
+			xmlns="http://www.w3.org/2000/09/xmldsig#">
+			<SignedInfo>
+				<CanonicalizationMethod Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/>
+				<SignatureMethod Algorithm="http://www.w3.org/2001/04/xmldsig-more#rsa-sha256"/>
+				<Reference URI="#_5f426af7-149d-4ab9-beeb-b1aa2e50787b">
+					<Transforms>
+						<Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature"/>
+						<Transform Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/>
+					</Transforms>
+					<DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha256"/>
+					<DigestValue>ba0vLeerzPU5SlBzNMQ95WNLauGojdAZBDdCPMJmUNI=</DigestValue>
+				</Reference>
+			</SignedInfo>
+			<SignatureValue>QE4db1da3PKU583Q0mm9MRpLaogENs95eWSkc8RvtU3kYwOVHpFtcVyG0wti54sc72V7rWSr3UoIGysgx_-3UJch_oG1JJi7IdNLhbFBx-PVxtAKvIdMkSM8tXRLuEtkNUB760jQAmie43Che8j47JdyWp4nh19QTDHjpH2vW9zldp-mhlLtl_QQQ-lJPd-LWC3A4xS0a81fenApzq4KvOY4zghapNih_dZOH6OO_UBgq_fyZ-x7gDiHin4UeySsaHQEBPr_mx5t6ilteSjm3J6HKlVVw9HNhmgry80UJkuVZ-7nWfgaawNjHDtG2UXN9k5oT0hCokMG7SlcPVKLqA==</SignatureValue>
+			<KeyInfo>
+				<X509Data>
+					<X509Certificate>MIIC8DCCAdigAwIBAgIQV3utGUh+Q55I54g7Y8RkUjANBgkqhkiG9w0BAQsFADA0MTIwMAYDVQQDEylNaWNyb3NvZnQgQXp1cmUgRmVkZXJhdGVkIFNTTyBDZXJ0aWZpY2F0ZTAeFw0xOTA4MDgwNzA1MDBaFw0yMjA4MDgwNzAyMTlaMDQxMjAwBgNVBAMTKU1pY3Jvc29mdCBBenVyZSBGZWRlcmF0ZWQgU1NPIENlcnRpZmljYXRlMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEApO5wQVjdzEx2/j5gNrUh94wpBni4wNmRI3tKoSWJpRjnnlhwHSiiAWo7KX924owbbc8m+aqZ/dt7gdyADl02dJN5vjYwHy0rJoitC6j9hVHd/Fz7QOOhlaLwtxKfp7bgzvLYw3/HsAFbnJxwQWdddiPm6+2b903tdUehV9lR7LgLwa8pYA8ybnV/8KrgB9zwDi8c+h0Od3+SLvheCagOLmPZBc3u2YkW6BRLt3HIdT75Rv5G81ak3yKdmpjelIgcj/39x/g5K4xTYYJz8x/a8xdy1tax46Vr0h7xfg3YkuYy/kcs6JGilQEVsA/NVmAGPl7W7uu03CCFsi5Xc8aIXwIDAQABMA0GCSqGSIb3DQEBCwUAA4IBAQBiVFSvDRTGqlgnBaQjrdaN3GanD+vggrz8rzm+ccdFi72xkRKMmAxePVcgYNZWl4pZgXitQOa9otE4gxzLFQEXpShj/xgomZ1orF5Fx2DIP/TtHn+6BGK4pi/QsSDWqOx33lDnPjXY6Ouiyz4GoY50l6UfXzwyCiYBoI/r0Paf5bLSF9gV0aJInFswG28lXDsUydXKsByrprqvYpWX6lplRf/SgCmCf8l9eApk+558cWtIlUn1mDzYxt8z7X8xhBYXyg6193wz4A2ULhfB7No/bO6WDlaaK2YN1VSpjRdwDKpKiR2yy3kJRJl1IO8szqIYPKcrdTwGBNRDix1UEwdR</X509Certificate>
+				</X509Data>
+			</KeyInfo>
+		</Signature>
+		<Subject>
+			<NameID Format="urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress">exampleuser@exampledomain.com</NameID>
+			<SubjectConfirmation Method="urn:oasis:names:tc:SAML:2.0:cm:bearer">
+				<SubjectConfirmationData NotOnOrAfter="2020-01-01T00:00:00.000Z" Recipient="https://signin.aws.amazon.com/saml"/>
+			</SubjectConfirmation>
+		</Subject>
+		<Conditions NotBefore="2020-01-01T00:00:00.000Z" NotOnOrAfter="2020-01-01T00:00:00.000Z">
+			<AudienceRestriction>
+				<Audience>https://signin.aws.amazon.com/saml</Audience>
+			</AudienceRestriction>
+		</Conditions>
+		<AttributeStatement>
+			<Attribute Name="http://schemas.microsoft.com/identity/claims/tenantid">
+				<AttributeValue>25f4519b-eca5-405d-b516-123af862c268</AttributeValue>
+			</Attribute>
+			<Attribute Name="http://schemas.microsoft.com/identity/claims/objectidentifier">
+				<AttributeValue>5159e491-c7a1-4c67-bff9-666cdab9a60b</AttributeValue>
+			</Attribute>
+			<Attribute Name="http://schemas.microsoft.com/identity/claims/displayname">
+				<AttributeValue>Doe, John</AttributeValue>
+			</Attribute>
+			<Attribute Name="http://schemas.microsoft.com/identity/claims/identityprovider">
+				<AttributeValue>https://sts.windows.net/25f4519b-eca5-405d-b516-123af862c268/</AttributeValue>
+			</Attribute>
+			<Attribute Name="http://schemas.microsoft.com/claims/authnmethodsreferences">
+				<AttributeValue>urn:oasis:names:tc:SAML:2.0:ac:classes:PasswordProtectedTransport</AttributeValue>
+				<AttributeValue>http://schemas.microsoft.com/claims/multipleauthn</AttributeValue>
+			</Attribute>
+			<Attribute Name="http://schemas.microsoft.com/ws/2008/06/identity/claims/role">
+				<AttributeValue>arn:aws:iam::012345678901:role/example_role,arn:aws:iam::012345678901:saml-provider/EXAMPLE_PROVIDER</AttributeValue>
+				<AttributeValue>arn:aws:iam::123456789012:role/example_role,arn:aws:iam::123456789012:saml-provider/EXAMPLE_PROVIDER</AttributeValue>
+			</Attribute>
+			<Attribute Name="http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname">
+				<AttributeValue>John</AttributeValue>
+			</Attribute>
+			<Attribute Name="http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname">
+				<AttributeValue>Doe</AttributeValue>
+			</Attribute>
+			<Attribute Name="http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress">
+				<AttributeValue>john.doe@exampledomain.com</AttributeValue>
+			</Attribute>
+			<Attribute Name="http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name">
+				<AttributeValue>exampleuser@exampledomain.com</AttributeValue>
+			</Attribute>
+			<Attribute Name="https://aws.amazon.com/SAML/Attributes/Role">
+				<AttributeValue>arn:aws:iam::012345678901:role/example_role,arn:aws:iam::012345678901:saml-provider/EXAMPLE_PROVIDER</AttributeValue>
+				<AttributeValue>arn:aws:iam::123456789012:role/example_role,arn:aws:iam::123456789012:saml-provider/EXAMPLE_PROVIDER</AttributeValue>
+			</Attribute>
+			<Attribute Name="https://aws.amazon.com/SAML/Attributes/RoleSessionName">
+				<AttributeValue>exampleuser@exampledomain.com</AttributeValue>
+			</Attribute>
+			<Attribute Name="https://lakeformation.amazon.com/SAML/Attributes/Username">
+				<AttributeValue>exampleuser</AttributeValue>
+			</Attribute>
+		</AttributeStatement>
+		<AuthnStatement AuthnInstant="2020-01-01T00:00:00.000Z" SessionIndex="_5f426af7-149d-4ab9-beeb-b1aa2e50787b">
+			<AuthnContext>
+				<AuthnContextClassRef>urn:oasis:names:tc:SAML:2.0:ac:classes:PasswordProtectedTransport</AuthnContextClassRef>
+			</AuthnContext>
+		</AuthnStatement>
+	</Assertion>
+</samlp:Response>
