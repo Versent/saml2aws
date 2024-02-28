@@ -26,7 +26,7 @@ const (
 	IdentifierSmsMfa             = "OneLogin SMS"
 	IdentifierTotpMfa            = "Google Authenticator"
 	IdentifierYubiKey            = "Yubico YubiKey"
-	IdentifierDuoSecurity		 = "Duo Duo Security"
+	IdentifierDuoSecurity        = "Duo Duo Security"
 
 	MessageMFARequired = "MFA is required for this user"
 	MessageSuccess     = "Success"
@@ -44,7 +44,7 @@ var (
 		IdentifierSmsMfa:             "SMS",
 		IdentifierTotpMfa:            "TOTP",
 		IdentifierYubiKey:            "YUBIKEY",
-		IdentifierDuoSecurity:		  "DUO TOTP",
+		IdentifierDuoSecurity:        "DUO TOTP",
 	}
 )
 
