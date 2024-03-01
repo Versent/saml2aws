@@ -1351,6 +1351,11 @@ func fidoWebAuthn(oc *Client, oktaOrgHost string, challengeContext *mfaChallenge
 			new(U2FDeviceFinder),
 		)
 		if err != nil {
+			// Try to authenticate with the system level Webauthn libraries
+			signedAssertion, err = ChallengeSystemWebAuthn(nonce, oktaOrgHost, stateToken)
+			if err == nil {
+				break
+			}
 			return "", err
 		}
 

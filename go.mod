@@ -25,6 +25,7 @@ require (
 	github.com/tidwall/gjson v1.17.1
 	golang.org/x/net v0.21.0
 	gopkg.in/ini.v1 v1.67.0
+	github.com/trimble-oss/go-webauthn-client v0.3.0
 )
 
 require (
