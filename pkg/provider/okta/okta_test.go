@@ -266,9 +266,65 @@ func TestVerifyMfa(t *testing.T) {
 }
 
 func TestVerifyMfa_Duo(t *testing.T) {
+	t.Run("Duo Push", func(t *testing.T) {
+		ts := setupTestDuoHttpServer(t, "Duo Push")
+		defer ts.Close()
+		oc, loginDetails := setupTestClient(t, ts, "DUO")
+
+		err := oc.setDeviceTokenCookie(loginDetails)
+		assert.Nil(t, err)
+
+		var out bytes.Buffer
+		log.SetOutput(&out)
+		context, err := verifyMfa(oc, "host-from-argument", &creds.LoginDetails{DuoMFAOption: "Passcode"}, fmt.Sprintf(`{
+			"stateToken": "TOKEN_1",
+			"status": "MFA_REQUIRED",
+			"_embedded": {
+				"factors": [
+					{
+						"id": "factor_id",
+						"provider": "DUO",
+						"factorType": "web",
+						"_links": {
+						  "verify": {
+							"href": "%s/verify",
+							"hints": {
+							  "allow": [
+								"POST"
+							  ]
+							}
+						  }
+					   }
+					}
+				]
+			}
+		}`, ts.URL))
+		log.SetOutput(os.Stderr)
+		assert.Nil(t, err)
+		assert.Equal(t, "session-token-fffffff", context)
+	})
+
+func setupTestClient(t *testing.T, ts *httptest.Server, mfa string) (*Client, *creds.LoginDetails) {
+	testTransport := http.DefaultTransport.(*http.Transport).Clone()
+	testTransport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+	opts := &provider.HTTPClientOptions{IsWithRetries: false}
+	client, _ := provider.NewHTTPClient(testTransport, opts)
+	ac := &Client{
+		client:          client,
+		targetURL:       ts.URL,
+		mfa:             mfa,
+		disableSessions: false,
+		rememberDevice:  true,
+	}
+	loginDetails := &creds.LoginDetails{URL: ts.URL, Username: "user@example.com", Password: "test123"}
+	return ac, loginDetails
+}
+
+func setupTestDuoHttpServer(t *testing.T, duoFactor string) (*httptest.Server) {
 	verifyCounter := 0
 	statusCounter := 0
-	ts := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+  ts := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/frame/web/v1/auth":
 			query, err := url.ParseQuery(r.URL.RawQuery)
@@ -323,12 +379,14 @@ func TestVerifyMfa_Duo(t *testing.T) {
 			assert.Nil(t, err)
 
 			query, err = url.ParseQuery(string(body))
+
 			assert.Equal(t, url.Values{
 				"device":      {"phone1"},
 				"factor":      {"Duo Push"},
 				"out_of_date": {"false"},
 				"sid":         {"secret_sid"},
 			}, query)
+
 			assert.Nil(t, err)
 
 			_, err = w.Write([]byte(`{"stat": "OK", "response": {"txid": "txid_1234"}}`))
@@ -482,59 +540,8 @@ func TestVerifyMfa_Duo(t *testing.T) {
 			http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		}
 	}))
-	defer ts.Close()
 
-	t.Run("Duo", func(t *testing.T) {
-		oc, loginDetails := setupTestClient(t, ts, "DUO")
-
-		err := oc.setDeviceTokenCookie(loginDetails)
-		assert.Nil(t, err)
-
-		var out bytes.Buffer
-		log.SetOutput(&out)
-		context, err := verifyMfa(oc, "host-from-argument", &creds.LoginDetails{DuoMFAOption: "Duo Push"}, fmt.Sprintf(`{
-			"stateToken": "TOKEN_1",
-			"status": "MFA_REQUIRED",
-			"_embedded": {
-				"factors": [
-					{
-						"id": "factor_id",
-						"provider": "DUO",
-						"factorType": "web",
-						"_links": {
-						  "verify": {
-							"href": "%s/verify",
-							"hints": {
-							  "allow": [
-								"POST"
-							  ]
-							}
-						  }
-					   }
-					}
-				]
-			}
-		}`, ts.URL))
-		log.SetOutput(os.Stderr)
-		assert.Nil(t, err)
-		assert.Equal(t, "session-token-fffffff", context)
-	})
-}
-
-func setupTestClient(t *testing.T, ts *httptest.Server, mfa string) (*Client, *creds.LoginDetails) {
-	testTransport := http.DefaultTransport.(*http.Transport).Clone()
-	testTransport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
-	opts := &provider.HTTPClientOptions{IsWithRetries: false}
-	client, _ := provider.NewHTTPClient(testTransport, opts)
-	ac := &Client{
-		client:          client,
-		targetURL:       ts.URL,
-		mfa:             mfa,
-		disableSessions: false,
-		rememberDevice:  true,
-	}
-	loginDetails := &creds.LoginDetails{URL: ts.URL, Username: "user@example.com", Password: "test123"}
-	return ac, loginDetails
+	return ts
 }
 
 func TestSetDeviceTokenCookie(t *testing.T) {
