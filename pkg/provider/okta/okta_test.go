@@ -278,7 +278,7 @@ func TestVerifyMfa_Duo(t *testing.T) {
 
 		var out bytes.Buffer
 		log.SetOutput(&out)
-		context, err := verifyMfa(oc, "host-from-argument", &creds.LoginDetails{DuoMFAOption: "Passcode"}, fmt.Sprintf(`{
+		context, err := verifyMfa(oc, "host-from-argument", &creds.LoginDetails{DuoMFAOption: "Duo Push"}, fmt.Sprintf(`{
 			"stateToken": "TOKEN_1",
 			"status": "MFA_REQUIRED",
 			"_embedded": {
