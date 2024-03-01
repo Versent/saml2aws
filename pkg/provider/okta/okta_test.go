@@ -437,7 +437,7 @@ func setupTestDuoHttpServer(t *testing.T, duoFactor string) (*httptest.Server) {
 				assert.Equal(t, url.Values{
 					"device":      {"phone1"},
 					"factor":      {"Passcode"},
-					"passcode":		 {},
+					"passcode":    {"000000"},
 					"out_of_date": {"false"},
      			"sid":         {"secret_sid"},
 				}, query)
