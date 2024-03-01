@@ -18,8 +18,10 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/stretchr/testify/assert"
+	"github.com/versent/saml2aws/v2/mocks"
 	"github.com/versent/saml2aws/v2/pkg/cfg"
 	"github.com/versent/saml2aws/v2/pkg/creds"
+	"github.com/versent/saml2aws/v2/pkg/prompter"
 	"github.com/versent/saml2aws/v2/pkg/provider"
 )
 
@@ -304,6 +306,49 @@ func TestVerifyMfa_Duo(t *testing.T) {
 		assert.Equal(t, "session-token-fffffff", context)
 	})
 
+	t.Run("Passcode", func(t *testing.T) {
+		ts := setupTestDuoHttpServer(t, "Passcode")
+    defer ts.Close()
+		oc, loginDetails := setupTestClient(t, ts, "DUO")
+
+		err := oc.setDeviceTokenCookie(loginDetails)
+		assert.Nil(t, err)
+
+		pr := &mocks.Prompter{}
+		prompter.SetPrompter(pr)
+		pr.Mock.On("StringRequired", "Enter passcode").Return("000000")
+
+		var out bytes.Buffer
+		log.SetOutput(&out)
+		context, err := verifyMfa(oc, "host-from-argument", &creds.LoginDetails{DuoMFAOption: "Passcode"}, fmt.Sprintf(`{
+			"stateToken": "TOKEN_1",
+			"status": "MFA_REQUIRED",
+			"_embedded": {
+				"factors": [
+					{
+						"id": "factor_id",
+						"provider": "DUO",
+						"factorType": "web",
+						"_links": {
+						  "verify": {
+							"href": "%s/verify",
+							"hints": {
+							  "allow": [
+								"POST"
+							  ]
+							}
+						  }
+					   }
+					}
+				]
+			}
+		}`, ts.URL))
+		log.SetOutput(os.Stderr)
+		assert.Nil(t, err)
+		assert.Equal(t, "session-token-fffffff", context)
+	})
+}
+
 func setupTestClient(t *testing.T, ts *httptest.Server, mfa string) (*Client, *creds.LoginDetails) {
 	testTransport := http.DefaultTransport.(*http.Transport).Clone()
 	testTransport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
@@ -380,12 +425,23 @@ func setupTestDuoHttpServer(t *testing.T, duoFactor string) (*httptest.Server) {
 
 			query, err = url.ParseQuery(string(body))
 
-			assert.Equal(t, url.Values{
-				"device":      {"phone1"},
-				"factor":      {"Duo Push"},
-				"out_of_date": {"false"},
-				"sid":         {"secret_sid"},
-			}, query)
+			switch duoFactor {
+			case "Duo Push":
+				assert.Equal(t, url.Values{
+					"device":      {"phone1"},
+					"factor":      {"Duo Push"},
+					"out_of_date": {"false"},
+					"sid":         {"secret_sid"},
+			  }, query)
+				case "Passcode":
+				assert.Equal(t, url.Values{
+					"device":      {"phone1"},
+					"factor":      {"Passcode"},
+					"passcode":		 {},
+					"out_of_date": {"false"},
+     			"sid":         {"secret_sid"},
+				}, query)
+			}
 
 			assert.Nil(t, err)
 
