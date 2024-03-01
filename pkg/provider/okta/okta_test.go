@@ -433,7 +433,7 @@ func setupTestDuoHttpServer(t *testing.T, duoFactor string) (*httptest.Server) {
 					"out_of_date": {"false"},
 					"sid":         {"secret_sid"},
 			  }, query)
-				case "Passcode":
+			case "Passcode":
 				assert.Equal(t, url.Values{
 					"device":      {"phone1"},
 					"factor":      {"Passcode"},
