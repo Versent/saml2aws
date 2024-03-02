@@ -308,7 +308,7 @@ func TestVerifyMfa_Duo(t *testing.T) {
 
 	t.Run("Passcode", func(t *testing.T) {
 		ts := setupTestDuoHttpServer(t, "Passcode")
-    defer ts.Close()
+		defer ts.Close()
 		oc, loginDetails := setupTestClient(t, ts, "DUO")
 
 		err := oc.setDeviceTokenCookie(loginDetails)
@@ -365,11 +365,11 @@ func setupTestClient(t *testing.T, ts *httptest.Server, mfa string) (*Client, *c
 	return ac, loginDetails
 }
 
-func setupTestDuoHttpServer(t *testing.T, duoFactor string) (*httptest.Server) {
+func setupTestDuoHttpServer(t *testing.T, duoFactor string) *httptest.Server {
 	verifyCounter := 0
 	statusCounter := 0
 
-  ts := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	ts := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/frame/web/v1/auth":
 			query, err := url.ParseQuery(r.URL.RawQuery)
@@ -432,14 +432,14 @@ func setupTestDuoHttpServer(t *testing.T, duoFactor string) (*httptest.Server) {
 					"factor":      {"Duo Push"},
 					"out_of_date": {"false"},
 					"sid":         {"secret_sid"},
-			  }, query)
+				}, query)
 			case "Passcode":
 				assert.Equal(t, url.Values{
 					"device":      {"phone1"},
 					"factor":      {"Passcode"},
 					"passcode":    {"000000"},
 					"out_of_date": {"false"},
-     			"sid":         {"secret_sid"},
+					"sid":         {"secret_sid"},
 				}, query)
 			}
 
