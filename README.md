@@ -29,6 +29,8 @@ The process goes something like this:
     - [macOS](#macOS)
     - [Windows](#windows)
     - [Linux](#linux)
+      - [Ubuntu](#ubuntu)
+      - [Other](#other)
       - [Using Make](#using-make)
       - [Arch Linux and its derivatives](#arch-linux-and-its-derivatives)
       - [Void Linux](#void-linux)
@@ -113,6 +115,23 @@ saml2aws --version
 
 While brew is available for Linux you can also run the following without using a package manager.
 
+#### Ubuntu
+
+Some users of Ubuntu have reported issue with the [Others](#others) Install instruction and reported the following to work (may required using sudo command like for the "mv" function)
+
+```
+CURRENT_VERSION=$(curl -Ls https://api.github.com/repos/Versent/saml2aws/releases/latest | grep 'tag_name' | cut -d'v' -f2 | cut -d'"' -f1)
+wget https://github.com/Versent/saml2aws/releases/download/v${CURRENT_VERSION}/saml2aws_${CURRENT_VERSION}_linux_amd64.tar.gz
+tar -xzvf saml2aws_${CURRENT_VERSION}_linux_amd64.tar.gz
+mv saml2aws /usr/local/bin/
+chmod u+x /usr/local/bin/saml2aws
+saml2aws --version
+```
+
+For U2F support, replace wget line above with `wget https://github.com/Versent/saml2aws/releases/download/v${CURRENT_VERSION}/saml2aws-u2f_${CURRENT_VERSION}_linux_amd64.tar.gz`
+
+#### Other
+
 ```
 mkdir -p ~/.local/bin
 CURRENT_VERSION=$(curl -Ls https://api.github.com/repos/Versent/saml2aws/releases/latest | grep 'tag_name' | cut -d'v' -f2 | cut -d'"' -f1)
@@ -121,10 +140,9 @@ chmod u+x ~/.local/bin/saml2aws
 hash -r
 saml2aws --version
 ```
-If U2F support is required then there are separate builds for this - use the following download URL instead:
-```
-wget -c "https://github.com/Versent/saml2aws/releases/download/v${CURRENT_VERSION}/saml2aws-u2f_${CURRENT_VERSION}_linux_amd64.tar.gz" -O - | tar -xzv -C ~/.local/bin
-```
+If `saml2aws --version` does not work as intended, you may need to update your terminal configuration file (like ~/.bashrc, ~/.profile, ~/.zshrc) to include `export PATH="$PATH:$HOME/.local/bin/"` at the end of the file.
+
+For U2F support, replace wget line above with `wget -c "https://github.com/Versent/saml2aws/releases/download/v${CURRENT_VERSION}/saml2aws-u2f_${CURRENT_VERSION}_linux_amd64.tar.gz" -O - | tar -xzv -C ~/.local/bin`
 
 #### Using Make
 
