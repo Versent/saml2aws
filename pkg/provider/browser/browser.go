@@ -192,10 +192,8 @@ var autoFill = func(page playwright.Page, loginDetails *creds.LoginDetails) erro
 		return err
 	}
 
-	// Find the submit button of the form that the password field is in
-	return page.Locator("form", playwright.PageLocatorOptions{
-		Has: passwordField,
-	}).Locator("input[type='submit']").Click()
+	// Press Enter to send the current form
+	return keyboard.Press("Enter")
 }
 
 func signinRegex() (*regexp.Regexp, error) {
