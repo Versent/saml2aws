@@ -192,9 +192,7 @@ var autoFill = func(page playwright.Page, loginDetails *creds.LoginDetails) erro
 		return err
 	}
 
-	//If the submit button exists in the page, click it
-	// Press Enter to send the current form
-	// Find the submit button of the form that the password field is in
+	// Find the submit button or input of the form that the password field is in
 	submitLocator := page.Locator("form", playwright.PageLocatorOptions{
 		Has: passwordField,
 	}).Locator("[type='submit']")
@@ -202,6 +200,7 @@ var autoFill = func(page playwright.Page, loginDetails *creds.LoginDetails) erro
 	if err != nil {
 		return err
 	}
+
 	// when submit locator exists, Click it
 	if count > 0 {
 		return submitLocator.Click()
@@ -209,7 +208,6 @@ var autoFill = func(page playwright.Page, loginDetails *creds.LoginDetails) erro
 		_, err := page.Evaluate(`document.querySelector('input[type="password"]').form.submit()`, nil)
 		return err
 	}
-
 }
 
 func signinRegex() (*regexp.Regexp, error) {
