@@ -177,7 +177,7 @@ func main() {
 		errtpl = "%+v\n"
 	}
 
-	if *quiet {
+	if *quiet || (command == cmdLogin.FullCommand() && loginFlags.CredentialProcess) {
 		log.SetOutput(io.Discard)
 		logrus.SetOutput(io.Discard)
 	}
