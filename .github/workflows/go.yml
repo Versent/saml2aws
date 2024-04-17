@@ -50,7 +50,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v3
+        uses: golangci/golangci-lint-action@v4
         with:
           version: v1.55.2
           args: --timeout=2m
@@ -77,7 +77,7 @@ jobs:
           path: reports
 
       - name: Codecov
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
         with:
           directory: reports
           flags: unittests

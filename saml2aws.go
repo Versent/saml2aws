@@ -21,6 +21,7 @@ import (
 	"github.com/versent/saml2aws/v2/pkg/provider/okta"
 	"github.com/versent/saml2aws/v2/pkg/provider/onelogin"
 	"github.com/versent/saml2aws/v2/pkg/provider/pingfed"
+	"github.com/versent/saml2aws/v2/pkg/provider/pingntlm"
 	"github.com/versent/saml2aws/v2/pkg/provider/pingone"
 	"github.com/versent/saml2aws/v2/pkg/provider/shell"
 	"github.com/versent/saml2aws/v2/pkg/provider/shibboleth"
@@ -36,10 +37,11 @@ var MFAsByProvider = ProviderList{
 	"ADFS":          []string{"Auto", "VIP", "Azure", "Defender"},
 	"ADFS2":         []string{"Auto", "RSA"}, // nothing automatic about ADFS 2.x
 	"Ping":          []string{"Auto"},        // automatically detects PingID
+	"PingNTLM":      []string{"Auto"},        // automatically detects PingID
 	"PingOne":       []string{"Auto"},        // automatically detects PingID
 	"JumpCloud":     []string{"Auto", "TOTP", "WEBAUTHN", "DUO", "PUSH"},
 	"Okta":          []string{"Auto", "PUSH", "DUO", "SMS", "TOTP", "OKTA", "FIDO", "YUBICO TOKEN:HARDWARE", "SYMANTEC"}, // automatically detects DUO, SMS, ToTP, and FIDO
-	"OneLogin":      []string{"Auto", "OLP", "SMS", "TOTP", "YUBIKEY"},                                                   // automatically detects OneLogin Protect, SMS and ToTP
+	"OneLogin":      []string{"Auto", "OLP", "SMS", "TOTP", "YUBIKEY", "DUO TOTP"},                                       // automatically detects OneLogin Protect, SMS and ToTP
 	"Authentik":     []string{"Auto"},
 	"KeyCloak":      []string{"Auto"}, // automatically detects ToTP
 	"GoogleApps":    []string{"Auto"}, // automatically detects ToTP
@@ -116,6 +118,11 @@ func NewSAMLClient(idpAccount *cfg.IDPAccount) (SAMLClient, error) {
 			return nil, fmt.Errorf("Invalid MFA type: %v for %v provider", idpAccount.MFA, idpAccount.Provider)
 		}
 		return pingfed.New(idpAccount)
+	case "PingNTLM":
+		if invalidMFA(idpAccount.Provider, idpAccount.MFA) {
+			return nil, fmt.Errorf("Invalid MFA type: %v for %v provider", idpAccount.MFA, idpAccount.Provider)
+		}
+		return pingntlm.New(idpAccount)
 	case "PingOne":
 		if invalidMFA(idpAccount.Provider, idpAccount.MFA) {
 			return nil, fmt.Errorf("Invalid MFA type: %v for %v provider", idpAccount.MFA, idpAccount.Provider)

@@ -91,7 +91,7 @@ jobs:
 
     - name: Retrieve the release asset
       id: asset
-      uses: robinraju/release-downloader@efa4cd07bd0195e6cc65e9e30c251b49ce4d3e51  # v1.8
+      uses: robinraju/release-downloader@368754b9c6f47c345fcfbf42bcb577c2f0f5f395  # v1.9
       with:
         repository: ${{ github.repository }}
         tag: ${{ env.VER_TAG }}
@@ -110,7 +110,7 @@ jobs:
         cat "${INSTALLER}/wix.sh" | docker run --rm -i -e VERSION -v "${INSTALLER}:/wix" ${WIXIMG} /bin/sh
 
     - name: Upload the asset to the release
-      uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844  # v0.1.15 / v1
+      uses: softprops/action-gh-release@9d7c94cfd0a1f3ed45544c887983e9fa900f0564  # v0.2.0.4.2.0.45 / v2.0.4
       with:
         tag_name: ${{ env.VER_TAG }}
         files: ${{ env.INSTALLER }}/out/*.msi
