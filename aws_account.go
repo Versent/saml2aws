@@ -23,6 +23,7 @@ func ParseAWSAccounts(audience string, samlAssertion string) ([]*AWSAccount, err
 	if err != nil {
 		return nil, errors.Wrap(err, "error retrieving AWS login form")
 	}
+	defer res.Body.Close()
 
 	data, err := io.ReadAll(res.Body)
 	if err != nil {
