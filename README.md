@@ -708,6 +708,11 @@ http_attempts_count     = 3
 http_retry_delay        = 1
 region                  = us-east-1
 ```
+
+For KeyCloak, 2 more parameters are available to end a failed authentication process.
+ - `kc_auth_error_element` - configures what HTTP element saml2aws looks for in authentication error responses. Defaults to "span#input-error" and looks for `<span id=input-error>xxx</span>`. Goquery is used. "span#id-name" looks for `<span id=id-name>xxx</span>`. "span.class-name" looks for `<span class=class-name>xxx</span>`.
+ - `kc_auth_error_message` - works with the `kc_auth_error_element` and configures what HTTP message saml2aws looks for in authentication error responses. Defaults to "Invalid username or password." and looks for `<xxx>Invalid username or password.</xxx>`. [Regular expressions](https://github.com/google/re2/wiki/Syntax) are accepted.
+
 ## Building
 
 ### macOS
