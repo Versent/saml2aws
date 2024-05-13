@@ -65,6 +65,8 @@ type IDPAccount struct {
 	BrowserDriverDir      string `ini:"browser_driver_dir,omitempty"` // used by browser; hide from user if not set
 	Headless              bool   `ini:"headless"`                     // used by browser
 	Prompter              string `ini:"prompter"`
+	KCAuthErrorMessage    string `ini:"kc_auth_error_message,omitempty"` // used by KeyCloak; hide from user if not set
+	KCAuthErrorElement    string `ini:"kc_auth_error_element,omitempty"` // used by KeyCloak; hide from user if not set
 }
 
 func (ia IDPAccount) String() string {
