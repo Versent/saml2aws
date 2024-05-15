@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"os"
 	"regexp"
 	"strings"
 
@@ -109,13 +110,40 @@ func (cl *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		return "", err
 	}
 
-	page, err := browser.NewPage()
+	// create Context Optionsf
+	contextOptions := playwright.BrowserNewContextOptions{}
+
+	// load saved storageState if present and add to contextOptions
+	userHomeDir, err := os.UserHomeDir()
+	storageStatePath := fmt.Sprintf("%s/.aws/saml2aws/storageState.json", userHomeDir)
+	if err != nil {
+		return "", err
+	}
+	if _, err := os.Stat(storageStatePath); err == nil {
+		contextOptions.StorageStatePath = playwright.String(storageStatePath)
+	}
+
+	// Create new broswer context
+	context, err := browser.NewContext(contextOptions)
+	if err != nil {
+		return "", err
+	}
+
+	page, err := context.NewPage()
 	if err != nil {
 		return "", err
 	}
 
 	defer func() {
+		logger.Info("saving storage state")
+		_, err := context.StorageState(storageStatePath)
+		if err != nil {
+			logger.Info("Error saving storage state", err)
+		}
 		logger.Info("clean up browser")
+		if err := context.Close(); err != nil {
+			logger.Info("Error when closing context", err)
+		}
 		if err := browser.Close(); err != nil {
 			logger.Info("Error when closing browser", err)
 		}
@@ -128,8 +156,21 @@ func (cl *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 }
 
 var getSAMLResponse = func(page playwright.Page, loginDetails *creds.LoginDetails, client *Client) (string, error) {
+	var data string
+	var dataErr error
+
 	logger.WithField("URL", loginDetails.URL).Info("opening browser")
 
+	signin_re, err := signinRegex()
+	if err != nil {
+		return "", err
+	}
+
+	page.OnRequest(func(request playwright.Request) {
+		if signin_re.Match([]byte(request.URL())) {
+			data, dataErr = request.PostData()
+		}
+	})
 	if _, err := page.Goto(loginDetails.URL); err != nil {
 		return "", err
 	}
@@ -141,18 +182,15 @@ var getSAMLResponse = func(page playwright.Page, loginDetails *creds.LoginDetail
 		}
 	}
 
-	// https://docs.aws.amazon.com/general/latest/gr/signin-service.html
-	// https://docs.amazonaws.cn/en_us/aws/latest/userguide/endpoints-Ningxia.html
-	// https://docs.amazonaws.cn/en_us/aws/latest/userguide/endpoints-Beijing.html
-	signin_re, err := signinRegex()
-	if err != nil {
-		return "", err
-	}
-
 	logger.Info("waiting ...")
-	r, _ := page.ExpectRequest(signin_re, nil, client.expectRequestTimeout())
-	data, err := r.PostData()
-	if err != nil {
+	if data == "" {
+		r, err := page.ExpectRequest(signin_re, nil, client.expectRequestTimeout())
+		if err != nil {
+			logger.Error(err)
+		}
+		data, dataErr = r.PostData()
+	}
+	if dataErr != nil {
 		return "", err
 	}
 
