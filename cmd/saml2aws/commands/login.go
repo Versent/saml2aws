@@ -148,6 +148,18 @@ func Login(loginFlags *flags.LoginExecFlags) error {
 		if err != nil {
 			return err
 		}
+		// Check if a custom credential file is used
+		customCredentialsFile, err := CustomCredentialsFile(sharedCreds.Filename)
+		if err != nil {
+			return err
+		}
+		// If a custom credential file is used then save credentials. This allows for autorefreshing of credentials, which is not supported with the default credential file. See https://github.com/Versent/saml2aws/issues/895
+		if customCredentialsFile {
+			err = saveCredentials(awsCreds, sharedCreds)
+			if err != nil {
+				return err
+			}
+		}
 	} else {
 		err = saveCredentials(awsCreds, sharedCreds)
 		if err != nil {
@@ -406,6 +418,20 @@ func CredentialsToCredentialProcess(awsCreds *awsconfig.AWSCredentials) (string,
 		return "", errors.Wrap(err, "Error while marshalling the credential process.")
 	}
 	return string(p), nil
+
+}
+
+func CustomCredentialsFile(credentialsFile string) (bool, error) {
+
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return false, err
+	}
+	defaultCredentialsFile := fmt.Sprintf("%s/.aws/credentials", homeDir)
+	if defaultCredentialsFile == credentialsFile {
+		return false, nil
+	}
+	return true, nil
 
 }
 
