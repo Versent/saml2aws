@@ -28,7 +28,18 @@ var logger = logrus.WithField("provider", "Keycloak")
 type Client struct {
 	provider.ValidateBase
 
-	client *provider.HTTPClient
+	client             *provider.HTTPClient
+	authErrorValidator *authErrorValidator
+}
+
+const (
+	DefaultAuthErrorElement = "span#input-error"
+	DefaultAuthErrorMessage = "Invalid username or password."
+)
+
+type authErrorValidator struct {
+	httpMessageRE *regexp.Regexp
+	httpElement   string
 }
 
 type authContext struct {
@@ -47,9 +58,36 @@ func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 		return nil, errors.Wrap(err, "error building http client")
 	}
 
+	authErrorValidator, err := CustomizeAuthErrorValidator(idpAccount)
+	if err != nil {
+		return nil, errors.Wrap(err, "error customizing auth error validator")
+	}
+
 	return &Client{
-		client: client,
+		client:             client,
+		authErrorValidator: authErrorValidator,
 	}, nil
+}
+
+func CustomizeAuthErrorValidator(account *cfg.IDPAccount) (*authErrorValidator, error) {
+	customValidator := &authErrorValidator{}
+	var err error
+
+	message := account.KCAuthErrorMessage
+	if message == "" {
+		message = DefaultAuthErrorMessage
+	}
+	customValidator.httpMessageRE, err = regexp.Compile(message)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not compile regular expression")
+	}
+
+	customValidator.httpElement = account.KCAuthErrorElement
+	if customValidator.httpElement == "" {
+		customValidator.httpElement = DefaultAuthErrorElement
+	}
+
+	return customValidator, nil
 }
 
 // Authenticate logs into KeyCloak and returns a SAML response
@@ -104,7 +142,7 @@ func (kc *Client) doAuthenticate(authCtx *authContext, loginDetails *creds.Login
 	}
 
 	samlResponse, err := extractSamlResponse(doc)
-	if err != nil && authCtx.authenticatorIndexValid && passwordValid(doc) {
+	if err != nil && authCtx.authenticatorIndexValid && passwordValid(doc, kc.authErrorValidator) {
 		return kc.doAuthenticate(authCtx, loginDetails)
 	}
 	return samlResponse, err
@@ -355,11 +393,11 @@ func extractSamlResponse(doc *goquery.Document) (string, error) {
 	return samlAssertion, err
 }
 
-func passwordValid(doc *goquery.Document) bool {
+func passwordValid(doc *goquery.Document, authErrorValidator *authErrorValidator) bool {
 	var valid = true
-	doc.Find("span#input-error").Each(func(i int, s *goquery.Selection) {
+	doc.Find(authErrorValidator.httpElement).Each(func(i int, s *goquery.Selection) {
 		text := s.Text()
-		if strings.Contains(text, "Invalid username or password.") {
+		if authErrorValidator.httpMessageRE.MatchString(text) {
 			valid = false
 			return
 		}

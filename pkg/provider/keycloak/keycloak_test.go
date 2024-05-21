@@ -12,6 +12,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/versent/saml2aws/v2/mocks"
+	"github.com/versent/saml2aws/v2/pkg/cfg"
 	"github.com/versent/saml2aws/v2/pkg/creds"
 	"github.com/versent/saml2aws/v2/pkg/prompter"
 	"github.com/versent/saml2aws/v2/pkg/provider"
@@ -261,4 +262,112 @@ func TestClient_extractWebauthnParameters(t *testing.T) {
 	require.Equal(t, expectedCredentialIDs, credentialIDs)
 	require.Equal(t, "J3NKWZPkSmqXuoKLtzzshg", challenge)
 	require.Equal(t, "localhost", rpID)
+}
+
+func TestClient_CustomizeAuthErrorValidator_DefaultSetup(t *testing.T) {
+	// Test with the default auth error message and the default HTTP element
+	idpAccount := cfg.IDPAccount{
+		KCAuthErrorMessage: "",
+		KCAuthErrorElement: "",
+	}
+	authErrorValidator, err := CustomizeAuthErrorValidator(&idpAccount)
+	require.Nil(t, err)
+	require.Equal(t, authErrorValidator.httpMessageRE.String(), DefaultAuthErrorMessage)
+	require.Equal(t, authErrorValidator.httpElement, DefaultAuthErrorElement)
+}
+
+func TestClient_CustomizeAuthErrorValidator_CustomSetup(t *testing.T) {
+	// Test with multiple auth error messages and the default HTTP element
+	ErrMessage1 := "Invalid username or password."
+	ErrMessage2 := "Account is disabled, contact your administrator."
+	httpElement := ""
+	idpAccount := cfg.IDPAccount{
+		KCAuthErrorMessage: ErrMessage1 + "|" + ErrMessage2,
+		KCAuthErrorElement: httpElement,
+	}
+	authErrorValidator, err := CustomizeAuthErrorValidator(&idpAccount)
+	require.Nil(t, err)
+	require.Equal(t, authErrorValidator.httpMessageRE.String(), ErrMessage1+"|"+ErrMessage2)
+	require.Equal(t, authErrorValidator.httpElement, DefaultAuthErrorElement)
+
+	// Test with multiple auth error messages in a non-English language and a customized HTTP element
+	ErrMessage1 = "無効なユーザー名またはパスワードです。"      // "Invalid username or password." in Japanese
+	ErrMessage2 = "アカウントは無効です。管理者に連絡してください。" // "Account is disabled, contact your administrator." in Japanese
+	httpElement = "span.kc-feedback-text"
+	idpAccount = cfg.IDPAccount{
+		KCAuthErrorMessage: ErrMessage1 + "|" + ErrMessage2,
+		KCAuthErrorElement: httpElement,
+	}
+	authErrorValidator, err = CustomizeAuthErrorValidator(&idpAccount)
+	require.Nil(t, err)
+	require.Equal(t, authErrorValidator.httpMessageRE.String(), ErrMessage1+"|"+ErrMessage2)
+	require.Equal(t, authErrorValidator.httpElement, httpElement)
+}
+func TestClient_passwordValid_DefaultValidator(t *testing.T) {
+	// Test with the default auth error message and the default HTTP element
+	idpAccount := cfg.IDPAccount{
+		KCAuthErrorMessage: "",
+		KCAuthErrorElement: "",
+	}
+	authErrorValidator, err := CustomizeAuthErrorValidator(&idpAccount)
+	require.Nil(t, err)
+
+	data, err := os.ReadFile("example/authError-invalidPassword.html")
+	require.Nil(t, err)
+
+	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(data))
+	require.Nil(t, err)
+
+	require.Equal(t, passwordValid(doc, authErrorValidator), false)
+}
+
+func TestClient_passwordValid_CustomValidator(t *testing.T) {
+	// Test with multiple auth error messages and the default HTTP element
+	idpAccount := cfg.IDPAccount{
+		KCAuthErrorMessage: "Invalid username or password.|Account is disabled, contact your administrator.",
+		KCAuthErrorElement: "",
+	}
+	authErrorValidator, err := CustomizeAuthErrorValidator(&idpAccount)
+	require.Nil(t, err)
+
+	// Test with "Invalid username or password."
+	data, err := os.ReadFile("example/authError-invalidPassword.html")
+	require.Nil(t, err)
+
+	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(data))
+	require.Nil(t, err)
+	require.Equal(t, passwordValid(doc, authErrorValidator), false)
+
+	// Test with "Account is disabled, contact your administrator."
+	data, err = os.ReadFile("example/authError-accountDisabled.html")
+	require.Nil(t, err)
+
+	doc, err = goquery.NewDocumentFromReader(bytes.NewReader(data))
+	require.Nil(t, err)
+	require.Equal(t, passwordValid(doc, authErrorValidator), false)
+
+	// Test with multiple auth error messages in a non-English language and a customized HTTP element
+	idpAccount = cfg.IDPAccount{
+		// "Invalid username or password.|Account is disabled, contact your administrator." in Japanese
+		KCAuthErrorMessage: "無効なユーザー名またはパスワードです。|アカウントは無効です。管理者に連絡してください。",
+		KCAuthErrorElement: "span.kc-feedback-text",
+	}
+	authErrorValidator, err = CustomizeAuthErrorValidator(&idpAccount)
+	require.Nil(t, err)
+
+	// Test with "Invalid username or password." in Japanese
+	data, err = os.ReadFile("example/authError-invalidPassword_ja.html")
+	require.Nil(t, err)
+
+	doc, err = goquery.NewDocumentFromReader(bytes.NewReader(data))
+	require.Nil(t, err)
+	require.Equal(t, passwordValid(doc, authErrorValidator), false)
+
+	// Test with "Account is disabled, contact your administrator." in Japanese
+	data, err = os.ReadFile("example/authError-accountDisabled_ja.html")
+	require.Nil(t, err)
+
+	doc, err = goquery.NewDocumentFromReader(bytes.NewReader(data))
+	require.Nil(t, err)
+	require.Equal(t, passwordValid(doc, authErrorValidator), false)
 }
