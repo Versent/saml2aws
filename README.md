@@ -708,6 +708,31 @@ http_attempts_count     = 3
 http_retry_delay        = 1
 region                  = us-east-1
 ```
+
+For KeyCloak, 2 more parameters are available to end a failed authentication process.
+ - `kc_auth_error_element` - configures what HTTP element saml2aws looks for in authentication error responses. Defaults to "span#input-error" and looks for `<span id=input-error>xxx</span>`. Goquery is used. "span#id-name" looks for `<span id=id-name>xxx</span>`. "span.class-name" looks for `<span class=class-name>xxx</span>`.
+ - `kc_auth_error_message` - works with the `kc_auth_error_element` and configures what HTTP message saml2aws looks for in authentication error responses. Defaults to "Invalid username or password." and looks for `<xxx>Invalid username or password.</xxx>`. [Regular expressions](https://github.com/google/re2/wiki/Syntax) are accepted.
+
+Example: If your KeyCloak server returns the authentication error message "Invalid username or password." in a different language in the `<span class=kc-feedback-text>xxx</span>` element, these parameters would look like:
+```
+[default]
+url                     = https://id.customer.cloud
+username                = user@versent.com.au
+provider                = KeyCloak
+...
+kc_auth_error_element   = span.kc-feedback-text
+kc_auth_error_message   = "Ungültiger Benutzername oder Passwort."
+```
+If your KeyCloak server returns a different error message depending on an authentication error type, use a pipe as a separator and add multiple messages to the `kc_auth_error_message`:
+```
+[default]
+url                     = https://id.customer.cloud
+username                = user@versent.com.au
+provider                = KeyCloak
+...
+kc_auth_error_message   = "Invalid username or password.|Account is disabled, contact your administrator."
+```
+
 ## Building
 
 ### macOS
