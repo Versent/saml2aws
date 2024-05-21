@@ -2,6 +2,7 @@ package commands
 
 import (
 	"fmt"
+	"os"
 	"testing"
 	"time"
 
@@ -93,4 +94,34 @@ func TestCredentialsToCredentialProcess(t *testing.T) {
 	json, err := CredentialsToCredentialProcess(aws_creds)
 	assert.Empty(t, err)
 	assert.Equal(t, aws_json_expected_output, json)
+}
+
+func TestCustomCredentialsFile(t *testing.T) {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		t.Error("Error getting os.UserHomeDir() in test")
+	}
+
+	defaultCredentialsFile := fmt.Sprintf("%s/.aws/credentials", homeDir)
+	customCredentialsFile := fmt.Sprintf("%s/.aws/saml2aws.creds", homeDir)
+
+	// Testing default credential file
+	got, err := CustomCredentialsFile(defaultCredentialsFile)
+	if err != nil {
+		t.Error("Error running CustomCredentialsFile in test")
+	}
+	want := false
+	if got != want {
+		t.Errorf("got %t, wanted %t", got, want)
+	}
+
+	// Testing custom credential file
+	got, err = CustomCredentialsFile(customCredentialsFile)
+	if err != nil {
+		t.Error("Error running CustomCredentialsFile in test")
+	}
+	want = true
+	if got != want {
+		t.Errorf("got %t, wanted %t", got, want)
+	}
 }
