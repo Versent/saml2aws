@@ -364,12 +364,7 @@ func (kc *Client) loadNewLoginPage(submitURL string, referer string, authForm ur
 	return actionURL, formData, nil
 }
 
-/**
-
-
-
-**/
-
+// Get inspiration from https://github.com/cevoaustralia/aws-google-auth/pull/281/files
 func (kc *Client) loadNewChallengePage(submitURL string, authForm url.Values, loginDetails *creds.LoginDetails) (*goquery.Document, error) {
 
 	authForm.Set("bgresponse", "js_enabled")
