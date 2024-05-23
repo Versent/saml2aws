@@ -578,8 +578,7 @@ func (kc *Client) loadChallengePage(submitURL string, referer string, authForm u
 	if errMsg != "" {
 		return nil, errors.New("Invalid username or password")
 	}
-	html, _ := doc.Html()
-	logger.Debugf("Challenge\n%s\n", html)
+
 	secondFactorHeader := "This extra step shows it’s really you trying to sign in"
 	secondFactorHeader2 := "This extra step shows that it’s really you trying to sign in"
 	secondFactorHeaderJp := "2 段階認証プロセス"
