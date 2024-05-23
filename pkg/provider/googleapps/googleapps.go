@@ -230,13 +230,42 @@ func (kc *Client) loadFirstPage(loginDetails *creds.LoginDetails) (string, url.V
 	if err != nil {
 		return "", url.Values{}, errors.Wrap(err, "failed to define URL for html doc")
 	}
+	// html, _ := doc.Html()
+	// fmt.Printf("\n%s\n", html)
 
-	authForm, submitURL, err := extractInputsByFormID(doc, "gaia_loginform", "challenge")
-	if err != nil {
-		return "", nil, errors.Wrap(err, "failed to build login form data")
+	foundNewAuthForm := doc.Find("#identifierId").Closest("form")
+
+	if len(foundNewAuthForm.Nodes) == 0 {
+		logger.Info("Old form detected")
+		authForm, submitURL, err := extractInputsByFormID(doc, "gaia_loginform", "challenge")
+		if err != nil {
+			return "", nil, errors.Wrap(err, "failed to build login form data")
+		}
+		return submitURL, authForm, err
+	} else {
+		logger.Info("New form detected")
+		formData := url.Values{}
+		actionAttr, _ := foundNewAuthForm.Attr("action")
+		actionURL, _ := generateFullURLIfRelative(actionAttr, doc.Url.String())
+		foundNewAuthForm.Find("input").Each(func(i int, s *goquery.Selection) {
+			name, ok := s.Attr("name")
+			if !ok {
+				return
+			}
+			val, ok := s.Attr("value")
+			if !ok {
+				return
+			}
+			logger.Infof("name: %s value: %s", name, val)
+			formData.Add(name, val)
+		})
+		// To support new login page
+		formData.Set("identifier", loginDetails.Username)
+		fmt.Printf("actionURL: %s\nformData %v\n", actionURL, formData)
+
+		return actionURL, formData, nil
 	}
 
-	return submitURL, authForm, err
 }
 
 func (kc *Client) loadLoginPage(submitURL string, referer string, authForm url.Values) (string, url.Values, error) {
@@ -266,12 +295,38 @@ func (kc *Client) loadLoginPage(submitURL string, referer string, authForm url.V
 		return "", url.Values{}, errors.Wrap(err, "failed to define URL for html doc")
 	}
 
-	loginForm, loginURL, err := extractInputsByFormID(doc, "gaia_loginform", "challenge")
-	if err != nil {
-		return "", nil, errors.Wrap(err, "failed to build login form data")
-	}
+	html, _ := doc.Html()
+	fmt.Printf("Second\n%s\n", html)
 
-	return loginURL, loginForm, err
+	foundNewAuthForm := doc.Find("#identifierId").Closest("form")
+	fmt.Printf("foundNewAuthForm: %v\n", foundNewAuthForm)
+	if len(foundNewAuthForm.Nodes) == 0 {
+		loginForm, loginURL, err := extractInputsByFormID(doc, "gaia_loginform", "challenge")
+		if err != nil {
+			return "", nil, errors.Wrap(err, "failed to build login form data")
+		}
+
+		return loginURL, loginForm, err
+	} else {
+		formData := url.Values{}
+		actionAttr, _ := foundNewAuthForm.Attr("action")
+		actionURL, _ := generateFullURLIfRelative(actionAttr, doc.Url.String())
+		foundNewAuthForm.Find("input").Each(func(i int, s *goquery.Selection) {
+			name, ok := s.Attr("name")
+			if !ok {
+				return
+			}
+			val, ok := s.Attr("value")
+			if !ok {
+				return
+			}
+			logger.Debugf("name: %s value: %s", name, val)
+			formData.Add(name, val)
+		})
+		fmt.Printf("actionURL: %s\nformData %v\n", actionURL, formData)
+
+		return actionURL, formData, nil
+	}
 }
 
 func (kc *Client) loadChallengePage(submitURL string, referer string, authForm url.Values, loginDetails *creds.LoginDetails) (*goquery.Document, error) {
@@ -308,7 +363,8 @@ func (kc *Client) loadChallengePage(submitURL string, referer string, authForm u
 	if errMsg != "" {
 		return nil, errors.New("Invalid username or password")
 	}
-
+	html, _ := doc.Html()
+	logger.Debugf("Challenge\n%s\n", html)
 	secondFactorHeader := "This extra step shows it’s really you trying to sign in"
 	secondFactorHeader2 := "This extra step shows that it’s really you trying to sign in"
 	secondFactorHeaderJp := "2 段階認証プロセス"
@@ -614,6 +670,7 @@ func extractInputsByFormQuery(doc *goquery.Document, formQuery string) (url.Valu
 	var actionAttr string
 
 	query := fmt.Sprintf("form%s", formQuery)
+	fmt.Printf("query: %s\n", query)
 
 	currentURL := doc.Url.String()
 
