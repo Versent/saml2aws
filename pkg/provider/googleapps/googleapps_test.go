@@ -79,6 +79,16 @@ func TestContentContainsMessage2(t *testing.T) {
 	require.Equal(t, "This extra step shows that it’s really you trying to sign in", txt)
 }
 
+func TestContentContainsMessage3(t *testing.T) {
+	html := `<html><body><h1>2-Step Verification</h1></body></html>`
+
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(html))
+	require.Nil(t, err)
+
+	txt := extractNodeText(doc, "h1", "2-Step Verification")
+	require.Equal(t, "2-Step Verification", txt)
+}
+
 func TestPasswordFormChallengeId1(t *testing.T) {
 	data, err := os.ReadFile("example/form-password-challengeid-1.html")
 	require.Nil(t, err)
@@ -129,6 +139,32 @@ func TestPasswordFormChallengeId2(t *testing.T) {
 	require.Equal(t, "2", passwordForm.Get("challengeId"))
 	// check pre-filled email
 	require.NotEmpty(t, passwordForm.Get("Email"))
+	// check password form
+	require.Empty(t, passwordForm.Get("Passwd"))
+}
+
+func TestPasswordFormChallengeId3(t *testing.T) {
+	data, err := os.ReadFile("example/form-password-challengeid-3.html")
+	require.Nil(t, err)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write(data)
+	}))
+	defer ts.Close()
+
+	opts := &provider.HTTPClientOptions{IsWithRetries: false}
+	kc := Client{client: &provider.HTTPClient{Client: http.Client{}, Options: opts}}
+	loginDetails := &creds.LoginDetails{URL: ts.URL, Username: "test-id3@example.com", Password: "test123"}
+
+	authForm := url.Values{}
+	authForm.Set("bgresponse", "js_enabled")
+	authForm.Set("identifier", loginDetails.Username)
+
+	passwordURL, passwordForm, err := kc.loadLoginPage(ts.URL, loginDetails.URL+"&hl=en&loc=US", authForm)
+	require.Nil(t, err)
+	require.NotEmpty(t, passwordURL)
+	// check pre-filled email
+	require.NotEmpty(t, passwordForm.Get("identifier"))
 	// check password form
 	require.Empty(t, passwordForm.Get("Passwd"))
 }
