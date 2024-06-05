@@ -36,7 +36,7 @@ import (
 const (
 	IdentifierDuoMfa          = "DUO WEB"
 	IdentifierSmsMfa          = "OKTA SMS"
-	IdentifierEMailMfa        = "OKTA EMAIL"
+	IdentifierEmailMfa        = "OKTA EMAIL"
 	IdentifierPushMfa         = "OKTA PUSH"
 	IdentifierTotpMfa         = "GOOGLE TOKEN:SOFTWARE:TOTP"
 	IdentifierOktaTotpMfa     = "OKTA TOKEN:SOFTWARE:TOTP"
@@ -51,7 +51,7 @@ var (
 	supportedMfaOptions = map[string]string{
 		IdentifierDuoMfa:          "DUO MFA authentication",
 		IdentifierSmsMfa:          "SMS MFA authentication",
-		IdentifierEMailMfa:        "Email MFA authentication",
+		IdentifierEmailMfa:        "EMAIL MFA authentication",
 		IdentifierPushMfa:         "PUSH MFA authentication",
 		IdentifierTotpMfa:         "TOTP MFA authentication",
 		IdentifierOktaTotpMfa:     "Okta MFA authentication",
@@ -813,7 +813,7 @@ func verifyMfa(oc *Client, oktaOrgHost string, loginDetails *creds.LoginDetails,
 	switch mfa := challengeContext.mfaIdentifer; mfa {
 	case IdentifierYubiMfa:
 		return gjson.Get(challengeContext.challengeResponseBody, "sessionToken").String(), nil
-	case IdentifierSmsMfa, IdentifierEMailMfa, IdentifierTotpMfa, IdentifierOktaTotpMfa, IdentifierSymantecTotpMfa:
+	case IdentifierSmsMfa, IdentifierEmailMfa, IdentifierTotpMfa, IdentifierOktaTotpMfa, IdentifierSymantecTotpMfa:
 		var verifyCode = loginDetails.MFAToken
 		if verifyCode == "" {
 			verifyCode = prompter.RequestSecurityCode("000000")
