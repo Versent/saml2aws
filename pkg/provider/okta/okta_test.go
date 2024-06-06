@@ -267,6 +267,54 @@ func TestVerifyMfa(t *testing.T) {
 	})
 }
 
+func TestVerifyMfa_Email(t *testing.T) {
+
+	ts := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/verify":
+			_, err := w.Write([]byte(`{
+				"sessionToken": "TOKEN_3",
+				"status": "SUCCESS"
+			}`))
+			assert.Nil(t, err)
+
+		default:
+			http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		}
+	}))
+	defer ts.Close()
+
+	t.Run("Email", func(t *testing.T) {
+		oc, loginDetails := setupTestClient(t, ts, "EMAIL")
+
+		err := oc.setDeviceTokenCookie(loginDetails)
+		assert.Nil(t, err)
+
+		var out bytes.Buffer
+		log.SetOutput(&out)
+		context, err := verifyMfa(oc, "", &creds.LoginDetails{
+			MFAToken: "123456",
+		}, fmt.Sprintf(`{
+			"stateToken": "TOKEN_1",
+			"_embedded": {
+				"factors": [
+					{
+						"id": "EMAIL",
+						"provider": "OKTA",
+						"factorType": "EMAIL",
+						"_links": {
+							"verify": { "href": "%s/verify" }
+						}
+					}
+				]
+			}
+		}`, ts.URL))
+		log.SetOutput(os.Stderr)
+		assert.Nil(t, err)
+		assert.Equal(t, context, "TOKEN_3")
+	})
+}
+
 func TestVerifyMfa_Duo(t *testing.T) {
 	t.Run("Duo Push", func(t *testing.T) {
 		ts := setupTestDuoHttpServer(t, "Duo Push")
