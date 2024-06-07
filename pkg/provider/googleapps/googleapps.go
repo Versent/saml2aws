@@ -88,6 +88,7 @@ func (kc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 	captchaInputIds := []string{
 		"logincaptcha",
 		"identifier-captcha-input",
+		"captchaimg",
 	}
 
 	var captchaFound *goquery.Selection
@@ -103,6 +104,10 @@ func (kc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 
 	for captchaFound != nil && captchaFound.Length() > 0 {
 		captchaImgDiv := responseDoc.Find(".captcha-img")
+		if captchaImgDiv != nil {
+			captchaImgDiv = responseDoc.Find("div[data-auto-init='CaptchaInput']")
+			captchaInputId = "ca"
+		}
 		captchaPictureSrc, found := goquery.NewDocumentFromNode(captchaImgDiv.Children().Nodes[0]).Attr("src")
 
 		if !found {
