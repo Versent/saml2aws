@@ -63,7 +63,14 @@ func (kc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 	// Post email address w/o password, then Get the password-input page
 	passwordURL, passwordForm, err := kc.loadLoginPage(authURL+"?hl=en&loc=US", loginDetails.URL+"&hl=en&loc=US", authForm)
 	if err != nil {
-		return "", errors.Wrap(err, "error loading login page")
+		//if failed, try with "identifier"
+		authForm.Set("Email", "") // Clear previous key
+		authForm.Set("identifier", loginDetails.Username)
+		passwordURL, passwordForm, err = kc.loadLoginPage(authURL+"?hl=en&loc=US", loginDetails.URL+"&hl=en&loc=US", authForm)
+
+		if err != nil {
+			return "", errors.Wrap(err, "error loading login page")
+		}
 	}
 
 	logger.Debugf("loginURL: %s", passwordURL)
@@ -81,6 +88,7 @@ func (kc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 	captchaInputIds := []string{
 		"logincaptcha",
 		"identifier-captcha-input",
+		"captchaimg",
 	}
 
 	var captchaFound *goquery.Selection
@@ -96,6 +104,10 @@ func (kc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 
 	for captchaFound != nil && captchaFound.Length() > 0 {
 		captchaImgDiv := responseDoc.Find(".captcha-img")
+		if captchaImgDiv != nil {
+			captchaImgDiv = responseDoc.Find("div[data-auto-init='CaptchaInput']")
+			captchaInputId = "ca"
+		}
 		captchaPictureSrc, found := goquery.NewDocumentFromNode(captchaImgDiv.Children().Nodes[0]).Attr("src")
 
 		if !found {
@@ -311,11 +323,13 @@ func (kc *Client) loadChallengePage(submitURL string, referer string, authForm u
 
 	secondFactorHeader := "This extra step shows it’s really you trying to sign in"
 	secondFactorHeader2 := "This extra step shows that it’s really you trying to sign in"
+	secondFactorHeader3 := "2-Step Verification"
 	secondFactorHeaderJp := "2 段階認証プロセス"
 
 	// have we been asked for 2-Step Verification
 	if extractNodeText(doc, "h2", secondFactorHeader) != "" ||
 		extractNodeText(doc, "h2", secondFactorHeader2) != "" ||
+		extractNodeText(doc, "h1", secondFactorHeader3) != "" ||
 		extractNodeText(doc, "h1", secondFactorHeaderJp) != "" {
 
 		responseForm, secondActionURL, err := extractInputsByFormID(doc, "challenge")
@@ -326,7 +340,7 @@ func (kc *Client) loadChallengePage(submitURL string, referer string, authForm u
 		logger.Debugf("secondActionURL: %s", secondActionURL)
 
 		switch {
-		case strings.Contains(secondActionURL, "challenge/totp/"): // handle TOTP challenge
+		case strings.Contains(secondActionURL, "challenge/totp"): // handle TOTP challenge
 
 			var token = loginDetails.MFAToken
 			if token == "" {
@@ -337,7 +351,7 @@ func (kc *Client) loadChallengePage(submitURL string, referer string, authForm u
 			responseForm.Set("TrustDevice", "on") // Don't ask again on this computer
 
 			return kc.loadResponsePage(secondActionURL, submitURL, responseForm)
-		case strings.Contains(secondActionURL, "challenge/ipp/"): // handle SMS challenge
+		case strings.Contains(secondActionURL, "challenge/ipp"): // handle SMS challenge
 
 			if extractNodeText(doc, "button", "Send text message") != "" {
 				responseForm.Set("SendMethod", "SMS") // extractInputsByFormID does not extract the name and value from <button> tag that is the form submit
@@ -366,7 +380,7 @@ func (kc *Client) loadChallengePage(submitURL string, referer string, authForm u
 
 			return kc.loadResponsePage(secondActionURL, submitURL, responseForm)
 
-		case strings.Contains(secondActionURL, "challenge/sk/"): // handle u2f challenge
+		case strings.Contains(secondActionURL, "challenge/sk"): // handle u2f challenge
 			facetComponents, err := url.Parse(secondActionURL)
 			if err != nil {
 				return nil, errors.Wrap(err, "unable to parse action URL for U2F challenge")
@@ -389,7 +403,7 @@ func (kc *Client) loadChallengePage(submitURL string, referer string, authForm u
 			responseForm.Set("TrustDevice", "on")
 
 			return kc.loadResponsePage(secondActionURL, submitURL, responseForm)
-		case strings.Contains(secondActionURL, "challenge/az/"): // handle phone challenge
+		case strings.Contains(secondActionURL, "challenge/az"): // handle phone challenge
 
 			dataAttrs := extractDataAttributes(doc, "div[data-context]", []string{"data-context", "data-gapi-url", "data-tx-id", "data-api-key", "data-tx-lifetime"})
 
@@ -411,7 +425,7 @@ func (kc *Client) loadChallengePage(submitURL string, referer string, authForm u
 
 			return kc.loadResponsePage(secondActionURL, submitURL, responseForm)
 
-		case strings.Contains(secondActionURL, "challenge/dp/"): // handle device push challenge
+		case strings.Contains(secondActionURL, "challenge/dp"): // handle device push challenge
 			if extraNumber := extractDevicePushExtraNumber(doc); extraNumber != "" {
 				log.Println("Check your phone and tap 'Yes' on the prompt, then tap the number:")
 				log.Printf("\t%v\n", extraNumber)
@@ -427,7 +441,7 @@ func (kc *Client) loadChallengePage(submitURL string, referer string, authForm u
 			responseForm.Set("TrustDevice", "on") // Don't ask again on this computer
 			return kc.loadResponsePage(secondActionURL, submitURL, responseForm)
 
-		case strings.Contains(secondActionURL, "challenge/skotp/"): // handle one-time HOTP challenge
+		case strings.Contains(secondActionURL, "challenge/skotp"): // handle one-time HOTP challenge
 			log.Println("Get a one-time code by visiting https://g.co/sc on another device where you can use your security key")
 			var token = prompter.RequestSecurityCode("000 000")
 
@@ -599,14 +613,26 @@ func mustFindErrorMsg(doc *goquery.Document) string {
 }
 
 func extractInputsByFormID(doc *goquery.Document, formID ...string) (url.Values, string, error) {
+	// First try to find form by specific id
 	for _, id := range formID {
 		formData, actionURL, err := extractInputsByFormQuery(doc, fmt.Sprintf("#%s", id))
-		if err != nil && strings.HasPrefix(err.Error(), "could not find form with query ") {
-			continue
+		if err == nil && actionURL != "" {
+			return formData, actionURL, nil
 		}
-		return formData, actionURL, err
 	}
-	return url.Values{}, "", errors.New("could not find any forms matching the provided IDs")
+
+	// If no form found by id or actionURL in the previous forms, search for any form
+	formData, actionURL, err := extractInputsByFormQuery(doc, "")
+	if err != nil && actionURL != "" {
+		return formData, actionURL, errors.New("could not find any forms with actions")
+	}
+
+	if len(formData) == 0 {
+		return nil, "", errors.New("could not find any forms")
+	}
+
+	// Fallback in case no forms with actionURL were found
+	return formData, actionURL, err
 }
 
 func extractInputsByFormQuery(doc *goquery.Document, formQuery string) (url.Values, string, error) {
