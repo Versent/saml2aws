@@ -18,6 +18,11 @@ func ParseAWSRoles(roles []string) ([]*AWSRole, error) {
 	awsRoles := make([]*AWSRole, len(roles))
 
 	for i, role := range roles {
+		r, _ := regexp.Compile("arn:([^:\n]*):([^:\n]*):([^:\n]*):([^:\n]*):(([^:/\n]*)[:/])?([^:,\n]*)")
+		tokens := r.FindAllString(role, -1)
+		if len(tokens) == 1 {
+			continue
+		}
 		awsRole, err := parseRole(role)
 		if err != nil {
 			return nil, err
@@ -36,6 +41,8 @@ func parseRole(role string) (*AWSRole, error) {
 	if len(tokens) != 2 {
 		return nil, fmt.Errorf("Invalid role string only %d tokens", len(tokens))
 	}
+
+	fmt.Println(tokens)
 
 	awsRole := &AWSRole{}
 
