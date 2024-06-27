@@ -102,7 +102,7 @@ func TestNoBrowserDriverFail(t *testing.T) {
 	client, _ := New(account)
 	_, err := client.Authenticate(loginDetails)
 	assert.Error(t, err)
-	assert.ErrorContains(t, err, "could not start driver")
+	assert.ErrorContains(t, err, "please install the driver")
 }
 
 func fakeSAMLResponse(page playwright.Page, loginDetails *creds.LoginDetails, client *Client) (string, error) {
