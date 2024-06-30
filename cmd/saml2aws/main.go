@@ -10,6 +10,7 @@ import (
 
 	"github.com/alecthomas/kingpin"
 	"github.com/sirupsen/logrus"
+	"github.com/versent/saml2aws/v2"
 	"github.com/versent/saml2aws/v2/cmd/saml2aws/commands"
 	"github.com/versent/saml2aws/v2/pkg/flags"
 	"github.com/versent/saml2aws/v2/pkg/prompter"
@@ -71,7 +72,7 @@ func main() {
 	commonFlags := new(flags.CommonFlags)
 	app.Flag("config", "Path/filename of saml2aws config file (env: SAML2AWS_CONFIGFILE)").Envar("SAML2AWS_CONFIGFILE").StringVar(&commonFlags.ConfigFile)
 	app.Flag("idp-account", "The name of the configured IDP account. (env: SAML2AWS_IDP_ACCOUNT)").Envar("SAML2AWS_IDP_ACCOUNT").Short('a').Default("default").StringVar(&commonFlags.IdpAccount)
-	app.Flag("idp-provider", "The configured IDP provider. (env: SAML2AWS_IDP_PROVIDER)").Envar("SAML2AWS_IDP_PROVIDER").EnumVar(&commonFlags.IdpProvider, "Akamai", "AzureAD", "ADFS", "ADFS2", "Browser", "GoogleApps", "Ping", "JumpCloud", "Okta", "OneLogin", "PSU", "KeyCloak", "F5APM", "Shibboleth", "ShibbolethECP", "NetIQ", "Auth0")
+	app.Flag("idp-provider", "The configured IDP provider. (env: SAML2AWS_IDP_PROVIDER)").Envar("SAML2AWS_IDP_PROVIDER").EnumVar(&commonFlags.IdpProvider, saml2aws.MFAsByProvider.Names()...)
 	app.Flag("browser-type", "The configured browser type when the IDP provider is set to Browser. if not set 'chromium' will be used. (env: SAML2AWS_BROWSER_TYPE)").Envar("SAML2AWS_BROWSER_TYPE").EnumVar(&commonFlags.BrowserType, "chromium", "firefox", "webkit", "chrome", "chrome-beta", "chrome-dev", "chrome-canary", "msedge", "msedge-beta", "msedge-dev", "msedge-canary")
 	app.Flag("browser-executable-path", "The configured browser full path when the IDP provider is set to Browser. If set, no browser download will be performed and the executable path will be used instead. (env: SAML2AWS_BROWSER_EXECUTABLE_PATH)").Envar("SAML2AWS_BROWSER_EXECUTABLE_PATH").StringVar(&commonFlags.BrowserExecutablePath)
 	app.Flag("browser-autofill", "Configures browser to autofill the username and password. (env: SAML2AWS_BROWSER_AUTOFILL)").Envar("SAML2AWS_BROWSER_AUTOFILL").BoolVar(&commonFlags.BrowserAutoFill)
