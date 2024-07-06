@@ -91,7 +91,7 @@ jobs:
 
     - name: Retrieve the release asset
       id: asset
-      uses: robinraju/release-downloader@c39a3b234af58f0cf85888573d361fb6fa281534  # v1.10
+      uses: robinraju/release-downloader@a96f54c1b5f5e09e47d9504526e96febd949d4c2  # v1.11
       with:
         repository: ${{ github.repository }}
         tag: ${{ env.VER_TAG }}
