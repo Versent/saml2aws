@@ -50,7 +50,7 @@ jobs:
         username: "${{ github.actor }}"
         password: "${{ secrets.GITHUB_TOKEN }}"
     - name: GoReleaser
-      uses: goreleaser/goreleaser-action@v5
+      uses: goreleaser/goreleaser-action@v6
       with:
         version: latest
         args: release --clean --config .goreleaser.${{ matrix.os }}.yml
@@ -91,7 +91,7 @@ jobs:
 
     - name: Retrieve the release asset
       id: asset
-      uses: robinraju/release-downloader@c39a3b234af58f0cf85888573d361fb6fa281534  # v1.10
+      uses: robinraju/release-downloader@a96f54c1b5f5e09e47d9504526e96febd949d4c2  # v1.11
       with:
         repository: ${{ github.repository }}
         tag: ${{ env.VER_TAG }}
@@ -110,7 +110,7 @@ jobs:
         cat "${INSTALLER}/wix.sh" | docker run --rm -i -e VERSION -v "${INSTALLER}:/wix" ${WIXIMG} /bin/sh
 
     - name: Upload the asset to the release
-      uses: softprops/action-gh-release@69320dbe05506a9a39fc8ae11030b214ec2d1f87  # v0.2.0.5.2.0.55 / v2.0.5
+      uses: softprops/action-gh-release@a74c6b72af54cfa997e81df42d94703d6313a2d0  # v0.2.0.6.2.0.65 / v2.0.6
       with:
         tag_name: ${{ env.VER_TAG }}
         files: ${{ env.INSTALLER }}/out/*.msi

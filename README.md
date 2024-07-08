@@ -572,7 +572,7 @@ To use this you will need to export `AWS_DEFAULT_PROFILE=customer-test` environm
 If you are using the Browser Identity Provider, on first invocation of `saml2aws login` you need to remember to install
 the browser drivers in order for playwright-go to work. Otherwise you will see the following error message:
 
-`Error authenticating to IDP.: could not start driver: fork/exec  ... no such file or directory`
+`Error authenticating to IDP.: please install the driver (vx.x.x) and browsers first: %!w(<nil>)`
 
 To install the drivers, you can:
 * Pass `--download-browser-driver` to `saml2aws login`
