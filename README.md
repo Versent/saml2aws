@@ -832,7 +832,8 @@ DUMP_CONTENT=true saml2aws login --verbose
 
 [Credential Process](https://github.com/awslabs/awsprocesscreds) is a convenient way of interfacing credential providers with the AWS Cli.
 
-You can use `saml2aws` as a credential provider by simply configuring it and then adding a profile to the AWS configuration. `saml2aws` has a flag `--credential-process` generating an output with the right JSON format.
+You can use `saml2aws` as a credential provider by simply configuring it and then adding a profile to the AWS configuration. `saml2aws` has a flag `--credential-process` generating an output with the right JSON format, as well as a flag `--quiet` that will block the logging from being displayed.
+The AWS credential file (typically ~/.aws/credentials) has precedence over the credential_process provider. That means that if credentials are present in the file, the credential process will not trigger. To counter that you can override the aws credential location of `saml2aws` to another file using `--credential-file` or specifying it during `configure`.
 
 The AWS credential file (typically ~/.aws/credentials) has precedence over the credential_process provider. That means that if credentials are present in the file, the credential process will not trigger.
 
