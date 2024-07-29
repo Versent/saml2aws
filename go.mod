@@ -24,7 +24,7 @@ require (
 	github.com/sirupsen/logrus v1.9.3
 	github.com/skratchdot/open-golang v0.0.0-20200116055534-eef842397966
 	github.com/stretchr/testify v1.9.0
-	github.com/tidwall/gjson v1.17.1
+	github.com/tidwall/gjson v1.17.2
 	github.com/trimble-oss/go-webauthn-client v0.3.0
 	golang.org/x/net v0.27.0
 	gopkg.in/ini.v1 v1.67.0
