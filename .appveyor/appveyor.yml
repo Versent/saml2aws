@@ -52,6 +52,6 @@ artifacts:
 #  draft: true
 deploy_script:
 - ps: >-
-    choco apiKey -k $env:CHOCOLATEY_APIKEY -source https://push.chocolatey.org/
+    choco apiKey -k $env:CHOCOLATEY_APIKEY -s https://push.chocolatey.org/
 
-    choco push ./choco/${env:appName}.$(($env:APPVEYOR_REPO_TAG_NAME).Split('v')[1]).nupkg
+    choco push ./choco/${env:appName}.$(($env:APPVEYOR_REPO_TAG_NAME).Split('v')[1]).nupkg -s https://push.chocolatey.org/
