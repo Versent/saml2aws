@@ -118,3 +118,61 @@ jobs:
         with:
           tag_name: ${{ env.VER_TAG }}
           files: ${{ env.INSTALLER }}/out/*.msi
+
+  chocolatey:
+    name: Deploy to chocolatey
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    needs: [release]
+    if: >- # https://github.com/actions/runner/issues/491
+      always() &&
+      (needs.release.result == 'success' || needs.release.result == 'skipped')
+    steps:
+      - name: Normalize tag values
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]] ; then
+              VER=${{ github.event.inputs.tag }}
+          else
+              VER=${GITHUB_REF/refs\/tags\//}
+          fi
+
+          VERSION=${VER//v}
+
+          echo "VER_TAG=$VER" >> $GITHUB_ENV
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: Check out code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup PowerShell module cache
+        id: cacher
+        uses: actions/cache@v3
+        with:
+          path: "C:\\Users\\runneradmin\\Documents\\PowerShell\\Modules"
+          key: ${{ runner.os }}-InvokeBuild
+
+      - name: Install required PowerShell modules
+        if: steps.cacher.outputs.cache-hit != 'true'
+        shell: pwsh
+        run: |
+          Set-PSRepository PSGallery -InstallationPolicy Trusted
+          Install-Module InvokeBuild -ErrorAction Stop
+
+      - name: Invoke build script
+        env:
+          appName: saml2aws
+        shell: pwsh
+        run: Invoke-Build
+
+      - name: Deploy
+        shell: pwsh
+        env:
+          CHOCOLATEY_API_KEY: ${{ secrets.CHOCOLATEY_API_KEY }}
+          VERSION: ${{ env.VERSION }}
+        run: |
+          choco apikey --key "$env:CHOCOLATEY_API_KEY" --source "https://push.chocolatey.org/"
+          choco push ./choco/saml2aws.${env:VERSION}.nupkg --source "https://push.chocolatey.org/"
