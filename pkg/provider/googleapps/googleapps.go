@@ -451,6 +451,10 @@ func (kc *Client) loadChallengePage(submitURL string, referer string, authForm u
 			return kc.loadResponsePage(secondActionURL, submitURL, responseForm)
 		}
 
+		if extractNodeText(doc, "span", "Choose how you want to sign in:") != "" {
+			return kc.loadChallengeEntryPage(doc, submitURL, loginDetails)
+		}
+
 		return kc.skipChallengePage(doc, submitURL, secondActionURL, loginDetails)
 
 	} else if extractNodeText(doc, "h2", "To sign in to your Google Account, choose a task from the list below.") != "" {
@@ -503,6 +507,40 @@ func (kc *Client) loadAlternateChallengePage(submitURL string, referer string, a
 	}
 
 	return kc.loadChallengeEntryPage(doc, submitURL, loginDetails)
+}
+
+func (kc *Client) loadChallengePageSelection(doc *goquery.Document, submitURL string, loginDetails *creds.LoginDetails) (*goquery.Document, error) {
+	var challengeEntry string
+
+	doc.Find("div[data-challengeentry]").EachWithBreak(func(i int, s *goquery.Selection) bool {
+		action, ok := s.Attr("action")
+		if !ok {
+			return true
+		}
+
+		if strings.Contains(action, "challenge/totp/") ||
+			strings.Contains(action, "challenge/ipp/") ||
+			strings.Contains(action, "challenge/az/") ||
+			strings.Contains(action, "challenge/skotp/") {
+
+			challengeEntry, _ = s.Attr("data-challengeentry")
+			return false
+		}
+
+		return true
+	})
+
+	if challengeEntry == "" {
+		return nil, errors.New("unable to find supported second factor")
+	}
+
+	query := fmt.Sprintf(`[data-challengeentry="%s"]`, challengeEntry)
+	responseForm, newActionURL, err := extractInputsByFormQuery(doc, query)
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to extract challenge form")
+	}
+
+	return kc.loadChallengePage(newActionURL, submitURL, responseForm, loginDetails)
 }
 
 func (kc *Client) loadChallengeEntryPage(doc *goquery.Document, submitURL string, loginDetails *creds.LoginDetails) (*goquery.Document, error) {
