@@ -150,7 +150,7 @@ jobs:
 
       - name: Setup PowerShell module cache
         id: cacher
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: "C:\\Users\\runneradmin\\Documents\\PowerShell\\Modules"
           key: ${{ runner.os }}-InvokeBuild
