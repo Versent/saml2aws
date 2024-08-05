@@ -1,7 +1,7 @@
 Set-StrictMode -Version 'Latest'
 
 #$nameOfApp = 'saml2aws'
-$version = ${env:APPVEYOR_REPO_TAG_NAME}.Split('v')[1]
+$version = ${env:VER_TAG}.Split('v')[1]
 
 task 'Compile Go libraries...' {
   $ErrorActionPreference = 'Continue'
@@ -23,7 +23,7 @@ task 'Pack Choco...' {
 }
 
 task 'Zip for GH release...' {
-  7z a "${env:appName}.zip" "$env:APPVEYOR_BUILD_FOLDER\bin\${env:appName}.exe"
+  7z a "${env:appName}.zip" ".\bin\${env:appName}.exe"
   $hash = Get-FileHash "${env:appName}.zip"
   "$($hash.Hash) $(Split-Path $hash.Path -Leaf)" > "${env:appName}.zip.sha256"
 }

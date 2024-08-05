@@ -1,6 +1,8 @@
 module github.com/versent/saml2aws/v2
 
-go 1.21
+go 1.21.0
+
+toolchain go1.22.5
 
 require (
 	github.com/99designs/keyring v1.2.2
@@ -10,7 +12,7 @@ require (
 	github.com/alecthomas/kingpin v2.2.6+incompatible
 	github.com/avast/retry-go v3.0.0+incompatible
 	github.com/aws/aws-sdk-go v1.55.0
-	github.com/beevik/etree v1.4.0
+	github.com/beevik/etree v1.4.1
 	github.com/danieljoos/wincred v1.2.2
 	github.com/google/uuid v1.6.0
 	github.com/h2non/gock v1.2.0
@@ -22,7 +24,7 @@ require (
 	github.com/sirupsen/logrus v1.9.3
 	github.com/skratchdot/open-golang v0.0.0-20200116055534-eef842397966
 	github.com/stretchr/testify v1.9.0
-	github.com/tidwall/gjson v1.17.1
+	github.com/tidwall/gjson v1.17.2
 	github.com/trimble-oss/go-webauthn-client v0.3.0
 	golang.org/x/net v0.27.0
 	gopkg.in/ini.v1 v1.67.0
