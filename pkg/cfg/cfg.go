@@ -52,6 +52,8 @@ type IDPAccount struct {
 	ResourceID            string `ini:"resource_id"` // used by F5APM
 	Subdomain             string `ini:"subdomain"`   // used by OneLogin
 	RoleARN               string `ini:"role_arn"`
+	PolicyFile            string `ini:"policy_file"`
+	PolicyARNs            string `ini:"policy_arn_list"`
 	Region                string `ini:"region"`
 	HttpAttemptsCount     string `ini:"http_attempts_count"`
 	HttpRetryDelay        string `ini:"http_retry_delay"`
