@@ -4,7 +4,6 @@ import (
 	b64 "encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"strings"
@@ -367,7 +366,7 @@ func loginToStsUsingRole(account *cfg.IDPAccount, role *saml2aws.AWSRole, samlAs
 	}
 
 	if account.PolicyFile != "" {
-		policy, err := ioutil.ReadFile(account.PolicyFile)
+		policy, err := os.ReadFile(account.PolicyFile)
 		if err != nil {
 			return nil, errors.Wrap(err, fmt.Sprintf("Failed to load supplimental policy file: %s", account.PolicyFile))
 		}
