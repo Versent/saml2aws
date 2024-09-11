@@ -22,6 +22,8 @@ type CommonFlags struct {
 	Username              string
 	Password              string
 	RoleArn               string
+	PolicyFile            string
+	PolicyARNs            string
 	AmazonWebservicesURN  string
 	SessionDuration       int
 	SkipPrompt            bool
@@ -114,6 +116,12 @@ func ApplyFlagOverrides(commonFlags *CommonFlags, account *cfg.IDPAccount) {
 
 	if commonFlags.RoleArn != "" {
 		account.RoleARN = commonFlags.RoleArn
+	}
+	if commonFlags.PolicyFile != "" {
+		account.PolicyFile = commonFlags.PolicyFile
+	}
+	if commonFlags.PolicyARNs != "" {
+		account.PolicyARNs = commonFlags.PolicyARNs
 	}
 	if commonFlags.ResourceID != "" {
 		account.ResourceID = commonFlags.ResourceID

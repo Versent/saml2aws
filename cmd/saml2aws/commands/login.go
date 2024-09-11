@@ -365,6 +365,22 @@ func loginToStsUsingRole(account *cfg.IDPAccount, role *saml2aws.AWSRole, samlAs
 		DurationSeconds: aws.Int64(int64(account.SessionDuration)),
 	}
 
+	if account.PolicyFile != "" {
+		policy, err := os.ReadFile(account.PolicyFile)
+		if err != nil {
+			return nil, errors.Wrap(err, fmt.Sprintf("Failed to load supplimental policy file: %s", account.PolicyFile))
+		}
+		params.Policy = aws.String(string(policy))
+	}
+
+	if account.PolicyARNs != "" {
+		var arns []*sts.PolicyDescriptorType
+		for _, arn := range strings.Split(account.PolicyARNs, ",") {
+			arns = append(arns, &sts.PolicyDescriptorType{Arn: aws.String(arn)})
+		}
+		params.PolicyArns = arns
+	}
+
 	log.Println("Requesting AWS credentials using SAML assertion.")
 
 	resp, err := svc.AssumeRoleWithSAML(params)
