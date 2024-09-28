@@ -49,6 +49,14 @@ func (payload *authentikPayload) isTypeRedirect() bool {
 	return payload.Type == "redirect"
 }
 
+func (payload *authentikPayload) isTypeEmpty() bool {
+	return payload.Type == ""
+}
+
 func (payload *authentikPayload) isComponentStageAutosubmit() bool {
 	return payload.Component == "ak-stage-autosubmit"
+}
+
+func (payload *authentikPayload) isComponentFlowRedirect() bool {
+	return payload.Component == "xak-flow-redirect"
 }
