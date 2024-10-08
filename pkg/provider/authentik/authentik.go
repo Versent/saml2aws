@@ -156,11 +156,12 @@ func (kc *Client) queryNext(ctx *authentikContext) (bool, string, error) {
 	if err != nil {
 		return false, "", err
 	}
-	if payload.isTypeRedirect() {
+
+	if payload.isTypeRedirect() || payload.isComponentFlowRedirect() {
 		// login success if there is a redirect
 		logger.Debug("Login success, redirect to saml response")
 		return false, payload.RedirectTo, nil
-	} else if !payload.isTypeNative() {
+	} else if !payload.isTypeNative() && !payload.isTypeEmpty() {
 		return false, "", errors.New("Unknown type: " + payload.Type)
 	}
 

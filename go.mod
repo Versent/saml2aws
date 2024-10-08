@@ -20,11 +20,11 @@ require (
 	github.com/marshallbrekka/go-u2fhost v0.0.0-20210111072507-3ccdec8c8105
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/pkg/errors v0.9.1
-	github.com/playwright-community/playwright-go v0.4700.0
+	github.com/playwright-community/playwright-go v0.4702.0
 	github.com/sirupsen/logrus v1.9.3
 	github.com/skratchdot/open-golang v0.0.0-20200116055534-eef842397966
 	github.com/stretchr/testify v1.9.0
-	github.com/tidwall/gjson v1.17.3
+	github.com/tidwall/gjson v1.18.0
 	github.com/trimble-oss/go-webauthn-client v0.3.0
 	golang.org/x/net v0.29.0
 	gopkg.in/ini.v1 v1.67.0
