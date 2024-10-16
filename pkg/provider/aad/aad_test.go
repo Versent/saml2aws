@@ -316,6 +316,52 @@ func Test_Authenticate(t *testing.T) {
 		require.Nil(t, err)
 		require.NotEmpty(t, got)
 	})
+	t.Run("Pass mfa-token via loginDetails", func(t *testing.T) {
+		ts := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			switch r.URL.Path {
+			case "/index", "/applications/redirecttofederatedapplication.aspx":
+				writeFixtureBytes(t, w, r, "ConvergedSignIn.html", FixtureData{
+					UrlPost:              "/defaultLogin",
+					UrlGetCredentialType: "/getCredentialType",
+				})
+			case "/getCredentialType":
+				writeFixtureBytes(t, w, r, "GetCredentialType_default.json", FixtureData{})
+			case "/defaultLogin":
+				writeFixtureBytes(t, w, r, "KmsiInterrupt.html", FixtureData{
+					UrlPost: "/hForm",
+				})
+			case "/hForm":
+				writeFixtureBytes(t, w, r, "HiddenForm.html", FixtureData{
+					UrlHiddenForm: "/sRequest",
+				})
+			case "/sRequest":
+				writeFixtureBytes(t, w, r, "SAMLRequest.html", FixtureData{
+					UrlSamlRequest: "/sResponse?SAMLRequest=ExampleValue",
+				})
+			case "/sResponse":
+				writeFixtureBytes(t, w, r, "ConvergedTFA.html", FixtureData{
+					UrlPost:      "/processAuth",
+					UrlBeginAuth: "/beginAuth",
+					UrlEndAuth:   "/endAuth",
+				})
+			case "/beginAuth":
+				writeFixtureBytes(t, w, r, "BeginAuth.json", FixtureData{})
+			case "/endAuth":
+				writeFixtureBytes(t, w, r, "EndAuth.json", FixtureData{})
+			case "/processAuth":
+				writeFixtureBytes(t, w, r, "SAMLResponse.html", FixtureData{})
+			default:
+				http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+			}
+		}))
+		defer ts.Close()
+
+		ac, loginDetails := setupTestClient(t, ts)
+		loginDetails.MFAToken = "000000"
+		got, err := ac.Authenticate(loginDetails)
+		require.Nil(t, err)
+		require.NotEmpty(t, got)
+	})
 	t.Run("Default login with KMSI and MFA but Authenticator required", func(t *testing.T) {
 		ts := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			switch r.URL.Path {
