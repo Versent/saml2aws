@@ -191,7 +191,7 @@ AuthProcessor:
 			res, err = ac.processKmsiInterrupt(res, resBodyStr)
 		case strings.Contains(resBodyStr, "ConvergedTFA"):
 			logger.Debug("processing ConvergedTFA")
-			res, err = ac.processConvergedTFA(res, resBodyStr)
+			res, err = ac.processConvergedTFA(res, resBodyStr, loginDetails)
 		case strings.Contains(resBodyStr, "SAMLRequest"):
 			logger.Debug("processing SAMLRequest")
 			res, err = ac.processSAMLRequest(res, resBodyStr)
@@ -407,7 +407,7 @@ func (ac *Client) processKmsiInterrupt(res *http.Response, srcBodyStr string) (*
 	return res, nil
 }
 
-func (ac *Client) processConvergedTFA(res *http.Response, srcBodyStr string) (*http.Response, error) {
+func (ac *Client) processConvergedTFA(res *http.Response, srcBodyStr string, loginDetails *creds.LoginDetails) (*http.Response, error) {
 	var convergedResponse *ConvergedResponse
 	var err error
 
@@ -425,7 +425,7 @@ func (ac *Client) processConvergedTFA(res *http.Response, srcBodyStr string) (*h
 		}
 	} else if len(mfas) != 0 {
 		// there's no explicit option to skip MFA, and MFA options are available
-		res, err = ac.processMfa(mfas, convergedResponse)
+		res, err = ac.processMfa(mfas, convergedResponse, loginDetails)
 		if err != nil {
 			return res, err
 		}
@@ -434,7 +434,7 @@ func (ac *Client) processConvergedTFA(res *http.Response, srcBodyStr string) (*h
 	return res, nil
 }
 
-func (ac *Client) processMfa(mfas []userProof, convergedResponse *ConvergedResponse) (*http.Response, error) {
+func (ac *Client) processMfa(mfas []userProof, convergedResponse *ConvergedResponse, loginDetails *creds.LoginDetails) (*http.Response, error) {
 	var res *http.Response
 	var err error
 	var mfaResp mfaResponse
@@ -457,8 +457,12 @@ func (ac *Client) processMfa(mfas []userProof, convergedResponse *ConvergedRespo
 			SessionID:    mfaResp.SessionID,
 		}
 		if mfaReq.AuthMethodID == "PhoneAppOTP" || mfaReq.AuthMethodID == "OneWaySMS" {
-			verifyCode := prompter.StringRequired("Enter verification code")
-			mfaReq.AdditionalAuthData = verifyCode
+			if loginDetails.MFAToken != "" {
+				mfaReq.AdditionalAuthData = loginDetails.MFAToken
+			} else {
+				verifyCode := prompter.StringRequired("Enter verification code")
+				mfaReq.AdditionalAuthData = verifyCode
+			}
 		}
 		if mfaReq.AuthMethodID == "PhoneAppNotification" && i == 0 {
 			if mfaResp.Entropy == 0 {
