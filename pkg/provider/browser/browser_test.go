@@ -223,7 +223,7 @@ func TestAutoFill(t *testing.T) {
 		_, _ = page.Goto(ts.URL)
 
 		loginDetails := &creds.LoginDetails{URL: ts.URL, Username: "golang", Password: "gopher"}
-		_ = autoFill(page, loginDetails, true)
+		_ = autoFill(page, loginDetails)
 
 		password, _ := page.Locator("input[type='password']").First().InputValue()
 		assert.Equal(t, "gopher", password)
@@ -257,7 +257,7 @@ func TestAutoFillNoUsername(t *testing.T) {
 		_, _ = page.Goto(ts.URL)
 
 		loginDetails := &creds.LoginDetails{URL: ts.URL, Username: "golang", Password: "gopher"}
-		_ = autoFill(page, loginDetails, false)
+		_ = autoFill(page, loginDetails)
 
 		username, _ := page.Locator("input[name='username']").First().InputValue()
 		assert.Equal(t, "golang", username)

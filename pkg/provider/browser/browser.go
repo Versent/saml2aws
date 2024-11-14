@@ -27,8 +27,6 @@ type Client struct {
 	BrowserDriverDir string
 	Timeout          int
 	BrowserAutoFill  bool
-	// If true, avoid auto-filling the username in the login form on the browser.
-	BrowserAutoFillNoUsername bool
 }
 
 // New create new browser based client
@@ -40,7 +38,6 @@ func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 		BrowserExecutablePath:     idpAccount.BrowserExecutablePath,
 		Timeout:                   idpAccount.Timeout,
 		BrowserAutoFill:           idpAccount.BrowserAutoFill,
-		BrowserAutoFillNoUsername: idpAccount.BrowserAutoFillNoUsername,
 	}, nil
 }
 
@@ -179,7 +176,7 @@ var getSAMLResponse = func(page playwright.Page, loginDetails *creds.LoginDetail
 	}
 
 	if client.BrowserAutoFill {
-		err := autoFill(page, loginDetails, client.BrowserAutoFillNoUsername)
+		err := autoFill(page, loginDetails)
 		if err != nil {
 			logger.Error("error when auto filling", err)
 		}
@@ -205,30 +202,52 @@ var getSAMLResponse = func(page playwright.Page, loginDetails *creds.LoginDetail
 	return values.Get("SAMLResponse"), nil
 }
 
-var autoFill = func(page playwright.Page, loginDetails *creds.LoginDetails, browserAutoFillNoUsername bool) error {
+func locatedExists(locator playwright.Locator) (bool, error) {
+	count, err := locator.Count()
+	if err != nil {
+		return false, err
+	}
+
+	return count > 0, nil
+}
+
+func float64Ptr(n int) *float64 {
+	f64 := float64(n)
+	return &f64
+}
+
+var autoFill = func(page playwright.Page, loginDetails *creds.LoginDetails) error {
 	passwordField := page.Locator("input[type='password']")
-	err := passwordField.WaitFor(playwright.LocatorWaitForOptions{
-		State: playwright.WaitForSelectorStateVisible,
+	_ = passwordField.WaitFor(playwright.LocatorWaitForOptions{
+		State:   playwright.WaitForSelectorStateVisible,
+		Timeout: float64Ptr(10000),
 	})
 
+	passwordFieldExists, err := locatedExists(passwordField)
 	if err != nil {
 		return err
 	}
 
-	err = passwordField.Fill(loginDetails.Password)
-	if err != nil {
-		return err
-	}
-
-	if !browserAutoFillNoUsername {
-		keyboard := page.Keyboard()
-		// move to username field which is above password field
-		err = keyboard.Press("Shift+Tab")
+	if passwordFieldExists {
+		err = passwordField.Fill(loginDetails.Password)
 		if err != nil {
 			return err
 		}
+	}
 
-		err = keyboard.InsertText(loginDetails.Username)
+	usernameField := page.Locator("input[name='username']")
+	_ = usernameField.WaitFor(playwright.LocatorWaitForOptions{
+		State:   playwright.WaitForSelectorStateVisible,
+		Timeout: float64Ptr(10000),
+	})
+
+	usernameFieldExists, err := locatedExists(usernameField)
+	if err != nil {
+		return err
+	}
+
+	if usernameFieldExists {
+		err = usernameField.Fill(loginDetails.Username)
 		if err != nil {
 			return err
 		}
@@ -238,13 +257,13 @@ var autoFill = func(page playwright.Page, loginDetails *creds.LoginDetails, brow
 	submitLocator := page.Locator("form", playwright.PageLocatorOptions{
 		Has: passwordField,
 	}).Locator("[type='submit']")
-	count, err := submitLocator.Count()
+	submitLocatorExists, err := locatedExists(submitLocator)
 	if err != nil {
 		return err
 	}
 
 	// when submit locator exists, Click it
-	if count > 0 {
+	if submitLocatorExists {
 		return submitLocator.Click()
 	} else { // Use javascript to submit the form when no submit input or button is found
 		_, err := page.Evaluate(`document.querySelector('input[type="password"]').form.submit()`, nil)
