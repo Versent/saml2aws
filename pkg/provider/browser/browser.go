@@ -27,17 +27,20 @@ type Client struct {
 	BrowserDriverDir string
 	Timeout          int
 	BrowserAutoFill  bool
+	// If true, avoid auto-filling the username in the login form on the browser.
+	BrowserAutoFillNoUsername bool
 }
 
 // New create new browser based client
 func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 	return &Client{
-		Headless:              idpAccount.Headless,
-		BrowserDriverDir:      idpAccount.BrowserDriverDir,
-		BrowserType:           strings.ToLower(idpAccount.BrowserType),
-		BrowserExecutablePath: idpAccount.BrowserExecutablePath,
-		Timeout:               idpAccount.Timeout,
-		BrowserAutoFill:       idpAccount.BrowserAutoFill,
+		Headless:                  idpAccount.Headless,
+		BrowserDriverDir:          idpAccount.BrowserDriverDir,
+		BrowserType:               strings.ToLower(idpAccount.BrowserType),
+		BrowserExecutablePath:     idpAccount.BrowserExecutablePath,
+		Timeout:                   idpAccount.Timeout,
+		BrowserAutoFill:           idpAccount.BrowserAutoFill,
+		BrowserAutoFillNoUsername: idpAccount.BrowserAutoFillNoUsername,
 	}, nil
 }
 
@@ -176,7 +179,7 @@ var getSAMLResponse = func(page playwright.Page, loginDetails *creds.LoginDetail
 	}
 
 	if client.BrowserAutoFill {
-		err := autoFill(page, loginDetails)
+		err := autoFill(page, loginDetails, client.BrowserAutoFillNoUsername)
 		if err != nil {
 			logger.Error("error when auto filling", err)
 		}
@@ -202,7 +205,7 @@ var getSAMLResponse = func(page playwright.Page, loginDetails *creds.LoginDetail
 	return values.Get("SAMLResponse"), nil
 }
 
-var autoFill = func(page playwright.Page, loginDetails *creds.LoginDetails) error {
+var autoFill = func(page playwright.Page, loginDetails *creds.LoginDetails, browserAutoFillNoUsername bool) error {
 	passwordField := page.Locator("input[type='password']")
 	err := passwordField.WaitFor(playwright.LocatorWaitForOptions{
 		State: playwright.WaitForSelectorStateVisible,
@@ -217,17 +220,18 @@ var autoFill = func(page playwright.Page, loginDetails *creds.LoginDetails) erro
 		return err
 	}
 
-	keyboard := page.Keyboard()
+	if !browserAutoFillNoUsername {
+		keyboard := page.Keyboard()
+		// move to username field which is above password field
+		err = keyboard.Press("Shift+Tab")
+		if err != nil {
+			return err
+		}
 
-	// move to username field which is above password field
-	err = keyboard.Press("Shift+Tab")
-	if err != nil {
-		return err
-	}
-
-	err = keyboard.InsertText(loginDetails.Username)
-	if err != nil {
-		return err
+		err = keyboard.InsertText(loginDetails.Username)
+		if err != nil {
+			return err
+		}
 	}
 
 	// Find the submit button or input of the form that the password field is in

@@ -42,6 +42,7 @@ type IDPAccount struct {
 	BrowserType           string `ini:"browser_type,omitempty"`            // used by 'Browser' Provider
 	BrowserExecutablePath string `ini:"browser_executable_path,omitempty"` // used by 'Browser' Provider
 	BrowserAutoFill       bool   `ini:"browser_autofill,omitempty"`        // used by 'Browser' Provider
+	BrowserAutoFillNoUsername bool   `ini:"browser_autofill_no_username,omitempty"` // used by 'Browser' Provider
 	MFA                   string `ini:"mfa"`
 	MFAIPAddress          string `ini:"mfa_ip_address"` // used by OneLogin
 	SkipVerify            bool   `ini:"skip_verify"`

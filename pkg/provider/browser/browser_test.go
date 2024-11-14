@@ -203,6 +203,37 @@ func TestExpectRequestOptionsDefaultTimeout(t *testing.T) {
 }
 
 func TestAutoFill(t *testing.T) {
+	pageLocations := []string{
+		"example/loginpage-without-username.html",
+	}
+	// iterate over each login page
+	for _, pageLocation := range pageLocations {
+		data, err := os.ReadFile(pageLocation)
+		require.Nil(t, err)
+
+		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			_, _ = w.Write(data)
+		}))
+		defer ts.Close()
+
+		pw, _ := playwright.Run()
+		browser, _ := pw.Chromium.Launch()
+		context, _ := browser.NewContext()
+		page, _ := context.NewPage()
+		_, _ = page.Goto(ts.URL)
+
+		loginDetails := &creds.LoginDetails{URL: ts.URL, Username: "golang", Password: "gopher"}
+		_ = autoFill(page, loginDetails, true)
+
+		password, _ := page.Locator("input[type='password']").First().InputValue()
+		assert.Equal(t, "gopher", password)
+
+		result, _ := page.Locator("div#result").Evaluate("el => el.innerText", nil)
+		assert.Equal(t, "golang:gopher", result)
+	}
+}
+
+func TestAutoFillNoUsername(t *testing.T) {
 	// 3 different login pages
 	pageLocations := []string{
 		"example/loginpage.html",
@@ -226,7 +257,7 @@ func TestAutoFill(t *testing.T) {
 		_, _ = page.Goto(ts.URL)
 
 		loginDetails := &creds.LoginDetails{URL: ts.URL, Username: "golang", Password: "gopher"}
-		_ = autoFill(page, loginDetails)
+		_ = autoFill(page, loginDetails, false)
 
 		username, _ := page.Locator("input[name='username']").First().InputValue()
 		assert.Equal(t, "golang", username)
