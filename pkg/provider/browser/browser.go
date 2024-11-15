@@ -220,7 +220,7 @@ var autoFill = func(page playwright.Page, loginDetails *creds.LoginDetails) erro
 	passwordField := page.Locator("input[type='password']")
 	_ = passwordField.WaitFor(playwright.LocatorWaitForOptions{
 		State:   playwright.WaitForSelectorStateVisible,
-		Timeout: float64Ptr(5000),
+		Timeout: float64Ptr(3000),
 	})
 
 	passwordFieldExists, err := locatedExists(passwordField)
@@ -235,12 +235,7 @@ var autoFill = func(page playwright.Page, loginDetails *creds.LoginDetails) erro
 		}
 	}
 
-	usernameField := page.Locator("input[name='username']")
-	_ = usernameField.WaitFor(playwright.LocatorWaitForOptions{
-		State:   playwright.WaitForSelectorStateVisible,
-		Timeout: float64Ptr(5000),
-	})
-
+	usernameField := page.Locator("input[name='username']") // no need to wait since we can assume at this point that the form has been loaded
 	usernameFieldExists, err := locatedExists(usernameField)
 	if err != nil {
 		return err
