@@ -81,7 +81,7 @@ func main() {
 	app.Flag("url", "The URL of the SAML IDP server used to login. (env: SAML2AWS_URL)").Envar("SAML2AWS_URL").StringVar(&commonFlags.URL)
 	app.Flag("username", "The username used to login. (env: SAML2AWS_USERNAME)").Envar("SAML2AWS_USERNAME").StringVar(&commonFlags.Username)
 	app.Flag("password", "The password used to login. (env: SAML2AWS_PASSWORD)").Envar("SAML2AWS_PASSWORD").StringVar(&commonFlags.Password)
-	app.Flag("mfa-token", "The current MFA token (supported in Keycloak, ADFS, GoogleApps). (env: SAML2AWS_MFA_TOKEN)").Envar("SAML2AWS_MFA_TOKEN").StringVar(&commonFlags.MFAToken)
+	app.Flag("mfa-token", "The current MFA token (supported in Keycloak, ADFS, GoogleApps, Onelogin TOTP). (env: SAML2AWS_MFA_TOKEN)").Envar("SAML2AWS_MFA_TOKEN").StringVar(&commonFlags.MFAToken)
 	app.Flag("role", "The ARN of the role to assume. (env: SAML2AWS_ROLE)").Envar("SAML2AWS_ROLE").StringVar(&commonFlags.RoleArn)
 	app.Flag("policyfile", "The file containing the supplemental AssumeRole policy. (env: SAML2AWS_POLICY_FILE)").Envar("SAML2AWS_POLICY_FILE").StringVar(&commonFlags.PolicyFile)
 	app.Flag("policyarns", "The ARN of supplemental policies to restrict the token. (env: SAML2AWS_POLICY_ARNS)").Envar("SAML2AWS_POLICY_ARNS").StringVar(&commonFlags.PolicyARNs)
