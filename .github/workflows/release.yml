@@ -114,7 +114,7 @@ jobs:
           cat "${INSTALLER}/wix.sh" | docker run --rm -i -e VERSION -v "${INSTALLER}:/wix" ${WIXIMG} /bin/sh
 
       - name: Upload the asset to the release
-        uses: softprops/action-gh-release@c062e08bd532815e2082a85e87e3ef29c3e6d191 # v0.2.0.8.2.0.85 / v2.0.8
+        uses: softprops/action-gh-release@7b4da11513bf3f43f9999e90eabced41ab8bb048 # v0.2.2.0.2.2.05 / v2.2.0
         with:
           tag_name: ${{ env.VER_TAG }}
           files: ${{ env.INSTALLER }}/out/*.msi
