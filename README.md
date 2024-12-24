@@ -833,22 +833,23 @@ DUMP_CONTENT=true saml2aws login --verbose
 [Credential Process](https://github.com/awslabs/awsprocesscreds) is a convenient way of interfacing credential providers with the AWS Cli.
 
 You can use `saml2aws` as a credential provider by simply configuring it and then adding a profile to the AWS configuration. `saml2aws` has a flag `--credential-process` generating an output with the right JSON format, as well as a flag `--quiet` that will block the logging from being displayed.
-The AWS credential file (typically ~/.aws/credentials) has precedence over the credential_process provider. That means that if credentials are present in the file, the credential process will not trigger. To counter that you can override the aws credential location of `saml2aws` to another file using `--credential-file` or specifying it during `configure`.
 
-The AWS credential file (typically ~/.aws/credentials) has precedence over the credential_process provider. That means that if credentials are present in the file, the credential process will not trigger.
+When using credential_process, avoid using the same profile name for both AWS config and saml2aws credentials with 
+the default --credential-file. This can cause refresh issues as the AWS credential file (typically ~/.
+aws/credentials) has precedence over the credential_process provider. Ensure either a different profile name via `--profile` is used or override the aws credential location of `saml2aws` to another file using `--credential-file` or specifying it during `configure`.
 
 An example of the aws configuration (`~/.aws/config`):
 
 ```
 [profile mybucket]
 region = us-west-1
-credential_process = saml2aws login --credential-process --role <ROLE> --profile mybucket
+credential_process = saml2aws login --credential-process --role <ROLE> --profile mybucket-credentials
 ```
 
 You can add this manually or via the awscli, i.e.
 
 ```
-aws configure set credential_process "saml2aws login --credential-process --role <ROLE> --profile mybucket"
+aws configure set credential_process "saml2aws login --credential-process --role <ROLE> --profile mybucket-credetials"
 ```
 
 When using the aws cli with the `mybucket` profile, the authentication process will be run and the aws will then be executed based on the returned credentials.
