@@ -8,7 +8,7 @@ import (
 	"os"
 	"runtime"
 
-	"github.com/alecthomas/kingpin"
+	"github.com/alecthomas/kingpin/v2"
 	"github.com/sirupsen/logrus"
 	"github.com/versent/saml2aws/v2"
 	"github.com/versent/saml2aws/v2/cmd/saml2aws/commands"
