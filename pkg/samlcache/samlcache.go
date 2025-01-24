@@ -61,7 +61,11 @@ func (p *SAMLCacheProvider) IsValid() bool {
 			return false
 		}
 	} else {
-		cache_path = p.Filename
+		cache_path, err = homedir.Expand(p.Filename)
+		if err != nil {
+			logger.Debug("Could not retrieve cache file location", err)
+			return false
+		}
 	}
 	logger = logger.WithField("Cache_file", cache_path)
 
@@ -126,7 +130,10 @@ func (p *SAMLCacheProvider) ReadRaw() (string, error) {
 			return "", errors.Wrap(err, "Could not retrieve cache file path")
 		}
 	} else {
-		cache_path = p.Filename
+		cache_path, err = homedir.Expand(p.Filename)
+		if err != nil {
+			return "", errors.Wrap(err, "Could not retrieve cache file path")
+		}
 	}
 
 	content, err := os.ReadFile(cache_path)
@@ -147,7 +154,10 @@ func (p *SAMLCacheProvider) WriteRaw(samlAssertion string) error {
 			return errors.Wrap(err, "Could not retrieve cache file path")
 		}
 	} else {
-		cache_path = p.Filename
+		cache_path, err = homedir.Expand(p.Filename)
+		if err != nil {
+			return errors.Wrap(err, "Could not retrieve cache file path")
+		}
 	}
 
 	// create the directory if it doesn't exist
