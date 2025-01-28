@@ -256,20 +256,22 @@ Commands:
   login [<flags>]
     Login to a SAML 2.0 IDP and convert the SAML assertion to an STS token.
 
-    -p, --profile=PROFILE        The AWS profile to save the temporary credentials. (env: SAML2AWS_PROFILE)
+    -p, --profile=PROFILE          The AWS profile to save the temporary credentials. (env: SAML2AWS_PROFILE)
         --duo-mfa-option=DUO-MFA-OPTION
-                                 The MFA option you want to use to authenticate with (supported providers: okta). (env: SAML2AWS_DUO_MFA_OPTION)
-        --client-id=CLIENT-ID    OneLogin client id, used to generate API access token. (env: ONELOGIN_CLIENT_ID)
+                                   The MFA option you want to use to authenticate with (supported providers: okta). (env: SAML2AWS_DUO_MFA_OPTION)
+        --client-id=CLIENT-ID      OneLogin client id, used to generate API access token. (env: ONELOGIN_CLIENT_ID)
         --client-secret=CLIENT-SECRET
-                                 OneLogin client secret, used to generate API access token. (env: ONELOGIN_CLIENT_SECRET)
+                                   OneLogin client secret, used to generate API access token. (env: ONELOGIN_CLIENT_SECRET)
         --mfa-ip-address=MFA-IP-ADDRESS
-                                 IP address whitelisting defined in OneLogin MFA policies. (env: ONELOGIN_MFA_IP_ADDRESS)
-        --force                  Refresh credentials even if not expired.
-        --credential-process     Enables AWS Credential Process support by outputting credentials to STDOUT in a JSON message.
+                                   IP address whitelisting defined in OneLogin MFA policies. (env: ONELOGIN_MFA_IP_ADDRESS)
+        --force                    Refresh credentials even if not expired.
+        --google-challenge=GOOGLE-CHALLENGE ...
+                                   Specific to GoogleApps, a prioritized list of challenge types used during login. This flag can be specified multiple times to set the order of challenges (e.g., --google-challenge=totp --google-challenge=dp).
+        --credential-process       Enables AWS Credential Process support by outputting credentials to STDOUT in a JSON message.
         --credentials-file=CREDENTIALS-FILE
-                                 The file that will cache the credentials retrieved from AWS. When not specified, will use the default AWS credentials file location. (env: SAML2AWS_CREDENTIALS_FILE)
-        --cache-saml             Caches the SAML response (env: SAML2AWS_CACHE_SAML)
-        --cache-file=CACHE-FILE  The location of the SAML cache file (env: SAML2AWS_SAML_CACHE_FILE)
+                                   The file that will cache the credentials retrieved from AWS. When not specified, will use the default AWS credentials file location. (env: SAML2AWS_CREDENTIALS_FILE)
+        --cache-saml               Caches the SAML response (env: SAML2AWS_CACHE_SAML)
+        --cache-file=CACHE-FILE    The location of the SAML cache file (env: SAML2AWS_SAML_CACHE_FILE)
         --download-browser-driver  Automatically download browsers for Browser IDP. (env: SAML2AWS_AUTO_BROWSER_DOWNLOAD)
         --disable-sessions         Do not use Okta sessions. Uses Okta sessions by default. (env: SAML2AWS_OKTA_DISABLE_SESSIONS)
         --disable-remember-device  Do not remember Okta MFA device. Remembers MFA device by default. (env: SAML2AWS_OKTA_DISABLE_REMEMBER_DEVICE)
