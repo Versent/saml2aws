@@ -257,7 +257,7 @@ func TestMustEnable2StepVerification(t *testing.T) {
 
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(html))
 	require.Nil(t, err)
-	twoStepIsMissingErr := isMissing2StepSetup(doc)
+	twoStepIsMissingErr := createEmptySAMLAssertionError(doc)
 	require.Error(t, twoStepIsMissingErr)
 	require.Equal(t, twoStepIsMissingErr.Error(), "Because of your organization settings, you must set-up 2-Step Verification in your account")
 }

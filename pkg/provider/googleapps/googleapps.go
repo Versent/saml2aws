@@ -24,6 +24,14 @@ import (
 
 var logger = logrus.WithField("provider", "googleapps")
 
+var challengeTypeToCode = map[string]string{
+	"39": "dp",
+	"5":  "ootp",
+	"6":  "totp",
+	"9":  "ipp",
+	"53": "pk",
+}
+
 // Client wrapper around Google Apps.
 type Client struct {
 	provider.ValidateBase
@@ -48,6 +56,12 @@ func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 
 // Authenticate logs into Google Apps and returns a SAML response
 func (kc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error) {
+	// Copy and freeze preferred challenges to ensure loginDetails remains immutable
+	var preferredChallenges []string
+	if len(loginDetails.GoogleChallenges) > 0 {
+		preferredChallenges = make([]string, len(loginDetails.GoogleChallenges))
+		copy(preferredChallenges, loginDetails.GoogleChallenges)
+	}
 
 	// Get the first page
 	authURL, authForm, err := kc.loadFirstPage(loginDetails)
@@ -80,7 +94,7 @@ func (kc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 
 	referingURL := passwordURL
 
-	responseDoc, err := kc.loadChallengePage(passwordURL+"?hl=en&loc=US", referingURL, passwordForm, loginDetails)
+	responseDoc, err := kc.loadChallengePage(passwordURL+"?hl=en&loc=US", referingURL, passwordForm, loginDetails, preferredChallenges...)
 	if err != nil {
 		return "", errors.Wrap(err, "error loading challenge page")
 	}
@@ -137,7 +151,7 @@ func (kc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		}
 		captchaForm.Set(captchaInputId, captcha)
 
-		responseDoc, err = kc.loadChallengePage(captchaURL+"?hl=en&loc=US", captchaURL, captchaForm, loginDetails)
+		responseDoc, err = kc.loadChallengePage(captchaURL+"?hl=en&loc=US", captchaURL, captchaForm, loginDetails, preferredChallenges...)
 		if err != nil {
 			return "", errors.Wrap(err, "error loading challenge page")
 		}
@@ -146,8 +160,8 @@ func (kc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 	}
 
 	// New Captcha proceeds back to password page
-	passworddBeingRequested := responseDoc.Find("#password")
-	if passworddBeingRequested != nil && passworddBeingRequested.Length() > 0 {
+	passwordBeingRequested := responseDoc.Find("#password")
+	if passwordBeingRequested != nil && passwordBeingRequested.Length() > 0 {
 		loginForm, loginURL, err := extractInputsByFormID(responseDoc, "challenge")
 		if err != nil {
 			return "", errors.Wrap(err, "error parsing password page after captcha")
@@ -155,7 +169,7 @@ func (kc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 
 		loginForm.Set("Passwd", loginDetails.Password)
 
-		responseDoc, err = kc.loadChallengePage(loginURL+"?hl=en&loc=US", loginURL, loginForm, loginDetails)
+		responseDoc, err = kc.loadChallengePage(loginURL+"?hl=en&loc=US", loginURL, loginForm, loginDetails, preferredChallenges...)
 		if err != nil {
 			return "", errors.Wrap(err, "error loading challenge page")
 		}
@@ -163,25 +177,28 @@ func (kc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 
 	samlAssertion := mustFindInputByName(responseDoc, "SAMLResponse")
 	if samlAssertion == "" {
-		if responseDoc.Selection.Find("#passwordError").Text() != "" {
-			return "", errors.New("Password error")
-		}
-
-		if err := isMissing2StepSetup(responseDoc); err != nil {
-			return "", err
-		}
-
-		return "", errors.New("page is missing saml assertion")
+		return "", createEmptySAMLAssertionError(responseDoc)
 	}
 
 	return samlAssertion, nil
 }
 
-func isMissing2StepSetup(responseDoc *goquery.Document) error {
-	if responseDoc.Selection.Find("section.aN1Vld ").Text() != "" {
+func createEmptySAMLAssertionError(responseDoc *goquery.Document) error {
+	if responseDoc.Selection.Find("#passwordError").Text() != "" {
+		return errors.New("Password error")
+	}
+
+	text := responseDoc.Selection.Find("section.aN1Vld").Text()
+
+	if strings.Contains(text, "Google sent a notification") {
+		return errors.New("Please confirm the notification sent by Google on your device before pressing Enter")
+	} else if strings.Contains(text, "Too many failed attempts") {
+		return errors.New("Too many failed attempts")
+	} else if text != "" {
 		return errors.New("Because of your organization settings, you must set-up 2-Step Verification in your account")
 	}
-	return nil
+
+	return errors.New("page is missing saml assertion")
 }
 
 func (kc *Client) tryDisplayCaptcha(captchaPictureURL string) (string, error) {
@@ -286,8 +303,7 @@ func (kc *Client) loadLoginPage(submitURL string, referer string, authForm url.V
 	return loginURL, loginForm, err
 }
 
-func (kc *Client) loadChallengePage(submitURL string, referer string, authForm url.Values, loginDetails *creds.LoginDetails) (*goquery.Document, error) {
-
+func (kc *Client) loadChallengePage(submitURL string, referer string, authForm url.Values, loginDetails *creds.LoginDetails, preferredChallenges ...string) (*goquery.Document, error) {
 	authForm.Set("bgresponse", "js_enabled")
 
 	req, err := http.NewRequest("POST", submitURL, strings.NewReader(authForm.Encode()))
@@ -321,10 +337,12 @@ func (kc *Client) loadChallengePage(submitURL string, referer string, authForm u
 		return nil, errors.New("Invalid username or password")
 	}
 
-	secondFactorHeader := "This extra step shows it’s really you trying to sign in"
-	secondFactorHeader2 := "This extra step shows that it’s really you trying to sign in"
-	secondFactorHeader3 := "2-Step Verification"
-	secondFactorHeaderJp := "2 段階認証プロセス"
+	const (
+		secondFactorHeader   = "This extra step shows it’s really you trying to sign in"
+		secondFactorHeader2  = "This extra step shows that it’s really you trying to sign in"
+		secondFactorHeader3  = "2-Step Verification"
+		secondFactorHeaderJp = "2 段階認証プロセス"
+	)
 
 	// have we been asked for 2-Step Verification
 	if extractNodeText(doc, "h2", secondFactorHeader) != "" ||
@@ -339,8 +357,27 @@ func (kc *Client) loadChallengePage(submitURL string, referer string, authForm u
 
 		logger.Debugf("secondActionURL: %s", secondActionURL)
 
+		// Attempt to select a preferred challenge once
+		if len(preferredChallenges) > 0 && !strings.Contains(secondActionURL, fmt.Sprintf("challenge/%s", preferredChallenges[0])) &&
+			!strings.Contains(secondActionURL, "challenge/selection") {
+
+			if extractNodeText(doc, "span", "Choose how you want to sign in:") != "" {
+				return kc.loadChallengeEntryPage(doc, submitURL, loginDetails, preferredChallenges...)
+			}
+
+			if extractNodeText(doc, "button", "Try another way") != "" {
+				responseForm.Set("action", "2")
+				return kc.loadAlternateChallengePage(secondActionURL, submitURL, responseForm, loginDetails, preferredChallenges...)
+			}
+		}
+
 		switch {
+		case strings.Contains(secondActionURL, "challenge/selection"): // handle selection page
+
+			return kc.loadChallengeEntryPage(doc, submitURL, loginDetails, preferredChallenges...)
+
 		case strings.Contains(secondActionURL, "challenge/totp"): // handle TOTP challenge
+			log.Println("Use TOTP challenge.")
 
 			var token = loginDetails.MFAToken
 			if token == "" {
@@ -351,7 +388,9 @@ func (kc *Client) loadChallengePage(submitURL string, referer string, authForm u
 			responseForm.Set("TrustDevice", "on") // Don't ask again on this computer
 
 			return kc.loadResponsePage(secondActionURL, submitURL, responseForm)
+
 		case strings.Contains(secondActionURL, "challenge/ipp"): // handle SMS challenge
+			log.Println("Use SMS challenge.")
 
 			if extractNodeText(doc, "button", "Send text message") != "" {
 				responseForm.Set("SendMethod", "SMS") // extractInputsByFormID does not extract the name and value from <button> tag that is the form submit
@@ -381,6 +420,8 @@ func (kc *Client) loadChallengePage(submitURL string, referer string, authForm u
 			return kc.loadResponsePage(secondActionURL, submitURL, responseForm)
 
 		case strings.Contains(secondActionURL, "challenge/sk"): // handle u2f challenge
+			log.Println("Use U2F challenge.")
+
 			facetComponents, err := url.Parse(secondActionURL)
 			if err != nil {
 				return nil, errors.Wrap(err, "unable to parse action URL for U2F challenge")
@@ -403,7 +444,9 @@ func (kc *Client) loadChallengePage(submitURL string, referer string, authForm u
 			responseForm.Set("TrustDevice", "on")
 
 			return kc.loadResponsePage(secondActionURL, submitURL, responseForm)
+
 		case strings.Contains(secondActionURL, "challenge/az"): // handle phone challenge
+			log.Println("Use phone challenge.")
 
 			dataAttrs := extractDataAttributes(doc, "div[data-context]", []string{"data-context", "data-gapi-url", "data-tx-id", "data-api-key", "data-tx-lifetime"})
 
@@ -426,6 +469,8 @@ func (kc *Client) loadChallengePage(submitURL string, referer string, authForm u
 			return kc.loadResponsePage(secondActionURL, submitURL, responseForm)
 
 		case strings.Contains(secondActionURL, "challenge/dp"): // handle device push challenge
+			log.Println("Use device push challenge.")
+
 			if extraNumber := extractDevicePushExtraNumber(doc); extraNumber != "" {
 				log.Println("Check your phone and tap 'Yes' on the prompt, then tap the number:")
 				log.Printf("\t%v\n", extraNumber)
@@ -442,6 +487,8 @@ func (kc *Client) loadChallengePage(submitURL string, referer string, authForm u
 			return kc.loadResponsePage(secondActionURL, submitURL, responseForm)
 
 		case strings.Contains(secondActionURL, "challenge/skotp"): // handle one-time HOTP challenge
+			log.Println("Use one-time HOTP challenge.")
+
 			log.Println("Get a one-time code by visiting https://g.co/sc on another device where you can use your security key")
 			var token = prompter.RequestSecurityCode("000 000")
 
@@ -454,7 +501,7 @@ func (kc *Client) loadChallengePage(submitURL string, referer string, authForm u
 		return kc.skipChallengePage(doc, submitURL, secondActionURL, loginDetails)
 
 	} else if extractNodeText(doc, "h2", "To sign in to your Google Account, choose a task from the list below.") != "" {
-		return kc.loadChallengeEntryPage(doc, submitURL, loginDetails)
+		return kc.loadChallengeEntryPage(doc, submitURL, loginDetails, preferredChallenges...)
 	}
 
 	return doc, nil
@@ -475,7 +522,7 @@ func (kc *Client) skipChallengePage(doc *goquery.Document, submitURL string, sec
 	return kc.loadAlternateChallengePage(skipActionURL, submitURL, skipResponseForm, loginDetails)
 }
 
-func (kc *Client) loadAlternateChallengePage(submitURL string, referer string, authForm url.Values, loginDetails *creds.LoginDetails) (*goquery.Document, error) {
+func (kc *Client) loadAlternateChallengePage(submitURL string, referer string, authForm url.Values, loginDetails *creds.LoginDetails, preferredChallenges ...string) (*goquery.Document, error) {
 
 	req, err := http.NewRequest("POST", submitURL, strings.NewReader(authForm.Encode()))
 	if err != nil {
@@ -502,29 +549,120 @@ func (kc *Client) loadAlternateChallengePage(submitURL string, referer string, a
 		return nil, errors.Wrap(err, "failed to define URL for html doc")
 	}
 
-	return kc.loadChallengeEntryPage(doc, submitURL, loginDetails)
+	return kc.loadChallengeEntryPage(doc, submitURL, loginDetails, preferredChallenges...)
 }
 
-func (kc *Client) loadChallengeEntryPage(doc *goquery.Document, submitURL string, loginDetails *creds.LoginDetails) (*goquery.Document, error) {
-	var challengeEntry string
+func (kc *Client) loadChallengeEntryPage(doc *goquery.Document, submitURL string, loginDetails *creds.LoginDetails, preferredChallenges ...string) (*goquery.Document, error) {
+	var (
+		preference         = len(preferredChallenges)
+		preferredSelection *goquery.Selection
+	)
 
+	// Search for the most preferred challenge type among available options.
+	doc.Find(`form div[data-action="selectchallenge"]`).EachWithBreak(func(i int, s *goquery.Selection) bool {
+		challengeType, ok := s.Attr("data-challengetype")
+		if !ok {
+			return true
+		}
+
+		for idx, c := range preferredChallenges {
+			if code, ok := challengeTypeToCode[challengeType]; !ok || code != c {
+				continue
+			}
+			if idx < preference {
+				preference = idx
+				preferredSelection = s
+			}
+			return true
+		}
+		return true
+	})
+
+	// Extract the challenge ID of the preferred challenge type, if one is found.
+	var challengeId string
+
+	if preferredSelection != nil {
+		id, ok := preferredSelection.Find(`button[name="challenge"]`).Attr("value")
+		if ok {
+			challengeId = id
+		}
+	}
+
+	// Fallback: Select the first available challenge type if no preferred type is found.
+	if challengeId == "" {
+		challengeSelection := doc.Find(`form div[data-action="selectchallenge"]`).FilterFunction(func(i int, s *goquery.Selection) bool {
+			if _, ok := s.Attr("data-challengetype"); !ok {
+				return false
+			}
+			if _, ok := s.Attr("data-challengeid"); !ok {
+				return false
+			}
+			return true
+		}).First()
+
+		if challengeSelection != nil {
+			challengeId, _ = challengeSelection.Find(`button[name="challenge"]`).Attr("value")
+		}
+	}
+
+	// If a challenge ID is determined, navigate to the challenge page.
+	if challengeId != "" {
+		var err error
+		doc.Url, err = url.Parse(loginDetails.URL)
+		if err != nil {
+			return nil, errors.Wrap(err, "error building providerURL")
+		}
+		responseForm, newActionURL, err := extractInputsByFormQuery(doc, "")
+		if err != nil {
+			return nil, errors.Wrap(err, "unable to extract challenge form")
+		}
+		responseForm.Set("challenge", challengeId)
+		return kc.loadChallengePage(newActionURL, submitURL, responseForm, loginDetails)
+	}
+
+	preference = len(preferredChallenges)
+	preferredSelection = nil
+
+	// Search for a challenge entry in form actions, checking for preferred types first.
 	doc.Find("form[data-challengeentry]").EachWithBreak(func(i int, s *goquery.Selection) bool {
 		action, ok := s.Attr("action")
 		if !ok {
 			return true
 		}
 
+		for idx, c := range preferredChallenges {
+			if !strings.Contains(action, fmt.Sprintf("challenge/%s/", c)) {
+				continue
+			}
+			if idx < preference {
+				preference = idx
+				preferredSelection = s
+			}
+			return true
+		}
+
+		// Fallback for common challenge types if no preference is set.
 		if strings.Contains(action, "challenge/totp/") ||
 			strings.Contains(action, "challenge/ipp/") ||
 			strings.Contains(action, "challenge/az/") ||
 			strings.Contains(action, "challenge/skotp/") {
 
-			challengeEntry, _ = s.Attr("data-challengeentry")
-			return false
+			// Avoid overriding a previously selected preference.
+			if preference < 0 {
+				preferredSelection = s
+			}
 		}
 
 		return true
 	})
+
+	// Extract the challenge entry from the preferred selection, if available.
+	var challengeEntry string
+	if preferredSelection != nil {
+		if entry, ok := preferredSelection.Attr("data-challengeentry"); ok {
+			challengeEntry = entry
+		}
+	}
 
 	if challengeEntry == "" {
 		return nil, errors.New("unable to find supported second factor")

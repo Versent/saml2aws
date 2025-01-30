@@ -118,6 +118,7 @@ func main() {
 	cmdLogin.Flag("client-secret", "OneLogin client secret, used to generate API access token. (env: ONELOGIN_CLIENT_SECRET)").Envar("ONELOGIN_CLIENT_SECRET").StringVar(&commonFlags.ClientSecret)
 	cmdLogin.Flag("mfa-ip-address", "IP address whitelisting defined in OneLogin MFA policies. (env: ONELOGIN_MFA_IP_ADDRESS)").Envar("ONELOGIN_MFA_IP_ADDRESS").StringVar(&commonFlags.MFAIPAddress)
 	cmdLogin.Flag("force", "Refresh credentials even if not expired.").BoolVar(&loginFlags.Force)
+	cmdLogin.Flag("google-challenge", "Specific to GoogleApps, a prioritized list of challenge types used during login. This flag can be specified multiple times to set the order of challenges (e.g., --google-challenge=totp --google-challenge=dp).").HintOptions("totp", "ipp", "dp").EnumsVar(&loginFlags.GoogleChallenges, "totp", "ipp", "dp")
 	cmdLogin.Flag("credential-process", "Enables AWS Credential Process support by outputting credentials to STDOUT in a JSON message.").BoolVar(&loginFlags.CredentialProcess)
 	cmdLogin.Flag("credentials-file", "The file that will cache the credentials retrieved from AWS. When not specified, will use the default AWS credentials file location. (env: SAML2AWS_CREDENTIALS_FILE)").Envar("SAML2AWS_CREDENTIALS_FILE").StringVar(&commonFlags.CredentialsFile)
 	cmdLogin.Flag("cache-saml", "Caches the SAML response (env: SAML2AWS_CACHE_SAML)").Envar("SAML2AWS_CACHE_SAML").BoolVar(&commonFlags.SAMLCache)

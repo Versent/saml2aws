@@ -245,6 +245,11 @@ func resolveLoginDetails(account *cfg.IDPAccount, loginFlags *flags.LoginExecFla
 		loginDetails.ClientSecret = loginFlags.CommonFlags.ClientSecret
 	}
 
+	// if you supply google_challenge in a flag it takes precedence
+	if len(loginFlags.GoogleChallenges) > 0 {
+		loginDetails.GoogleChallenges = loginFlags.GoogleChallenges
+	}
+
 	// if you supply an mfa_ip_address in a flag or an IDP account it takes precedence
 	if account.MFAIPAddress != "" {
 		loginDetails.MFAIPAddress = account.MFAIPAddress
@@ -256,6 +261,10 @@ func resolveLoginDetails(account *cfg.IDPAccount, loginFlags *flags.LoginExecFla
 		loginDetails.DownloadBrowser = loginFlags.DownloadBrowser
 	} else if account.DownloadBrowser {
 		loginDetails.DownloadBrowser = account.DownloadBrowser
+	}
+
+	if loginFlags.CommonFlags.MFAToken != "" {
+		loginDetails.MFAToken = loginFlags.CommonFlags.MFAToken
 	}
 
 	// log.Printf("loginDetails %+v", loginDetails)

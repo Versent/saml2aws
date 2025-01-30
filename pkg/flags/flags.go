@@ -49,6 +49,7 @@ type LoginExecFlags struct {
 	DuoMFAOption      string
 	ExecProfile       string
 	CredentialProcess bool
+	GoogleChallenges  []string
 }
 
 type ConsoleFlags struct {
