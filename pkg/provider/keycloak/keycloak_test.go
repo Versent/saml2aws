@@ -36,7 +36,7 @@ func TestClient_getLoginForm(t *testing.T) {
 	kc := Client{client: &provider.HTTPClient{Client: http.Client{}, Options: opts}}
 	loginDetails := &creds.LoginDetails{URL: ts.URL, Username: "test", Password: "test123"}
 
-	submitURL, authForm, err := kc.getLoginForm(loginDetails)
+	submitURL, authForm, authCookies, err := kc.getLoginForm(loginDetails)
 	require.Nil(t, err)
 	require.Equal(t, exampleLoginURL, submitURL)
 	require.Equal(t, url.Values{
@@ -44,6 +44,8 @@ func TestClient_getLoginForm(t *testing.T) {
 		"password": []string{"test123"},
 		"login":    []string{"Log in"},
 	}, authForm)
+	require.Equal(t, []*http.Cookie([]*http.Cookie{}), authCookies)
+
 }
 
 func TestClient_getLoginFormTryAnotherWay(t *testing.T) {
@@ -59,7 +61,7 @@ func TestClient_getLoginFormTryAnotherWay(t *testing.T) {
 	kc := Client{client: &provider.HTTPClient{Client: http.Client{}, Options: opts}}
 	loginDetails := &creds.LoginDetails{URL: ts.URL, Username: "test", Password: "test123"}
 
-	submitURL, authForm, err := kc.getLoginForm(loginDetails)
+	submitURL, authForm, authCookies, err := kc.getLoginForm(loginDetails)
 	require.Nil(t, err)
 	require.Equal(t, exampleLoginURL, submitURL)
 	require.Equal(t, url.Values{
@@ -67,6 +69,7 @@ func TestClient_getLoginFormTryAnotherWay(t *testing.T) {
 		"password": []string{"test123"},
 		"login":    []string{"Log in"},
 	}, authForm)
+	require.Equal(t, []*http.Cookie([]*http.Cookie{}), authCookies)
 }
 
 func TestClient_getLoginFormRedirect(t *testing.T) {
@@ -93,7 +96,7 @@ func TestClient_getLoginFormRedirect(t *testing.T) {
 	kc := Client{client: &provider.HTTPClient{Client: http.Client{}, Options: opts}}
 	loginDetails := &creds.LoginDetails{URL: ts.URL, Username: "test", Password: "test123"}
 
-	submitURL, authForm, err := kc.getLoginForm(loginDetails)
+	submitURL, authForm, authCookies, err := kc.getLoginForm(loginDetails)
 	require.Nil(t, err)
 	require.Equal(t, 2, count)
 	require.Equal(t, exampleLoginURL, submitURL)
@@ -102,6 +105,7 @@ func TestClient_getLoginFormRedirect(t *testing.T) {
 		"password": []string{"test123"},
 		"login":    []string{"Log in"},
 	}, authForm)
+	require.Equal(t, []*http.Cookie([]*http.Cookie{}), authCookies)
 }
 
 func TestClient_postLoginForm(t *testing.T) {

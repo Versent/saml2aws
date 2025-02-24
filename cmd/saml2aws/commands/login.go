@@ -25,7 +25,6 @@ import (
 
 // Login login to ADFS
 func Login(loginFlags *flags.LoginExecFlags) error {
-
 	logger := logrus.WithField("command", "login")
 
 	account, err := buildIdpAccount(loginFlags)
@@ -256,6 +255,11 @@ func resolveLoginDetails(account *cfg.IDPAccount, loginFlags *flags.LoginExecFla
 		loginDetails.DownloadBrowser = loginFlags.DownloadBrowser
 	} else if account.DownloadBrowser {
 		loginDetails.DownloadBrowser = account.DownloadBrowser
+	}
+
+	// parse KCBroker if set
+	if account.KCBroker != "" {
+		loginDetails.KCBroker = account.KCBroker
 	}
 
 	// log.Printf("loginDetails %+v", loginDetails)
