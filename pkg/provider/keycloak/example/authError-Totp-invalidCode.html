@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html class="login-pf" lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+  <meta name="robots" content="noindex, nofollow">
+
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Sign in to internal</title>
+  <link rel="icon" href="/resources/kb6gy/login/keycloak/img/favicon.ico" />
+  <link href="/resources/kb6gy/common/keycloak/vendor/patternfly-v4/patternfly.min.css" rel="stylesheet" />
+  <link href="/resources/kb6gy/common/keycloak/vendor/patternfly-v3/css/patternfly.min.css" rel="stylesheet" />
+  <link href="/resources/kb6gy/common/keycloak/vendor/patternfly-v3/css/patternfly-additions.min.css" rel="stylesheet" />
+  <link href="/resources/kb6gy/common/keycloak/lib/pficon/pficon.css" rel="stylesheet" />
+  <link href="/resources/kb6gy/login/keycloak/css/login.css" rel="stylesheet" />
+  <script type="importmap">
+    {
+        "imports": {
+            "rfc4648": "/resources/kb6gy/common/keycloak/vendor/rfc4648/rfc4648.js"
+        }
+    }
+  </script>
+  <script src="/resources/kb6gy/login/keycloak/js/menu-button-links.js" type="module"></script>
+  <script type="module">
+    import { startSessionPolling } from "/resources/kb6gy/login/keycloak/js/authChecker.js";
+
+    startSessionPolling(
+      "/realms/internal/login-actions/restart?client_id=urn%3Aamazon%3Awebservices&tab_id=&client_data=&skip_logout=true"
+    );
+  </script>
+  <script type="module">
+    import { checkAuthSession } from "/resources/kb6gy/login/keycloak/js/authChecker.js";
+
+    checkAuthSession(
+      "sessionValue"
+    );
+  </script>
+  <SCRIPT> if (typeof history.replaceState === 'function') {  history.replaceState({}, "some title", "https://my.domain/realms/internal/login-actions/authenticate?execution=&client_id=urn%3Aamazon%3Awebservices&tab_id=&client_data="); }</SCRIPT></head>
+
+<body class="">
+<div class="login-pf-page">
+  <div id="kc-header" class="login-pf-page-header">
+    <div id="kc-header-wrapper"
+         class="">internal</div>
+  </div>
+  <div class="card-pf">
+    <header class="login-pf-header">
+      <div id="kc-username" class="form-group">
+        <label id="kc-attempted-username">aorlovskiy</label>
+        <a id="reset-login" href="/realms/internal/login-actions/restart?client_id=urn%3Aamazon%3Awebservices&amp;tab_id=&amp;client_data=&amp;skip_logout=false" aria-label="Restart login">
+          <div class="kc-login-tooltip">
+            <i class="pficon pficon-arrow fa"></i>
+            <span class="kc-tooltip-text">Restart login</span>
+          </div>
+        </a>
+      </div>
+    </header>
+    <div id="kc-content">
+      <div id="kc-content-wrapper">
+
+
+        <form id="kc-otp-login-form" class="form-horizontal" onsubmit="login.disabled = true; return true;" action="https://my.domain/realms/internal/login-actions/authenticate?session_code=&amp;execution=&amp;client_id=urn%3Aamazon%3Awebservices&amp;tab_id=&amp;client_data="
+              method="post">
+
+          <div class="form-group">
+            <div class="col-xs-12 col-sm-12 col-md-12 col-lg-12">
+              <label for="otp" class="pf-c-form__label pf-c-form__label-text">One-time code</label>
+            </div>
+
+            <div class="col-xs-12 col-sm-12 col-md-12 col-lg-12">
+              <input id="otp" name="otp" autocomplete="one-time-code" type="text" class="pf-c-form-control"
+                     autofocus aria-invalid="true"
+                     dir="ltr" />
+
+              <span id="input-error-otp-code" class="pf-c-form__helper-text pf-m-error required kc-feedback-text"
+                    aria-live="polite">
+                        Invalid authenticator code.
+                    </span>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <div id="kc-form-options" class="col-xs-12 col-sm-12 col-md-12 col-lg-12">
+              <div class="">
+              </div>
+            </div>
+
+            <div id="kc-form-buttons" class="col-xs-12 col-sm-12 col-md-12 col-lg-12">
+              <input
+                class="pf-c-button pf-m-primary pf-m-block btn-lg"
+                name="login" id="kc-login" type="submit" value="Sign In" />
+            </div>
+          </div>
+        </form>
+
+        <form id="kc-select-try-another-way-form" action="https://my.domain/realms/internal/login-actions/authenticate?session_code=&amp;execution=&amp;client_id=urn%3Aamazon%3Awebservices&amp;tab_id=&amp;client_data=" method="post">
+          <div class="form-group">
+            <input type="hidden" name="tryAnotherWay" value="on"/>
+            <a href="#" id="try-another-way"
+               onclick="document.forms['kc-select-try-another-way-form'].requestSubmit();return false;">Try Another Way</a>
+          </div>
+        </form>
+
+
+      </div>
+    </div>
+
+  </div>
+</div>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'',t:''};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>

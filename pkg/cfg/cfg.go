@@ -69,6 +69,8 @@ type IDPAccount struct {
 	Prompter              string `ini:"prompter"`
 	KCAuthErrorMessage    string `ini:"kc_auth_error_message,omitempty"` // used by KeyCloak; hide from user if not set
 	KCAuthErrorElement    string `ini:"kc_auth_error_element,omitempty"` // used by KeyCloak; hide from user if not set
+	KCAuthOtpErrorMessage string `ini:"kc_auth_otp_error_message,omitempty"` // used by KeyCloak; hide from user if not set
+	KCAuthOtpErrorElement string `ini:"kc_auth_otp_error_element,omitempty"` // used by KeyCloak; hide from user if not set
 	KCBroker              string `ini:"kc_broker"`                       // used by KeyCloak;
 }
 

@@ -28,8 +28,9 @@ var logger = logrus.WithField("provider", "Keycloak")
 type Client struct {
 	provider.ValidateBase
 
-	client             *provider.HTTPClient
-	authErrorValidator *authErrorValidator
+	client                *provider.HTTPClient
+	authErrorValidator    *authErrorValidator
+	authOtpErrorValidator *authOtpErrorValidator
 }
 
 var (
@@ -60,14 +61,20 @@ func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 		return nil, errors.Wrap(err, "error building http client")
 	}
 
-	authErrorValidator, err := CustomizeAuthErrorValidator(idpAccount)
+	authErrValidator, err := CustomizeAuthErrorValidator(idpAccount)
 	if err != nil {
 		return nil, errors.Wrap(err, "error customizing auth error validator")
 	}
 
+	otpErrValidator, err := CustomizeAuthOtpErrorValidator(idpAccount)
+	if err != nil {
+		return nil, errors.Wrap(err, "error customizing auth otp error validator")
+	}
+
 	return &Client{
-		client:             client,
-		authErrorValidator: authErrorValidator,
+		client:                client,
+		authErrorValidator:    authErrValidator,
+		authOtpErrorValidator: otpErrValidator,
 	}, nil
 }
 
@@ -125,6 +132,9 @@ func (kc *Client) doAuthenticate(authCtx *authContext, loginDetails *creds.Login
 		doc, err = kc.postTotpForm(authCtx, totpSubmitURL, doc)
 		if err != nil {
 			return "", errors.Wrap(err, "error posting totp form")
+		}
+		if kc.authOtpErrorValidator.isCodeInvalid(doc) {
+			return "", fmt.Errorf("otp code is invalid")
 		}
 	} else if containsWebauthnForm(doc) {
 		credentialIDs, challenge, rpId, err := extractWebauthnParameters(doc)
