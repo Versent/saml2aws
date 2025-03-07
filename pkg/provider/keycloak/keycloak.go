@@ -142,7 +142,10 @@ func (kc *Client) doAuthenticate(authCtx *authContext, loginDetails *creds.Login
 		}
 	}
 	samlResponse, err := extractSamlResponse(doc)
-	if err != nil && authCtx.authenticatorIndexValid && passwordValid(doc, kc.authErrorValidator) {
+	if err != nil && !passwordValid(doc, kc.authErrorValidator) {
+		return "", fmt.Errorf("%s", DefaultAuthErrorMessage)
+	}
+	if err != nil && authCtx.authenticatorIndexValid {
 		return kc.doAuthenticate(authCtx, loginDetails)
 	}
 	return samlResponse, err
