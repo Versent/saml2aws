@@ -76,7 +76,7 @@ jobs:
 
       - uses: actions/download-artifact@v4
         with:
-          name: macos-12_reports
+          name: macos-13_reports
           path: reports
 
       - name: Codecov

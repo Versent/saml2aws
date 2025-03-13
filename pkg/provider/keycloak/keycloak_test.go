@@ -36,7 +36,7 @@ func TestClient_getLoginForm(t *testing.T) {
 	kc := Client{client: &provider.HTTPClient{Client: http.Client{}, Options: opts}}
 	loginDetails := &creds.LoginDetails{URL: ts.URL, Username: "test", Password: "test123"}
 
-	submitURL, authForm, err := kc.getLoginForm(loginDetails)
+	submitURL, authForm, authCookies, err := kc.getLoginForm(loginDetails)
 	require.Nil(t, err)
 	require.Equal(t, exampleLoginURL, submitURL)
 	require.Equal(t, url.Values{
@@ -44,6 +44,8 @@ func TestClient_getLoginForm(t *testing.T) {
 		"password": []string{"test123"},
 		"login":    []string{"Log in"},
 	}, authForm)
+	require.Equal(t, []*http.Cookie([]*http.Cookie{}), authCookies)
+
 }
 
 func TestClient_getLoginFormTryAnotherWay(t *testing.T) {
@@ -59,7 +61,7 @@ func TestClient_getLoginFormTryAnotherWay(t *testing.T) {
 	kc := Client{client: &provider.HTTPClient{Client: http.Client{}, Options: opts}}
 	loginDetails := &creds.LoginDetails{URL: ts.URL, Username: "test", Password: "test123"}
 
-	submitURL, authForm, err := kc.getLoginForm(loginDetails)
+	submitURL, authForm, authCookies, err := kc.getLoginForm(loginDetails)
 	require.Nil(t, err)
 	require.Equal(t, exampleLoginURL, submitURL)
 	require.Equal(t, url.Values{
@@ -67,6 +69,7 @@ func TestClient_getLoginFormTryAnotherWay(t *testing.T) {
 		"password": []string{"test123"},
 		"login":    []string{"Log in"},
 	}, authForm)
+	require.Equal(t, []*http.Cookie([]*http.Cookie{}), authCookies)
 }
 
 func TestClient_getLoginFormRedirect(t *testing.T) {
@@ -93,7 +96,7 @@ func TestClient_getLoginFormRedirect(t *testing.T) {
 	kc := Client{client: &provider.HTTPClient{Client: http.Client{}, Options: opts}}
 	loginDetails := &creds.LoginDetails{URL: ts.URL, Username: "test", Password: "test123"}
 
-	submitURL, authForm, err := kc.getLoginForm(loginDetails)
+	submitURL, authForm, authCookies, err := kc.getLoginForm(loginDetails)
 	require.Nil(t, err)
 	require.Equal(t, 2, count)
 	require.Equal(t, exampleLoginURL, submitURL)
@@ -102,6 +105,7 @@ func TestClient_getLoginFormRedirect(t *testing.T) {
 		"password": []string{"test123"},
 		"login":    []string{"Log in"},
 	}, authForm)
+	require.Equal(t, []*http.Cookie([]*http.Cookie{}), authCookies)
 }
 
 func TestClient_postLoginForm(t *testing.T) {
@@ -303,6 +307,7 @@ func TestClient_CustomizeAuthErrorValidator_CustomSetup(t *testing.T) {
 	require.Equal(t, authErrorValidator.httpMessageRE.String(), ErrMessage1+"|"+ErrMessage2)
 	require.Equal(t, authErrorValidator.httpElement, httpElement)
 }
+
 func TestClient_passwordValid_DefaultValidator(t *testing.T) {
 	// Test with the default auth error message and the default HTTP element
 	idpAccount := cfg.IDPAccount{
@@ -312,13 +317,25 @@ func TestClient_passwordValid_DefaultValidator(t *testing.T) {
 	authErrorValidator, err := CustomizeAuthErrorValidator(&idpAccount)
 	require.Nil(t, err)
 
-	data, err := os.ReadFile("example/authError-invalidPassword.html")
-	require.Nil(t, err)
+	tCases := []struct {
+		name string
+		file string
+	}{
+		{name: "v1", file: "example/authError-invalidPassword.html"},
+		{name: "v2", file: "example/authError-invalidPassword-v2.html"},
+	}
 
-	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(data))
-	require.Nil(t, err)
+	for _, tc := range tCases {
+		t.Run(tc.name, func(t *testing.T) {
+			data, err := os.ReadFile(tc.file)
+			require.Nil(t, err)
 
-	require.Equal(t, passwordValid(doc, authErrorValidator), false)
+			doc, err := goquery.NewDocumentFromReader(bytes.NewReader(data))
+			require.Nil(t, err)
+
+			require.Equal(t, passwordValid(doc, authErrorValidator), false)
+		})
+	}
 }
 
 func TestClient_passwordValid_CustomValidator(t *testing.T) {
