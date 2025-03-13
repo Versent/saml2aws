@@ -8,7 +8,7 @@ import (
 	"os"
 	"runtime"
 
-	"github.com/alecthomas/kingpin"
+	"github.com/alecthomas/kingpin/v2"
 	"github.com/sirupsen/logrus"
 	"github.com/versent/saml2aws/v2"
 	"github.com/versent/saml2aws/v2/cmd/saml2aws/commands"
@@ -91,6 +91,7 @@ func main() {
 	app.Flag("disable-keychain", "Do not use keychain at all. This will also disable Okta sessions & remembering MFA device. (env: SAML2AWS_DISABLE_KEYCHAIN)").Envar("SAML2AWS_DISABLE_KEYCHAIN").BoolVar(&commonFlags.DisableKeychain)
 	app.Flag("region", "AWS region to use for API requests, e.g. us-east-1, us-gov-west-1, cn-north-1 (env: SAML2AWS_REGION)").Envar("SAML2AWS_REGION").Short('r').StringVar(&commonFlags.Region)
 	app.Flag("prompter", "The prompter to use for user input (default, pinentry)").StringVar(&commonFlags.Prompter)
+	app.Flag("kc-broker", "The kc broker to use when authenticating via keycloak").StringVar(&commonFlags.KCBroker)
 
 	// `configure` command and settings
 	cmdConfigure := app.Command("configure", "Configure a new IDP account.")
@@ -190,7 +191,6 @@ func main() {
 	http.DefaultTransport.(*http.Transport).Proxy = http.ProxyFromEnvironment
 
 	logrus.WithField("command", command).Debug("Running")
-
 	var err error
 	switch command {
 	case cmdScript.FullCommand():
