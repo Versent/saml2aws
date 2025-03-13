@@ -98,7 +98,7 @@ func (kc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 }
 
 func (kc *Client) doAuthenticate(authCtx *authContext, loginDetails *creds.LoginDetails) (string, error) {
-	authSubmitURL, authForm, err := kc.getLoginForm(loginDetails)
+	authSubmitURL, authForm, authCookies, err := kc.getLoginForm(loginDetails)
 	if err != nil {
 		return "", errors.Wrap(err, "error retrieving login form from idp")
 	}
@@ -131,18 +131,16 @@ func (kc *Client) doAuthenticate(authCtx *authContext, loginDetails *creds.Login
 		if err != nil {
 			return "", errors.Wrap(err, "could not extract Webauthn parameters")
 		}
-
 		webauthnSubmitURL, err := extractSubmitURL(doc)
 		if err != nil {
 			return "", errors.Wrap(err, "unable to locate IDP Webauthn form submit URL")
 		}
 
-		doc, err = kc.postWebauthnForm(webauthnSubmitURL, credentialIDs, challenge, rpId)
+		doc, err = kc.postWebauthnForm(webauthnSubmitURL, credentialIDs, challenge, rpId, authCookies)
 		if err != nil {
 			return "", errors.Wrap(err, "error posting Webauthn form")
 		}
 	}
-
 	samlResponse, err := extractSamlResponse(doc)
 	if err != nil && authCtx.authenticatorIndexValid && passwordValid(doc, kc.authErrorValidator) {
 		return kc.doAuthenticate(authCtx, loginDetails)
@@ -187,22 +185,58 @@ func extractWebauthnParameters(doc *goquery.Document) (credentialIDs []string, c
 	return credentialIDs, challenge, rpID, nil
 }
 
-func (kc *Client) getLoginForm(loginDetails *creds.LoginDetails) (string, url.Values, error) {
+func (kc *Client) getLoginForm(loginDetails *creds.LoginDetails) (string, url.Values, []*http.Cookie, error) {
 
 	res, err := kc.client.Get(loginDetails.URL)
+
 	if err != nil {
-		return "", nil, errors.Wrap(err, "error retrieving form")
+		return "", nil, nil, errors.Wrap(err, "error retrieving form")
 	}
 
 	doc, err := goquery.NewDocumentFromReader(res.Body)
 	if err != nil {
-		return "", nil, errors.Wrap(err, "failed to build document from response")
+		return "", nil, nil, errors.Wrap(err, "failed to build document from response")
 	}
 
+	if loginDetails.KCBroker != "" {
+		log.Printf("Attempting to parse federation chain using keycloak broker %v", loginDetails.KCBroker)
+		KCFederationID := "#social-" + loginDetails.KCBroker
+		var path string
+		doc.Find(KCFederationID).Each(func(i int, s *goquery.Selection) {
+			href, ok := s.Attr("href")
+			if !ok {
+				return
+			}
+			path = href
+		})
+		url, err := url.Parse(loginDetails.URL)
+		if err != nil {
+			return "", nil, nil, errors.Wrap(err, "error parsing url for federation")
+		}
+		new_url := "https://" + url.Hostname() + path
+		req, err := http.NewRequest("GET", new_url, nil)
+		if err != nil {
+			return "", nil, nil, errors.Wrap(err, "error building federated request")
+		}
+		for _, cookie := range res.Cookies() {
+			req.AddCookie(cookie)
+			// log.Println("added cookie: %v to request", cookie)
+		}
+		res2, err := kc.client.Get(new_url)
+		if err != nil {
+			return "", nil, nil, errors.Wrap(err, "error retrieving federated form")
+		}
+		doc2, err := goquery.NewDocumentFromReader(res2.Body)
+		if err != nil {
+			return "", nil, nil, errors.Wrap(err, "failed to build federated document from response")
+		}
+		doc = doc2
+		res = res2
+	}
 	if res.StatusCode == http.StatusUnauthorized {
 		authSubmitURL, err := extractSubmitURL(doc)
 		if err != nil {
-			return "", nil, errors.Wrap(err, "unable to locate IDP authentication form submit URL")
+			return "", nil, nil, errors.Wrap(err, "unable to locate IDP authentication form submit URL")
 		}
 		loginDetails.URL = authSubmitURL
 		return kc.getLoginForm(loginDetails)
@@ -213,13 +247,13 @@ func (kc *Client) getLoginForm(loginDetails *creds.LoginDetails) (string, url.Va
 	doc.Find("input").Each(func(i int, s *goquery.Selection) {
 		updateKeyCloakFormData(authForm, s, loginDetails)
 	})
-
+	authCookies := res.Cookies()
 	authSubmitURL, err := extractSubmitURL(doc)
 	if err != nil {
-		return "", nil, errors.Wrap(err, "unable to locate IDP authentication form submit URL")
+		return "", nil, nil, errors.Wrap(err, "unable to locate IDP authentication form submit URL")
 	}
 
-	return authSubmitURL, authForm, nil
+	return authSubmitURL, authForm, authCookies, nil
 }
 
 func (kc *Client) postLoginForm(authSubmitURL string, authForm url.Values) ([]byte, error) {
@@ -281,9 +315,8 @@ func (kc *Client) postTotpForm(authCtx *authContext, totpSubmitURL string, doc *
 	return doc, nil
 }
 
-func (kc *Client) postWebauthnForm(webauthnSubmitURL string, credentialIDs []string, challenge, rpId string) (*goquery.Document, error) {
+func (kc *Client) postWebauthnForm(webauthnSubmitURL string, credentialIDs []string, challenge, rpId string, cookies []*http.Cookie) (*goquery.Document, error) {
 	webauthnForm := url.Values{}
-
 	var assertion *okta.SignedAssertion
 	var pickedCredentialID string
 	for i, credentialID := range credentialIDs {
@@ -328,14 +361,14 @@ func (kc *Client) postWebauthnForm(webauthnSubmitURL string, credentialIDs []str
 	webauthnForm.Set("credentialId", pickedCredentialID)
 	webauthnForm.Set("userHandle", "")
 	webauthnForm.Set("error", "")
-
 	req, err := http.NewRequest("POST", webauthnSubmitURL, strings.NewReader(webauthnForm.Encode()))
 	if err != nil {
 		return nil, errors.Wrap(err, "error building MFA request")
 	}
-
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-
+	for _, cookie := range cookies {
+		req.AddCookie(cookie)
+	}
 	res, err := kc.client.Do(req)
 	if err != nil {
 		return nil, errors.Wrap(err, "error retrieving content")
@@ -345,7 +378,6 @@ func (kc *Client) postWebauthnForm(webauthnSubmitURL string, credentialIDs []str
 	if err != nil {
 		return nil, errors.Wrap(err, "error reading webauthn form response")
 	}
-
 	return doc, nil
 }
 
@@ -368,7 +400,6 @@ func extractSubmitURL(doc *goquery.Document) (string, error) {
 		}
 		submitURL = action
 	})
-
 	if submitURL == "" {
 		return "", fmt.Errorf("unable to locate form submit URL")
 	}
@@ -379,7 +410,6 @@ func extractSubmitURL(doc *goquery.Document) (string, error) {
 func extractSamlResponse(doc *goquery.Document) (string, error) {
 	var samlAssertion = ""
 	var err = fmt.Errorf("unable to locate saml response field")
-
 	doc.Find("input").Each(func(i int, s *goquery.Selection) {
 		name, ok := s.Attr("name")
 		if ok && name == "SAMLResponse" {
