@@ -32,9 +32,11 @@ type Client struct {
 	authErrorValidator *authErrorValidator
 }
 
-const (
-	DefaultAuthErrorElement = "span#input-error"
-	DefaultAuthErrorMessage = "Invalid username or password."
+var (
+	defaultAuthErrorElementV1 = "span#input-error"
+	defaultAuthErrorElementV2 = "div#input-error-username"
+	DefaultAuthErrorElement   = fmt.Sprintf("%s, %s", defaultAuthErrorElementV1, defaultAuthErrorElementV2)
+	DefaultAuthErrorMessage   = "Invalid username or password."
 )
 
 type authErrorValidator struct {
