@@ -32,12 +32,12 @@ type Client struct {
 // New create new browser based client
 func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 	return &Client{
-		Headless:                  idpAccount.Headless,
-		BrowserDriverDir:          idpAccount.BrowserDriverDir,
-		BrowserType:               strings.ToLower(idpAccount.BrowserType),
-		BrowserExecutablePath:     idpAccount.BrowserExecutablePath,
-		Timeout:                   idpAccount.Timeout,
-		BrowserAutoFill:           idpAccount.BrowserAutoFill,
+		Headless:              idpAccount.Headless,
+		BrowserDriverDir:      idpAccount.BrowserDriverDir,
+		BrowserType:           strings.ToLower(idpAccount.BrowserType),
+		BrowserExecutablePath: idpAccount.BrowserExecutablePath,
+		Timeout:               idpAccount.Timeout,
+		BrowserAutoFill:       idpAccount.BrowserAutoFill,
 	}, nil
 }
 
