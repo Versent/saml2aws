@@ -98,6 +98,15 @@ func (ac *Client) follow(ctx context.Context, req *http.Request) (string, error)
 	} else if docIsLogin(doc) {
 		logger.WithField("type", "login").Debug("doc detect")
 		handler = ac.handleLogin
+	} else if docIsCheckWebAuthn(doc) {
+		logger.WithField("type", "check-webauthn").Debug("doc detect")
+		handler = ac.handleCheckWebAuthn
+	} else if docIsFormSelectDevice(doc) {
+		logger.WithField("type", "select-device").Debug("doc detect")
+		handler = ac.handleFormSelectDevice
+	} else if docIsAuthPostback(doc) {
+		logger.WithField("type", "auth-postback").Debug("doc detect")
+		handler = ac.handleFormRedirect
 	} else if docIsOTP(doc) {
 		logger.WithField("type", "otp").Debug("doc detect")
 		handler = ac.handleOTP
@@ -143,6 +152,18 @@ func (ac *Client) handleLogin(ctx context.Context, doc *goquery.Document, _ *url
 	form.Values.Set("USER", loginDetails.Username)
 	form.Values.Set("PASSWORD", loginDetails.Password)
 	form.URL = makeAbsoluteURL(form.URL, loginDetails.URL)
+
+	req, err := form.BuildRequest()
+	return ctx, req, err
+}
+
+func (ac *Client) handleCheckWebAuthn(ctx context.Context, doc *goquery.Document, requestURL *url.URL) (context.Context, *http.Request, error) {
+	form, err := page.NewFormFromDocument(doc, "form")
+	if err != nil {
+		return ctx, nil, errors.Wrap(err, "error extracting login form")
+	}
+
+	form.Values.Set("isWebAuthnSupportedByBrowser", "false")
 
 	req, err := form.BuildRequest()
 	return ctx, req, err
@@ -235,6 +256,29 @@ func (ac *Client) handleRefresh(ctx context.Context, doc *goquery.Document, _ *u
 	return ctx, req, err
 }
 
+func (ac *Client) handleFormSelectDevice(ctx context.Context, doc *goquery.Document, requestURL *url.URL) (context.Context, *http.Request, error) {
+	var deviceMap = findDeviceMap(doc)
+	deviceNameList := make([]string, len(deviceMap))
+	i := 0
+	for key := range deviceMap {
+		deviceNameList[i] = key
+		i++
+	}
+	var chooseDevice = prompter.Choose("Select which MFA Device to use", deviceNameList)
+
+	form, err := page.NewFormFromDocument(doc, "")
+	if err != nil {
+		return ctx, nil, errors.Wrap(err, "error extracting select device form")
+	}
+
+	form.Values.Set("deviceId", deviceMap[deviceNameList[chooseDevice]])
+	form.URL = makeAbsoluteURL(form.URL, makeBaseURL(requestURL))
+
+	logger.WithField("value", form.Values.Encode()).Debug("Select Device")
+	req, err := form.BuildRequest()
+	return ctx, req, err
+}
+
 func (ac *Client) handleFormRedirect(ctx context.Context, doc *goquery.Document, _ *url.URL) (context.Context, *http.Request, error) {
 	form, err := page.NewFormFromDocument(doc, "")
 	if err != nil {
@@ -260,6 +304,14 @@ func docIsLogin(doc *goquery.Document) bool {
 
 func docIsOTP(doc *goquery.Document) bool {
 	return doc.Has("form#otp-form").Size() == 1
+}
+
+func docIsCheckWebAuthn(doc *goquery.Document) bool {
+	return doc.Has("input[name=\"isWebAuthnSupportedByBrowser\"]").Size() == 1
+}
+
+func docIsAuthPostback(doc *goquery.Document) bool {
+	return doc.Has("form#form1").Size() == 1 && doc.Has("form#reponseView").Size() == 0
 }
 
 func docIsSwipe(doc *goquery.Document) bool {
@@ -294,6 +346,10 @@ func docIsFormRedirectToTarget(doc *goquery.Document, target string) bool {
 	return doc.Find(urlForm).Size() == 1
 }
 
+func docIsFormSelectDevice(doc *goquery.Document) bool {
+	return doc.Has("form[name=\"device-form\"]").Size() == 1
+}
+
 func docIsRefresh(doc *goquery.Document) bool {
 	return doc.Has("meta[http-equiv=\"refresh\"]").Size() == 1
 }
@@ -308,4 +364,24 @@ func makeAbsoluteURL(v string, base string) string {
 		return fmt.Sprintf("%s%s", base, v)
 	}
 	return v
+}
+
+func makeBaseURL(url *url.URL) string {
+	return url.Scheme + "://" + url.Hostname()
+}
+
+func findDeviceMap(doc *goquery.Document) map[string]string {
+	deviceList := make(map[string]string)
+
+	doc.Find("ul.device-list > li").Each(func(_ int, s *goquery.Selection) {
+		deviceId, _ := s.Attr("data-id")
+		deviceName, _ := s.Find("a > div.device-name").Html()
+		if deviceName == "" {
+			deviceName, _ = s.Find("button > div.device-name").Html()
+		}
+
+		logger.WithField("device name", deviceName).WithField("device id", deviceId).Debug("Select Device")
+		deviceList[deviceName] = deviceId
+	})
+	return deviceList
 }

@@ -39,6 +39,7 @@ type CommonFlags struct {
 	DisableRememberDevice bool
 	DisableSessions       bool
 	Prompter              string
+	KCBroker              string
 }
 
 // LoginExecFlags flags for the Login / Exec commands
@@ -147,7 +148,9 @@ func ApplyFlagOverrides(commonFlags *CommonFlags, account *cfg.IDPAccount) {
 	if commonFlags.Prompter != "" {
 		account.Prompter = commonFlags.Prompter
 	}
-
+	if commonFlags.KCBroker != "" {
+		account.KCBroker = commonFlags.KCBroker
+	}
 	// select the prompter
 	if commonFlags.Prompter != "" {
 		account.Prompter = commonFlags.Prompter
