@@ -12,7 +12,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macOS-latest, macos-12]
+        os: [ubuntu-latest, macOS-latest, macos-13]
     steps:
       - name: Check out code into the Go module directory
         uses: actions/checkout@v4
@@ -76,7 +76,7 @@ jobs:
 
       - uses: actions/download-artifact@v4
         with:
-          name: macos-12_reports
+          name: macos-13_reports
           path: reports
 
       - name: Codecov
