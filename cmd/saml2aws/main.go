@@ -171,7 +171,7 @@ func main() {
 
 	// will leave this here for a while during upgrade process
 	if *provider != "" {
-		log.Println("The --provider flag has been replaced with a new configure command. See https://github.com/versent/saml2aws/v2#adding-idp-accounts")
+		log.Println("The --provider flag has been replaced with a new configure command. See https://github.com/Versent/saml2aws#configuring-idp-accounts")
 		os.Exit(1)
 	}
 
