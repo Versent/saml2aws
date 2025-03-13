@@ -1,0 +1,36 @@
+<html>
+  <head>
+    <title>Fake Login Page</title>
+  </head>
+  <body>
+    <form id="form">
+      <div>
+        <label for="password"><b>Password:</b></label>
+        <input type="password" name="password" />
+      </div>
+
+      <div><input type="submit">Login</button></div>
+    </form>
+
+    <div id="result" style="display: none">
+      You should not see this as the form onsubmit should override this inner
+      text.
+    </div>
+
+    <script>
+      const submit = document.querySelector("button[type=submit]");
+      const formSection = document.getElementById("form");
+      const resultSection = document.getElementById("result");
+
+      form.onsubmit = function (event) {
+        event.preventDefault();
+        const username = "golang";
+        const password = event.target.elements.password.value;
+
+        formSection.style.display = "none";
+        resultSection.style.display = "block";
+        resultSection.innerText = `${username}:${password}`;
+      };
+    </script>
+  </body>
+</html>
