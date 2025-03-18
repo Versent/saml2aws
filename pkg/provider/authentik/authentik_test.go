@@ -15,6 +15,7 @@ func Test_getLoginJSON(t *testing.T) {
 	loginDetails := &creds.LoginDetails{
 		Username: "user",
 		Password: "pwd",
+		MFAToken: "otp",
 		URL:      "https://127.0.0.1/sso/init",
 	}
 	payload := &authentikPayload{
@@ -32,6 +33,14 @@ func Test_getLoginJSON(t *testing.T) {
 	b, err = getLoginJSON(loginDetails, payload)
 	assert.Nil(err)
 	assert.Equal(string(b), "{\"component\":\"ak-stage-password\",\"password\":\"pwd\"}")
+
+	payload = &authentikPayload{
+		Component: "ak-stage-authenticator-validate",
+		Type:      "native",
+	}
+	b, err = getLoginJSON(loginDetails, payload)
+	assert.Nil(err)
+	assert.Equal(string(b), "{\"code\":\"otp\",\"component\":\"ak-stage-authenticator-validate\"}")
 
 	payload = &authentikPayload{
 		Component: "ak-stage-test",
@@ -60,6 +69,10 @@ func Test_getFieldName(t *testing.T) {
 	assert.Nil(err)
 	assert.Equal(name, "password")
 
+	name, err = getFieldName("ak-stage-authenticator-validate")
+	assert.Nil(err)
+	assert.Equal(name, "authenticator-validate")
+
 	name, err = getFieldName("ak-stage-")
 	assert.Nil(err)
 	assert.Equal(name, "")
@@ -86,6 +99,9 @@ func Test_prepareErrors(t *testing.T) {
 	desc = prepareErrors("ak-stage-password", identification_errs)
 	assert.Equal(desc, "")
 
+	desc = prepareErrors("ak-stage-authenticator-validate", identification_errs)
+	assert.Equal(desc, "")
+
 	passwordErrs := map[string][]map[string]string{
 		"password": {
 			{
@@ -99,6 +115,28 @@ func Test_prepareErrors(t *testing.T) {
 
 	desc = prepareErrors("ak-stage-identification", passwordErrs)
 	assert.Equal(desc, "")
+
+	desc = prepareErrors("ak-stage-authenticator-validate", passwordErrs)
+	assert.Equal(desc, "")
+
+	authenticatorErrs := map[string][]map[string]string{
+		"code": {
+			{
+				"string": "Failed to authenticate.",
+				"code":   "invalid",
+			},
+		},
+	}
+
+	desc = prepareErrors("ak-stage-authenticator-validate", authenticatorErrs)
+	assert.Equal(desc, "authenticator-validate invalid: Failed to authenticate.")
+
+	desc = prepareErrors("ak-stage-identification", authenticatorErrs)
+	assert.Equal(desc, "")
+
+	desc = prepareErrors("ak-stage-password", authenticatorErrs)
+	assert.Equal(desc, "")
+
 }
 
 // Test_authWithCombinedUsernamePassword Password only if username/email verified
