@@ -1,0 +1,33 @@
+name: Dependabot Go Mod Tidy
+
+on:
+  pull_request:
+    branches:
+      - master 
+
+jobs:
+  tidy:
+    # Only run this workflow for Dependabot PRs
+    if: github.actor == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}  # Checkout the PR branch
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: "go.mod"
+
+      - name: Run go mod tidy
+        run: go mod tidy
+
+      - name: Commit changes
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add go.mod go.sum
+          git diff --staged --quiet || git commit -m "Run go mod tidy"
+          git push
