@@ -44,19 +44,23 @@ func Configure(configFlags *flags.CommonFlags) error {
 			return errors.Wrap(err, "failed to input configuration")
 		}
 
-		if credentials.SupportsStorage() && idpAccountPassword == "" {
-			password := prompter.Password("Password")
-			if password != "" {
-				if confirmPassword := prompter.Password("Confirm"); confirmPassword == password {
-					idpAccountPassword = password
-				} else {
-					log.Println("Passwords did not match")
-					os.Exit(1)
-				}
-			} else {
-				log.Println("No password supplied")
-			}
+		if !credentials.SupportsStorage() || idpAccountPassword != "" {
+			return nil
 		}
+
+		password := prompter.Password("Enter password")
+		if password == "" {
+			log.Println("No password supplied")
+			return nil
+		}
+
+		repeat := prompter.Password("Re-enter password")
+		if repeat != password {
+			log.Println("Confirmed password does not match")
+			os.Exit(1)
+		}
+
+		idpAccountPassword = password
 	}
 
 	if credentials.SupportsStorage() {
