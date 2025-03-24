@@ -19,11 +19,9 @@ const OneLoginOAuthPath = "/auth/oauth2/v2/token"
 
 // Configure configure account profiles
 func Configure(configFlags *flags.CommonFlags) error {
-
 	idpAccountName := configFlags.IdpAccount
 	idpAccountPassword := configFlags.Password
 
-	// pass in alternative location of saml2aws config file, if set.
 	cfgm, err := cfg.NewConfigManager(configFlags.ConfigFile)
 	if err != nil {
 		return errors.Wrap(err, "failed to load configuration")
@@ -34,39 +32,34 @@ func Configure(configFlags *flags.CommonFlags) error {
 		return errors.Wrap(err, "failed to load idp account")
 	}
 
-	// update username and hostname if supplied
 	flags.ApplyFlagOverrides(configFlags, account)
 
-	// do we need to prompt for values now?
-	if !configFlags.SkipPrompt {
-		err = saml2aws.PromptForConfigurationDetails(account)
-		if err != nil {
-			return errors.Wrap(err, "failed to input configuration")
-		}
+	if configFlags.SkipPrompt {
+		return saveConfiguration(cfgm, idpAccountName, account, configFlags, idpAccountPassword)
+	}
 
-		if credentials.SupportsStorage() && idpAccountPassword == "" {
-			password := prompter.Password("Password")
-			if password != "" {
-				if confirmPassword := prompter.Password("Confirm"); confirmPassword == password {
-					idpAccountPassword = password
-				} else {
-					log.Println("Passwords did not match")
-					os.Exit(1)
-				}
-			} else {
-				log.Println("No password supplied")
-			}
+	if err = saml2aws.PromptForConfigurationDetails(account); err != nil {
+		return errors.Wrap(err, "failed to input configuration")
+	}
+
+	if credentials.SupportsStorage() && idpAccountPassword == "" {
+		idpAccountPassword = prompter.Password("Enter password")
+		if idpAccountPassword == "" {
+			log.Println("No password supplied")
 		}
 	}
 
+	return saveConfiguration(cfgm, idpAccountName, account, configFlags, idpAccountPassword)
+}
+
+func saveConfiguration(cfgm *cfg.ConfigManager, idpAccountName string, account *cfg.IDPAccount, configFlags *flags.CommonFlags, idpAccountPassword string) error {
 	if credentials.SupportsStorage() {
 		if err := storeCredentials(configFlags, account, idpAccountPassword); err != nil {
 			return err
 		}
 	}
 
-	err = cfgm.SaveIDPAccount(idpAccountName, account)
-	if err != nil {
+	if err := cfgm.SaveIDPAccount(idpAccountName, account); err != nil {
 		return errors.Wrap(err, "failed to save configuration")
 	}
 
