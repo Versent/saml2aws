@@ -50,6 +50,7 @@ type LoginExecFlags struct {
 	DuoMFAOption      string
 	ExecProfile       string
 	CredentialProcess bool
+	TryNoPrompt       bool
 }
 
 type ConsoleFlags struct {
