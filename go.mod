@@ -1,8 +1,7 @@
 module github.com/versent/saml2aws/v2
 
 go 1.21.0
-
-toolchain go1.22.5
+toolchain go1.24.1
 
 require (
 	github.com/99designs/keyring v1.2.2
@@ -26,7 +25,7 @@ require (
 	github.com/stretchr/testify v1.10.0
 	github.com/tidwall/gjson v1.18.0
 	github.com/trimble-oss/go-webauthn-client v0.3.0
-	golang.org/x/net v0.30.0
+	golang.org/x/net v0.38.0
 	gopkg.in/ini.v1 v1.67.0
 )
 
@@ -55,10 +54,10 @@ require (
 	github.com/tidwall/pretty v1.2.1 // indirect
 	github.com/xhit/go-str2duration/v2 v2.1.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	golang.org/x/crypto v0.31.0 // indirect
+	golang.org/x/crypto v0.36.0 // indirect
 	golang.org/x/exp v0.0.0-20240506185415-9bf2ced13842 // indirect
-	golang.org/x/sys v0.28.0 // indirect
-	golang.org/x/term v0.27.0 // indirect
-	golang.org/x/text v0.21.0 // indirect
+	golang.org/x/sys v0.31.0 // indirect
+	golang.org/x/term v0.30.0 // indirect
+	golang.org/x/text v0.23.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
