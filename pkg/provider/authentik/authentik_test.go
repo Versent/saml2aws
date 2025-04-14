@@ -358,7 +358,7 @@ func Test_authWithCombinedUsernamePassword(t *testing.T) {
 }
 
 // Test_authWithCombinedUsernamePasswordAuthenticator
-func Test_authWithCombinedUsernamePassword(t *testing.T) {
+func Test_authWithCombinedUsernamePasswordAuthenticator(t *testing.T) {
 	defer gock.Off()
 	samlResponse := "PHNhbWxwOlJlc3BvbnNlIHhtbG5zOnNhbWxwPSJ1cm46b2FzaX"
 	gock.New("http://127.0.0.1").
