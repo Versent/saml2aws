@@ -19,7 +19,7 @@ type authentikPayload struct {
 	Attrs            map[string]string
 	Component        string
 	Type             string
-	HasPassowrdField bool                           `json:"password_fields"`
+	HasPasswordField bool                           `json:"password_fields"`
 	RedirectTo       string                         `json:"to"`
 	Errors           map[string][]map[string]string `json:"response_errors"`
 }
