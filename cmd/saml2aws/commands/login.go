@@ -269,6 +269,10 @@ func resolveLoginDetails(account *cfg.IDPAccount, loginFlags *flags.LoginExecFla
 		return loginDetails, nil
 	}
 
+	if loginFlags.TryNoPrompt && loginDetails.Username != "" && loginDetails.Password != "" {
+		return loginDetails, nil
+	}
+
 	if account.Provider != "Shell" {
 		err = saml2aws.PromptForLoginDetails(loginDetails, account.Provider)
 		if err != nil {
