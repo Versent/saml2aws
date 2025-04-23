@@ -15,6 +15,7 @@ func Test_getLoginJSON(t *testing.T) {
 	loginDetails := &creds.LoginDetails{
 		Username: "user",
 		Password: "pwd",
+		MFAToken: "otp",
 		URL:      "https://127.0.0.1/sso/init",
 	}
 	payload := &authentikPayload{
@@ -32,6 +33,14 @@ func Test_getLoginJSON(t *testing.T) {
 	b, err = getLoginJSON(loginDetails, payload)
 	assert.Nil(err)
 	assert.Equal(string(b), "{\"component\":\"ak-stage-password\",\"password\":\"pwd\"}")
+
+	payload = &authentikPayload{
+		Component: "ak-stage-authenticator-validate",
+		Type:      "native",
+	}
+	b, err = getLoginJSON(loginDetails, payload)
+	assert.Nil(err)
+	assert.Equal(string(b), "{\"code\":\"otp\",\"component\":\"ak-stage-authenticator-validate\"}")
 
 	payload = &authentikPayload{
 		Component: "ak-stage-test",
@@ -60,6 +69,10 @@ func Test_getFieldName(t *testing.T) {
 	assert.Nil(err)
 	assert.Equal(name, "password")
 
+	name, err = getFieldName("ak-stage-authenticator-validate")
+	assert.Nil(err)
+	assert.Equal(name, "authenticator-validate")
+
 	name, err = getFieldName("ak-stage-")
 	assert.Nil(err)
 	assert.Equal(name, "")
@@ -86,6 +99,9 @@ func Test_prepareErrors(t *testing.T) {
 	desc = prepareErrors("ak-stage-password", identification_errs)
 	assert.Equal(desc, "")
 
+	desc = prepareErrors("ak-stage-authenticator-validate", identification_errs)
+	assert.Equal(desc, "")
+
 	passwordErrs := map[string][]map[string]string{
 		"password": {
 			{
@@ -99,6 +115,28 @@ func Test_prepareErrors(t *testing.T) {
 
 	desc = prepareErrors("ak-stage-identification", passwordErrs)
 	assert.Equal(desc, "")
+
+	desc = prepareErrors("ak-stage-authenticator-validate", passwordErrs)
+	assert.Equal(desc, "")
+
+	authenticatorErrs := map[string][]map[string]string{
+		"code": {
+			{
+				"string": "Failed to authenticate.",
+				"code":   "invalid",
+			},
+		},
+	}
+
+	desc = prepareErrors("ak-stage-authenticator-validate", authenticatorErrs)
+	assert.Equal(desc, "authenticator-validate invalid: Failed to authenticate.")
+
+	desc = prepareErrors("ak-stage-identification", authenticatorErrs)
+	assert.Equal(desc, "")
+
+	desc = prepareErrors("ak-stage-password", authenticatorErrs)
+	assert.Equal(desc, "")
+
 }
 
 // Test_authWithCombinedUsernamePassword Password only if username/email verified
@@ -521,6 +559,662 @@ func Test_simplifiedFlowAuthWithCombinedUsernamePassword(t *testing.T) {
 	loginDetails := &creds.LoginDetails{
 		Username: "user",
 		Password: "pwd",
+		URL:      "http://127.0.0.1/application/saml/aws/sso/binding/init",
+	}
+	gock.InterceptClient(&client.client.Client)
+	result, err := client.Authenticate(loginDetails)
+
+	assert := assert.New(t)
+	assert.Nil(err)
+	assert.Equal(result, samlResponse)
+}
+
+// Test_authWithCombinedUsernamePasswordAndAuthenticator Password only if username/email verified
+func Test_authWithSeperatedUsernamePasswordAndAuthenticator(t *testing.T) {
+	defer gock.Off()
+	samlResponse := "PHNhbWxwOlJlc3BvbnNlIHhtbG5zOnNhbWxwPSJ1cm46b2FzaX"
+	gock.New("http://127.0.0.1").
+		Get("/application/saml/aws/sso/binding/init").
+		Reply(302).
+		SetHeader("Set-Cookie", "[authentik_session=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzaWQiOiJ6cHI3NGdzMjNnOGNqbmF1bXNheGQ1dXVrc2VtZGZpNyIsImlzcyI6ImF1dGhlbnRpayIsInN1YiI6ImFub255bW91cyIsImF1dGhlbnRpY2F0ZWQiOmZhbHNlLCJhY3IiOiJnb2F1dGhlbnRpay5pby9jb3JlL2RlZmF1bHQifQ.zNiX4pk6G9ABeDip0PLs8-0irm2aQ_Arr_RgTxTGCQM; HttpOnly; Path=/; SameSite=None; Secure]").
+		SetHeader("Location", "/flows/-/default/authentication/?next=/application/saml/aws/sso/binding/init/")
+
+	gock.New("http://127.0.0.1").
+		Get("/flows/-/default/authentication").
+		Reply(302).
+		SetHeader("Location", "/if/flow/default-authentication-flow/?next=%2Fapplication%2Fsaml%2Faws%2Fsso%2Fbinding%2Finit%2F")
+
+	gock.New("http://127.0.0.1").
+		Get("/if/flow/default-authentication-flow").
+		Reply(200).
+		BodyString("")
+
+	gock.New("http://127.0.0.1").
+		Get("/api/v3/flows/executor/default-authentication-flow").
+		Reply(200).
+		JSON(map[string]interface{}{
+			"type":               "native",
+			"flow_info":          map[string]interface{}{"title": "Welcome to authentik!", "background": "/static/dist/assets/images/flow_background.jpg", "cancel_url": "/flows/-/cancel/", "layout": "stacked"},
+			"component":          "ak-stage-identification",
+			"user_fields":        []string{"username", "email"},
+			"password_fields":    false,
+			"application_pre":    "aws",
+			"primary_action":     "Log in",
+			"sources":            []string{},
+			"show_source_labels": false,
+		})
+
+	gock.New("http://127.0.0.1").
+		Post("/api/v3/flows/executor/default-authentication-flow").
+		Reply(302).
+		SetHeader("Location", "/api/v3/flows/executor/default-authentication-flow/?query=next%3D%252F")
+
+	gock.New("http://127.0.0.1").
+		Get("api/v3/flows/executor/default-authentication-flow").
+		Reply(200).
+		JSON(map[string]interface{}{
+			"type":                "native",
+			"flow_info":           map[string]interface{}{"title": "Welcome to authentik!", "background": "/static/dist/assets/images/flow_background.jpg", "cancel_url": "/flows/-/cancel/", "layout": "stacked"},
+			"component":           "ak-stage-password",
+			"pending_user":        "user",
+			"pending_user_avatar": "https://secure.gravatar.com/avatar/0932141298741243?s=158&amp;r=g",
+		})
+
+	gock.New("http://127.0.0.1").
+		Post("/api/v3/flows/executor/default-authentication-flow").
+		Reply(302).
+		SetHeader("Location", "/api/v3/flows/executor/default-authentication-flow/?query=next%3D%252F")
+
+	gock.New("http://127.0.0.1").
+		Get("api/v3/flows/executor/default-authentication-flow").
+		Reply(200).
+		JSON(map[string]interface{}{
+			"type":                 "native",
+			"flow_info":            map[string]interface{}{"title": "Welcome to authentik!", "background": "/static/dist/assets/images/flow_background.jpg", "cancel_url": "/flows/-/cancel/", "layout": "stacked"},
+			"component":            "ak-stage-authenticator-validate",
+			"pending_user":         "user",
+			"pending_user_avatar":  "https://secure.gravatar.com/avatar/0932141298741243?s=158&amp;r=g",
+			"device_challenges":    []map[string]interface{}{{"device_class": "totp", "device_uid": "2", "challenge": []any{}}},
+			"configuration_stages": []any{},
+		})
+
+	gock.New("http://127.0.0.1").
+		Post("/api/v3/flows/executor/default-authentication-flow").
+		Reply(302).
+		SetHeader("Location", "/api/v3/flows/executor/default-authentication-flow/?query=next%3D%252F")
+
+	gock.New("http://127.0.0.1").
+		Get("/api/v3/flows/executor/default-authentication-flow").
+		Reply(302).
+		SetHeader("Location", "/api/v3/flows/executor/default-authentication-flow/?query=next%3D%252F")
+
+	gock.New("http://127.0.0.1").
+		Get("/api/v3/flows/executor/default-authentication-flow").
+		Reply(200).
+		JSON(map[string]interface{}{
+			"type": "redirect",
+			"to":   "http://127.0.0.1/application/saml/aws/sso/binding/init",
+		})
+
+	gock.New("http://127.0.0.1").
+		Get("/application/saml/aws/sso/binding/init").
+		Reply(302).
+		SetHeader("Location", "/if/flow/default-provider-authorization-implicit-consent/")
+
+	gock.New("http://127.0.0.1").
+		Get("/if/flow/default-provider-authorization-implicit-consent/").
+		Reply(200)
+
+	gock.New("http://127.0.0.1").
+		Get("/api/v3/flows").
+		Reply(200).
+		JSON(map[string]interface{}{
+			"type": "native",
+			"flow_info": map[string]interface{}{
+				"title":      "Redirecting to aws",
+				"background": "/static/dist/assets/images/flow_background.jpg",
+				"cancel_url": "/flows/-/cancel/",
+				"layout":     "stacked",
+			},
+			"component": "ak-stage-autosubmit",
+			"url":       "https://signin.amazonaws.com/saml",
+			"attrs": map[string]interface{}{
+				"ACSUrl":       "https://signin.amazonaws.com/saml",
+				"SAMLResponse": samlResponse,
+			},
+		})
+	client, _ := New(&cfg.IDPAccount{})
+	loginDetails := &creds.LoginDetails{
+		Username: "user",
+		Password: "pwd",
+		MFAToken: "totp",
+		URL:      "http://127.0.0.1/application/saml/aws/sso/binding/init",
+	}
+	gock.InterceptClient(&client.client.Client)
+	result, err := client.Authenticate(loginDetails)
+
+	assert := assert.New(t)
+	assert.Nil(err)
+	assert.Equal(result, samlResponse)
+}
+
+// Test_authWithCombinedUsernamePasswordAuthenticator
+func Test_authWithCombinedUsernamePasswordAuthenticator(t *testing.T) {
+	defer gock.Off()
+	samlResponse := "PHNhbWxwOlJlc3BvbnNlIHhtbG5zOnNhbWxwPSJ1cm46b2FzaX"
+	gock.New("http://127.0.0.1").
+		Get("/application/saml/aws/sso/binding/init").
+		Reply(302).
+		SetHeader("Set-Cookie", "[authentik_session=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzaWQiOiJ6cHI3NGdzMjNnOGNqbmF1bXNheGQ1dXVrc2VtZGZpNyIsImlzcyI6ImF1dGhlbnRpayIsInN1YiI6ImFub255bW91cyIsImF1dGhlbnRpY2F0ZWQiOmZhbHNlLCJhY3IiOiJnb2F1dGhlbnRpay5pby9jb3JlL2RlZmF1bHQifQ.zNiX4pk6G9ABeDip0PLs8-0irm2aQ_Arr_RgTxTGCQM; HttpOnly; Path=/; SameSite=None; Secure]").
+		SetHeader("Location", "/flows/-/default/authentication/?next=/application/saml/aws/sso/binding/init/")
+
+	gock.New("http://127.0.0.1").
+		Get("/flows/-/default/authentication").
+		Reply(302).
+		SetHeader("Location", "/if/flow/default-authentication-flow/?next=%2Fapplication%2Fsaml%2Faws%2Fsso%2Fbinding%2Finit%2F")
+
+	gock.New("http://127.0.0.1").
+		Get("/if/flow/default-authentication-flow").
+		Reply(200).
+		BodyString("")
+
+	gock.New("http://127.0.0.1").
+		Get("/api/v3/flows/executor/default-authentication-flow").
+		Reply(200).
+		JSON(map[string]interface{}{
+			"type":               "native",
+			"flow_info":          map[string]interface{}{"title": "Welcome to authentik!", "background": "/static/dist/assets/images/flow_background.jpg", "cancel_url": "/flows/-/cancel/", "layout": "stacked"},
+			"component":          "ak-stage-identification",
+			"user_fields":        []string{"username", "email"},
+			"password_fields":    true,
+			"application_pre":    "aws",
+			"primary_action":     "Log in",
+			"sources":            []string{},
+			"show_source_labels": false,
+		})
+
+	gock.New("http://127.0.0.1").
+		Post("/api/v3/flows/executor/default-authentication-flow").
+		Reply(302).
+		SetHeader("Location", "/api/v3/flows/executor/default-authentication-flow/?query=next%3D%252F")
+
+	gock.New("http://127.0.0.1").
+		Get("api/v3/flows/executor/default-authentication-flow").
+		Reply(200).
+		JSON(map[string]interface{}{
+			"type":                "native",
+			"flow_info":           map[string]interface{}{"title": "Welcome to authentik!", "background": "/static/dist/assets/images/flow_background.jpg", "cancel_url": "/flows/-/cancel/", "layout": "stacked"},
+			"component":           "ak-stage-password",
+			"pending_user":        "user",
+			"pending_user_avatar": "https://secure.gravatar.com/avatar/0932141298741243?s=158&amp;r=g",
+		})
+
+	gock.New("http://127.0.0.1").
+		Post("/api/v3/flows/executor/default-authentication-flow").
+		Reply(302).
+		SetHeader("Location", "/api/v3/flows/executor/default-authentication-flow/?query=next%3D%252F")
+
+	gock.New("http://127.0.0.1").
+		Get("api/v3/flows/executor/default-authentication-flow").
+		Reply(200).
+		JSON(map[string]interface{}{
+			"type":                 "native",
+			"flow_info":            map[string]interface{}{"title": "Welcome to authentik!", "background": "/static/dist/assets/images/flow_background.jpg", "cancel_url": "/flows/-/cancel/", "layout": "stacked"},
+			"component":            "ak-stage-authenticator-validate",
+			"pending_user":         "user",
+			"pending_user_avatar":  "https://secure.gravatar.com/avatar/0932141298741243?s=158&amp;r=g",
+			"device_challenges":    []map[string]interface{}{{"device_class": "totp", "device_uid": "2", "challenge": []any{}}},
+			"configuration_stages": []any{},
+		})
+
+	gock.New("http://127.0.0.1").
+		Post("/api/v3/flows/executor/default-authentication-flow").
+		Reply(302).
+		SetHeader("Location", "/api/v3/flows/executor/default-authentication-flow/?query=next%3D%252F")
+
+	gock.New("http://127.0.0.1").
+		Get("/api/v3/flows/executor/default-authentication-flow").
+		Reply(302).
+		SetHeader("Location", "/api/v3/flows/executor/default-authentication-flow/?query=next%3D%252F")
+
+	gock.New("http://127.0.0.1").
+		Get("/api/v3/flows/executor/default-authentication-flow").
+		Reply(200).
+		JSON(map[string]interface{}{
+			"type": "redirect",
+			"to":   "http://127.0.0.1/application/saml/aws/sso/binding/init",
+		})
+
+	gock.New("http://127.0.0.1").
+		Get("/application/saml/aws/sso/binding/init").
+		Reply(302).
+		SetHeader("Location", "/if/flow/default-provider-authorization-implicit-consent/")
+
+	gock.New("http://127.0.0.1").
+		Get("/if/flow/default-provider-authorization-implicit-consent/").
+		Reply(200)
+
+	gock.New("http://127.0.0.1").
+		Get("/api/v3/flows").
+		Reply(200).
+		JSON(map[string]interface{}{
+			"type": "native",
+			"flow_info": map[string]interface{}{
+				"title":      "Redirecting to aws",
+				"background": "/static/dist/assets/images/flow_background.jpg",
+				"cancel_url": "/flows/-/cancel/",
+				"layout":     "stacked",
+			},
+			"component": "ak-stage-autosubmit",
+			"url":       "https://signin.amazonaws.com/saml",
+			"attrs": map[string]interface{}{
+				"ACSUrl":       "https://signin.amazonaws.com/saml",
+				"SAMLResponse": samlResponse,
+			},
+		})
+	client, _ := New(&cfg.IDPAccount{})
+	loginDetails := &creds.LoginDetails{
+		Username: "user",
+		Password: "pwd",
+		MFAToken: "totp",
+		URL:      "http://127.0.0.1/application/saml/aws/sso/binding/init",
+	}
+	gock.InterceptClient(&client.client.Client)
+	result, err := client.Authenticate(loginDetails)
+
+	assert := assert.New(t)
+	assert.Nil(err)
+	assert.Equal(result, samlResponse)
+}
+
+// Test_simplifiedFlowAuthWithCombinedUsernamePasswordAndAuthenticator Username/email and password in one page
+func Test_simplifiedFlowAuthWithCombinedUsernamePasswordAndAuthenticator(t *testing.T) {
+	defer gock.Off()
+	samlResponse := "PHNhbWxwOlJlc3BvbnNlIHhtbG5zOnNhbWxwPSJ1cm46b2FzaX"
+	gock.New("http://127.0.0.1").
+		Get("/application/saml/aws/sso/binding/init").
+		Reply(302).
+		SetHeader("Set-Cookie", "[authentik_session=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzaWQiOiJ6cHI3NGdzMjNnOGNqbmF1bXNheGQ1dXVrc2VtZGZpNyIsImlzcyI6ImF1dGhlbnRpayIsInN1YiI6ImFub255bW91cyIsImF1dGhlbnRpY2F0ZWQiOmZhbHNlLCJhY3IiOiJnb2F1dGhlbnRpay5pby9jb3JlL2RlZmF1bHQifQ.zNiX4pk6G9ABeDip0PLs8-0irm2aQ_Arr_RgTxTGCQM; HttpOnly; Path=/; SameSite=None; Secure]").
+		SetHeader("Location", "/flows/-/default/authentication/?next=/application/saml/aws/sso/binding/init/")
+
+	gock.New("http://127.0.0.1").
+		Get("/flows/-/default/authentication").
+		Reply(302).
+		SetHeader("Location", "/if/flow/default-authentication-flow/?next=%2Fapplication%2Fsaml%2Faws%2Fsso%2Fbinding%2Finit%2F")
+
+	gock.New("http://127.0.0.1").
+		Get("/if/flow/default-authentication-flow").
+		Reply(200).
+		BodyString("")
+
+	gock.New("http://127.0.0.1").
+		Get("/api/v3/flows/executor/default-authentication-flow").
+		Reply(200).
+		JSON(map[string]interface{}{
+			"flow_info":          map[string]interface{}{"title": "Welcome to authentik!", "background": "/static/dist/assets/images/flow_background.jpg", "cancel_url": "/flows/-/cancel/", "layout": "stacked"},
+			"component":          "ak-stage-identification",
+			"user_fields":        []string{"username", "email"},
+			"password_fields":    true,
+			"application_pre":    "aws",
+			"primary_action":     "Log in",
+			"sources":            []string{},
+			"show_source_labels": false,
+		})
+
+	gock.New("http://127.0.0.1").
+		Post("/api/v3/flows/executor/default-authentication-flow").
+		Reply(302).
+		SetHeader("Location", "/api/v3/flows/executor/default-authentication-flow/?query=next%3D%252F")
+
+	gock.New("http://127.0.0.1").
+		Get("api/v3/flows/executor/default-authentication-flow").
+		Reply(200).
+		JSON(map[string]interface{}{
+			"flow_info":           map[string]interface{}{"title": "Welcome to authentik!", "background": "/static/dist/assets/images/flow_background.jpg", "cancel_url": "/flows/-/cancel/", "layout": "stacked"},
+			"component":           "ak-stage-password",
+			"pending_user":        "user",
+			"pending_user_avatar": "https://secure.gravatar.com/avatar/0932141298741243?s=158&amp;r=g",
+		})
+
+	gock.New("http://127.0.0.1").
+		Post("/api/v3/flows/executor/default-authentication-flow").
+		Reply(302).
+		SetHeader("Location", "/api/v3/flows/executor/default-authentication-flow/?query=next%3D%252F")
+
+	gock.New("http://127.0.0.1").
+		Get("api/v3/flows/executor/default-authentication-flow").
+		Reply(200).
+		JSON(map[string]interface{}{
+			"type":                 "native",
+			"flow_info":            map[string]interface{}{"title": "Welcome to authentik!", "background": "/static/dist/assets/images/flow_background.jpg", "cancel_url": "/flows/-/cancel/", "layout": "stacked"},
+			"component":            "ak-stage-authenticator-validate",
+			"pending_user":         "user",
+			"pending_user_avatar":  "https://secure.gravatar.com/avatar/0932141298741243?s=158&amp;r=g",
+			"device_challenges":    []map[string]interface{}{{"device_class": "totp", "device_uid": "2", "challenge": []any{}}},
+			"configuration_stages": []any{},
+		})
+
+	gock.New("http://127.0.0.1").
+		Post("/api/v3/flows/executor/default-authentication-flow").
+		Reply(302).
+		SetHeader("Location", "/api/v3/flows/executor/default-authentication-flow/?query=next%3D%252F")
+
+	gock.New("http://127.0.0.1").
+		Get("/api/v3/flows/executor/default-authentication-flow").
+		Reply(302).
+		SetHeader("Location", "/api/v3/flows/executor/default-authentication-flow/?query=next%3D%252F")
+
+	gock.New("http://127.0.0.1").
+		Get("/api/v3/flows/executor/default-authentication-flow").
+		Reply(200).
+		JSON(map[string]interface{}{
+			"component": "xak-flow-redirect",
+			"to":        "http://127.0.0.1/application/saml/aws/sso/binding/init",
+		})
+
+	gock.New("http://127.0.0.1").
+		Get("/application/saml/aws/sso/binding/init").
+		Reply(302).
+		SetHeader("Location", "/if/flow/default-provider-authorization-implicit-consent/")
+
+	gock.New("http://127.0.0.1").
+		Get("/if/flow/default-provider-authorization-implicit-consent/").
+		Reply(200)
+
+	gock.New("http://127.0.0.1").
+		Get("/api/v3/flows").
+		Reply(200).
+		JSON(map[string]interface{}{
+			"flow_info": map[string]interface{}{
+				"title":      "Redirecting to aws",
+				"background": "/static/dist/assets/images/flow_background.jpg",
+				"cancel_url": "/flows/-/cancel/",
+				"layout":     "stacked",
+			},
+			"component": "ak-stage-autosubmit",
+			"url":       "https://signin.amazonaws.com/saml",
+			"attrs": map[string]interface{}{
+				"ACSUrl":       "https://signin.amazonaws.com/saml",
+				"SAMLResponse": samlResponse,
+			},
+		})
+	client, _ := New(&cfg.IDPAccount{})
+	loginDetails := &creds.LoginDetails{
+		Username: "user",
+		Password: "pwd",
+		MFAToken: "totp",
+		URL:      "http://127.0.0.1/application/saml/aws/sso/binding/init",
+	}
+	gock.InterceptClient(&client.client.Client)
+	result, err := client.Authenticate(loginDetails)
+
+	assert := assert.New(t)
+	assert.Nil(err)
+	assert.Equal(result, samlResponse)
+}
+
+// Test_simplifiedFlowAuthWithSeperatedUsernamePasswordAndAuthenticator Password only if username/email verified
+func Test_simplifiedFlowAuthWithSeperatedUsernamePasswordAndAuthenticator(t *testing.T) {
+	defer gock.Off()
+	samlResponse := "PHNhbWxwOlJlc3BvbnNlIHhtbG5zOnNhbWxwPSJ1cm46b2FzaX"
+	gock.New("http://127.0.0.1").
+		Get("/application/saml/aws/sso/binding/init").
+		Reply(302).
+		SetHeader("Set-Cookie", "[authentik_session=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzaWQiOiJ6cHI3NGdzMjNnOGNqbmF1bXNheGQ1dXVrc2VtZGZpNyIsImlzcyI6ImF1dGhlbnRpayIsInN1YiI6ImFub255bW91cyIsImF1dGhlbnRpY2F0ZWQiOmZhbHNlLCJhY3IiOiJnb2F1dGhlbnRpay5pby9jb3JlL2RlZmF1bHQifQ.zNiX4pk6G9ABeDip0PLs8-0irm2aQ_Arr_RgTxTGCQM; HttpOnly; Path=/; SameSite=None; Secure]").
+		SetHeader("Location", "/flows/-/default/authentication/?next=/application/saml/aws/sso/binding/init/")
+
+	gock.New("http://127.0.0.1").
+		Get("/flows/-/default/authentication").
+		Reply(302).
+		SetHeader("Location", "/if/flow/default-authentication-flow/?next=%2Fapplication%2Fsaml%2Faws%2Fsso%2Fbinding%2Finit%2F")
+
+	gock.New("http://127.0.0.1").
+		Get("/if/flow/default-authentication-flow").
+		Reply(200).
+		BodyString("")
+
+	gock.New("http://127.0.0.1").
+		Get("/api/v3/flows/executor/default-authentication-flow").
+		Reply(200).
+		JSON(map[string]interface{}{
+			"flow_info":          map[string]interface{}{"title": "Welcome to authentik!", "background": "/static/dist/assets/images/flow_background.jpg", "cancel_url": "/flows/-/cancel/", "layout": "stacked"},
+			"component":          "ak-stage-identification",
+			"user_fields":        []string{"username", "email"},
+			"password_fields":    false,
+			"application_pre":    "aws",
+			"primary_action":     "Log in",
+			"sources":            []string{},
+			"show_source_labels": false,
+		})
+
+	gock.New("http://127.0.0.1").
+		Post("/api/v3/flows/executor/default-authentication-flow").
+		Reply(302).
+		SetHeader("Location", "/api/v3/flows/executor/default-authentication-flow/?query=next%3D%252F")
+
+	gock.New("http://127.0.0.1").
+		Get("api/v3/flows/executor/default-authentication-flow").
+		Reply(200).
+		JSON(map[string]interface{}{
+			"flow_info":           map[string]interface{}{"title": "Welcome to authentik!", "background": "/static/dist/assets/images/flow_background.jpg", "cancel_url": "/flows/-/cancel/", "layout": "stacked"},
+			"component":           "ak-stage-password",
+			"pending_user":        "user",
+			"pending_user_avatar": "https://secure.gravatar.com/avatar/0932141298741243?s=158&amp;r=g",
+		})
+
+	gock.New("http://127.0.0.1").
+		Post("/api/v3/flows/executor/default-authentication-flow").
+		Reply(302).
+		SetHeader("Location", "/api/v3/flows/executor/default-authentication-flow/?query=next%3D%252F")
+
+	gock.New("http://127.0.0.1").
+		Get("api/v3/flows/executor/default-authentication-flow").
+		Reply(200).
+		JSON(map[string]interface{}{
+			"type":                 "native",
+			"flow_info":            map[string]interface{}{"title": "Welcome to authentik!", "background": "/static/dist/assets/images/flow_background.jpg", "cancel_url": "/flows/-/cancel/", "layout": "stacked"},
+			"component":            "ak-stage-authenticator-validate",
+			"pending_user":         "user",
+			"pending_user_avatar":  "https://secure.gravatar.com/avatar/0932141298741243?s=158&amp;r=g",
+			"device_challenges":    []map[string]interface{}{{"device_class": "totp", "device_uid": "2", "challenge": []any{}}},
+			"configuration_stages": []any{},
+		})
+	gock.New("http://127.0.0.1").
+		Post("/api/v3/flows/executor/default-authentication-flow").
+		Reply(302).
+		SetHeader("Location", "/api/v3/flows/executor/default-authentication-flow/?query=next%3D%252F")
+
+	gock.New("http://127.0.0.1").
+		Get("/api/v3/flows/executor/default-authentication-flow").
+		Reply(302).
+		SetHeader("Location", "/api/v3/flows/executor/default-authentication-flow/?query=next%3D%252F")
+
+	gock.New("http://127.0.0.1").
+		Get("/api/v3/flows/executor/default-authentication-flow").
+		Reply(200).
+		JSON(map[string]interface{}{
+			"component": "xak-flow-redirect",
+			"to":        "http://127.0.0.1/application/saml/aws/sso/binding/init",
+		})
+
+	gock.New("http://127.0.0.1").
+		Get("/application/saml/aws/sso/binding/init").
+		Reply(302).
+		SetHeader("Location", "/if/flow/default-provider-authorization-implicit-consent/")
+
+	gock.New("http://127.0.0.1").
+		Get("/if/flow/default-provider-authorization-implicit-consent/").
+		Reply(200)
+
+	gock.New("http://127.0.0.1").
+		Get("/api/v3/flows").
+		Reply(200).
+		JSON(map[string]interface{}{
+			"flow_info": map[string]interface{}{
+				"title":      "Redirecting to aws",
+				"background": "/static/dist/assets/images/flow_background.jpg",
+				"cancel_url": "/flows/-/cancel/",
+				"layout":     "stacked",
+			},
+			"component": "ak-stage-autosubmit",
+			"url":       "https://signin.amazonaws.com/saml",
+			"attrs": map[string]interface{}{
+				"ACSUrl":       "https://signin.amazonaws.com/saml",
+				"SAMLResponse": samlResponse,
+			},
+		})
+	client, _ := New(&cfg.IDPAccount{})
+	loginDetails := &creds.LoginDetails{
+		Username: "user",
+		Password: "pwd",
+		MFAToken: "totp",
+		URL:      "http://127.0.0.1/application/saml/aws/sso/binding/init",
+	}
+	gock.InterceptClient(&client.client.Client)
+	result, err := client.Authenticate(loginDetails)
+
+	assert := assert.New(t)
+	assert.Nil(err)
+	assert.Equal(result, samlResponse)
+}
+
+// Test_authWithCombinedUsernamePasswordAndAuthenticator Password only if username/email verified
+func Test_authWithCombinedUsernamePasswordAndAuthenticator(t *testing.T) {
+	defer gock.Off()
+	samlResponse := "PHNhbWxwOlJlc3BvbnNlIHhtbG5zOnNhbWxwPSJ1cm46b2FzaX"
+	gock.New("http://127.0.0.1").
+		Get("/application/saml/aws/sso/binding/init").
+		Reply(302).
+		SetHeader("Set-Cookie", "[authentik_session=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzaWQiOiJ6cHI3NGdzMjNnOGNqbmF1bXNheGQ1dXVrc2VtZGZpNyIsImlzcyI6ImF1dGhlbnRpayIsInN1YiI6ImFub255bW91cyIsImF1dGhlbnRpY2F0ZWQiOmZhbHNlLCJhY3IiOiJnb2F1dGhlbnRpay5pby9jb3JlL2RlZmF1bHQifQ.zNiX4pk6G9ABeDip0PLs8-0irm2aQ_Arr_RgTxTGCQM; HttpOnly; Path=/; SameSite=None; Secure]").
+		SetHeader("Location", "/flows/-/default/authentication/?next=/application/saml/aws/sso/binding/init/")
+
+	gock.New("http://127.0.0.1").
+		Get("/flows/-/default/authentication").
+		Reply(302).
+		SetHeader("Location", "/if/flow/default-authentication-flow/?next=%2Fapplication%2Fsaml%2Faws%2Fsso%2Fbinding%2Finit%2F")
+
+	gock.New("http://127.0.0.1").
+		Get("/if/flow/default-authentication-flow").
+		Reply(200).
+		BodyString("")
+
+	gock.New("http://127.0.0.1").
+		Get("/api/v3/flows/executor/default-authentication-flow").
+		Reply(200).
+		JSON(map[string]interface{}{
+			"type":               "native",
+			"flow_info":          map[string]interface{}{"title": "Welcome to authentik!", "background": "/static/dist/assets/images/flow_background.jpg", "cancel_url": "/flows/-/cancel/", "layout": "stacked"},
+			"component":          "ak-stage-identification",
+			"user_fields":        []string{"username", "email"},
+			"password_fields":    false,
+			"application_pre":    "aws",
+			"primary_action":     "Log in",
+			"sources":            []string{},
+			"show_source_labels": false,
+		})
+
+	gock.New("http://127.0.0.1").
+		Post("/api/v3/flows/executor/default-authentication-flow").
+		Reply(302).
+		SetHeader("Location", "/api/v3/flows/executor/default-authentication-flow/?query=next%3D%252F")
+
+	gock.New("http://127.0.0.1").
+		Get("api/v3/flows/executor/default-authentication-flow").
+		Reply(200).
+		JSON(map[string]interface{}{
+			"type":                "native",
+			"flow_info":           map[string]interface{}{"title": "Welcome to authentik!", "background": "/static/dist/assets/images/flow_background.jpg", "cancel_url": "/flows/-/cancel/", "layout": "stacked"},
+			"component":           "ak-stage-password",
+			"pending_user":        "user",
+			"pending_user_avatar": "https://secure.gravatar.com/avatar/0932141298741243?s=158&amp;r=g",
+		})
+
+	gock.New("http://127.0.0.1").
+		Post("/api/v3/flows/executor/default-authentication-flow").
+		Reply(302).
+		SetHeader("Location", "/api/v3/flows/executor/default-authentication-flow/?query=next%3D%252F")
+
+	gock.New("http://127.0.0.1").
+		Get("api/v3/flows/executor/default-authentication-flow").
+		Reply(200).
+		JSON(map[string]interface{}{
+			"type":                 "native",
+			"flow_info":            map[string]interface{}{"title": "Welcome to authentik!", "background": "/static/dist/assets/images/flow_background.jpg", "cancel_url": "/flows/-/cancel/", "layout": "stacked"},
+			"component":            "ak-stage-authenticator-validate",
+			"pending_user":         "user",
+			"pending_user_avatar":  "https://secure.gravatar.com/avatar/0932141298741243?s=158&amp;r=g",
+			"device_challenges":    []map[string]interface{}{{"device_class": "totp", "device_uid": "2", "challenge": []any{}}},
+			"configuration_stages": []any{},
+		})
+
+	gock.New("http://127.0.0.1").
+		Post("/api/v3/flows/executor/default-authentication-flow").
+		Reply(302).
+		SetHeader("Location", "/api/v3/flows/executor/default-authentication-flow/?query=next%3D%252F")
+
+	gock.New("http://127.0.0.1").
+		Get("api/v3/flows/executor/default-authentication-flow").
+		Reply(200).
+		JSON(map[string]interface{}{
+			"type":                 "native",
+			"flow_info":            map[string]interface{}{"title": "Welcome to authentik!", "background": "/static/dist/assets/images/flow_background.jpg", "cancel_url": "/flows/-/cancel/", "layout": "stacked"},
+			"component":            "ak-stage-authenticator-validate",
+			"pending_user":         "user",
+			"pending_user_avatar":  "https://secure.gravatar.com/avatar/0932141298741243?s=158&amp;r=g",
+			"device_challenges":    []map[string]interface{}{{"device_class": "totp", "device_uid": "2", "challenge": []any{}}},
+			"configuration_stages": []any{},
+		})
+
+	gock.New("http://127.0.0.1").
+		Post("/api/v3/flows/executor/default-authentication-flow").
+		Reply(302).
+		SetHeader("Location", "/api/v3/flows/executor/default-authentication-flow/?query=next%3D%252F")
+
+	gock.New("http://127.0.0.1").
+		Get("/api/v3/flows/executor/default-authentication-flow").
+		Reply(302).
+		SetHeader("Location", "/api/v3/flows/executor/default-authentication-flow/?query=next%3D%252F")
+
+	gock.New("http://127.0.0.1").
+		Get("/api/v3/flows/executor/default-authentication-flow").
+		Reply(200).
+		JSON(map[string]interface{}{
+			"type": "redirect",
+			"to":   "http://127.0.0.1/application/saml/aws/sso/binding/init",
+		})
+
+	gock.New("http://127.0.0.1").
+		Get("/application/saml/aws/sso/binding/init").
+		Reply(302).
+		SetHeader("Location", "/if/flow/default-provider-authorization-implicit-consent/")
+
+	gock.New("http://127.0.0.1").
+		Get("/if/flow/default-provider-authorization-implicit-consent/").
+		Reply(200)
+
+	gock.New("http://127.0.0.1").
+		Get("/api/v3/flows").
+		Reply(200).
+		JSON(map[string]interface{}{
+			"type": "native",
+			"flow_info": map[string]interface{}{
+				"title":      "Redirecting to aws",
+				"background": "/static/dist/assets/images/flow_background.jpg",
+				"cancel_url": "/flows/-/cancel/",
+				"layout":     "stacked",
+			},
+			"component": "ak-stage-autosubmit",
+			"url":       "https://signin.amazonaws.com/saml",
+			"attrs": map[string]interface{}{
+				"ACSUrl":       "https://signin.amazonaws.com/saml",
+				"SAMLResponse": samlResponse,
+			},
+		})
+	client, _ := New(&cfg.IDPAccount{})
+	loginDetails := &creds.LoginDetails{
+		Username: "user",
+		Password: "pwd",
+		MFAToken: "totp",
 		URL:      "http://127.0.0.1/application/saml/aws/sso/binding/init",
 	}
 	gock.InterceptClient(&client.client.Client)
