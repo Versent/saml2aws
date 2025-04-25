@@ -2,7 +2,6 @@ package main
 
 import (
 	"crypto/tls"
-	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -60,17 +59,9 @@ func main() {
 		logrus.SetOutput(os.Stdout)
 	}
 
-	app := kingpin.New("saml2aws", "A command line tool to help with SAML access to the AWS token service.")
-
-	versionFlag := app.Flag("version", "Show application version.").Bool()
-	// Preaction to route --version output to stdout
-	app.PreAction(func(c *kingpin.ParseContext) error {
-		if versionFlag != nil && *versionFlag {
-			fmt.Println(Version)
-			os.Exit(0)
-		}
-		return nil
-	})
+	app := kingpin.New("saml2aws", "A command line tool to help with SAML access to the AWS token service.").
+		Version(Version).
+		UsageWriter(os.Stdout)
 
 	// Settings not related to commands
 	verbose := app.Flag("verbose", "Enable verbose logging").Bool()
