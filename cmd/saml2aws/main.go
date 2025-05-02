@@ -59,8 +59,9 @@ func main() {
 		logrus.SetOutput(os.Stdout)
 	}
 
-	app := kingpin.New("saml2aws", "A command line tool to help with SAML access to the AWS token service.")
-	app.Version(Version)
+	app := kingpin.New("saml2aws", "A command line tool to help with SAML access to the AWS token service.").
+		Version(Version).
+		UsageWriter(os.Stdout)
 
 	// Settings not related to commands
 	verbose := app.Flag("verbose", "Enable verbose logging").Bool()
