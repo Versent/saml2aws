@@ -159,7 +159,7 @@ func (c *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error) 
 		samlAssertion = authData.String()
 	case MessageMFARequired:
 		logger.Debug("Verifying MFA")
-		samlAssertion, err = verifyMFA(c, oauthToken, c.AppID, host, resp)
+		samlAssertion, err = verifyMFA(c, loginDetails.MFAToken, oauthToken, c.AppID, host, resp)
 		if err != nil {
 			return "", errors.Wrap(err, "error verifying MFA")
 		}
@@ -206,7 +206,7 @@ func addContentHeaders(r *http.Request) {
 
 // verifyMFA is used to either prompt to user for one time password or request approval using push notification.
 // For more details check https://developers.onelogin.com/api-docs/2/saml-assertions/verify-factor
-func verifyMFA(oc *Client, oauthToken, appID, host, resp string) (string, error) {
+func verifyMFA(oc *Client, mfaToken, oauthToken, appID, host, resp string) (string, error) {
 	stateToken := gjson.Get(resp, "state_token").String()
 	// choose an mfa option if there are multiple enabled
 	var option int
@@ -287,7 +287,12 @@ func verifyMFA(oc *Client, oauthToken, appID, host, resp string) (string, error)
 
 	switch mfaIdentifer {
 	case IdentifierSmsMfa, IdentifierTotpMfa, IdentifierYubiKey, IdentifierDuoSecurity:
-		verifyCode := prompter.StringRequired("Enter verification code")
+		var verifyCode string
+		if mfaIdentifer == IdentifierTotpMfa && mfaToken != "" {
+			verifyCode = mfaToken
+		} else {
+			verifyCode = prompter.StringRequired("Enter verification code")
+		}
 		var verifyBody bytes.Buffer
 		err := json.NewEncoder(&verifyBody).Encode(VerifyRequest{AppID: appID, DeviceID: mfaDeviceID, StateToken: stateToken, OTPToken: verifyCode})
 		if err != nil {
