@@ -16,7 +16,7 @@ BIN_DIR := $(CURDIR)/bin
 ifeq ($(OS),Darwin)
    CONFIG_FILE?=$(CURDIR)/.goreleaser.macos-latest.yml
 else ifeq ($(OS),Linux)
-   CONFIG_FILE?=$(CURDIR)/.goreleaser.ubuntu-20.04.yml
+   CONFIG_FILE?=$(CURDIR)/.goreleaser.ubuntu-22.04.yml
 else
    $(error Unsupported build OS: $(OS))
 endif

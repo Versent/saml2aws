@@ -215,11 +215,14 @@ func getLoginJSON(loginDetails *creds.LoginDetails, payload *authentikPayload) (
 	switch component {
 	case "ak-stage-identification":
 		m["uid_field"] = loginDetails.Username
-		if payload.HasPassowrdField {
+		if payload.HasPasswordField {
 			m["password"] = loginDetails.Password
 		}
 	case "ak-stage-password":
 		m["password"] = loginDetails.Password
+
+	case "ak-stage-authenticator-validate":
+		m["code"] = loginDetails.MFAToken
 	default:
 		return []byte(""), errors.New("unknown component: " + component)
 	}
@@ -259,6 +262,9 @@ func prepareErrors(component string, errs map[string][]map[string]string) string
 	key := "non_field_errors"
 	if field == "password" {
 		key = "password"
+	}
+	if field == "authenticator-validate" {
+		key = "code"
 	}
 	msgs := make([]string, 0, len(errs[key]))
 	for _, err := range errs[key] {
