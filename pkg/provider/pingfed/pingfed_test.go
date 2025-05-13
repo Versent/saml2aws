@@ -39,30 +39,42 @@ var docTests = []struct {
 	{docIsLogin, "example/swipe-number.html", false},
 	{docIsLogin, "example/form-redirect.html", false},
 	{docIsLogin, "example/webauthn.html", false},
+	{docIsLogin, "example/first-adapter.html", false},
 	{docIsOTP, "example/login.html", false},
 	{docIsOTP, "example/otp.html", true},
 	{docIsOTP, "example/swipe.html", false},
 	{docIsOTP, "example/swipe-number.html", false},
 	{docIsOTP, "example/form-redirect.html", false},
 	{docIsOTP, "example/webauthn.html", false},
+	{docIsOTP, "example/first-adapter.html", false},
 	{docIsSwipe, "example/login.html", false},
 	{docIsSwipe, "example/otp.html", false},
 	{docIsSwipe, "example/swipe.html", true},
 	{docIsSwipe, "example/swipe-number.html", true},
 	{docIsSwipe, "example/form-redirect.html", false},
 	{docIsSwipe, "example/webauthn.html", false},
+	{docIsSwipe, "example/first-adapter.html", false},
 	{docIsFormRedirect, "example/login.html", false},
 	{docIsFormRedirect, "example/otp.html", false},
 	{docIsFormRedirect, "example/swipe.html", false},
 	{docIsFormRedirect, "example/swipe-number.html", false},
 	{docIsFormRedirect, "example/form-redirect.html", true},
 	{docIsFormRedirect, "example/webauthn.html", false},
+	{docIsFormRedirect, "example/first-adapter.html", false},
 	{docIsWebAuthn, "example/login.html", false},
 	{docIsWebAuthn, "example/otp.html", false},
 	{docIsWebAuthn, "example/swipe.html", false},
 	{docIsWebAuthn, "example/swipe-number.html", false},
 	{docIsWebAuthn, "example/form-redirect.html", false},
 	{docIsWebAuthn, "example/webauthn.html", true},
+	{docIsWebAuthn, "example/first-adapter.html", false},
+	{docIsFirst, "example/first-adapter.html", true},
+	{docIsFirst, "example/login.html", false},
+	{docIsFirst, "example/otp.html", false},
+	{docIsFirst, "example/swipe.html", false},
+	{docIsFirst, "example/swipe-number.html", false},
+	{docIsFirst, "example/form-redirect.html", false},
+	{docIsFirst, "example/webauthn.html", false},
 }
 
 func TestDocTypes(t *testing.T) {
@@ -231,4 +243,27 @@ func TestHandleWebAuthn(t *testing.T) {
 
 	s := string(b[:])
 	require.Contains(t, s, "isWebAuthnSupportedByBrowser=false")
+}
+
+func TestHandleFirst(t *testing.T) {
+	ac := Client{}
+	loginDetails := creds.LoginDetails{
+		Username: "user@domain",
+	}
+	ctx := context.WithValue(context.Background(), ctxKey("login"), &loginDetails)
+
+	data, err := os.ReadFile("example/first-adapter.html")
+	require.Nil(t, err)
+
+	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(data))
+	require.Nil(t, err)
+
+	_, req, err := ac.handleFirst(ctx, doc, &url.URL{})
+	require.Nil(t, err)
+
+	b, err := io.ReadAll(req.Body)
+	require.Nil(t, err)
+
+	s := string(b[:])
+	require.Contains(t, s, "subject=user%40domain")
 }

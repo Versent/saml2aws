@@ -86,6 +86,9 @@ func (ac *Client) follow(ctx context.Context, req *http.Request) (string, error)
 			logger.WithField("type", "saml-response").WithField("saml-response", string(decodedSamlResponse)).Debug("doc detect")
 			return samlResponse, nil
 		}
+	} else if docIsFirst(doc) {
+		logger.WithField("type", "first form adapter").Debug("doc detect")
+		handler = ac.handleFirst
 	} else if docIsFormSamlRequest(doc) {
 		logger.WithField("type", "saml-request").Debug("doc detect")
 		handler = ac.handleFormRedirect
@@ -151,6 +154,26 @@ func (ac *Client) handleLogin(ctx context.Context, doc *goquery.Document, _ *url
 	form.Values.Set("pf.pass", loginDetails.Password)
 	form.Values.Set("USER", loginDetails.Username)
 	form.Values.Set("PASSWORD", loginDetails.Password)
+	form.URL = makeAbsoluteURL(form.URL, loginDetails.URL)
+
+	req, err := form.BuildRequest()
+	return ctx, req, err
+}
+
+func (ac *Client) handleFirst(ctx context.Context, doc *goquery.Document, _ *url.URL) (context.Context, *http.Request, error) {
+	loginDetails, ok := ctx.Value(ctxKey("login")).(*creds.LoginDetails)
+	if !ok {
+		return ctx, nil, fmt.Errorf("no context value for 'login'")
+	}
+
+	form, err := page.NewFormFromDocument(doc, "form")
+	if err != nil {
+		return ctx, nil, errors.Wrap(err, "error extracting login form")
+	}
+
+	form.Values.Set("subject", loginDetails.Username)
+	form.Values.Set("clear.previous.selected.subject", "")
+	form.Values.Set("cancel.identifier.selection", "false")
 	form.URL = makeAbsoluteURL(form.URL, loginDetails.URL)
 
 	req, err := form.BuildRequest()
@@ -300,6 +323,10 @@ func (ac *Client) handleWebAuthn(ctx context.Context, doc *goquery.Document, _ *
 
 func docIsLogin(doc *goquery.Document) bool {
 	return doc.Has("input[name=\"pf.pass\"]").Size() == 1 || doc.Has("input[name=\"PASSWORD\"]").Size() == 1
+}
+
+func docIsFirst(doc *goquery.Document) bool {
+	return doc.Has("input[name=\"subject\"]").Size() == 1
 }
 
 func docIsOTP(doc *goquery.Document) bool {

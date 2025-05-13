@@ -1,0 +1,176 @@
+
+<!DOCTYPE html>
+
+
+<!-- template name: identifier.first.template.html -->
+
+
+<html lang="en" dir="ltr">
+<head>
+        <title>Sign On</title>
+        <base href="https://id.example.com/">
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+    <meta http-equiv="x-ua-compatible" content="IE=edge"/>
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'nonce-SBa4fPYaLrHhvUst';" />
+    <link rel="stylesheet" type="text/css" href="assets/css/main.css"/>
+    <script src='assets/scripts/pf-general.js'></script>
+</head>
+
+<body>
+
+<div class="ping-container ping-signin login-template">
+
+    <!--
+    if there is a logo present in the 'company-logo' container,
+    then 'has-logo' class should be added to 'ping-header' container.
+    -->
+    <div class="ping-header">
+    </div>
+    <!-- .ping-header -->
+    <div class="ping-body-container">
+        <br/>
+        <p>Login using your email address</p>
+        <form method="POST" action="/as/m8pSR6nSxN/resume/as/authorization.ping" autocomplete="off">
+            
+            <div id="identifierInputLabel" class="ping-input-label">
+                Email
+            </div>
+
+            <div id="identifierField" class="ping-input-container">
+                <input id="identifierInput" type="text" size="36" name="subject" value=""
+                       autocorrect="off" autocapitalize="off"/>
+                <div class="place-bottom type-alert tooltip-text" id="username-text">
+                    <div class="icon">!</div>
+                    Please fill out this field.
+                </div>
+            </div>
+
+                <div id="postButton" class="ping-buttons">
+                    <a id="signOnButton" class="ping-button normal allow"
+                       title="Next">
+                    Next
+                    </a>
+                </div><!-- .ping-buttons -->
+
+                
+                <input type="hidden" name="clear.previous.selected.subject" id="clear.previous.selected.subject" value=""/>
+                <input type="hidden" name="cancel.identifier.selection" value="false"/>
+        </form>
+    </div><!-- .ping-body-container -->
+
+    <div class="ping-footer-container">
+        <div class="ping-footer">
+            <div class="ping-credits"></div>
+            <div class="ping-copyright">© Copyright 2023 Ping Identity. All rights reserved.</div>
+        </div>
+        <!-- .ping-footer -->
+    </div>
+    <!-- .ping-footer-container -->
+
+</div><!-- .ping-container -->
+
+<script type="text/javascript" nonce="SBa4fPYaLrHhvUst">
+
+    window.onload = function() {
+                    toggleMobile(false);
+        
+            }
+
+    registerEventHandlerForClass('identifier-first__account-select', 'click', function(e) {
+        selectIdentifier(e.target.id);
+    });
+    registerEventHandlerForClass('identifier-first__account-name', 'click', function(e) {
+        selectIdentifier(e.target.parentNode.id);
+    });
+    registerEventHandlerForClass('identifier-first__remove-account', 'click', function(e) {
+        removeIdentifier(e.target.parentNode.id);
+    });
+
+    registerEventHandler('showIdentifierInputLink', 'click', showIdentifierInputBox);
+    registerEventHandler('signOnButton', 'click', postOk);
+    registerEventHandler('cancelLink', 'click', postCancel);
+    handleReturnPress('identifierInput', postOk);
+
+    var formSubmitted = false;
+
+    function removeIdentifier(existingIdentifier) {
+        document.forms[0]['clear.previous.selected.subject'].value = existingIdentifier;
+        document.forms[0]['subject'].value = '';
+        submitForm();
+    }
+
+    function showIdentifierInputBox() {
+        // update the title text
+        document.title = 'Sign On';
+        // update company-logo-div-text
+        document.getElementById("company-logo-div-text").textContent = 'Sign On';
+        // hide the identifier selection list
+        document.getElementById("existingAccountsSelectionList").style.display = "none";
+        // show the identifier input box
+        document.getElementById("identifierInputLabel").style.display = "inline";
+        document.getElementById("identifierInput").style.display = "inline";
+        document.getElementById("postButton").style.display = "inline-block";
+        document.getElementById("identifierField").style.display="inline-block";
+
+        setFocus('identifierInput');
+    }
+
+    function showExistingAccounts() {
+        document.title = 'Choose an Account';
+        document.getElementById("company-logo-div-text").textContent = 'Choose an Account';
+        document.getElementById("existingAccountsSelectionList").style.display = "inline";
+
+        document.getElementById("identifierInputLabel").style.display = "none";
+        document.getElementById("identifierInput").style.display = "none";
+        document.getElementById("postButton").style.display = "none";
+        document.getElementById("identifierField").style.display="none";
+    }
+
+    function selectIdentifier(identifier) {
+        document.forms[0]['subject'].value = identifier;
+        postOk();
+    }
+
+    function postOk() {
+        if (formSubmitted)
+            return true;
+
+        formSubmitted = true;
+        var hasError = false;
+
+        // remove error tips
+        if (document.forms[0]['subject'].value !== '') {
+            document.getElementById('username-text').className = 'place-bottom type-alert tooltip-text';
+        }
+        // Add back
+        if (document.forms[0]['subject'].value === '') {
+            document.getElementById('username-text').className += ' show';
+            hasError = true;
+        }
+        else {
+            submitForm()
+        }
+        if (hasError) {
+            formSubmitted = false;
+        }
+    }
+
+    function postCancel()
+    {
+        document.forms[0]['cancel.identifier.selection'].value = 'true';
+        submitForm()
+    }
+
+    function submitForm()
+    {
+        document.forms[0].submit();
+    }
+
+
+</script>
+
+</body>
+</html>
+
