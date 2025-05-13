@@ -91,7 +91,7 @@ jobs:
       matrix:
         os:
           - ubuntu-latest
-          - ubuntu-20.04
+          - ubuntu-22.04
           - macos-latest
     runs-on: ${{ matrix.os }}
     steps:
@@ -104,7 +104,7 @@ jobs:
           go-version-file: "go.mod"
 
       - name: Install dependency required for linux builds
-        if: matrix.os == 'ubuntu-20.04'
+        if: matrix.os == 'ubuntu-22.04'
         run: sudo apt-get update && sudo apt-get install -y libudev-dev
 
       - name: GoReleaser
