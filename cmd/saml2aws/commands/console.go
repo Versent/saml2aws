@@ -48,9 +48,6 @@ func Console(consoleFlags *flags.ConsoleFlags) error {
 		return errors.Wrap(err,
 			fmt.Sprintf("error loading credentials for profile: %s", consoleFlags.LoginExecFlags.ExecProfile))
 	}
-	if err != nil {
-		return errors.Wrap(err, "error logging in")
-	}
 
 	if consoleFlags.LoginExecFlags.ExecProfile != "" {
 		// Assume the desired role before generating env vars
