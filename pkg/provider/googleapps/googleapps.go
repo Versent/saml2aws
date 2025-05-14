@@ -805,7 +805,7 @@ func isAppId(val string) string {
 
 func extractDevicePushExtraNumber(doc *goquery.Document) string {
 	extraNumber := ""
-	doc.Find("div[jsname=feLNVc]").Each(func(_ int, s *goquery.Selection) {
+	doc.Find("samp[jsname=feLNVc]").Each(func(_ int, s *goquery.Selection) {
 		extraNumber = s.Text()
 	})
 	return extraNumber
