@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -17,8 +18,26 @@ import (
 )
 
 const (
-	federationURL = "https://signin.aws.amazon.com/federation"
-	issuer        = "saml2aws"
+	defaultFederationURL = "https://signin.aws.amazon.com/federation"
+	defaultDestination   = "https://console.aws.amazon.com/console/home"
+	issuer               = "saml2aws"
+)
+
+var (
+	altFederationURLs = map[string]string{
+		"us-gov-"       : "https://signin.amazonaws-us-gov.com/federation",
+		"cn-north-"     : "https://signin.amazonaws.cn/federation",
+		"cn-northwest-" : "https://signin.amazonaws.cn/federation",
+	}
+
+	altDestinations = map[string]string{
+		"us-gov-"       : "https://console.amazonaws-us-gov.com/console/home",
+		"cn-north-"     : "https://console.amazonaws.cn/console/home",
+		"cn-northwest-" : "https://console.amazonaws.cn/console/home",
+	}
+
+	federationURL string
+	destination   string
 )
 
 // Console open the aws console from the CLI
@@ -27,6 +46,21 @@ func Console(consoleFlags *flags.ConsoleFlags) error {
 	account, err := buildIdpAccount(consoleFlags.LoginExecFlags)
 	if err != nil {
 		return errors.Wrap(err, "error building login details")
+	}
+
+	for region, url := range altFederationURLs {
+		if strings.HasPrefix(account.Region, region) {
+			federationURL = url
+			destination = altDestinations[region]
+		}
+	}
+	if federationURL == "" {
+		federationURL = defaultFederationURL
+		destination = defaultDestination
+	}
+
+	if account.Region != "" {
+		destination = destination + "?region=" + account.Region
 	}
 
 	sharedCreds := awsconfig.NewSharedCredentials(account.Profile, account.CredentialsFile)
@@ -151,8 +185,6 @@ func federatedLogin(creds *awsconfig.AWSCredentials, consoleFlags *flags.Console
 	if !ok {
 		return err
 	}
-
-	destination := "https://console.aws.amazon.com/"
 
 	loginURL := fmt.Sprintf(
 		"%s?Action=login&Issuer=%s&Destination=%s&SigninToken=%s",
