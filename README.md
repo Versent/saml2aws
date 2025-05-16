@@ -689,7 +689,7 @@ Use following parameters in `~/.saml2aws` file:
 - `http_attempts_count` - configures the number of attempts to send http requests in order to authorise with saml provider. Defaults to 1
 - `http_retry_delay` - configures the duration (in seconds) of timeout between attempts to send http requests to saml provider. Defaults to 1
 - `region` - configures which region endpoints to use, See [Audience](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_providers_create_saml_assertions.html#saml_audience-restriction) and [partition](https://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html#arns-syntax)
-- `target_url` - look for a target endpoint other than signin.aws.amazon.com/saml. The Okta, Pingfed, Pingone and Shibboleth ECP providers need to either explicitly send or look for this URL in a response in order to obtain or identify an appropriate authentication response. This can be overridden here if you wish to authenticate for something other than AWS.
+- `target_url` - look for a target endpoint other than signin.aws.amazon.com/saml. The Okta, Pingfed, Pingone and Shibboleth ECP providers need to either explicitly send or look for this URL in a response in order to obtain or identify an appropriate authentication response. This can be overridden here if you wish to authenticate for something other than standard AWS, such as AWS GovCloud or a non-AWS service.
 
 Example: typical configuration with such parameters would look like follows:
 ```
@@ -700,13 +700,14 @@ provider                = Ping
 mfa                     = Auto
 skip_verify             = false
 timeout                 = 0
-aws_urn                 = urn:amazon:webservices
+aws_urn                 = urn:amazon:webservices:govcloud
 aws_session_duration    = 28800
 aws_profile             = customer-dev
-role_arn                = arn:aws:iam::121234567890:role/customer-admin-role
+role_arn                = arn:aws-us-gov:iam::121234567890:role/customer-admin-role
 http_attempts_count     = 3
 http_retry_delay        = 1
-region                  = us-east-1
+region                  = us-gov-west-1
+target_url              = https://signin.amazonaws-us-gov.com/saml
 ```
 
 For KeyCloak, 2 more parameters are available to end a failed authentication process.
