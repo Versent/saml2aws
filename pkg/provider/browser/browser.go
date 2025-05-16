@@ -202,45 +202,63 @@ var getSAMLResponse = func(page playwright.Page, loginDetails *creds.LoginDetail
 	return values.Get("SAMLResponse"), nil
 }
 
+func locatedExists(locator playwright.Locator) (bool, error) {
+	count, err := locator.Count()
+	if err != nil {
+		return false, err
+	}
+
+	return count > 0, nil
+}
+
+func float64Ptr(n int) *float64 {
+	f64 := float64(n)
+	return &f64
+}
+
 var autoFill = func(page playwright.Page, loginDetails *creds.LoginDetails) error {
 	passwordField := page.Locator("input[type='password']")
-	err := passwordField.WaitFor(playwright.LocatorWaitForOptions{
-		State: playwright.WaitForSelectorStateVisible,
+	_ = passwordField.WaitFor(playwright.LocatorWaitForOptions{
+		State:   playwright.WaitForSelectorStateVisible,
+		Timeout: float64Ptr(3000),
 	})
 
+	passwordFieldExists, err := locatedExists(passwordField)
 	if err != nil {
 		return err
 	}
 
-	err = passwordField.Fill(loginDetails.Password)
+	if passwordFieldExists {
+		err = passwordField.Fill(loginDetails.Password)
+		if err != nil {
+			return err
+		}
+	}
+
+	usernameField := page.Locator("input[name='username']") // no need to wait since we can assume at this point that the form has been loaded
+	usernameFieldExists, err := locatedExists(usernameField)
 	if err != nil {
 		return err
 	}
 
-	keyboard := page.Keyboard()
-
-	// move to username field which is above password field
-	err = keyboard.Press("Shift+Tab")
-	if err != nil {
-		return err
-	}
-
-	err = keyboard.InsertText(loginDetails.Username)
-	if err != nil {
-		return err
+	if usernameFieldExists {
+		err = usernameField.Fill(loginDetails.Username)
+		if err != nil {
+			return err
+		}
 	}
 
 	// Find the submit button or input of the form that the password field is in
 	submitLocator := page.Locator("form", playwright.PageLocatorOptions{
 		Has: passwordField,
 	}).Locator("[type='submit']")
-	count, err := submitLocator.Count()
+	submitLocatorExists, err := locatedExists(submitLocator)
 	if err != nil {
 		return err
 	}
 
 	// when submit locator exists, Click it
-	if count > 0 {
+	if submitLocatorExists {
 		return submitLocator.Click()
 	} else { // Use javascript to submit the form when no submit input or button is found
 		_, err := page.Evaluate(`document.querySelector('input[type="password"]').form.submit()`, nil)
