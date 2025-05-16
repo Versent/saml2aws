@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html class="login-pf" lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="color-scheme" content="light dark">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <title>Sign in to internal</title>
+  <link rel="icon" href="/resources/kb6gy/login/keycloak.v2/img/favicon.ico" />
+  <link href="/resources/kb6gy/common/keycloak/vendor/patternfly-v5/patternfly.min.css" rel="stylesheet" />
+  <link href="/resources/kb6gy/common/keycloak/vendor/patternfly-v5/patternfly-addons.css" rel="stylesheet" />
+  <link href="/resources/kb6gy/login/keycloak.v2/css/styles.css" rel="stylesheet" />
+  <script type="importmap">
+    {
+        "imports": {
+            "rfc4648": "/resources/kb6gy/common/keycloak/vendor/rfc4648/rfc4648.js"
+        }
+    }
+  </script>
+  <script type="module" async blocking="render">
+    const DARK_MODE_CLASS = "pf-v5-theme-dark";
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+
+    updateDarkMode(mediaQuery.matches);
+    mediaQuery.addEventListener("change", (event) => updateDarkMode(event.matches));
+
+    function updateDarkMode(isEnabled) {
+      const { classList } = document.documentElement;
+
+      if (isEnabled) {
+        classList.add(DARK_MODE_CLASS);
+      } else {
+        classList.remove(DARK_MODE_CLASS);
+      }
+    }
+  </script>
+  <script type="module" src="/resources/kb6gy/login/keycloak.v2/js/passwordVisibility.js"></script>
+  <script type="module">
+    import { startSessionPolling } from "/resources/kb6gy/login/keycloak.v2/js/authChecker.js";
+
+    startSessionPolling(
+      "/realms/internal/login-actions/restart?client_id=urn%3Aamazon%3Awebservices&tab_id=-qLBcCdOZQk&client_data=&skip_logout=true"
+    );
+  </script>
+  <script type="module">
+    import { checkAuthSession } from "/resources/kb6gy/login/keycloak.v2/js/authChecker.js";
+
+    checkAuthSession(
+      "sessionId"
+    );
+  </script>
+  <script>
+    // Workaround for https://bugzilla.mozilla.org/show_bug.cgi?id=1404468
+    const isFirefox = true;
+  </script>
+  <SCRIPT> if (typeof history.replaceState === 'function') {  history.replaceState({}, "some title", "https://my.domain/realms/internal/login-actions/authenticate?execution=&client_id=urn%3Aamazon%3Awebservices&tab_id=&client_data="); }</SCRIPT></head>
+
+<body id="keycloak-bg" class="">
+<div class="pf-v5-c-login">
+  <div class="pf-v5-c-login__container">
+    <header id="kc-header" class="pf-v5-c-login__header">
+      <div id="kc-header-wrapper"
+           class="pf-v5-c-brand">internal</div>
+    </header>
+    <main class="pf-v5-c-login__main">
+      <div class="pf-v5-c-login__main-header">
+        <h1 class="pf-v5-c-title pf-m-3xl" id="kc-page-title"><!-- template: login-otp.ftl -->
+
+          Sign In
+        </h1>
+      </div>
+      <div class="pf-v5-c-login__main-body">
+        <div class="pf-v5-c-form pf-v5-u-mb-md-on-md">
+          <!-- template: login-otp.ftl -->
+
+
+          <div class="pf-v5-c-form__group">
+            <div class="pf-v5-c-form__label">
+              <label for="username" class="pf-v5-c-form__label">
+        <span class="pf-v5-c-form__label-text">
+                Username or email
+
+        </span>
+              </label>
+            </div>
+
+            <div class="pf-v5-c-input-group">
+              <div class="pf-v5-c-input-group__item pf-m-fill">
+        <span class="pf-v5-c-form-control pf-m-readonly">
+          <input id="kc-attempted-username" value="aorlovskiy" readonly>
+        </span>
+              </div>
+              <div class="pf-v5-c-input-group__item">
+                <button id="reset-login" class="pf-v5-c-button pf-m-control kc-login-tooltip" type="button"
+                        aria-label="Restart login" onclick="location.href='/realms/internal/login-actions/restart?client_id=urn%3Aamazon%3Awebservices&amp;tab_id=&amp;client_data=&amp;skip_logout=false'">
+                  <i class="fa-sync-alt fas" aria-hidden="true"></i>
+                  <span class="kc-tooltip-text">Restart login</span>
+                </button>
+              </div>
+
+              <div id="input-error-container-username">
+              </div>
+            </div>
+
+          </div>
+
+
+          <!-- template: login-otp.ftl -->
+
+          <form id="kc-otp-login-form" class="pf-v5-c-form" onsubmit="login.disabled = true; return true;" action="https://c/realms/internal/login-actions/authenticate?session_code=&amp;execution=&amp;client_id=urn%3Aamazon%3Awebservices&amp;tab_id=&amp;client_data=" method="post">
+            <input id="selectedCredentialId" type="hidden" name="selectedCredentialId" value="3f3712fe-7e9a-46ba-9944-18d1cebe4a46">
+
+
+            <div class="pf-v5-c-form__group">
+              <div class="pf-v5-c-form__label">
+                <label for="otp" class="pf-v5-c-form__label">
+        <span class="pf-v5-c-form__label-text">
+            One-time code
+        </span>
+                </label>
+              </div>
+
+              <span class="pf-v5-c-form-control pf-m-error">
+        <input id="otp" name="otp" value="" type="text" autocomplete="one-time-code" autofocus
+               aria-invalid="true"/>
+    <span class="pf-v5-c-form-control__utilities">
+        <span class="pf-v5-c-form-control__icon pf-m-status">
+          <i class="fas fa-exclamation-circle" aria-hidden="true"></i>
+        </span>
+    </span>
+    </span>
+
+              <div id="input-error-container-otp">
+                <div class="pf-v5-c-form__helper-text" aria-live="polite">
+                  <div class="pf-v5-c-helper-text">
+                    <div class="pf-v5-c-helper-text__item pf-m-error" id="input-error-otp">
+                        <span class="pf-v5-c-helper-text__item-text pf-m-error kc-feedback-text">
+                            Invalid authenticator code.
+                        </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+
+            <div class="pf-v5-c-form__group">
+              <div class="pf-v5-c-form__actions">
+                <button class="pf-v5-c-button pf-m-primary pf-m-block " name="login" id="kc-login" type="submit">Sign In</button>
+              </div>
+            </div>
+          </form>
+          <script>
+            function toggleOTP(index, value) {
+              // select the clicked OTP credential
+              document.getElementById("selectedCredentialId").value = value;
+              // remove selected class from all OTP credentials
+              Array.from(document.getElementsByClassName("pf-m-selected")).map(i => i.classList.remove("pf-m-selected"));
+              // add selected class to the clicked OTP credential
+              document.getElementById("kc-otp-credential-" + index).classList.add("pf-m-selected");
+            }
+          </script>
+
+          <form id="kc-select-try-another-way-form" action="https://my.domain/realms/internal/login-actions/authenticate?session_code=&amp;execution=&amp;client_id=urn%3Aamazon%3Awebservices&amp;tab_id=&amp;client_data=" method="post" novalidate="novalidate">
+            <input type="hidden" name="tryAnotherWay" value="on"/>
+            <a id="try-another-way" href="javascript:document.forms['kc-select-try-another-way-form'].requestSubmit()"
+               class="pf-v5-c-button pf-m-secondary pf-m-block pf-v5-u-mt-md-on-md">
+              Try Another Way
+            </a>
+          </form>
+
+        </div>
+        <div class="pf-v5-c-login__main-footer">
+          <!-- template: login-otp.ftl -->
+
+        </div>
+    </main>
+
+  </div>
+</div>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'91c8c6eefab6d2f2',t:'MTc0MTMzNjcxMS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
