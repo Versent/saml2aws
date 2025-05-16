@@ -141,30 +141,18 @@ func Login(loginFlags *flags.LoginExecFlags) error {
 		return errors.Wrap(err, "Error logging into AWS role using SAML assertion.")
 	}
 
+	err = saveCredentials(awsCreds, sharedCreds)
+	if err != nil {
+		return err
+	}
+
 	// print credential process if needed
 	if loginFlags.CredentialProcess {
 		err = PrintCredentialProcess(awsCreds)
 		if err != nil {
 			return err
 		}
-		// Check if a custom credential file is used
-		customCredentialsFile, err := CustomCredentialsFile(sharedCreds.Filename)
-		if err != nil {
-			return err
-		}
-		// If a custom credential file is used then save credentials. This allows for autorefreshing of credentials, which is not supported with the default credential file. See https://github.com/Versent/saml2aws/issues/895
-		if customCredentialsFile {
-			err = saveCredentials(awsCreds, sharedCreds)
-			if err != nil {
-				return err
-			}
-		}
 	} else {
-		err = saveCredentials(awsCreds, sharedCreds)
-		if err != nil {
-			return err
-		}
-
 		log.Println("Logged in as:", awsCreds.PrincipalARN)
 		log.Println("")
 		log.Println("Your new access key pair has been stored in the AWS configuration.")
