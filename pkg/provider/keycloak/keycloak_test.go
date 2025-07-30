@@ -127,7 +127,7 @@ func TestClient_postLoginForm(t *testing.T) {
 	opts := &provider.HTTPClientOptions{IsWithRetries: false}
 	kc := Client{client: &provider.HTTPClient{Client: http.Client{}, Options: opts}}
 
-	content, err := kc.postLoginForm(ts.URL, loginForm)
+	content, err := kc.postLoginForm(ts.URL, loginForm, []*http.Cookie{})
 	require.Nil(t, err)
 	require.NotNil(t, content)
 }
