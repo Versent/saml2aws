@@ -103,7 +103,7 @@ func (kc *Client) doAuthenticate(authCtx *authContext, loginDetails *creds.Login
 		return "", errors.Wrap(err, "error retrieving login form from idp")
 	}
 
-	data, err := kc.postLoginForm(authSubmitURL, authForm)
+	data, err := kc.postLoginForm(authSubmitURL, authForm, authCookies)
 	if err != nil {
 		return "", fmt.Errorf("error submitting login form")
 	}
@@ -256,11 +256,15 @@ func (kc *Client) getLoginForm(loginDetails *creds.LoginDetails) (string, url.Va
 	return authSubmitURL, authForm, authCookies, nil
 }
 
-func (kc *Client) postLoginForm(authSubmitURL string, authForm url.Values) ([]byte, error) {
+func (kc *Client) postLoginForm(authSubmitURL string, authForm url.Values, authCookies []*http.Cookie) ([]byte, error) {
 
 	req, err := http.NewRequest("POST", authSubmitURL, strings.NewReader(authForm.Encode()))
 	if err != nil {
 		return nil, errors.Wrap(err, "error building authentication request")
+	}
+
+	for _, cookie := range authCookies {
+		req.AddCookie(cookie)
 	}
 
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
