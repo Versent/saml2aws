@@ -153,7 +153,7 @@ Clone this repo to your `$GOPATH/src` directory
 Now you can install by running
 
 ```
-make
+make mod
 make install
 ```
 
