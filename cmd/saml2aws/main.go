@@ -154,6 +154,7 @@ func main() {
 	cmdListRoles.Flag("cache-file", "The location of the SAML cache file (env: SAML2AWS_SAML_CACHE_FILE)").Envar("SAML2AWS_SAML_CACHE_FILE").StringVar(&commonFlags.SAMLCacheFile)
 	listRolesFlags := new(flags.LoginExecFlags)
 	listRolesFlags.CommonFlags = commonFlags
+	cmdListRoles.Flag("download-browser-driver", "Automatically download browsers for Browser IDP. (env: SAML2AWS_AUTO_BROWSER_DOWNLOAD)").Envar("SAML2AWS_AUTO_BROWSER_DOWNLOAD").BoolVar(&listRolesFlags.DownloadBrowser)
 
 	// `script` command and settings
 	cmdScript := app.Command("script", "Emit a script that will export environment variables.")
