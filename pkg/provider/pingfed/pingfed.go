@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
@@ -72,6 +73,15 @@ func (ac *Client) follow(ctx context.Context, req *http.Request) (string, error)
 	doc, err := goquery.NewDocumentFromReader(res.Body)
 	if err != nil {
 		return "", errors.Wrap(err, "failed to build document from response")
+	}
+
+	// Check for authentication errors first
+	if msg, ok := docIsLoginFail(doc); ok {
+		logger.WithField("type", "authentication-error").Debug("doc detect")
+		return "", fmt.Errorf(msg)
+	} else if msg, ok := docIsAccountLocked(doc); ok {
+		logger.WithField("type", "account-locked").Debug("doc detect")
+		return "", fmt.Errorf(msg)
 	}
 
 	var handler func(context.Context, *goquery.Document, *url.URL) (context.Context, *http.Request, error)
@@ -169,7 +179,12 @@ func (ac *Client) handleCheckWebAuthn(ctx context.Context, doc *goquery.Document
 	return ctx, req, err
 }
 
+// Improved OTP handling in handleOTP function
 func (ac *Client) handleOTP(ctx context.Context, doc *goquery.Document, requestURL *url.URL) (context.Context, *http.Request, error) {
+	loginDetails, ok := ctx.Value(ctxKey("login")).(*creds.LoginDetails)
+	if !ok {
+		return ctx, nil, fmt.Errorf("no context value for 'login'")
+	}
 	form, err := page.NewFormFromDocument(doc, "#otp-form")
 	if err != nil {
 		return ctx, nil, errors.Wrap(err, "error extracting OTP form")
@@ -181,9 +196,20 @@ func (ac *Client) handleOTP(ctx context.Context, doc *goquery.Document, requestU
 			break
 		}
 	}
-
-	token := prompter.StringRequired("Enter passcode")
-	form.Values.Set("otp", token)
+	// Improved MFA token handling with retry capability
+	var mfaToken string
+	if loginDetails.MFAToken != "" {
+		mfaToken = loginDetails.MFAToken
+		// Clear the token to allow for retry on failure
+		loginDetails.MFAToken = ""
+	} else {
+		mfaToken = prompter.StringRequired("Enter passcode")
+		if mfaToken == "" {
+			// User cancelled (Ctrl+C) or provided empty input
+			return ctx, nil, fmt.Errorf("OTP entry cancelled by user")
+		}
+	}
+	form.Values.Set("otp", mfaToken)
 	req, err := form.BuildRequest()
 	return ctx, req, err
 }
@@ -208,7 +234,8 @@ func (ac *Client) handleSwipe(ctx context.Context, doc *goquery.Document, _ *url
 	for {
 		time.Sleep(3 * time.Second)
 
-		res, err := ac.client.Do(req)
+		clonedReq := req.Clone(req.Context())
+		res, err := ac.client.Do(clonedReq)
 		if err != nil {
 			return ctx, nil, errors.Wrap(err, "error polling swipe status")
 		}
@@ -356,6 +383,27 @@ func docIsRefresh(doc *goquery.Document) bool {
 
 func extractSAMLResponse(doc *goquery.Document) (v string, ok bool) {
 	return doc.Find("input[name=\"SAMLResponse\"]").Attr("value")
+}
+
+// docIsLoginFail checks for login authentication failures
+func docIsLoginFail(doc *goquery.Document) (v string, ok bool) {
+	isLoginFail := doc.Find(".ping-error").Size() >= 1
+	if isLoginFail {
+		errorText := doc.Find(".ping-error").Text()
+		return strings.Join(strings.Fields(errorText), " "), true
+	}
+	return "", false
+
+}
+
+// docIsAccountLocked checks if user account is locked or blocked
+func docIsAccountLocked(doc *goquery.Document) (v string, ok bool) {
+	isAccountLocked := doc.Find(".window.settings.blocked").Size() > 0
+	if isAccountLocked {
+		errorText := strings.TrimSpace(doc.Find(".window.settings.blocked .error-text .text").Text())
+		return strings.Join(strings.Fields(errorText), " "), true
+	}
+	return "", false
 }
 
 // ensures given url is an absolute URL. if not, it will be combined with the base URL
