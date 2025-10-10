@@ -78,7 +78,7 @@ The process goes something like this:
   * [Akamai](pkg/provider/akamai/README.md)
   * OneLogin
   * NetIQ
-  * Browser, this uses [playwright-go](https://github.com/mxschmitt/playwright-go) to run a sandbox chromium window. Using ALL_PROXY environment variable you can set a proxy. HTTP and SOCKS proxies are supported, for example `http://myproxy.com:3128` or `socks5://myproxy.com:3128`. Short form `myproxy.com:3128` is considered an HTTP proxy.
+  * Browser, this uses [playwright-go](https://github.com/mxschmitt/playwright-go) to run a sandbox chromium window. Using ALL_PROXY environment variable you can set a proxy. HTTP and SOCKS proxies are supported, for example `http://myproxy.com:3128` or `socks://myproxy.com:1080` or `socks5://myproxy.com:1080`. Short form `myproxy.com:3128` is considered an HTTP proxy.
   * [Auth0](pkg/provider/auth0/README.md) NOTE: Currently, MFA not supported
   * [JumpCloud](doc/provider/jumpcloud/README.md)
 * AWS SAML Provider configured

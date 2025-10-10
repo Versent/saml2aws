@@ -73,7 +73,7 @@ func (cl *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 	// TODO: provide some overrides for this window
 	launchOptions := playwright.BrowserTypeLaunchOptions{
 		Headless: playwright.Bool(cl.Headless),
-    Proxy:    GetProxy("ALL_PROXY"),
+    	Proxy: GetProxy("ALL_PROXY"),
 	}
 
 	validBrowserTypes := []string{"chromium", "firefox", "webkit", "chrome", "chrome-beta", "chrome-dev", "chrome-canary", "msedge", "msedge-beta", "msedge-dev", "msedge-canary"}
@@ -265,9 +265,9 @@ func (cl *Client) Validate(loginDetails *creds.LoginDetails) error {
 	return nil
 }
 
-func GetProxy(envVar string) *playwright.BrowserTypeLaunchOptionsProxy {
+func GetProxy(envVar string) *playwright.Proxy {
 	if value, ok := os.LookupEnv(envVar); ok {
-		return &playwright.BrowserTypeLaunchOptionsProxy{Server: playwright.String(value)}
+		return &playwright.Proxy{Server: value}
 	}
 	return nil
 }
