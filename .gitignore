@@ -11,6 +11,7 @@ vendor
 /package
 /stage
 coverage.txt
+coverage.xml
 .ctags
 .vscode
 bin/
@@ -19,3 +20,4 @@ bin/
 
 # direnv
 .envrc
+.buildtemp

@@ -1,4 +1,7 @@
-# saml2aws [![GitHub Actions status](https://github.com/Versent/saml2aws/workflows/Go/badge.svg?branch=master)](https://github.com/Versent/saml2aws/actions?query=workflow%3AGo) [![Build status - Windows](https://ci.appveyor.com/api/projects/status/ptpi18kci16o4i82/branch/master?svg=true)](https://ci.appveyor.com/project/davidobrien1985/saml2aws/branch/master)
+# saml2aws
+
+[![GitHub Actions status](https://github.com/Versent/saml2aws/workflows/Go/badge.svg?branch=master)](https://github.com/Versent/saml2aws/actions?query=workflow%3AGo) [![Build status - Windows](https://ci.appveyor.com/api/projects/status/ptpi18kci16o4i82/branch/master?svg=true)](https://ci.appveyor.com/project/davidobrien1985/saml2aws/branch/master)
+[![codecov](https://codecov.io/gh/Versent/saml2aws/branch/master/graph/badge.svg)](https://codecov.io/gh/Versent/saml2aws)
 
 CLI tool which enables you to login and retrieve [AWS](https://aws.amazon.com/) temporary credentials using
 with [ADFS](https://msdn.microsoft.com/en-us/library/bb897402.aspx) or [PingFederate](https://www.pingidentity.com/en/products/pingfederate.html) Identity Providers.
@@ -18,25 +21,48 @@ The process goes something like this:
 
 ## Table of Contents
 
-- [Table of Contents](#table-of-contents)
-- [Requirements](#requirements)
-- [Caveats](#caveats)
-- [Install](#install)
-    - [OSX](#osx)
+- [saml2aws](#saml2aws)
+  - [Table of Contents](#table-of-contents)
+  - [Requirements](#requirements)
+  - [Caveats](#caveats)
+  - [Install](#install)
+    - [macOS](#macOS)
     - [Windows](#windows)
     - [Linux](#linux)
-- [Autocomplete](#autocomplete)
-- [Dependency Setup](#dependency-setup)
-- [Usage](#usage)
+      - [Ubuntu](#ubuntu)
+      - [Other](#other)
+      - [Using Make](#using-make)
+      - [Arch Linux and its derivatives](#arch-linux-and-its-derivatives)
+      - [Void Linux](#void-linux)
+  - [Autocomplete](#autocomplete)
+    - [Bash](#bash)
+    - [Zsh](#zsh)
+  - [Dependency Setup](#dependency-setup)
+  - [Usage](#usage)
     - [`saml2aws script`](#saml2aws-script)
+    - [`saml2aws exec`](#saml2aws-exec)
     - [Configuring IDP Accounts](#configuring-idp-accounts)
-- [Example](#example)
-- [Advanced Configuration](#advanced-configuration)
-    - [Dev Account Setup](#dev-account-setup)
-    - [Test Account Setup](#test-account-setup)
-- [Building](#building)
-- [Environment vars](#environment-vars)
-- [Provider Specific Documentation](#provider-specific-documentation)
+  - [Example](#example)
+  - [Advanced Configuration](#advanced-configuration)
+    - [Windows Subsystem Linux (WSL) Configuration](#windows-subsystem-linux-wsl-configuration)
+      - [Option 1: Disable Keychain](#option-1-disable-keychain)
+      - [Option 2: Configure Pass to be the default keyring](#option-2-configure-pass-to-be-the-default-keyring)
+    - [Configuring Multiple Accounts](#configuring-multiple-accounts)
+      - [Dev Account Setup](#dev-account-setup)
+      - [Test Account Setup](#test-account-setup)
+  - [Advanced Configuration (Multiple AWS account access but SAML authenticate against a single 'SSO' AWS account)](#advanced-configuration-multiple-aws-account-access-but-saml-authenticate-against-a-single-sso-aws-account)
+  - [Advanced Configuration - additional parameters](#advanced-configuration---additional-parameters)
+  - [Building](#building)
+    - [macOS](#macos)
+    - [Linux](#linux-1)
+  - [Environment vars](#environment-vars)
+- [Dependencies](#dependencies)
+- [Releasing](#releasing)
+- [Debugging Issues with IDPs](#debugging-issues-with-idps)
+- [Using saml2aws as credential process](#using-saml2aws-as-credential-process)
+- [Caching the saml2aws SAML assertion for immediate reuse](#caching-the-saml2aws-saml-assertion-for-immediate-reuse)
+- [Okta Sessions](#okta-sessions)
+- [License](#license)
 
 ## Requirements
 
@@ -54,6 +80,7 @@ The process goes something like this:
   * NetIQ
   * Browser, this uses [playwright-go](https://github.com/mxschmitt/playwright-go) to run a sandbox chromium window. Using ALL_PROXY environment variable you can set a proxy. HTTP and SOCKS proxies are supported, for example `http://myproxy.com:3128` or `socks5://myproxy.com:3128`. Short form `myproxy.com:3128` is considered an HTTP proxy.
   * [Auth0](pkg/provider/auth0/README.md) NOTE: Currently, MFA not supported
+  * [JumpCloud](doc/provider/jumpcloud/README.md)
 * AWS SAML Provider configured
 
 ## Caveats
@@ -62,12 +89,13 @@ Aside from Okta, most of the providers in this project are using screen scraping
 
 1. AWS defaults to session tokens being issued with a duration of up to 3600 seconds (1 hour), this can now be configured as per [Enable Federated API Access to your AWS Resources for up to 12 hours Using IAM Roles](https://aws.amazon.com/blogs/security/enable-federated-api-access-to-your-aws-resources-for-up-to-12-hours-using-iam-roles/) and `--session-duration` flag.
 2. Every SAML provider is different, the login process, MFA support is pluggable and therefore some work may be needed to integrate with your identity server
+3. By default, the temporary security credentials returned **do not support SigV4A**. If you need SigV4A support then you must set the `AWS_STS_REGIONAL_ENDPOINTS` enviornment variable to `regional` when calling `saml2aws` so that [aws-sdk-go](https://github.com/aws/aws-sdk-go) uses a regional STS endpoint instead of the global one. See the note at the bottom of [Signing AWS API requests](https://docs.aws.amazon.com/general/latest/gr/signing_aws_api_requests.html#signature-versions) and [AWS STS Regionalized endpoints](https://docs.aws.amazon.com/sdkref/latest/guide/feature-sts-regionalized-endpoints.html).
 
 ## Install
 
-### OSX
+### macOS
 
-If you're on OSX you can install saml2aws using homebrew!
+If you're on macOS you can install saml2aws using homebrew!
 
 ```
 brew install saml2aws
@@ -87,12 +115,46 @@ saml2aws --version
 
 While brew is available for Linux you can also run the following without using a package manager.
 
+#### Ubuntu
+
+Some users of Ubuntu have reported issue with the [Others](#others) Install instruction and reported the following to work (may required using sudo command like for the "mv" function)
+
 ```
 CURRENT_VERSION=$(curl -Ls https://api.github.com/repos/Versent/saml2aws/releases/latest | grep 'tag_name' | cut -d'v' -f2 | cut -d'"' -f1)
-wget -c https://github.com/Versent/saml2aws/releases/download/v${CURRENT_VERSION}/saml2aws_${CURRENT_VERSION}_linux_amd64.tar.gz -O - | tar -xzv -C ~/.local/bin
+wget https://github.com/Versent/saml2aws/releases/download/v${CURRENT_VERSION}/saml2aws_${CURRENT_VERSION}_linux_amd64.tar.gz
+tar -xzvf saml2aws_${CURRENT_VERSION}_linux_amd64.tar.gz
+mv saml2aws /usr/local/bin/
+chmod u+x /usr/local/bin/saml2aws
+saml2aws --version
+```
+
+For U2F support, replace wget line above with `wget https://github.com/Versent/saml2aws/releases/download/v${CURRENT_VERSION}/saml2aws-u2f_${CURRENT_VERSION}_linux_amd64.tar.gz`
+
+#### Other
+
+```
+mkdir -p ~/.local/bin
+CURRENT_VERSION=$(curl -Ls https://api.github.com/repos/Versent/saml2aws/releases/latest | grep 'tag_name' | cut -d'v' -f2 | cut -d'"' -f1)
+wget -c "https://github.com/Versent/saml2aws/releases/download/v${CURRENT_VERSION}/saml2aws_${CURRENT_VERSION}_linux_amd64.tar.gz" -O - | tar -xzv -C ~/.local/bin
 chmod u+x ~/.local/bin/saml2aws
 hash -r
 saml2aws --version
+```
+If `saml2aws --version` does not work as intended, you may need to update your terminal configuration file (like ~/.bashrc, ~/.profile, ~/.zshrc) to include `export PATH="$PATH:$HOME/.local/bin/"` at the end of the file.
+
+For U2F support, replace wget line above with `wget -c "https://github.com/Versent/saml2aws/releases/download/v${CURRENT_VERSION}/saml2aws-u2f_${CURRENT_VERSION}_linux_amd64.tar.gz" -O - | tar -xzv -C ~/.local/bin`
+
+#### Using Make
+
+You will need [Go Tools](https://golang.org/doc/install) (you can check your package maintainer as well) installed and the [Go Lint tool](https://github.com/alecthomas/gometalinter)
+
+Clone this repo to your `$GOPATH/src` directory
+
+Now you can install by running
+
+```
+make
+make install
 ```
 
 #### [Arch Linux](https://archlinux.org/) and its derivatives
@@ -129,7 +191,7 @@ eval "$(saml2aws --completion-script-zsh)"
 
 ## Dependency Setup
 
-Install the AWS CLI [see](https://docs.aws.amazon.com/cli/latest/userguide/installing.html), in our case we are using [homebrew](http://brew.sh/) on OSX.
+Install the AWS CLI [see](https://docs.aws.amazon.com/cli/latest/userguide/installing.html), in our case we are using [homebrew](http://brew.sh/) on macOS.
 
 ```
 brew install awscli
@@ -145,9 +207,10 @@ A command line tool to help with SAML access to the AWS token service.
 Flags:
       --help                   Show context-sensitive help (also try --help-long and --help-man).
       --version                Show application version.
-      --quiet                  silences logs
       --verbose                Enable verbose logging
+      --quiet                  silences logs
   -i, --provider=PROVIDER      This flag is obsolete. See: https://github.com/Versent/saml2aws#configuring-idp-accounts
+      --config=CONFIG          Path/filename of saml2aws config file (env: SAML2AWS_CONFIGFILE)
   -a, --idp-account="default"  The name of the configured IDP account. (env: SAML2AWS_IDP_ACCOUNT)
       --idp-provider=IDP-PROVIDER
                                The configured IDP provider. (env: SAML2AWS_IDP_PROVIDER)
@@ -162,8 +225,9 @@ Flags:
       --skip-prompt            Skip prompting for parameters during login.
       --session-duration=SESSION-DURATION
                                The duration of your AWS Session. (env: SAML2AWS_SESSION_DURATION)
-      --disable-keychain       Do not use keychain at all. (env: SAML2AWS_DISABLE_KEYCHAIN)
+      --disable-keychain       Do not use keychain at all. This will also disable Okta sessions & remembering MFA device. (env: SAML2AWS_DISABLE_KEYCHAIN)
   -r, --region=REGION          AWS region to use for API requests, e.g. us-east-1, us-gov-west-1, cn-north-1 (env: SAML2AWS_REGION)
+      --prompter=PROMPTER      The prompter to use for user input (default, pinentry)
 
 Commands:
   help [<command>...]
@@ -178,9 +242,12 @@ Commands:
         --client-secret=CLIENT-SECRET
                                    OneLogin client secret, used to generate API access token. (env: ONELOGIN_CLIENT_SECRET)
         --subdomain=SUBDOMAIN      OneLogin subdomain of your company account. (env: ONELOGIN_SUBDOMAIN)
+        --mfa-ip-address=MFA-IP-ADDRESS
+                                   IP address whitelisting defined in OneLogin MFA policies. (env: ONELOGIN_MFA_IP_ADDRESS)
     -p, --profile=PROFILE          The AWS profile to save the temporary credentials. (env: SAML2AWS_PROFILE)
         --resource-id=RESOURCE-ID  F5APM SAML resource ID of your company account. (env: SAML2AWS_F5APM_RESOURCE_ID)
-        --config=CONFIG            Path/filename of saml2aws config file (env: SAML2AWS_CONFIGFILE)
+        --credentials-file=CREDENTIALS-FILE
+                                   The file that will cache the credentials retrieved from AWS. When not specified, will use the default AWS credentials file location. (env: SAML2AWS_CREDENTIALS_FILE)
         --cache-saml               Caches the SAML response (env: SAML2AWS_CACHE_SAML)
         --cache-file=CACHE-FILE    The location of the SAML cache file (env: SAML2AWS_SAML_CACHE_FILE)
         --disable-sessions         Do not use Okta sessions. Uses Okta sessions by default. (env: SAML2AWS_OKTA_DISABLE_SESSIONS)
@@ -191,16 +258,19 @@ Commands:
 
     -p, --profile=PROFILE        The AWS profile to save the temporary credentials. (env: SAML2AWS_PROFILE)
         --duo-mfa-option=DUO-MFA-OPTION
-                                 The MFA option you want to use to authenticate with
+                                 The MFA option you want to use to authenticate with (supported providers: okta). (env: SAML2AWS_DUO_MFA_OPTION)
         --client-id=CLIENT-ID    OneLogin client id, used to generate API access token. (env: ONELOGIN_CLIENT_ID)
         --client-secret=CLIENT-SECRET
                                  OneLogin client secret, used to generate API access token. (env: ONELOGIN_CLIENT_SECRET)
+        --mfa-ip-address=MFA-IP-ADDRESS
+                                 IP address whitelisting defined in OneLogin MFA policies. (env: ONELOGIN_MFA_IP_ADDRESS)
         --force                  Refresh credentials even if not expired.
         --credential-process     Enables AWS Credential Process support by outputting credentials to STDOUT in a JSON message.
         --credentials-file=CREDENTIALS-FILE
                                  The file that will cache the credentials retrieved from AWS. When not specified, will use the default AWS credentials file location. (env: SAML2AWS_CREDENTIALS_FILE)
         --cache-saml             Caches the SAML response (env: SAML2AWS_CACHE_SAML)
         --cache-file=CACHE-FILE  The location of the SAML cache file (env: SAML2AWS_SAML_CACHE_FILE)
+        --download-browser-driver  Automatically download browsers for Browser IDP. (env: SAML2AWS_AUTO_BROWSER_DOWNLOAD)
         --disable-sessions         Do not use Okta sessions. Uses Okta sessions by default. (env: SAML2AWS_OKTA_DISABLE_SESSIONS)
         --disable-remember-device  Do not remember Okta MFA device. Remembers MFA device by default. (env: SAML2AWS_OKTA_DISABLE_REMEMBER_DEVICE)
 
@@ -234,9 +304,9 @@ Commands:
     Emit a script that will export environment variables.
 
     -p, --profile=PROFILE      The AWS profile to save the temporary credentials. (env: SAML2AWS_PROFILE)
-        --shell=bash           Type of shell environment. Options include: bash, powershell, fish, env
         --credentials-file=CREDENTIALS-FILE
                                The file that will cache the credentials retrieved from AWS. When not specified, will use the default AWS credentials file location. (env: SAML2AWS_CREDENTIALS_FILE)
+        --shell=bash           Type of shell environment. Options include: bash, /bin/sh, powershell, fish, env
 
 
 ```
@@ -254,7 +324,7 @@ export AWS_CREDENTIAL_EXPIRATION="2016-09-04T38:27:00Z00:00"
 SAML2AWS_PROFILE=saml
 ```
 
-Powershell, and fish shells are supported as well.
+Powershell, sh and fish shells are supported as well.
 Env is useful for all AWS SDK compatible tools that can source an env file. It is a powerful combo with docker and the `--env-file` parameter.
 
 If you use `eval $(saml2aws script)` frequently, you may want to create a alias for it:
@@ -385,10 +455,65 @@ To use this credential, call the AWS CLI with the --profile option (e.g. aws --p
 ```
 
 ## Advanced Configuration
+### Windows Subsystem Linux (WSL) Configuration
+If you are using WSL1 or WSL2, you might get the following error when attempting to save the credentials into the keychain
 
+```
+ No such interface “org.freedesktop.DBus.Properties” on object at path /
+```
+
+This happens because the preferred keyring back-end - uses the `gnome-keyring` by default - which requires X11 - and if you are not using Windows 11 with support for Linux GUI applications - this can be difficult without [configuring a X11 forward](https://stackoverflow.com/questions/61110603/how-to-set-up-working-x11-forwarding-on-wsl2).
+
+There are 2 preferred approaches to workaround this issue:
+
+#### Option 1: Disable Keychain
+You can apply the  `--disable-keychain` flag when using both the `configure` and `login` commands. Using this flag means that your credentials (such as your password to your IDP, or in the case of Okta the Okta Session Token) will not save to your keychain - and be skipped entierly. This means you will be required to enter your username and password each time you invoke the `login` command.
+
+#### Option 2: Configure Pass to be the default keyring
+There are a few steps involved with this option - however this option will save your credentials (such as your password to your IDP, and session tokens etc) into the `pass`[https://www.passwordstore.org/] keyring. The `pass` keyring is the standard Unix password manager. This option was *heavily inspired* by a similar issue in [aws-vault](https://github.com/99designs/aws-vault/issues/683)
+
+To configure pass to be the default keyring the following steps will need to be completed (assuming you are using Ubuntu 20.04 LTS):
+
+1. Install the pass backend and update gnupg, which encrypts passwords
+```bash
+sudo apt-get update && sudo apt-get install -y pass gnupg
+```
+
+2. Generate a key with gpg (gnupg) and take note of your public key
+```bash
+gpg --gen-key
+```
+
+The output of the gpg command will output the something similar to the following:
+```
+public and secret key created and signed.
+
+pub   rsa3072 2021-04-22 [SC] [expires: 2023-04-22]
+      844E426A53A64C2A916CBD1F522014D5FDBF6E3D
+uid                      Meir Gabay <willy@wonka.com>
+sub   rsa3072 2021-04-22 [E] [expires: 2023-04-22]
+```
+
+3.  Create a storage key in pass from the previously generated public (pub) key
+```bash
+pass init <GPG_PUBLIC_KEY>
+```
+during the `init` process you'll be requested to enter the passphrase provided in step 2
+
+4. Now, configure `saml2aws` to use the `pass` keyring. This can be done by setting the `SAML2AWS_KEYRING_BACKEND` environment variable to be `pass`. You'll need to also set the `GPG_TTY` to your current tty which means you can set the variable to `"$( tty )"`
+
+which means the following can be added into your profile
+```
+export SAML2AWS_KEYRING_BACKEND=pass
+export GPG_TTY="$( tty )"
+```
+
+5. Profit! Now when you run login/configure commands - you'll be promoted once to enter your passphrase - and your credentials will be saved into your keyring!
+
+
+### Configuring Multiple Accounts
 Configuring multiple accounts with custom role and profile in `~/.aws/config` with goal being isolation between infra code when deploying to these environments. This setup assumes you're using separate roles and probably AWS accounts for `dev` and `test` and is designed to help operations staff avoid accidentally deploying to the wrong AWS account in complex environments. Note that this method configures SAML authentication to each AWS account directly (in this case different AWS accounts). In the example below, separate authentication values are configured for AWS accounts 'profile=customer-dev/awsAccount=was 121234567890' and 'profile=customer-test/awsAccount=121234567891'
-
-### Dev Account Setup
+#### Dev Account Setup
 
 To setup the dev account run the following and enter URL, username and password, and assign a standard role to be automatically selected on login.
 
@@ -415,7 +540,7 @@ region                  = us-east-1
 
 To use this you will need to export `AWS_DEFAULT_PROFILE=customer-dev` environment variable to target `dev`.
 
-### Test Account Setup
+#### Test Account Setup
 
 To setup the test account run the following and enter URL, username and password.
 
@@ -441,6 +566,18 @@ region                  = us-east-1
 ```
 
 To use this you will need to export `AWS_DEFAULT_PROFILE=customer-test` environment variable to target `test`.
+
+### Playwright Browser Drivers for Browser IDP
+
+If you are using the Browser Identity Provider, on first invocation of `saml2aws login` you need to remember to install
+the browser drivers in order for playwright-go to work. Otherwise you will see the following error message:
+
+`Error authenticating to IDP.: please install the driver (vx.x.x) and browsers first: %!w(<nil>)`
+
+To install the drivers, you can:
+* Pass `--download-browser-driver` to `saml2aws login`
+* Set in your shell environment `SAML2AWS_AUTO_BROWSER_DOWNLOAD=true`
+* Set `download_browser_driver = true` in your saml2aws config file, i.e. `~/.saml2aws`
 
 ## Advanced Configuration (Multiple AWS account access but SAML authenticate against a single 'SSO' AWS account)
 
@@ -571,9 +708,36 @@ http_attempts_count     = 3
 http_retry_delay        = 1
 region                  = us-east-1
 ```
+
+For KeyCloak, 2 more parameters are available to end a failed authentication process.
+ - `kc_auth_error_element` - configures what HTTP element saml2aws looks for in authentication error responses. Defaults to "span#input-error" and looks for `<span id=input-error>xxx</span>`. Goquery is used. "span#id-name" looks for `<span id=id-name>xxx</span>`. "span.class-name" looks for `<span class=class-name>xxx</span>`.
+ - `kc_auth_error_message` - works with the `kc_auth_error_element` and configures what HTTP message saml2aws looks for in authentication error responses. Defaults to "Invalid username or password." and looks for `<xxx>Invalid username or password.</xxx>`. [Regular expressions](https://github.com/google/re2/wiki/Syntax) are accepted.
+
+Example: If your KeyCloak server returns the authentication error message "Invalid username or password." in a different language in the `<span class=kc-feedback-text>xxx</span>` element, these parameters would look like:
+```
+[default]
+url                     = https://id.customer.cloud
+username                = user@versent.com.au
+provider                = KeyCloak
+...
+kc_auth_error_element   = span.kc-feedback-text
+kc_auth_error_message   = "Ungültiger Benutzername oder Passwort."
+```
+If your KeyCloak server returns a different error message depending on an authentication error type, use a pipe as a separator and add multiple messages to the `kc_auth_error_message`:
+```
+[default]
+url                     = https://id.customer.cloud
+username                = user@versent.com.au
+provider                = KeyCloak
+...
+kc_auth_error_message   = "Invalid username or password.|Account is disabled, contact your administrator."
+```
+
 ## Building
 
-To build this software on osx clone to the repo to `$GOPATH/src/github.com/versent/saml2aws` and ensure you have `$GOPATH/bin` in your `$PATH`.
+### macOS
+
+To build this software on macOS, clone the repo to `$GOPATH/src/github.com/versent/saml2aws` and ensure you have `$GOPATH/bin` in your `$PATH`. You will also need [GoReleaser](https://github.com/goreleaser/goreleaser) installed.
 
 ```
 make mod
@@ -597,6 +761,26 @@ Before raising a PR please run the linter.
 make lint-fix
 ```
 
+### Linux
+
+To build this software on Debian/Ubuntu, you need to install a build dependency:
+
+```
+sudo apt install libudev-dev
+```
+
+You also need [GoReleaser](https://github.com/goreleaser/goreleaser) installed, and the binary (or a symlink) in `bin/goreleaser`.
+
+```
+ln -s $(command -v goreleaser) bin/goreleaser
+```
+
+Then you can build:
+
+```
+make build
+```
+
 ## Environment vars
 
 The exec sub command will export the following environment variables.
@@ -612,11 +796,6 @@ The exec sub command will export the following environment variables.
 
 Note: That profile environment variables enable you to use `exec` with a script or command which requires an explicit profile.
 
-## Provider Specific Documentation
-
-* [Azure Active Directory](./doc/provider/aad)
-* [JumpCloud](./doc/provider/jumpcloud)
-
 # Dependencies
 
 This tool would not be possible without some great opensource libraries.
@@ -630,17 +809,11 @@ This tool would not be possible without some great opensource libraries.
 
 # Releasing
 
-Install `github-release`.
-
-```
-go get github.com/buildkite/github-release
-```
-
-To release run.
-
-```
-make release
-```
+1. Create a git tag locally with `git tag -as vX.X.X`
+2. Run build with `make build`
+3. Test the newly created binary nested in the `dist/` of the project root directory
+4. If testing pass, push the tag `git push origin vX.X.X`
+5. Make an announcement in "Discussions"
 
 # Debugging Issues with IDPs
 
@@ -662,12 +835,20 @@ DUMP_CONTENT=true saml2aws login --verbose
 You can use `saml2aws` as a credential provider by simply configuring it and then adding a profile to the AWS configuration. `saml2aws` has a flag `--credential-process` generating an output with the right JSON format, as well as a flag `--quiet` that will block the logging from being displayed.
 The AWS credential file (typically ~/.aws/credentials) has precedence over the credential_process provider. That means that if credentials are present in the file, the credential process will not trigger. To counter that you can override the aws credential location of `saml2aws` to another file using `--credential-file` or specifying it during `configure`.
 
+The AWS credential file (typically ~/.aws/credentials) has precedence over the credential_process provider. That means that if credentials are present in the file, the credential process will not trigger.
+
 An example of the aws configuration (`~/.aws/config`):
 
 ```
 [profile mybucket]
 region = us-west-1
-credential_process = saml2aws login --skip-prompt --quiet --credential-process --role <ROLE> --profile mybucket
+credential_process = saml2aws login --credential-process --role <ROLE> --profile mybucket
+```
+
+You can add this manually or via the awscli, i.e.
+
+```
+aws configure set credential_process "saml2aws login --credential-process --role <ROLE> --profile mybucket"
 ```
 
 When using the aws cli with the `mybucket` profile, the authentication process will be run and the aws will then be executed based on the returned credentials.
@@ -699,5 +880,5 @@ Please note that your Okta session duration and MFA policies are governed by you
 
 # License
 
-This code is Copyright (c) 2018 [Versent](http://versent.com.au) and released under the MIT license. All rights not explicitly granted in the MIT license are reserved. See the included LICENSE.md file for more details.
+This code is Copyright (c) 2024 [Versent](https://versent.com.au) and released under the MIT license. All rights not explicitly granted in the MIT license are reserved. See the included LICENSE.md file for more details.
 

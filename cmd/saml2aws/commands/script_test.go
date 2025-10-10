@@ -25,7 +25,40 @@ func TestBuildTmplBash(t *testing.T) {
 	}
 
 	st, err := buildTmpl("bash", data)
-	assert.ErrorIs(t, err, nil)
+	assert.Nil(t, err)
+
+	expected := []string{
+		"export AWS_ACCESS_KEY_ID=access_key",
+		"export AWS_SECRET_ACCESS_KEY=secret_key",
+		"export AWS_SESSION_TOKEN=session_token",
+		"export AWS_SECURITY_TOKEN=security_token",
+		"export SAML2AWS_PROFILE=test_profile",
+	}
+
+	for _, test_string := range expected {
+		assert.Contains(t, st, test_string)
+	}
+
+}
+
+func TestBuildTmplSh(t *testing.T) {
+
+	data := struct {
+		ProfileName string
+		*awsconfig.AWSCredentials
+	}{
+		"test_profile",
+		&awsconfig.AWSCredentials{
+			AWSSecretKey:     "secret_key",
+			AWSAccessKey:     "access_key",
+			AWSSessionToken:  "session_token",
+			AWSSecurityToken: "security_token",
+			Expires:          time.Now(),
+		},
+	}
+
+	st, err := buildTmpl("/bin/sh", data)
+	assert.Nil(t, err)
 
 	expected := []string{
 		"export AWS_ACCESS_KEY_ID=access_key",
@@ -58,7 +91,7 @@ func TestBuildTmplFish(t *testing.T) {
 	}
 
 	st, err := buildTmpl("fish", data)
-	assert.ErrorIs(t, err, nil)
+	assert.Nil(t, err)
 
 	expected := []string{
 		"set -gx AWS_ACCESS_KEY_ID access_key",
@@ -91,7 +124,7 @@ func TestBuildTmplEnv(t *testing.T) {
 	}
 
 	st, err := buildTmpl("env", data)
-	assert.ErrorIs(t, err, nil)
+	assert.Nil(t, err)
 
 	expected := []string{
 		"AWS_ACCESS_KEY_ID=access_key",

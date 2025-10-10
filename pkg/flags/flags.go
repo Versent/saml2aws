@@ -12,12 +12,18 @@ type CommonFlags struct {
 	ConfigFile            string
 	IdpAccount            string
 	IdpProvider           string
+	BrowserType           string
+	BrowserExecutablePath string
+	BrowserAutoFill       bool
 	MFA                   string
+	MFAIPAddress          string
 	MFAToken              string
 	URL                   string
 	Username              string
 	Password              string
 	RoleArn               string
+	PolicyFile            string
+	PolicyARNs            string
 	AmazonWebservicesURN  string
 	SessionDuration       int
 	SkipPrompt            bool
@@ -32,15 +38,19 @@ type CommonFlags struct {
 	SAMLCacheFile         string
 	DisableRememberDevice bool
 	DisableSessions       bool
+	Prompter              string
+	KCBroker              string
 }
 
 // LoginExecFlags flags for the Login / Exec commands
 type LoginExecFlags struct {
 	CommonFlags       *CommonFlags
+	DownloadBrowser   bool
 	Force             bool
 	DuoMFAOption      string
 	ExecProfile       string
 	CredentialProcess bool
+	TryNoPrompt       bool
 }
 
 type ConsoleFlags struct {
@@ -70,8 +80,24 @@ func ApplyFlagOverrides(commonFlags *CommonFlags, account *cfg.IDPAccount) {
 		account.Provider = commonFlags.IdpProvider
 	}
 
+	if commonFlags.BrowserType != "" {
+		account.BrowserType = commonFlags.BrowserType
+	}
+
+	if commonFlags.BrowserExecutablePath != "" {
+		account.BrowserExecutablePath = commonFlags.BrowserExecutablePath
+	}
+
+	if commonFlags.BrowserAutoFill {
+		account.BrowserAutoFill = commonFlags.BrowserAutoFill
+	}
+
 	if commonFlags.MFA != "" {
 		account.MFA = commonFlags.MFA
+	}
+
+	if commonFlags.MFAIPAddress != "" {
+		account.MFAIPAddress = commonFlags.MFAIPAddress
 	}
 
 	if commonFlags.AmazonWebservicesURN != "" {
@@ -93,6 +119,12 @@ func ApplyFlagOverrides(commonFlags *CommonFlags, account *cfg.IDPAccount) {
 	if commonFlags.RoleArn != "" {
 		account.RoleARN = commonFlags.RoleArn
 	}
+	if commonFlags.PolicyFile != "" {
+		account.PolicyFile = commonFlags.PolicyFile
+	}
+	if commonFlags.PolicyARNs != "" {
+		account.PolicyARNs = commonFlags.PolicyARNs
+	}
 	if commonFlags.ResourceID != "" {
 		account.ResourceID = commonFlags.ResourceID
 	}
@@ -113,5 +145,15 @@ func ApplyFlagOverrides(commonFlags *CommonFlags, account *cfg.IDPAccount) {
 	}
 	if commonFlags.DisableSessions {
 		account.DisableSessions = commonFlags.DisableSessions
+	}
+	if commonFlags.Prompter != "" {
+		account.Prompter = commonFlags.Prompter
+	}
+	if commonFlags.KCBroker != "" {
+		account.KCBroker = commonFlags.KCBroker
+	}
+	// select the prompter
+	if commonFlags.Prompter != "" {
+		account.Prompter = commonFlags.Prompter
 	}
 }

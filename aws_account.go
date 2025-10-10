@@ -3,7 +3,7 @@ package saml2aws
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 
@@ -23,8 +23,9 @@ func ParseAWSAccounts(audience string, samlAssertion string) ([]*AWSAccount, err
 	if err != nil {
 		return nil, errors.Wrap(err, "error retrieving AWS login form")
 	}
+	defer res.Body.Close()
 
-	data, err := ioutil.ReadAll(res.Body)
+	data, err := io.ReadAll(res.Body)
 	if err != nil {
 		return nil, errors.Wrap(err, "error retrieving AWS login body")
 	}

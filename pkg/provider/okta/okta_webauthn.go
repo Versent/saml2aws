@@ -4,9 +4,11 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/marshallbrekka/go-u2fhost"
+	"github.com/trimble-oss/go-webauthn-client"
 )
 
 const (
@@ -123,7 +125,11 @@ func (d *FidoClient) ChallengeU2F() (*SignedAssertion, error) {
 					prompted = true
 				}
 			default:
-				return responsePayload, err
+				errString := fmt.Sprintf("%s", err)
+				if !strings.Contains(errString, "U2FHIDError") &&
+					!strings.Contains(errString, "hidapi: hid_error is not implemented yet") {
+					return responsePayload, err
+				}
 			}
 		}
 	}
@@ -153,4 +159,24 @@ func (*U2FDeviceFinder) findDevice() (u2fhost.Device, error) {
 	}
 
 	return nil, fmt.Errorf("failed to open fido U2F device: %s", err)
+}
+
+// ChallengeSystemWebAuthn challenges the system level WebAuthn API (e.g. Windows Hello) and
+// returns a SignedAssertion
+func ChallengeSystemWebAuthn(challengeNonce, appID, stateToken string) (*SignedAssertion, error) {
+	var responsePayload *SignedAssertion
+
+	response, err := webauthn.Authenticate(challengeNonce, appID, 2000)
+	if err != nil {
+		return nil, err
+	}
+
+	responsePayload = &SignedAssertion{
+		StateToken:        stateToken,
+		ClientData:        response.ClientData,
+		SignatureData:     response.SignatureData,
+		AuthenticatorData: response.AuthenticatorData,
+	}
+
+	return responsePayload, nil
 }

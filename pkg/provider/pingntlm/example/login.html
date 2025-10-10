@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js no-touch iem7" lang="en"> <![endif]-->
+<!--[if lt IE 7]><html xmlns:fb="http://www.facebook.com/2008/fbml" xmlns:og="http://opengraphprotocol.org/schema/" lang="en" xml:lang="en" id="ie6" class="no-js no-touch ie lt-ie12 lt-ie11 lt-ie10 lt-ie9 lt-ie8 lt-ie7"><![endif]-->
+<!--[if IE 7]><html xmlns:fb="http://www.facebook.com/2008/fbml" xmlns:og="http://opengraphprotocol.org/schema/" lang="en" xml:lang="en" id="ie7" class="no-js no-touch ie lt-ie12 lt-ie11 lt-ie10 lt-ie9 lt-ie8 gt-ie6"><![endif]-->
+<!--[if IE 8]><html xmlns:fb="http://www.facebook.com/2008/fbml" xmlns:og="http://opengraphprotocol.org/schema/" lang="en" xml:lang="en" id="ie8" class="no-js no-touch ie lt-ie12 lt-ie11 lt-ie10 lt-ie9 gt-ie6 gt-ie7"><![endif]-->
+<!--[if IE 9]><html xmlns:fb="http://www.facebook.com/2008/fbml" xmlns:og="http://opengraphprotocol.org/schema/" lang="en" xml:lang="en" id="ie9" class="no-js no-touch ie lt-ie12 lt-ie11 lt-ie10 gt-ie8 gt-ie7 gt-ie6"><![endif]-->
+<!--[if !IE]><!-->
+<!--
+  Ping Discovery Login
+  w/ Progressive Profiling
+  discovery.form.template.html
+  v3.0
+-->
+<html xmlns:fb="http://www.facebook.com/2008/fbml" xmlns:og="http://opengraphprotocol.org/schema/" lang="en" xml:lang="en" class="no-touch no-js">
+<!--<![endif]-->
+<head>
+  <title>Login Page</title>
+  <!--[if lt IE 9]><meta http-equiv="X-UA-Compatible" content="IE=8" /><![endif]-->
+  <!--[if gt IE 8]><meta http-equiv="X-UA-Compatible" content="IE=edge" /><![endif]-->
+  <!--[if !IE]><meta http-equiv="X-UA-Compatible" content="chrome=1" /><![endif]-->
+  <meta charset="utf-8">
+  <meta name="HandheldFriendly" content="True" />
+  <meta name="MobileOptimized" content="320" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- Mobile IE allows us to activate ClearType technology for smoothing fonts for easy reading -->
+  <meta http-equiv="cleartype" content="on">
+  <!-- Brought over from previous version of Login Page -->
+  <meta name="accessLevel" content="Guest" />
+  <meta name="country" content="US" />
+  <meta name="locale" content="US" />
+  <meta name="language" content="en" />
+  <meta name="title" content="Login Page" />
+  <script type="text/javascript" src="/etc/designs/cdc/clientlibs/responsive/js/foundation.js"></script>
+  <link rel="stylesheet" type="text/css" href="/etc/designs/cdc/clientlibs/responsive/css/login-federation.css">
+</head>
+<body id="wcq" class="fw-res cdc-login ping">
+  <div id="fw-overlay-spinner">
+    <div class="spinner-icon"></div>
+    <div id="fw-content" class="">
+      <div class="language">
+        <section id="fw-language-select">
+          <div class="dropdown-header" tabindex="5">United States - English</div>
+          <!-- default -->
+          <ul class="dropdown-content"></ul>
+        </section>
+      </div>
+      <header id="fw-masthead-temp" class=" cdc-landing" data-owner="ID">
+        <div id="fw-banner-temp">
+          <a id="fw-logo-temp" href="/c/en/us/index.html">
+                </a>
+        </div>
+      </header>
+      <div id="login-wrapper">
+        <article id="login">
+          <div class="title">
+            <section id="fw-title-nav-login">
+              <h1 class="pagetitle">Log in to your account</h1>
+            </section>
+          </div>
+          <div class="info-text">
+            <div class="close"><span tabindex="0"></span></div>
+          </div>
+          <form id="login-form" method="post" name="login-form" action="https://sso.example.com/idp/resumeSAML20/idp/startSSO.ping">
+            <ul>
+              <li id="containUser">
+                <label id="usernameLabel" for="userInput" class="username-label hint">Username or email</label>
+                <input id="userInput" class="" type="text" name="pf.username" value="" size="33" maxlength="105" autocomplete="off" autocorrect="off" autocapitalize="off" tabindex="1" />
+                <p class="msg idNull">We couldn't find that. Try again.</p>
+              </li>
+              <li id="containPass">
+                <label id="passwordLabel" for="passwordInput" class="password-label hint">Password</label>
+                <input id="passwordInput" class="" type="password" name="pf.pass" value="" size="33" maxlength="105" autocomplete="off" autocorrect="off" autocapitalize="off" tabindex="2" />
+              </li>
+              <input type="hidden" name="target" value="" />
+            </ul>
+            <!-- pass lookup values to/from ping -->
+            <input type="hidden" id="usertype" name="pf.userType" value="">
+            <input type="hidden" id="idpId" name="pf.idpId" value="">
+            <input type="hidden" id="isUserStale" name="pf.isUserStale" value="">
+            <input type="hidden" id="idpurl" name="pf.idpUrl" value="">
+            <input type="hidden" id="targetresource" name="pf.TargetResource" value="">
+            <input id="login-button" type="submit" name="login-button" value="Log in" tabindex="3" />
+            <span id="login-button-next" class="textholder">Next</span>
+            <span id="login-button-submit" class="textholder">Log in</span>
+            <input type="hidden" class="cancel" name="pf.cancel" value="" />
+          </form>
+          <div id="back-link"> <a href="">&lt; Back</a></div>
+          <div class="">
+            <aside id="register"></aside>
+          </div>
+        </article>
+      </div>
+      <div id="link-accounts-wrapper">
+      </div>
+      <div id="redirect-msg-wrapper">
+      </div>
+      <div id="create-cdc-wrapper">
+      </div>
+      <!-- pass lookup values to/from ping - post -->
+      <input type="hidden" id="link_idpurl" name="pf.idpUrl" value="">
+    </div>
+  </div>
+  <script type="text/javascript">
+    cdc = typeof cdc == "undefined" ? {} : cdc;
+    cdc.login = typeof cdc.login == "undefined" ? {} : cdc.login;
+    cdc.login.prefsObj = {
+      login_localize: true,
+      login_discovery: true
+    };
+  </script>
+  <script type="text/javascript" src="/etc/designs/cdc/clientlibs/responsive/js/login-federation.js"></script>
+</body>
+</html>

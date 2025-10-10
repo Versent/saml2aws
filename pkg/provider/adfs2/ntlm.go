@@ -3,7 +3,7 @@ package adfs2
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 
 	"github.com/PuerkitoBio/goquery"
@@ -30,7 +30,7 @@ func (ac *Client) authenticateNTLM(loginDetails *creds.LoginDetails) (string, er
 		return "", errors.Wrap(err, "error retieving login form")
 	}
 
-	data, err := ioutil.ReadAll(res.Body)
+	data, err := io.ReadAll(res.Body)
 	if err != nil {
 		return "", errors.Wrap(err, "error retieving body")
 	}

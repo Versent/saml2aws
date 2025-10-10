@@ -3,7 +3,7 @@ package adfs2
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -30,7 +30,7 @@ func (ac *Client) authenticateRsa(loginDetails *creds.LoginDetails) (string, err
 
 	passcodeForm, passcodeActionURL, err := extractFormData(doc)
 	if err != nil {
-		return "", errors.Wrap(err, "error extractign login data")
+		return "", errors.Wrap(err, "error extracting login data")
 	}
 
 	/**
@@ -180,7 +180,7 @@ func (ac *Client) postRSAForm(rsaSubmitURL string, form url.Values) (*goquery.Do
 
 	logger.WithField("status", res.StatusCode).WithField("rsaSubmitURL", rsaSubmitURL).WithField("res", dump.ResponseString(res)).Debug("POST")
 
-	data, err := ioutil.ReadAll(res.Body)
+	data, err := io.ReadAll(res.Body)
 	if err != nil {
 		return nil, errors.Wrap(err, "error retrieving body")
 	}

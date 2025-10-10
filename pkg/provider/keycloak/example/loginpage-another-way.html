@@ -1,0 +1,101 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" class="login-pf">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta name="robots" content="noindex, nofollow">
+
+            <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <title>        Log in to Keycloak
+</title>
+    <link rel="icon" href="/auth/resources/3.3.0.final/login/keycloak/img/favicon.ico" />
+            <link href="/auth/resources/3.3.0.final/login/keycloak/lib/patternfly/css/patternfly.css" rel="stylesheet" />
+            <link href="/auth/resources/3.3.0.final/login/keycloak/lib/zocial/zocial.css" rel="stylesheet" />
+            <link href="/auth/resources/3.3.0.final/login/keycloak/css/login.css" rel="stylesheet" />
+</head>
+
+<body class="">
+    <div id="kc-logo"><a href="http://www.keycloak.org"><div id="kc-logo-wrapper"></div></a></div>
+
+    <div id="kc-container" class="">
+        <div id="kc-container-wrapper" class="">
+
+            <div id="kc-header" class="col-xs-12 col-sm-8 col-md-8 col-lg-7">
+                <div id="kc-header-wrapper" class="">        <div class="kc-logo-text"><span>Keycloak</span></div>
+</div>
+            </div>
+
+
+            <div id="kc-content" class="col-sm-12 col-md-12 col-lg-12 container">
+                <div id="kc-content-wrapper" class="row">
+
+
+                    <div id="kc-form" class="col-xs-12 col-sm-8 col-md-8 col-lg-7 login">
+                        <div id="kc-form-wrapper" class="">
+            <form id="kc-form-login" class="form-horizontal" action="https://id.example.com/auth/realms/master/login-actions/authenticate?code=G5PSj-AJ7mC2wRS5yOA5NEGZ7BO97Y0_qUkS5zInmhQ&execution=e0c4f6fe-6f9a-435e-a7ff-d61eb2456d58&client_id=urn%3Aamazon%3Awebservices" method="post">
+                <div class="form-group">
+                    <div class="col-xs-12 col-sm-12 col-md-4 col-lg-3">
+                        <label for="username" class="control-label">Email</label>
+                    </div>
+
+                    <div class="col-xs-12 col-sm-12 col-md-8 col-lg-9">
+                            <input id="username" class="form-control" name="username" value="" type="text" autofocus autocomplete="off" />
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <div class="col-xs-12 col-sm-12 col-md-4 col-lg-3">
+                        <label for="password" class="control-label">Password</label>
+                    </div>
+
+                    <div class="col-xs-12 col-sm-12 col-md-8 col-lg-9">
+                        <input id="password" class="form-control" name="password" type="password" autocomplete="off" />
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <div id="kc-form-options" class="col-xs-4 col-sm-5 col-md-offset-4 col-md-4 col-lg-offset-3 col-lg-5">
+                            <div class="checkbox">
+                                <label>
+                                        <input id="rememberMe" name="rememberMe" type="checkbox" tabindex="3"> Remember me
+                                </label>
+                            </div>
+                        <div class="">
+                                <span><a href="/auth/realms/master/login-actions/reset-credentials">Forgot Password?</a></span>
+                        </div>
+                    </div>
+
+                    <div id="kc-form-buttons" class="col-xs-8 col-sm-7 col-md-4 col-lg-4 submit">
+                        <div class="">
+                            <input class="btn btn-primary btn-lg" name="login" id="kc-login" type="submit" value="Log in"/>
+                        </div>
+                     </div>
+                </div>
+            </form>
+                        </div>
+                    </div>
+
+
+
+                        <div id="kc-info" class="col-xs-12 col-sm-4 col-md-4 col-lg-5 details">
+                            <div id="kc-info-wrapper" class="">
+            <div id="kc-registration">
+                <span>New user? <a href="/auth/realms/master/login-actions/registration">Register</a></span>
+            </div>
+
+                            </div>
+                        </div>
+
+                    <form id="kc-select-try-another-way-form" action="https://id.example.com/auth/realms/master/login-actions/authenticate?code=G5PSj-AJ7mC2wRS5yOA5NEGZ7BO97Y0_qUkS5zInmhQ&execution=e0c4f6fe-6f9a-435e-a7ff-d61eb2456d58&client_id=urn%3Aamazon%3Awebservices" method="post">
+                      <div class="form-group">
+                          <input type="hidden" name="tryAnotherWay" value="on">
+                          <a href="https://id.example.com/auth/realms/master/protocol/openid-connect/auth?client_id=urn%3Aamazon%3Awebservices&redirect_uri=https%3A%2F%2Fid.example.com%2Fauth%2Frealms%2Fmaster%2Furn%3Aamazon%3Awebservices&response_mode=fragment&response_type=code&scope=openid&nonce=a718db5b-6d9e-40a2-a895-4f4505e6f464&code_challenge=B_LQbucBNNIxR99WXPkxtIBaQFv8Mq1GkmT_5q0b_7I&code_challenge_method=S256#" id="try-another-way" onclick="document.forms['kc-select-try-another-way-form'].submit();return false;">Try Another Way</a>
+                      </div>
+                  </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

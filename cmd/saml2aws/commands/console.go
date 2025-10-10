@@ -3,7 +3,7 @@ package commands
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"net/url"
@@ -47,9 +47,6 @@ func Console(consoleFlags *flags.ConsoleFlags) error {
 	if err != nil {
 		return errors.Wrap(err,
 			fmt.Sprintf("error loading credentials for profile: %s", consoleFlags.LoginExecFlags.ExecProfile))
-	}
-	if err != nil {
-		return errors.Wrap(err, "error logging in")
 	}
 
 	if consoleFlags.LoginExecFlags.ExecProfile != "" {
@@ -136,7 +133,7 @@ func federatedLogin(creds *awsconfig.AWSCredentials, consoleFlags *flags.Console
 	}
 
 	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return err
 	}

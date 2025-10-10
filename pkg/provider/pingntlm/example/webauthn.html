@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title></title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="format-detection" content="telephone=no" />
+  <meta http-equiv="x-ua-compatible" content="IE=edge" />
+  <link rel="stylesheet" href="/pingid/assets/css/main-v21.190.css" media="screen" title="no title" charset="utf-8" />
+  <link rel="stylesheet" media="screen" type="text/css" href="/pingid/assets/css/jsdisabled.css" />
+  <script type="text/javascript" src="/pingid/assets/js/jquery-1.11.1.min.js"></script>
+  <script type="text/javascript" src="/pingid/assets/js/spin.js"></script>
+</head>
+<body>
+  <noscript>
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title></title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <meta name="format-detection" content="telephone=no">
+      <link rel="stylesheet" href="/pingid/assets/css/jsdisabled.css" media="screen" title="no title" charset="utf-8">
+    </head>
+    <body>
+      <div class="nojspage">
+        <div class="window error">
+          <div class="content">
+            <div class="status"></div>
+            <div class="title-text">
+              Important
+            </div>
+            <div class="error-text">
+              <div class="text">
+                PingID requires Javascript to be enabled. If the problem persists, please contact your administrator.
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="footer">
+          <div class="pingid_logo"></div>
+          <div class="copyright">
+            Copyright &copy; 2003-2019 Ping Identity Corporation. All rights reserved.
+          </div>
+        </div>
+      </div>
+    </body>
+    </html>
+    <style type="text/css">
+      .dialog {
+        display: none;
+      }
+    </style>
+  </noscript>
+
+
+  <div class="dialog">
+    <script type="text/javascript" src="/pingid/assets/js/utils/webauthn/webauthn.js"></script>
+    <form method="post" action="https://authenticator.pingone.com/pingid/ppm/auth" id="start-form">
+      <input type="hidden" name="isWebAuthnSupportedByBrowser" />
+    </form>
+    <script type="text/javascript" src="/pingid/assets/js/utils/startAuthSubmit.js"></script>
+  </div>
+</body>
+</html>

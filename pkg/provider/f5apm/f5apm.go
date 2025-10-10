@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -24,7 +24,7 @@ import (
 
 var logger = logrus.WithField("provider", "f5apm")
 
-//Client client for F5 APM
+// Client client for F5 APM
 type Client struct {
 	provider.ValidateBase
 
@@ -126,7 +126,7 @@ func (ac *Client) getSAMLAssertion(loginDetails *creds.LoginDetails) (string, er
 		return "", errors.Wrap(err, "Error retrieving SAML assertion request")
 	}
 	debugHTTPResponse(ac, res)
-	samlData, err := ioutil.ReadAll(res.Body)
+	samlData, err := io.ReadAll(res.Body)
 	if err != nil {
 		return "", errors.Wrap(err, "Error reading SAML assertion body")
 	}
@@ -211,7 +211,7 @@ func (ac *Client) postLoginForm(loginDetails *creds.LoginDetails, authForm url.V
 	}
 	debugHTTPResponse(ac, res)
 
-	data, err := ioutil.ReadAll(res.Body)
+	data, err := io.ReadAll(res.Body)
 	if err != nil {
 		return nil, errors.Wrap(err, "Error reading response body")
 	}

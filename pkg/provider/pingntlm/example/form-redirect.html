@@ -1,0 +1,21 @@
+<html>
+
+<head>
+  <title>Submit Form</title>
+  <meta name="referrer" content="origin" />
+  <meta http-equiv="x-ua-compatible" content="IE=edge" />
+</head>
+
+<body onload="javascript:document.forms[0].submit()">
+  <noscript>
+    <p>
+      <strong>Note:</strong> Since your browser does not support JavaScript, you must press the Resume button once to proceed.
+    </p>
+  </noscript>
+  <form method="post" action="https://authenticator.pingone.com/pingid/ppm/auth">
+    <input type="hidden" name="idp_account_id" value="some-uuid" />
+    <input type="hidden" name="ppm_request" value="secret" />
+    <noscript><input type="submit" value="Resume"/></noscript>
+  </form>
+</body>
+</html>

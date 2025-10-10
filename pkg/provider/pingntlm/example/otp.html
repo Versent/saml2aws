@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="x-ua-compatible" content="IE=edge">
+  <title>PingID</title>
+  <link rel="stylesheet" href="/pingid/assets/css/main-v21.144.css" media="screen" title="no title" charset="utf-8">
+  <link rel="stylesheet" media="screen" type="text/css" href="/pingid/assets/css/jsdisabled.css" />
+  <script type="text/javascript" src="/pingid/assets/js/jquery-1.11.1.min.js"></script>
+  <script type="text/javascript" src="/pingid/assets/js/utils/ViewUtil.js"></script>
+  <script type="text/javascript" src="/pingid/assets/js/wizards/otp.js"></script>
+  <script type="text/javascript" src="/pingid/assets/js/utils/getAuthStatus.js"></script>
+  <script type="text/javascript" src="/pingid/assets/js/utils/selfsubmitinstantotp.js"></script>
+</head>
+<body>
+  <noscript>
+    <!DOCTYPE html>
+    <html>
+    <head>
+    	<title></title>
+    	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    	<meta name = "format-detection" content = "telephone=no">
+    	<link rel="stylesheet" href="/pingid/assets/css/jsdisabled.css" media="screen" title="no title" charset="utf-8">
+    </head>
+    <body>
+        <div class="nojspage">
+                <div class="window error">
+                    <div class="content">
+                        <div class="status"></div>
+            			<div class="title-text">
+            			    Important
+                        </div>
+            	            <div class="error-text">
+            					<div class="text">
+            					    PingID requires Javascript to be enabled. If the problem persists, please contact your administrator.
+            					</div>
+            	            </div>
+                    </div>
+                </div>
+                <div class="footer">
+                    <div class="pingid_logo"></div>
+                    <div class="copyright">
+                        Copyright &copy; 2003-2018 Ping Identity Corporation. All rights reserved.
+                    </div>
+                </div>
+        </div>
+    </body>
+    </html>
+    <style type="text/css">
+  		.dialog { display:none; }
+  	</style>
+  </noscript>
+  <div class="dialog">
+    <div class="window settings">
+      <div class="error-message"></div>
+      <div class="content">
+        <h1>
+				Authentication
+			</h1>
+        <div class="success-message">
+          Authenticating with Desktop Mac
+        </div>
+        <p>
+          Enter the passcode displayed in PingID desktop.
+        </p>
+        <p></p>
+        <form id="otp-form" action="https://authenticator.pingone.com/pingid/ppm/auth/otp" method="post">
+          <input id="otp" name="otp" type="text" class="passcode-input" value="" maxlength="6" autocomplete="off" />
+          <input type="hidden" name="csrfToken" id="csrfToken" value="62919d71-34d1-40a0-942d-f346efad3eca" encode="false" />
+          <div class="call-again-link">
+            &nbsp;
+          </div>
+          <div class="buttons">
+            <a class="button" href="/pingid/ppm/devices">Change Device</a>
+            <input type="submit" value="Sign On" class="primary" disabled>
+          </div>
+        </form>
+      </div>
+    </div>
+    <div class="admin-message">Corporate MOTD</div>
+    <div class="footer">
+      <a class="button settings-btn" href="https://authenticator.pingone.com/pingid/ppm/settings">Settings</a>
+      <div class="logo"></div>
+      <div class="copyright">
+        Copyright &copy; 2003-2018 Ping Identity Corporation. All rights reserved.
+      </div>
+    </div>
+    <!-- Instant OTP response view -->
+    <form method="GET" action="" id="reponseView">
+      <input type="hidden" name="csrfToken" id="csrfToken" value="62919d71-34d1-40a0-942d-f346efad3eca" encode="false" />
+    </form>
+    <!-- Instant OTP error response view -->
+    <form method="GET" action="" id="errorReponseView">
+      <input type="hidden" name="csrfToken" id="csrfToken" value="62919d71-34d1-40a0-942d-f346efad3eca" encode="false" />
+    </form>
+    <div id="authModelSection">
+      <input type="hidden" name="isUseCodeAllowed" id="isUseCodeAllowed" value="false" encode="false" />
+      <input type="hidden" name="pollLink" id="pollLink" value="" encode="false" />
+    </div>
+  </div>
+</body>
+</html>

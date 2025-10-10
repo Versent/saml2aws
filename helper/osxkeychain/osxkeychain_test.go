@@ -1,3 +1,4 @@
+//go:build darwin && cgo
 // +build darwin,cgo
 
 // Copyright (c) 2016 David Calavera

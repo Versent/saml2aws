@@ -20,6 +20,14 @@ export SAML2AWS_PROFILE={{ .ProfileName }}
 export AWS_CREDENTIAL_EXPIRATION={{ .Expires.Format "2006-01-02T15:04:05Z07:00" }}
 `
 
+const shTmpl = `export AWS_ACCESS_KEY_ID={{ .AWSAccessKey }}
+export AWS_SECRET_ACCESS_KEY={{ .AWSSecretKey }}
+export AWS_SESSION_TOKEN={{ .AWSSessionToken }}
+export AWS_SECURITY_TOKEN={{ .AWSSecurityToken }}
+export SAML2AWS_PROFILE={{ .ProfileName }}
+export AWS_CREDENTIAL_EXPIRATION={{ .Expires.Format "2006-01-02T15:04:05Z07:00" }}
+`
+
 const fishTmpl = `set -gx AWS_ACCESS_KEY_ID {{ .AWSAccessKey }}
 set -gx AWS_SECRET_ACCESS_KEY {{ .AWSSecretKey }}
 set -gx AWS_SESSION_TOKEN {{ .AWSSessionToken }}
@@ -99,6 +107,8 @@ func buildTmpl(shell string, data interface{}) (string, error) {
 	switch shell {
 	case "bash":
 		t, err = t.Parse(bashTmpl)
+	case "/bin/sh":
+		t, err = t.Parse(shTmpl)
 	case "powershell":
 		t, err = t.Parse(powershellTmpl)
 	case "fish":

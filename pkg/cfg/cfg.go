@@ -6,6 +6,7 @@ import (
 
 	"github.com/mitchellh/go-homedir"
 	"github.com/pkg/errors"
+	"github.com/versent/saml2aws/v2/pkg/prompter"
 	ini "gopkg.in/ini.v1"
 )
 
@@ -26,6 +27,9 @@ const (
 
 	// DefaultProfile this is the default profile name used to save the credentials in the aws cli
 	DefaultProfile = "saml"
+
+	// Environment Variable used to define the Keyring Backend for Linux based distro
+	KeyringBackEnvironmentVariableName = "SAML2AWS_KEYRING_BACKEND"
 )
 
 // IDPAccount saml IDP account
@@ -35,7 +39,11 @@ type IDPAccount struct {
 	URL                   string `ini:"url"`
 	Username              string `ini:"username"`
 	Provider              string `ini:"provider"`
+	BrowserType           string `ini:"browser_type,omitempty"`            // used by 'Browser' Provider
+	BrowserExecutablePath string `ini:"browser_executable_path,omitempty"` // used by 'Browser' Provider
+	BrowserAutoFill       bool   `ini:"browser_autofill,omitempty"`        // used by 'Browser' Provider
 	MFA                   string `ini:"mfa"`
+	MFAIPAddress          string `ini:"mfa_ip_address"` // used by OneLogin
 	SkipVerify            bool   `ini:"skip_verify"`
 	Timeout               int    `ini:"timeout"`
 	AmazonWebservicesURN  string `ini:"aws_urn"`
@@ -44,6 +52,8 @@ type IDPAccount struct {
 	ResourceID            string `ini:"resource_id"` // used by F5APM
 	Subdomain             string `ini:"subdomain"`   // used by OneLogin
 	RoleARN               string `ini:"role_arn"`
+	PolicyFile            string `ini:"policy_file"`
+	PolicyARNs            string `ini:"policy_arn_list"`
 	Region                string `ini:"region"`
 	HttpAttemptsCount     string `ini:"http_attempts_count"`
 	HttpRetryDelay        string `ini:"http_retry_delay"`
@@ -51,8 +61,15 @@ type IDPAccount struct {
 	SAMLCache             bool   `ini:"saml_cache"`
 	SAMLCacheFile         string `ini:"saml_cache_file"`
 	TargetURL             string `ini:"target_url"`
-	DisableRememberDevice bool   `ini:"disable_remember_device"` // used by Okta
-	DisableSessions       bool   `ini:"disable_sessions"`        // used by Okta
+	DisableRememberDevice bool   `ini:"disable_remember_device"`      // used by Okta
+	DisableSessions       bool   `ini:"disable_sessions"`             // used by Okta
+	DownloadBrowser       bool   `ini:"download_browser_driver"`      // used by browser
+	BrowserDriverDir      string `ini:"browser_driver_dir,omitempty"` // used by browser; hide from user if not set
+	Headless              bool   `ini:"headless"`                     // used by browser
+	Prompter              string `ini:"prompter"`
+	KCAuthErrorMessage    string `ini:"kc_auth_error_message,omitempty"` // used by KeyCloak; hide from user if not set
+	KCAuthErrorElement    string `ini:"kc_auth_error_element,omitempty"` // used by KeyCloak; hide from user if not set
+	KCBroker              string `ini:"kc_broker"`                       // used by KeyCloak;
 }
 
 func (ia IDPAccount) String() string {
@@ -130,6 +147,10 @@ func (ia *IDPAccount) Validate() error {
 
 	if ia.Profile == "" {
 		return errors.New("Profile empty in idp account")
+	}
+
+	if err := prompter.ValidateAndSetPrompter(ia.Prompter); err != nil {
+		return err
 	}
 
 	return nil

@@ -1,0 +1,42 @@
+<html>
+<head>
+  <title>Fake Login Page</title>
+</head>
+<body>
+<form id="form" action="javascript:sform(this)">
+  <div>
+    <label for="username"><b>Username:</b></label>
+    <input type="text" name="username" />
+  </div>
+
+  <div>
+    <label for="password"><b>Password:</b></label>
+    <input type="password" name="password" />
+  </div>
+
+  <img onclick="document.getElementById('form').submit();" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAAsQAAALEBxi1JjQAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAAFaSURBVEiJ7dS/S1dhGAXwjzd/lL9DcKhFAxdFXJydHJWgggqam8JRlwwEEVsSBRcVB3HQQRcJImzUIYgv5NAWREN/gOJvyOE+Fy5aCnIFEQ9cOJz3uee87/Pc+3KLG48y9GEgeJH4i0lYR3nB5sJzPcEejkNsxj3paWpDq0MVHgWHalQgQX2urinqHoTnXpJLfIIZLKETw6Ev4Ckm8CmM3uENHmM2DMfRi894kT9GhqPY0XscBs9qMt4UvB0d+IPW0BIs4xU+/CtgE98whzFUhp4N/ws28Cze20UbfuZadwb5Fj3HvLTfW7iPjyjhAC/Rjx/4FWtf43mI/fDZPh2y9r/0ArCWxI7rL6o8B5UYReMpvQF3y9CNt6i5hPm+dCYl6cBn8B1T2IngQrAindkQVtGSLdwpKKAVXRjEb+lPVirIG/RIWzKN10UaZ6jGiPSzX3Q1d9stritOAG7+OnNg3y0nAAAAAElFTkSuQmCC" />
+</form>
+
+<div id="result" style="display: none">
+  You should not see this as the form onsubmit should override this inner
+  text.
+</div>
+
+<script>
+  const formSection = document.getElementById("form");
+  const resultSection = document.getElementById("result");
+
+  function sform() {
+
+    const username = formSection.username.value;
+    const password = formSection.password.value;
+
+    formSection.style.display = "none";
+    resultSection.style.display = "block";
+    resultSection.innerText = `${username}:${password}`;
+  };
+
+
+</script>
+</body>
+</html>

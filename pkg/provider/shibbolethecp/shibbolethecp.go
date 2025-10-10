@@ -7,7 +7,6 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"text/template"
 	"time"
@@ -121,9 +120,9 @@ func (c *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error) 
 		return "", errors.Wrapf(err, "Response code from IDP at %s: %s", res.Status, res.Request.URL)
 	}
 
-	bodyBytes, _ := ioutil.ReadAll(res.Body)
+	bodyBytes, _ := io.ReadAll(res.Body)
 	logger.Debugf("IDP Response: %s", bodyBytes)
-	res.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes)) // reset
+	res.Body = io.NopCloser(bytes.NewBuffer(bodyBytes)) // reset
 
 	// Step 2: Process the returned <AuthnRequest>
 	// check for SAML_SUCCESS in S:Body/saml2p:Response/saml2p:Status/saml2p:StatusCode/@Value

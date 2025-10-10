@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+    <Product Id="*" UpgradeCode="042c301c-5154-4a77-9438-a01d4d2a9dd4" Version="$(var.Saml2AwsVer)" Language="1033" Name="saml2aws" Manufacturer="Versent">
+        <Package InstallerVersion="300" Compressed="yes" Description="!(bind.property.ProductName) !(bind.property.ProductVersion)" Platform="x64"/>
+        <Media Id="1" Cabinet="saml2aws.cab" EmbedCab="yes" />
+
+        <!-- Step 1: Define the directory structure -->
+        <Directory Id="TARGETDIR" Name="SourceDir">
+            <Directory Id="ProgramFiles64Folder">
+                <Directory Id="APPLICATIONROOTDIRECTORY" Name="Versent"/>
+            </Directory>
+        </Directory>
+
+        <!-- Step 2: Add files to your installer package -->
+        <DirectoryRef Id="APPLICATIONROOTDIRECTORY">
+            <Component Id="saml2aws.exe" Guid="4909b826-b4d1-4f46-9b55-ab765a04dc24" Win64="yes">
+                <File Id="saml2awscli" Name="saml2aws.exe" Source="src\bin\saml2aws.exe" KeyPath="yes" Checksum="yes"/>
+                <!-- Set the PATH  to include the binary -->
+                <Environment Id="PATH" Name="PATH" Value="[APPLICATIONROOTDIRECTORY]" Permanent="no" Part="last" Action="set" System="yes" />
+            </Component>
+        </DirectoryRef>
+
+        <!-- Step 3: Tell WiX to install the files -->
+        <Feature Id="MainApplication" Title="saml2aws CLI" Level="1">
+            <ComponentRef Id="saml2aws.exe" />
+        </Feature>
+    </Product>
+</Wix>

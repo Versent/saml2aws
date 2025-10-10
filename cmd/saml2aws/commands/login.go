@@ -25,7 +25,6 @@ import (
 
 // Login login to ADFS
 func Login(loginFlags *flags.LoginExecFlags) error {
-
 	logger := logrus.WithField("command", "login")
 
 	account, err := buildIdpAccount(loginFlags)
@@ -57,6 +56,8 @@ func Login(loginFlags *flags.LoginExecFlags) error {
 		previousCreds, err := sharedCreds.Load()
 		if err != nil {
 			log.Println("Unable to load cached credentials.")
+		} else {
+			logger.Debug("Credentials will expire at ", previousCreds.Expires)
 		}
 		if loginFlags.CredentialProcess {
 			err = PrintCredentialProcess(previousCreds)
@@ -88,7 +89,7 @@ func Login(loginFlags *flags.LoginExecFlags) error {
 	var samlAssertion string
 	if account.SAMLCache {
 		if cacheProvider.IsValid() {
-			samlAssertion, err = cacheProvider.Read()
+			samlAssertion, err = cacheProvider.ReadRaw()
 			if err != nil {
 				return errors.Wrap(err, "Could not read SAML cache.")
 			}
@@ -107,7 +108,7 @@ func Login(loginFlags *flags.LoginExecFlags) error {
 			return errors.Wrap(err, "Error authenticating to IdP.")
 		}
 		if account.SAMLCache {
-			err = cacheProvider.Write(samlAssertion)
+			err = cacheProvider.WriteRaw(samlAssertion)
 			if err != nil {
 				return errors.Wrap(err, "Could not write SAML cache.")
 			}
@@ -146,8 +147,34 @@ func Login(loginFlags *flags.LoginExecFlags) error {
 		if err != nil {
 			return err
 		}
+		// Check if a custom credential file is used
+		customCredentialsFile, err := CustomCredentialsFile(sharedCreds.Filename)
+		if err != nil {
+			return err
+		}
+		// If a custom credential file is used then save credentials. This allows for autorefreshing of credentials, which is not supported with the default credential file. See https://github.com/Versent/saml2aws/issues/895
+		if customCredentialsFile {
+			err = saveCredentials(awsCreds, sharedCreds)
+			if err != nil {
+				return err
+			}
+		}
+	} else {
+		err = saveCredentials(awsCreds, sharedCreds)
+		if err != nil {
+			return err
+		}
+
+		log.Println("Logged in as:", awsCreds.PrincipalARN)
+		log.Println("")
+		log.Println("Your new access key pair has been stored in the AWS configuration.")
+		log.Printf("Note that it will expire at %v", awsCreds.Expires)
+		if sharedCreds.Profile != "default" {
+			log.Println("To use this credential, call the AWS CLI with the --profile option (e.g. aws --profile", sharedCreds.Profile, "ec2 describe-instances).")
+		}
 	}
-	return saveCredentials(awsCreds, sharedCreds)
+
+	return nil
 }
 
 func buildIdpAccount(loginFlags *flags.LoginExecFlags) (*cfg.IDPAccount, error) {
@@ -217,10 +244,32 @@ func resolveLoginDetails(account *cfg.IDPAccount, loginFlags *flags.LoginExecFla
 		loginDetails.ClientSecret = loginFlags.CommonFlags.ClientSecret
 	}
 
+	// if you supply an mfa_ip_address in a flag or an IDP account it takes precedence
+	if account.MFAIPAddress != "" {
+		loginDetails.MFAIPAddress = account.MFAIPAddress
+	} else if loginFlags.CommonFlags.MFAIPAddress != "" {
+		loginDetails.MFAIPAddress = loginFlags.CommonFlags.MFAIPAddress
+	}
+
+	if loginFlags.DownloadBrowser {
+		loginDetails.DownloadBrowser = loginFlags.DownloadBrowser
+	} else if account.DownloadBrowser {
+		loginDetails.DownloadBrowser = account.DownloadBrowser
+	}
+
+	// parse KCBroker if set
+	if account.KCBroker != "" {
+		loginDetails.KCBroker = account.KCBroker
+	}
+
 	// log.Printf("loginDetails %+v", loginDetails)
 
 	// if skip prompt was passed just pass back the flag values
-	if loginFlags.CommonFlags.SkipPrompt {
+	if loginFlags.CommonFlags.SkipPrompt || loginFlags.CredentialProcess {
+		return loginDetails, nil
+	}
+
+	if loginFlags.TryNoPrompt && loginDetails.Username != "" && loginDetails.Password != "" {
 		return loginDetails, nil
 	}
 
@@ -324,6 +373,22 @@ func loginToStsUsingRole(account *cfg.IDPAccount, role *saml2aws.AWSRole, samlAs
 		DurationSeconds: aws.Int64(int64(account.SessionDuration)),
 	}
 
+	if account.PolicyFile != "" {
+		policy, err := os.ReadFile(account.PolicyFile)
+		if err != nil {
+			return nil, errors.Wrap(err, fmt.Sprintf("Failed to load supplimental policy file: %s", account.PolicyFile))
+		}
+		params.Policy = aws.String(string(policy))
+	}
+
+	if account.PolicyARNs != "" {
+		var arns []*sts.PolicyDescriptorType
+		for _, arn := range strings.Split(account.PolicyARNs, ",") {
+			arns = append(arns, &sts.PolicyDescriptorType{Arn: aws.String(arn)})
+		}
+		params.PolicyArns = arns
+	}
+
 	log.Println("Requesting AWS credentials using SAML assertion.")
 
 	resp, err := svc.AssumeRoleWithSAML(params)
@@ -346,14 +411,6 @@ func saveCredentials(awsCreds *awsconfig.AWSCredentials, sharedCreds *awsconfig.
 	err := sharedCreds.Save(awsCreds)
 	if err != nil {
 		return errors.Wrap(err, "Error saving credentials.")
-	}
-
-	log.Println("Logged in as:", awsCreds.PrincipalARN)
-	log.Println("")
-	log.Println("Your new access key pair has been stored in the AWS configuration.")
-	log.Printf("Note that it will expire at %v", awsCreds.Expires)
-	if sharedCreds.Profile != "default" {
-		log.Println("To use this credential, call the AWS CLI with the --profile option (e.g. aws --profile", sharedCreds.Profile, "ec2 describe-instances).")
 	}
 
 	return nil
@@ -385,6 +442,20 @@ func CredentialsToCredentialProcess(awsCreds *awsconfig.AWSCredentials) (string,
 		return "", errors.Wrap(err, "Error while marshalling the credential process.")
 	}
 	return string(p), nil
+
+}
+
+func CustomCredentialsFile(credentialsFile string) (bool, error) {
+
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return false, err
+	}
+	defaultCredentialsFile := fmt.Sprintf("%s/.aws/credentials", homeDir)
+	if defaultCredentialsFile == credentialsFile {
+		return false, nil
+	}
+	return true, nil
 
 }
 
