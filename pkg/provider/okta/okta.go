@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
+	"github.com/google/uuid"
 	"github.com/marshallbrekka/go-u2fhost"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -337,42 +338,34 @@ func (oc *Client) authWithSession(loginDetails *creds.LoginDetails) (string, err
 	return oc.follow(ctx, req, loginDetails)
 }
 
-// getDeviceTokenFromOkta creates a dummy HTTP call to Okta and returns the device token
-// cookie value
-// This function is not currently used and but can be used in the future
-func (oc *Client) getDeviceTokenFromOkta(loginDetails *creds.LoginDetails) (string, error) {
-	//dummy request to set device token cookie ("dt")
-	req, err := http.NewRequest("GET", loginDetails.URL, nil)
-	if err != nil {
-		return "", errors.Wrap(err, "error building device token request")
-	}
-	resp, err := oc.client.Do(req)
-	if err != nil {
-		return "", errors.Wrap(err, "error retrieving device token")
+// getDeviceToken retrieves a stored device token or generates a new UUID.
+// Device tokens are stored in the credential manager to allow reuse across sessions.
+func (oc *Client) getDeviceToken(loginDetails *creds.LoginDetails) string {
+	deviceTokenKey := loginDetails.URL + "/deviceToken"
+
+	// Try to retrieve stored device token
+	_, storedToken, err := credentials.CurrentHelper.Get(deviceTokenKey)
+	if err == nil && storedToken != "" {
+		logger.Debug("Using stored device token")
+		return storedToken
 	}
 
-	for _, c := range resp.Cookies() {
-		if c.Name == "DT" { // Device token
-			return c.Value, nil
-		}
-	}
+	// Generate a new UUID device token (Okta recommends UUIDs)
+	logger.Debug("Generating new UUID device token")
+	deviceToken := uuid.New().String()
 
-	return "", fmt.Errorf("unable to get a device token from okta")
+	// Store for future use
+	if err := credentials.SaveCredentials(deviceTokenKey, loginDetails.Username, deviceToken); err != nil {
+		logger.Warnf("Failed to store device token: %v", err)
+	} else {
+		logger.Debug("Device token stored successfully")
+	}
+	return deviceToken
 }
 
-// setDeviceTokenCookie sets the DT cookie in the HTTP Client cookie jar
-// using the okta_<loginDetails.Username>_saml2aws, we reduce making an extra api call
-// this func can be uplifted in the future to set custom device tokens or used with
-// getDeviceTokenFromOkta function
+// setDeviceTokenCookie sets the DT cookie in the HTTP Client cookie jar.
+// The device token is either retrieved from storage or generated as a new UUID.
 func (oc *Client) setDeviceTokenCookie(loginDetails *creds.LoginDetails) error {
-
-	// getDeviceTokenFromOkta is not used but doing this to keep the function code
-	// uncommented (avoid linting issues)
-	if false {
-		dt, _ := oc.getDeviceTokenFromOkta(loginDetails)
-		logger.Debugf("getDeviceTokenFromOkta is not yet implemented: dt: %s", dt)
-	}
-
 	oktaURL, err := url.Parse(loginDetails.URL)
 	if err != nil {
 		return errors.Wrap(err, "error building oktaURL to set device token cookie")
@@ -385,8 +378,8 @@ func (oc *Client) setDeviceTokenCookie(loginDetails *creds.LoginDetails) error {
 	cookie := http.Cookie{
 		Name:    "DT",
 		Secure:  true,
-		Expires: time.Now().Add(time.Hour * 24 * 30),                    // 30 Days -> this time might not matter as this cookie is set on every saml2aws login request
-		Value:   fmt.Sprintf("okta_%s_saml2aws", loginDetails.Username), // Okta recommends using an UUID but this should be unique enough. Also, this is key to remembering Okta MFA device
+		Expires: time.Now().Add(time.Hour * 24 * 30), // 30 Days -> this time might not matter as this cookie is set on every saml2aws login request
+		Value:   oc.getDeviceToken(loginDetails),
 	}
 	cookies = append(cookies, &cookie)
 	oc.client.Jar.SetCookies(baseURL, cookies)
