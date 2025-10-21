@@ -26,7 +26,7 @@ require (
 	github.com/stretchr/testify v1.10.0
 	github.com/tidwall/gjson v1.18.0
 	github.com/trimble-oss/go-webauthn-client v0.3.0
-	golang.org/x/net v0.30.0
+	golang.org/x/net v0.38.0
 	gopkg.in/ini.v1 v1.67.0
 )
 
