@@ -8,7 +8,7 @@ builds:
     - -trimpath
     - -v
   ldflags:
-    - -s -w -X main.Version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}}
+    - -s -w -X 'github.com/versent/saml2aws/v2/pkg/version.Version={{.Version}}'
   goos:
     - darwin
   goarch:

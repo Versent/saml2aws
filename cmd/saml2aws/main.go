@@ -14,11 +14,7 @@ import (
 	"github.com/versent/saml2aws/v2/cmd/saml2aws/commands"
 	"github.com/versent/saml2aws/v2/pkg/flags"
 	"github.com/versent/saml2aws/v2/pkg/prompter"
-)
-
-var (
-	// Version app version
-	Version = "1.0.0"
+	"github.com/versent/saml2aws/v2/pkg/version"
 )
 
 // The `cmdLineList` type is used to make a `[]string` meet the requirements
@@ -60,7 +56,7 @@ func main() {
 	}
 
 	app := kingpin.New("saml2aws", "A command line tool to help with SAML access to the AWS token service.")
-	app.Version(Version)
+	app.Version(version.Version)
 
 	// Settings not related to commands
 	verbose := app.Flag("verbose", "Enable verbose logging").Bool()
