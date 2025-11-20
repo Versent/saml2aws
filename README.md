@@ -228,6 +228,8 @@ Flags:
       --disable-keychain       Do not use keychain at all. This will also disable Okta sessions & remembering MFA device. (env: SAML2AWS_DISABLE_KEYCHAIN)
   -r, --region=REGION          AWS region to use for API requests, e.g. us-east-1, us-gov-west-1, cn-north-1 (env: SAML2AWS_REGION)
       --prompter=PROMPTER      The prompter to use for user input (default, pinentry)
+      --user-agent
+      --user-agent-override    String to append to the user-agent (env: SAML2AWS_USER_AGENT")
 
 Commands:
   help [<command>...]

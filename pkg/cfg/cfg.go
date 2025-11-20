@@ -70,6 +70,8 @@ type IDPAccount struct {
 	KCAuthErrorMessage    string `ini:"kc_auth_error_message,omitempty"` // used by KeyCloak; hide from user if not set
 	KCAuthErrorElement    string `ini:"kc_auth_error_element,omitempty"` // used by KeyCloak; hide from user if not set
 	KCBroker              string `ini:"kc_broker"`                       // used by KeyCloak;
+	UserAgent             string `ini:"user_agent"`
+	UserAgentOverride     string `ini:"user_agent_override"`
 }
 
 func (ia IDPAccount) String() string {

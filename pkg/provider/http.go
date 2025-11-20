@@ -16,6 +16,7 @@ import (
 	"github.com/versent/saml2aws/v2/pkg/cfg"
 	"github.com/versent/saml2aws/v2/pkg/cookiejar"
 	"github.com/versent/saml2aws/v2/pkg/dump"
+	"github.com/versent/saml2aws/v2/pkg/version"
 	"golang.org/x/net/publicsuffix"
 )
 
@@ -32,9 +33,11 @@ const (
 )
 
 type HTTPClientOptions struct {
-	IsWithRetries bool //http retry feature switch
-	AttemptsCount uint
-	RetryDelay    time.Duration
+	IsWithRetries     bool //http retry feature switch
+	AttemptsCount     uint
+	RetryDelay        time.Duration
+	UserAgent         string
+	UserAgentOverride string
 }
 
 // NewDefaultTransport configure a transport with the TLS skip verify option
@@ -93,7 +96,14 @@ func NewHTTPClient(tr http.RoundTripper, opts *HTTPClientOptions) (*HTTPClient, 
 // Do do the request
 func (hc *HTTPClient) Do(req *http.Request) (*http.Response, error) {
 
-	req.Header.Set("User-Agent", fmt.Sprintf("saml2aws/1.0 (%s %s) Versent", runtime.GOOS, runtime.GOARCH))
+	req.Header.Set("User-Agent", fmt.Sprintf("saml2aws/%s (%s %s) Versent", version.Version, runtime.GOOS, runtime.GOARCH))
+
+	if hc.Options.UserAgent != "" {
+		req.Header.Set("User-Agent", fmt.Sprintf("%s (%s)", req.UserAgent(), hc.Options.UserAgent))
+	}
+	if hc.Options.UserAgentOverride != "" {
+		req.Header.Set("User-Agent", hc.Options.UserAgent)
+	}
 
 	var resp *http.Response
 	var err error

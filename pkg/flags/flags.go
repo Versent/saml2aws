@@ -40,6 +40,8 @@ type CommonFlags struct {
 	DisableSessions       bool
 	Prompter              string
 	KCBroker              string
+	UserAgent             string
+	UserAgentOverride     string
 }
 
 // LoginExecFlags flags for the Login / Exec commands
@@ -155,5 +157,11 @@ func ApplyFlagOverrides(commonFlags *CommonFlags, account *cfg.IDPAccount) {
 	// select the prompter
 	if commonFlags.Prompter != "" {
 		account.Prompter = commonFlags.Prompter
+	}
+	if commonFlags.UserAgent != "" {
+		account.UserAgent = commonFlags.UserAgent
+	}
+	if commonFlags.UserAgentOverride != "" {
+		account.UserAgentOverride = commonFlags.UserAgentOverride
 	}
 }
