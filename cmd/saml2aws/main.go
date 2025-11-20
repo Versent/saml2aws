@@ -92,6 +92,8 @@ func main() {
 	app.Flag("region", "AWS region to use for API requests, e.g. us-east-1, us-gov-west-1, cn-north-1 (env: SAML2AWS_REGION)").Envar("SAML2AWS_REGION").Short('r').StringVar(&commonFlags.Region)
 	app.Flag("prompter", "The prompter to use for user input (default, pinentry)").StringVar(&commonFlags.Prompter)
 	app.Flag("kc-broker", "The kc broker to use when authenticating via keycloak").StringVar(&commonFlags.KCBroker)
+	app.Flag("user-agent", "String to append to the user-agent (env: SAML2AWS_USER_AGENT").Envar("SAML2AWS_USER_AGENT").StringVar(&commonFlags.UserAgent)
+	app.Flag("user-agent-override", "String to replace the existing user-agent with (env: SAML2AWS_USER_AGENT_OVERRIDE)").Envar("SAML2AWS_USER_AGENT_OVERRIDE").StringVar(&commonFlags.UserAgentOverride)
 
 	// `configure` command and settings
 	cmdConfigure := app.Command("configure", "Configure a new IDP account.")

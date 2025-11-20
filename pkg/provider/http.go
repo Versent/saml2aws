@@ -32,9 +32,11 @@ const (
 )
 
 type HTTPClientOptions struct {
-	IsWithRetries bool //http retry feature switch
-	AttemptsCount uint
-	RetryDelay    time.Duration
+	IsWithRetries     bool //http retry feature switch
+	AttemptsCount     uint
+	RetryDelay        time.Duration
+	UserAgent         string
+	UserAgentOverride string
 }
 
 // NewDefaultTransport configure a transport with the TLS skip verify option
@@ -94,6 +96,13 @@ func NewHTTPClient(tr http.RoundTripper, opts *HTTPClientOptions) (*HTTPClient, 
 func (hc *HTTPClient) Do(req *http.Request) (*http.Response, error) {
 
 	req.Header.Set("User-Agent", fmt.Sprintf("saml2aws/1.0 (%s %s) Versent", runtime.GOOS, runtime.GOARCH))
+
+	if hc.Options.UserAgent != "" {
+		req.Header.Set("User-Agent", fmt.Sprintf("%s (%s)", req.UserAgent(), hc.Options.UserAgent))
+	}
+	if hc.Options.UserAgentOverride != "" {
+		req.Header.Set("User-Agent", hc.Options.UserAgent)
+	}
 
 	var resp *http.Response
 	var err error

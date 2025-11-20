@@ -1,8 +1,10 @@
 package provider
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -71,4 +73,50 @@ func TestClientDoResponseCheck(t *testing.T) {
 	res, err := hc.Do(req)
 	require.Error(t, err)
 	require.Equal(t, 400, res.StatusCode)
+}
+
+func TestClientDoUserAgent(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, fmt.Sprintf("saml2aws/1.0 (%s %s) Versent (Test)", runtime.GOOS, runtime.GOARCH), r.UserAgent())
+		_, _ = w.Write([]byte("OK"))
+	}))
+	defer ts.Close()
+
+	rt := NewDefaultTransport(false)
+	opts := &HTTPClientOptions{IsWithRetries: false, UserAgent: "Test"}
+	hc, err := NewHTTPClient(rt, opts)
+	require.Nil(t, err)
+
+	// hc := &HTTPClient{Client: http.Client{}}
+
+	req, err := http.NewRequest("GET", ts.URL, nil)
+	require.Nil(t, err)
+
+	res, err := hc.Do(req)
+	require.Nil(t, err)
+
+	require.Equal(t, 200, res.StatusCode)
+}
+
+func TestClientDoUserAgentOverride(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, "Test", r.UserAgent())
+		_, _ = w.Write([]byte("OK"))
+	}))
+	defer ts.Close()
+
+	rt := NewDefaultTransport(false)
+	opts := &HTTPClientOptions{IsWithRetries: false, UserAgentOverride: "Test"}
+	hc, err := NewHTTPClient(rt, opts)
+	require.Nil(t, err)
+
+	// hc := &HTTPClient{Client: http.Client{}}
+
+	req, err := http.NewRequest("GET", ts.URL, nil)
+	require.Nil(t, err)
+
+	res, err := hc.Do(req)
+	require.Nil(t, err)
+
+	require.Equal(t, 200, res.StatusCode)
 }
