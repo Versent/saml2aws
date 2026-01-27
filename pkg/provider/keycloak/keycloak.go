@@ -182,6 +182,34 @@ func extractWebauthnParameters(doc *goquery.Document) (credentialIDs []string, c
 		}
 		rpID = rpIDSubmatch[1]
 	})
+
+	// If either rpID or challenge is still empty, try alternative regex patterns.
+	// Keycloak 25+ default form binds these differently.
+	if rpID == "" || challenge == "" {
+		challengeRE, err := regexp.Compile(`challenge : '(.+)'`)
+		if err != nil {
+			return nil, "", "", errors.Wrap(err, "could not compile regular expression")
+		}
+
+		rpIDRE, err := regexp.Compile(`rpId : '(.+)'`)
+		if err != nil {
+			return nil, "", "", errors.Wrap(err, "could not compile regular expression")
+		}
+		doc.Find("script").Each(func(i int, s *goquery.Selection) {
+			content := s.Text()
+			challengeSubmatch := challengeRE.FindStringSubmatch(content)
+			if challengeSubmatch == nil {
+				return
+			}
+			challenge = challengeSubmatch[1]
+			rpIDSubmatch := rpIDRE.FindStringSubmatch(content)
+			if rpIDSubmatch == nil {
+				return
+			}
+			rpID = rpIDSubmatch[1]
+		})
+	}
+
 	return credentialIDs, challenge, rpID, nil
 }
 

@@ -1,0 +1,134 @@
+<html class="login-pf" lang="en"><head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta name="robots" content="noindex, nofollow">
+
+            <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Sign in to test</title>
+    <link rel="icon" href="/auth/resources/hr3i6/login/keycloak/img/favicon.ico">
+            <link href="/auth/resources/hr3i6/common/keycloak/vendor/patternfly-v4/patternfly.min.css" rel="stylesheet">
+            <link href="/auth/resources/hr3i6/common/keycloak/vendor/patternfly-v3/css/patternfly.min.css" rel="stylesheet">
+            <link href="/auth/resources/hr3i6/common/keycloak/vendor/patternfly-v3/css/patternfly-additions.min.css" rel="stylesheet">
+            <link href="/auth/resources/hr3i6/common/keycloak/lib/pficon/pficon.css" rel="stylesheet">
+            <link href="/auth/resources/hr3i6/login/keycloak/css/login.css" rel="stylesheet">
+    <script type="importmap">
+        {
+            "imports": {
+                "rfc4648": "/auth/resources/hr3i6/common/keycloak/vendor/rfc4648/rfc4648.js"
+            }
+        }
+    </script>
+    <script src="/auth/resources/hr3i6/login/keycloak/js/menu-button-links.js" type="module"></script>
+    <script type="module">
+        import { startSessionPolling } from "/auth/resources/hr3i6/login/keycloak/js/authChecker.js";
+
+        startSessionPolling(
+          "/auth/realms/master/login-actions/restart?client_id=account-console&tab_id=_DfDnkQN6nU&client_data=eyJydSI6Imh0dHBzOi8va2V5Y2xvYWstc2FtbDJhd3MtdGVzdC5jYXRhbHlzdC1hdS5uZXQvYXV0aC9yZWFsbXMvY2F0YWx5c3QtYXUvYWNjb3VudCIsInJ0IjoiY29kZSJ9&skip_logout=true"
+        );
+    </script>
+        <script type="module">
+            import { checkAuthSession } from "/auth/resources/hr3i6/login/keycloak/js/authChecker.js";
+
+            checkAuthSession(
+                "mv0MCQezpyaZm8KaW8w1oDx4WM6zYXcCQ3oFgodtL6k"
+            );
+        </script>
+<script> if (typeof history.replaceState === 'function') {  history.replaceState({}, "some title", "https://example.com/realms/master/login-actions/authenticate?execution=07647b70-35c8-4839-a778-38d40dbbf2eb&client_id=account-console&tab_id=_DfDnkQN6nU&client_data=eyJydSI6Imh0dHBzOi8va2V5Y2xvYWstc2FtbDJhd3MtdGVzdC5jYXRhbHlzdC1hdS5uZXQvYXV0aC9yZWFsbXMvY2F0YWx5c3QtYXUvYWNjb3VudCIsInJ0IjoiY29kZSJ9"); }</script></head>
+
+<body class="">
+<div class="login-pf-page">
+    <div id="kc-header" class="login-pf-page-header">
+        <div id="kc-header-wrapper" class="">test</div>
+    </div>
+    <div class="card-pf">
+        <header class="login-pf-header">
+                <div id="kc-username" class="form-group">
+                    <label id="kc-attempted-username">testuser</label>
+                    <a id="reset-login" href="/realms/master/login-actions/restart?client_id=account-console&amp;tab_id=_DfDnkQN6nU&amp;client_data=eyJydSI6Imh0dHBzOi8va2V5Y2xvYWstc2FtbDJhd3MtdGVzdC5jYXRhbHlzdC1hdS5uZXQvYXV0aC9yZWFsbXMvY2F0YWx5c3QtYXUvYWNjb3VudCIsInJ0IjoiY29kZSJ9&amp;skip_logout=false" aria-label="Restart login">
+                        <div class="kc-login-tooltip">
+                            <i class="pficon pficon-arrow fa"></i>
+                            <span class="kc-tooltip-text">Restart login</span>
+                        </div>
+                    </a>
+                </div>
+      </header>
+      <div id="kc-content">
+        <div id="kc-content-wrapper">
+
+
+        <div id="kc-form-webauthn" class="form-horizontal">
+            <form id="webauth" action="https://example.com/realms/master/login-actions/authenticate?session_code=fiSDZQSF1j_Yc3vmcyIPxgPS1-rde-iwK19Lweh5euA&amp;execution=07647b70-35c8-4839-a778-38d40dbbf2eb&amp;client_id=account-console&amp;tab_id=_DfDnkQN6nU&amp;client_data=eyJydSI6Imh0dHBzOi8va2V5Y2xvYWstc2FtbDJhd3MtdGVzdC5jYXRhbHlzdC1hdS5uZXQvYXV0aC9yZWFsbXMvY2F0YWx5c3QtYXUvYWNjb3VudCIsInJ0IjoiY29kZSJ9" method="post">
+                <input type="hidden" id="clientDataJSON" name="clientDataJSON">
+                <input type="hidden" id="authenticatorData" name="authenticatorData">
+                <input type="hidden" id="signature" name="signature">
+                <input type="hidden" id="credentialId" name="credentialId">
+                <input type="hidden" id="userHandle" name="userHandle">
+                <input type="hidden" id="error" name="error">
+            </form>
+
+            <div class="form-group no-bottom-margin">
+                    <form id="authn_select" class="form-horizontal">
+                            <input type="hidden" name="authn_use_chk" value="fm6tY873_LAIZUMG5qhhGfJObXwcfWZZg8Aqu-6gi4BEok4pkyfbZgJ4uwfvRdgTTyuzNu4v_T3IubCXquypHQ">
+                    </form>
+
+
+                        <div class="form-horizontal">
+                                <div id="kc-webauthn-authenticator-item-0" class="pf-l-stack__item select-auth-box-parent pf-l-split">
+                                    <div class="pf-l-split__item select-auth-box-icon">
+                                        <i class="fa fa-usb fa-2x select-auth-box-icon-properties"></i>
+                                    </div>
+                                    <div class="pf-l-split__item pf-l-stack">
+                                        <div id="kc-webauthn-authenticator-label-0" class="pf-l-stack__item select-auth-box-headline pf-c-title">
+                                            Passkey (Default Label)
+                                        </div>
+
+                                            <div id="kc-webauthn-authenticator-transport-0" class="pf-l-stack__item select-auth-box-desc">
+                                                    <span>USB</span>
+                                            </div>
+
+                                        <div class="pf-l-stack__item select-auth-box-desc">
+                                            <span id="kc-webauthn-authenticator-createdlabel-0">
+                                                Created
+                                            </span>
+                                            <span id="kc-webauthn-authenticator-created-0">
+                                                Jan 23, 2026, 4:33 AM
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div class="pf-l-split__item pf-m-fill"></div>
+                                </div>
+                        </div>
+
+                <div id="kc-form-buttons" class="col-xs-12 col-sm-12 col-md-12 col-lg-12">
+                    <input id="authenticateWebAuthnButton" type="button" autofocus="autofocus" value="Sign in with Passkey" class="pf-c-button pf-m-primary pf-m-block btn-lg">
+                </div>
+            </div>
+        </div>
+
+    <script type="module">
+        import { authenticateByWebAuthn } from "/auth/resources/hr3i6/login/keycloak/js/webauthnAuthenticate.js";
+        const authButton = document.getElementById('authenticateWebAuthnButton');
+        authButton.addEventListener("click", function() {
+            const input = {
+                isUserIdentified : true,
+                challenge : 'byaIeFP_TGOpiUdAnDQVVw',
+                userVerification : 'not specified',
+                rpId : 'example.com',
+                createTimeout : 0,
+                errmsg : "WebAuthn is not supported by this browser. Try another one or contact your administrator."
+            };
+            authenticateByWebAuthn(input);
+        });
+    </script>
+
+
+
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+
+</body></html>
