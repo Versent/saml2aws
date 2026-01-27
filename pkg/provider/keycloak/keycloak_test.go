@@ -268,6 +268,22 @@ func TestClient_extractWebauthnParameters(t *testing.T) {
 	require.Equal(t, "localhost", rpID)
 }
 
+func TestClient_extractKc25WebauthnParameters(t *testing.T) {
+	data, err := os.ReadFile("example/kc25-webauthnPage.html")
+	require.Nil(t, err)
+
+	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(data))
+	require.Nil(t, err)
+
+	credentialIDs, challenge, rpID, err := extractWebauthnParameters(doc)
+	require.Nil(t, err)
+
+	expectedCredentialIDs := []string{"fm6tY873_LAIZUMG5qhhGfJObXwcfWZZg8Aqu-6gi4BEok4pkyfbZgJ4uwfvRdgTTyuzNu4v_T3IubCXquypHQ"}
+	require.Equal(t, expectedCredentialIDs, credentialIDs)
+	require.Equal(t, "byaIeFP_TGOpiUdAnDQVVw", challenge)
+	require.Equal(t, "example.com", rpID)
+}
+
 func TestClient_CustomizeAuthErrorValidator_DefaultSetup(t *testing.T) {
 	// Test with the default auth error message and the default HTTP element
 	idpAccount := cfg.IDPAccount{
