@@ -33,6 +33,15 @@ func LookupCredentials(loginDetails *creds.LoginDetails, provider string) error 
 		loginDetails.ClientID = id
 		loginDetails.ClientSecret = secret
 	}
+
+	if provider == "Browser" {
+		_, cookiesJson, err := CurrentHelper.Get(path.Join(loginDetails.URL, "/browserCookieJson"))
+		if err != nil {
+			return err
+		}
+		loginDetails.CookiesJson = cookiesJson
+	}
+
 	return nil
 }
 

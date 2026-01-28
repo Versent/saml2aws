@@ -5,6 +5,7 @@ type LoginDetails struct {
 	ClientID          string // used by OneLogin
 	ClientSecret      string // used by OneLogin
 	DownloadBrowser   bool   // used by Browser
+	CookiesJson		  string // used by Browser
 	MFAIPAddress      string // used by OneLogin
 	Username          string
 	Password          string

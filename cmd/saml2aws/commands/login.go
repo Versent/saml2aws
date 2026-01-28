@@ -215,10 +215,13 @@ func resolveLoginDetails(account *cfg.IDPAccount, loginFlags *flags.LoginExecFla
 				return nil, errors.Wrap(err, "Error loading saved password.")
 			}
 		}
-	} else { // if user disabled keychain, dont use Okta sessions & dont remember Okta MFA device
+	} else { // if user disabled keychain, dont use Okta sessions & dont remember Okta MFA device & dont save browser cookies
 		if strings.ToLower(account.Provider) == "okta" {
 			account.DisableSessions = true
 			account.DisableRememberDevice = true
+		}
+		if strings.ToLower(account.Provider) == "browser" {
+			account.DisableCookies = true
 		}
 	}
 

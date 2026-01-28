@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"os"
 	"testing"
+	"fmt"
 
 	"github.com/playwright-community/playwright-go"
 	"github.com/stretchr/testify/assert"
@@ -236,4 +237,28 @@ func TestAutoFill(t *testing.T) {
 		result, _ := page.Locator("div#result").Evaluate("el => el.innerText", nil)
 		assert.Equal(t, "golang:gopher", result)
 	}
+}
+
+func TestOktaCfgFlagsDefaultState(t *testing.T) {
+	idpAccount := cfg.NewIDPAccount()
+	idpAccount.URL = "https://idp.example.com/abcd"
+	idpAccount.Username = "user@example.com"
+
+	oc, err := New(idpAccount)
+	assert.Nil(t, err)
+
+	assert.False(t, oc.DisableCookies, fmt.Errorf("DisableCookies should be false by default"))
+}
+
+func TestOktaCfgFlagsCustomState(t *testing.T) {
+	idpAccount := cfg.NewIDPAccount()
+	idpAccount.URL = "https://idp.example.com/abcd"
+	idpAccount.Username = "user@example.com"
+
+	idpAccount.DisableCookies = true
+
+	oc, err := New(idpAccount)
+	assert.Nil(t, err)
+
+	assert.True(t, oc.DisableCookies, fmt.Errorf("DisableCookies was set to true so DisableCookies should be true"))
 }

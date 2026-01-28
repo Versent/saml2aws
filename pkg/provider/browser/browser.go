@@ -1,17 +1,19 @@
 package browser
 
 import (
+	"path"
 	"errors"
 	"fmt"
 	"net/url"
-	"os"
 	"regexp"
 	"strings"
+	"encoding/json"
 
 	"github.com/playwright-community/playwright-go"
 	"github.com/sirupsen/logrus"
 	"github.com/versent/saml2aws/v2/pkg/cfg"
 	"github.com/versent/saml2aws/v2/pkg/creds"
+	"github.com/versent/saml2aws/v2/helper/credentials"
 )
 
 var logger = logrus.WithField("provider", "browser")
@@ -23,6 +25,7 @@ type Client struct {
 	BrowserType           string
 	BrowserExecutablePath string
 	Headless              bool
+	DisableCookies		  bool
 	// Setup alternative directory to download playwright browsers to
 	BrowserDriverDir string
 	Timeout          int
@@ -36,6 +39,7 @@ func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 		BrowserDriverDir:      idpAccount.BrowserDriverDir,
 		BrowserType:           strings.ToLower(idpAccount.BrowserType),
 		BrowserExecutablePath: idpAccount.BrowserExecutablePath,
+		DisableCookies: 	   idpAccount.DisableCookies,
 		Timeout:               idpAccount.Timeout,
 		BrowserAutoFill:       idpAccount.BrowserAutoFill,
 	}, nil
@@ -113,20 +117,28 @@ func (cl *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 	// create Context Optionsf
 	contextOptions := playwright.BrowserNewContextOptions{}
 
-	// load saved storageState if present and add to contextOptions
-	userHomeDir, err := os.UserHomeDir()
-	storageStatePath := fmt.Sprintf("%s/.aws/saml2aws/storageState.json", userHomeDir)
-	if err != nil {
-		return "", err
-	}
-	if _, err := os.Stat(storageStatePath); err == nil {
-		contextOptions.StorageStatePath = playwright.String(storageStatePath)
-	}
-
-	// Create new broswer context
 	context, err := browser.NewContext(contextOptions)
 	if err != nil {
 		return "", err
+	}
+
+	var cookies []playwright.OptionalCookie
+
+	if !cl.DisableCookies {
+
+		if loginDetails.CookiesJson == "" {
+			logger.Info("could not retrieve cookies")
+		} else {
+			logger.Info("cookie json string length: ", len(loginDetails.CookiesJson))
+		}
+
+		if err := json.Unmarshal([]byte(loginDetails.CookiesJson), &cookies); err != nil {
+			logger.Info("could not unmarshal cookies", err)
+		}
+
+		if err := context.AddCookies(cookies); err != nil {
+			logger.Info("could not add cookies", err)
+		}
 	}
 
 	page, err := context.NewPage()
@@ -135,10 +147,24 @@ func (cl *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 	}
 
 	defer func() {
-		logger.Info("saving storage state")
-		_, err := context.StorageState(storageStatePath)
-		if err != nil {
-			logger.Info("Error saving storage state", err)
+		if !cl.DisableCookies {
+			logger.Info("saving storage state")
+			cookies, err := context.Cookies(loginDetails.URL)
+
+			if err != nil {
+				logger.Info("could not get cookies", err)
+			}
+
+			cookiesByteArr, err := json.Marshal(cookies)
+
+			if err != nil {
+				logger.Info("Error converting storage state", err)
+			}
+			err = credentials.SaveCredentials(path.Join(loginDetails.URL, "/browserCookieJson"), loginDetails.Username,  string(cookiesByteArr))
+
+			if err != nil {
+				logger.Info("Error saving storage state", err)
+			}
 		}
 		logger.Info("clean up browser")
 		if err := context.Close(); err != nil {

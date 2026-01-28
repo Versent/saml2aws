@@ -64,6 +64,38 @@ func TestOktaResolveLoginDetailsWithFlags(t *testing.T) {
 
 }
 
+func TestBrowserResolveLoginDetailsWithFlags(t *testing.T) {
+
+	// Default state - user did not supply values for DisableCookies
+	commonFlags := &flags.CommonFlags{URL: "https://id.example.com", Username: "testuser", Password: "testtestlol", SkipPrompt: true}
+	loginFlags := &flags.LoginExecFlags{CommonFlags: commonFlags}
+
+	idpa := &cfg.IDPAccount{
+		URL:      "https://id.example.com",
+		MFA:      "none",
+		Provider: "Browser",
+		Username: "testuser",
+	}
+	loginDetails, err := resolveLoginDetails(idpa, loginFlags)
+
+	assert.Nil(t, err)
+	assert.False(t, idpa.DisableCookies, fmt.Errorf("default state, DisableCookies should be false"))
+	assert.Equal(t, &creds.LoginDetails{Username: "testuser", Password: "testtestlol", URL: "https://id.example.com"}, loginDetails)
+
+	// User disabled keychain, resolveLoginDetails should set the account's DisableCookies field to true
+
+	commonFlags = &flags.CommonFlags{URL: "https://id.example.com", Username: "testuser", Password: "testtestlol", SkipPrompt: true, DisableKeychain: true}
+	loginFlags = &flags.LoginExecFlags{CommonFlags: commonFlags}
+
+	loginDetails, err = resolveLoginDetails(idpa, loginFlags)
+
+	assert.Nil(t, err)
+	assert.True(t, idpa.DisableCookies, fmt.Errorf("user disabled keychain, DisableCookies should be true"))
+	assert.Equal(t, &creds.LoginDetails{Username: "testuser", Password: "testtestlol", URL: "https://id.example.com" }, loginDetails)
+
+}
+
+
 func TestResolveRoleSingleEntry(t *testing.T) {
 
 	adminRole := &saml2aws.AWSRole{
