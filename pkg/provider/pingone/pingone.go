@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
@@ -91,6 +92,9 @@ func (ac *Client) follow(ctx context.Context, req *http.Request) (string, error)
 	} else if docIsFormResume(doc) {
 		logger.WithField("type", "resume").Debug("doc detect")
 		handler = ac.handleFormRedirect
+	} else if docIsIdentifierFirst(doc) {
+		logger.WithField("type", "identifier-first").Debug("doc detect")
+		handler = ac.handleIdentifierFirst
 	} else if docIsLogin(doc) {
 		logger.WithField("type", "login").Debug("doc detect")
 		handler = ac.handleLogin
@@ -112,6 +116,15 @@ func (ac *Client) follow(ctx context.Context, req *http.Request) (string, error)
 	} else if docIsRefresh(doc) {
 		logger.WithField("type", "refresh").Debug("doc detect")
 		handler = ac.handleRefresh
+	} else if docIsDuoPluginForm(doc) {
+		logger.WithField("type", "duo-plugin-form").Debug("doc detect")
+		handler = ac.handleDuoPluginForm
+	} else if docIsDuoPrompt(doc) {
+		logger.WithField("type", "duo-prompt").Debug("doc detect")
+		handler = ac.handleDuoPrompt
+	} else if docIsAutoPostForm(doc) {
+		logger.WithField("type", "auto-post-form").Debug("doc detect")
+		handler = ac.handleFormRedirect
 	}
 	if handler == nil {
 		html, _ := doc.Selection.Html()
@@ -233,18 +246,364 @@ func (ac *Client) handleFormRedirect(ctx context.Context, doc *goquery.Document,
 	return ctx, req, err
 }
 
-func (ac *Client) handleRefresh(ctx context.Context, doc *goquery.Document, _ *http.Response) (context.Context, *http.Request, error) {
+func (ac *Client) handleRefresh(ctx context.Context, doc *goquery.Document, res *http.Response) (context.Context, *http.Request, error) {
+	// Try to extract the refresh URL from meta tag
+	var refreshURL string
+	doc.Find("meta[http-equiv=\"refresh\"]").Each(func(_ int, s *goquery.Selection) {
+		if content, ok := s.Attr("content"); ok {
+			// Parse content like "0;url=https://example.com/path"
+			parts := strings.SplitN(content, "url=", 2)
+			if len(parts) == 2 {
+				refreshURL = strings.TrimSpace(parts[1])
+			} else {
+				// Try with URL= (case insensitive)
+				parts = strings.SplitN(content, "URL=", 2)
+				if len(parts) == 2 {
+					refreshURL = strings.TrimSpace(parts[1])
+				}
+			}
+		}
+	})
+
+	// If we found a refresh URL, use it
+	if refreshURL != "" {
+		logger.WithField("refreshURL", refreshURL).Debug("following meta refresh URL")
+		req, err := http.NewRequest("GET", refreshURL, nil)
+		if err != nil {
+			return ctx, nil, errors.Wrap(err, "error building refresh request")
+		}
+		return ctx, req, err
+	}
+
+	// Fallback to original login URL
 	loginDetails, ok := ctx.Value(ctxKey("login")).(*creds.LoginDetails)
 	if !ok {
 		return ctx, nil, fmt.Errorf("no context value for 'login'")
 	}
 
+	logger.WithField("url", loginDetails.URL).Debug("falling back to original login URL")
 	req, err := http.NewRequest("GET", loginDetails.URL, nil)
 	if err != nil {
 		return ctx, nil, errors.Wrap(err, "error building request")
 	}
 
 	return ctx, req, err
+}
+
+func (ac *Client) handleIdentifierFirst(ctx context.Context, doc *goquery.Document, res *http.Response) (context.Context, *http.Request, error) {
+	loginDetails, ok := ctx.Value(ctxKey("login")).(*creds.LoginDetails)
+	if !ok {
+		return ctx, nil, fmt.Errorf("no context value for 'login'")
+	}
+
+	form, err := page.NewFormFromDocument(doc, "form")
+	if err != nil {
+		return ctx, nil, errors.Wrap(err, "error extracting identifier-first form")
+	}
+
+	baseURL := makeBaseURL(res.Request.URL)
+	logger.WithField("baseURL", baseURL).Debug("identifier-first base url")
+
+	form.Values.Set("subject", loginDetails.Username)
+	form.URL, err = makeAbsoluteURL(form.URL, baseURL)
+	if err != nil {
+		return ctx, nil, err
+	}
+
+	req, err := form.BuildRequest()
+	return ctx, req, err
+}
+
+func (ac *Client) handleDuoPluginForm(ctx context.Context, doc *goquery.Document, res *http.Response) (context.Context, *http.Request, error) {
+	// Manually extract form values since the form may not have an action attribute
+	// and NewFormFromDocument crashes when doc.Url is nil
+	formSelection := doc.Find("#plugin_form").First()
+	if formSelection.Size() != 1 {
+		return ctx, nil, fmt.Errorf("could not find Duo plugin form")
+	}
+
+	formURL := res.Request.URL.String()
+	if action, ok := formSelection.Attr("action"); ok && action != "" {
+		var err error
+		formURL, err = makeAbsoluteURL(action, makeBaseURL(res.Request.URL))
+		if err != nil {
+			return ctx, nil, err
+		}
+	}
+
+	formValues := &url.Values{}
+	formSelection.Find("input").Each(func(_ int, s *goquery.Selection) {
+		name, ok := s.Attr("name")
+		if !ok {
+			return
+		}
+		val, _ := s.Attr("value")
+		formValues.Add(name, val)
+	})
+
+	logger.WithField("url", formURL).Debug("Duo plugin form")
+
+	req, err := http.NewRequest("POST", formURL, nil)
+	if err != nil {
+		return ctx, nil, errors.Wrap(err, "error building Duo plugin form request")
+	}
+	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	req.Body = io.NopCloser(strings.NewReader(formValues.Encode()))
+
+	return ctx, req, err
+}
+
+func (ac *Client) handleDuoPrompt(ctx context.Context, doc *goquery.Document, res *http.Response) (context.Context, *http.Request, error) {
+	// Extract the login form
+	formSelection := doc.Find("#login-form").First()
+	if formSelection.Size() != 1 {
+		return ctx, nil, fmt.Errorf("could not find Duo login form")
+	}
+
+	baseURL := makeBaseURL(res.Request.URL)
+
+	// Get form action
+	formURL := res.Request.URL.String()
+	if action, ok := formSelection.Attr("action"); ok && action != "" {
+		var err error
+		formURL, err = makeAbsoluteURL(action, baseURL)
+		if err != nil {
+			return ctx, nil, err
+		}
+	}
+
+	// Collect form values - only take the first value for each name
+	formValues := &url.Values{}
+	seenNames := make(map[string]bool)
+	formSelection.Find("input[type=\"hidden\"]").Each(func(_ int, s *goquery.Selection) {
+		name, ok := s.Attr("name")
+		if !ok || seenNames[name] {
+			return
+		}
+		val, _ := s.Attr("value")
+		formValues.Set(name, val)
+		seenNames[name] = true
+	})
+
+	// Get the preferred device from the form
+	device := formValues.Get("preferred_device")
+	if device == "" {
+		// Try to get from select element
+		formSelection.Find("select[name=\"device\"] option").First().Each(func(_ int, s *goquery.Selection) {
+			if val, ok := s.Attr("value"); ok {
+				device = val
+			}
+		})
+	}
+	if device == "" {
+		device = "phone1" // fallback default
+	}
+	formValues.Set("device", device)
+
+	// Also get XSRF token from outside the form if present
+	xsrf := formValues.Get("_xsrf")
+	if xsrf == "" {
+		doc.Find("input[name=\"_xsrf\"]").Each(func(_ int, s *goquery.Selection) {
+			if val, ok := s.Attr("value"); ok && xsrf == "" {
+				xsrf = val
+			}
+		})
+	}
+
+	// Set factor to Duo Push
+	formValues.Set("factor", "Duo Push")
+
+	logger.WithField("device", device).WithField("factor", "Duo Push").Debug("Duo parameters")
+
+	logger.WithField("url", formURL).Debug("Duo prompt - sending push")
+	fmt.Println("Sending Duo push notification...")
+
+	// Submit the form to initiate Duo Push
+	pushReq, err := http.NewRequest("POST", formURL, strings.NewReader(formValues.Encode()))
+	if err != nil {
+		return ctx, nil, errors.Wrap(err, "error building Duo push request")
+	}
+	pushReq.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+
+	pushRes, err := ac.client.Do(pushReq)
+	if err != nil {
+		return ctx, nil, errors.Wrap(err, "error sending Duo push")
+	}
+
+	// Parse the response to get the txid
+	pushBody, err := io.ReadAll(pushRes.Body)
+	if err != nil {
+		return ctx, nil, errors.Wrap(err, "error reading Duo push response")
+	}
+
+	pushResponse := string(pushBody)
+	logger.WithField("response", pushResponse).Debug("Duo push response")
+
+	// Try to parse as JSON first (Duo API response)
+	txid := gjson.Get(pushResponse, "response.txid").String()
+	if txid == "" {
+		// Maybe it's HTML, try to parse it
+		pushDoc, err := goquery.NewDocumentFromReader(strings.NewReader(pushResponse))
+		if err == nil {
+			// Look for txid in the page
+			pushDoc.Find("input[name=\"txid\"]").Each(func(_ int, s *goquery.Selection) {
+				if val, ok := s.Attr("value"); ok {
+					txid = val
+				}
+			})
+		}
+	}
+
+	sid := formValues.Get("sid")
+	statusURL, err := makeAbsoluteURL("/frame/status", baseURL)
+	if err != nil {
+		return ctx, nil, err
+	}
+
+	logger.WithField("txid", txid).WithField("sid", sid).Debug("Duo polling parameters")
+
+	// Poll for Duo status
+	fmt.Println("Waiting for Duo approval...")
+	for i := 0; i < 60; i++ { // 60 attempts, 2 seconds each = 2 minutes timeout
+		time.Sleep(2 * time.Second)
+
+		statusValues := &url.Values{}
+		statusValues.Set("sid", sid)
+		statusValues.Set("txid", txid)
+		if xsrf != "" {
+			statusValues.Set("_xsrf", xsrf)
+		}
+
+		statusReq, err := http.NewRequest("POST", statusURL, strings.NewReader(statusValues.Encode()))
+		if err != nil {
+			return ctx, nil, errors.Wrap(err, "error building Duo status request")
+		}
+		statusReq.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+
+		statusRes, err := ac.client.Do(statusReq)
+		if err != nil {
+			return ctx, nil, errors.Wrap(err, "error polling Duo status")
+		}
+
+		body, err := io.ReadAll(statusRes.Body)
+		if err != nil {
+			return ctx, nil, errors.Wrap(err, "error reading Duo status response")
+		}
+
+		statusResponse := string(body)
+		logger.WithField("status", statusResponse).Debug("Duo status response")
+
+		// Check the status_code for the actual authentication state
+		stat := gjson.Get(statusResponse, "stat").String()
+		statusCode := gjson.Get(statusResponse, "response.status_code").String()
+		result := gjson.Get(statusResponse, "response.result").String()
+
+		logger.WithField("stat", stat).WithField("status_code", statusCode).WithField("result", result).Debug("Duo status parsed")
+
+		// Check for approval (status_code "allow" means approved)
+		if statusCode == "allow" || result == "SUCCESS" {
+			logger.Debug("Duo push approved")
+			fmt.Println("Duo push approved!")
+
+			// Get the result URL or use oidc_exit based on post_auth_action
+			resultURL := gjson.Get(statusResponse, "response.result_url").String()
+			postAuthAction := gjson.Get(statusResponse, "response.post_auth_action").String()
+			duoCookie := gjson.Get(statusResponse, "response.cookie").String()
+
+			// If there's a result_url, we need to call it first to get the cookie
+			if resultURL != "" {
+				resultURL, err = makeAbsoluteURL(resultURL, baseURL)
+				if err != nil {
+					return ctx, nil, err
+				}
+
+				resultValues := &url.Values{}
+				resultValues.Set("sid", sid)
+				if xsrf != "" {
+					resultValues.Set("_xsrf", xsrf)
+				}
+
+				logger.WithField("url", resultURL).Debug("Duo fetching result")
+				resultReq, err := http.NewRequest("POST", resultURL, strings.NewReader(resultValues.Encode()))
+				if err != nil {
+					return ctx, nil, errors.Wrap(err, "error building Duo result request")
+				}
+				resultReq.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+
+				resultRes, err := ac.client.Do(resultReq)
+				if err != nil {
+					return ctx, nil, errors.Wrap(err, "error fetching Duo result")
+				}
+
+				resultBody, err := io.ReadAll(resultRes.Body)
+				if err != nil {
+					return ctx, nil, errors.Wrap(err, "error reading Duo result")
+				}
+
+				resultResponse := string(resultBody)
+				logger.WithField("result", resultResponse).Debug("Duo result response")
+
+				// Get cookie from result
+				duoCookie = gjson.Get(resultResponse, "response.cookie").String()
+				if duoCookie == "" {
+					duoCookie = gjson.Get(resultResponse, "response.parent").String()
+				}
+			}
+
+			// Now call the OIDC exit
+			if postAuthAction == "oidc_exit" || resultURL == "" {
+				exitURL, err := makeAbsoluteURL("/frame/prompt/oidc/exit", baseURL)
+				if err != nil {
+					return ctx, nil, err
+				}
+
+				exitValues := &url.Values{}
+				exitValues.Set("sid", sid)
+				if xsrf != "" {
+					exitValues.Set("_xsrf", xsrf)
+				}
+				if txid != "" {
+					exitValues.Set("txid", txid)
+				}
+				if duoCookie != "" {
+					exitValues.Set("dampen_choice", "true")
+				}
+
+				logger.WithField("url", exitURL).WithField("txid", txid).Debug("Duo OIDC exit")
+
+				req, err := http.NewRequest("POST", exitURL, strings.NewReader(exitValues.Encode()))
+				if err != nil {
+					return ctx, nil, errors.Wrap(err, "error building Duo exit request")
+				}
+				req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+				return ctx, req, nil
+			}
+
+			return ctx, nil, fmt.Errorf("Duo approved but couldn't determine next step")
+		}
+
+		// Check for denial
+		if statusCode == "deny" || result == "FAILURE" {
+			reason := gjson.Get(statusResponse, "response.status").String()
+			if reason == "" {
+				reason = gjson.Get(statusResponse, "response.reason").String()
+			}
+			return ctx, nil, fmt.Errorf("Duo authentication denied: %s", reason)
+		}
+
+		// "pushed" means still waiting - continue polling
+		if statusCode == "pushed" {
+			continue
+		}
+
+		// Check for other failures
+		if stat == "FAIL" {
+			message := gjson.Get(statusResponse, "message").String()
+			return ctx, nil, fmt.Errorf("Duo error: %s", message)
+		}
+	}
+
+	return ctx, nil, fmt.Errorf("Duo authentication timed out")
 }
 
 func (ac *Client) handleFormSelectDevice(ctx context.Context, doc *goquery.Document, res *http.Response) (context.Context, *http.Request, error) {
@@ -315,6 +674,33 @@ func docIsFormSelectDevice(doc *goquery.Document) bool {
 
 func docIsRefresh(doc *goquery.Document) bool {
 	return doc.Has("meta[http-equiv=\"refresh\"]").Size() == 1
+}
+
+// docIsDuoPluginForm detects Duo Security pre-auth plugin detection form
+func docIsDuoPluginForm(doc *goquery.Document) bool {
+	return doc.Find("form#plugin_form").Size() == 1
+}
+
+// docIsDuoPrompt detects Duo Security MFA prompt page
+func docIsDuoPrompt(doc *goquery.Document) bool {
+	return doc.Find("form#login-form").Size() == 1 &&
+		doc.Find("input[name=\"sid\"]").Size() >= 1
+}
+
+// docIsAutoPostForm detects generic auto-POST redirect forms (like PingOne login callback)
+func docIsAutoPostForm(doc *goquery.Document) bool {
+	// Check for forms with tokenid (PingOne callback) or other auto-submit patterns
+	hasTokenId := doc.Find("input[name=\"tokenid\"]").Size() == 1
+	hasAutoSubmit := doc.Find("body[onload*=\"submit\"]").Size() == 1
+	hasForm := doc.Find("form").Size() == 1
+	return hasForm && (hasTokenId || hasAutoSubmit)
+}
+
+// docIsIdentifierFirst detects PingFederate Identifier-First flow
+// where email/username is entered first, then password on next page
+func docIsIdentifierFirst(doc *goquery.Document) bool {
+	return doc.Find("input[name=\"subject\"]").Size() == 1 &&
+		doc.Find("input[name=\"pf.pass\"]").Size() == 0
 }
 
 func extractSAMLResponse(doc *goquery.Document) (v string, ok bool) {
