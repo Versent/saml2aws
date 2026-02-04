@@ -356,9 +356,18 @@ func resolveRole(awsRoles []*saml2aws.AWSRole, samlAssertion string, account *cf
 }
 
 func loginToStsUsingRole(account *cfg.IDPAccount, role *saml2aws.AWSRole, samlAssertion string) (*awsconfig.AWSCredentials, error) {
+	var endpointTLD string
+
+	if account.Region == "eusc-de-east-1" {
+		endpointTLD = ".eu"
+	} else {
+		endpointTLD = ".com"
+	}
+	endpointURL := "https://sts." + account.Region + ".amazonaws" + endpointTLD
 
 	sess, err := session.NewSession(&aws.Config{
 		Region: &account.Region,
+		Endpoint:         aws.String(endpointURL),
 	})
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to create session.")
