@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sts"
 	"github.com/pkg/errors"
@@ -393,7 +394,25 @@ func loginToStsUsingRole(account *cfg.IDPAccount, role *saml2aws.AWSRole, samlAs
 
 	resp, err := svc.AssumeRoleWithSAML(params)
 	if err != nil {
-		return nil, errors.Wrap(err, "Error retrieving STS credentials using SAML.")
+		// Check if the error is due to exceeding MaxSessionDuration
+		if awsErr, ok := err.(awserr.Error); ok {
+			if awsErr.Code() == "ValidationError" && strings.Contains(awsErr.Message(), "MaxSessionDuration") {
+				log.Printf("Warning: Requested session duration (%d seconds) exceeds the role's MaxSessionDuration.", account.SessionDuration)
+				log.Println("Retrying with role's default/maximum session duration...")
+
+				// Retry without DurationSeconds - AWS will use the role's MaxSessionDuration
+				params.DurationSeconds = nil
+				resp, err = svc.AssumeRoleWithSAML(params)
+				if err != nil {
+					return nil, errors.Wrap(err, "Error retrieving STS credentials using SAML (retry with default duration).")
+				}
+				log.Println("Successfully obtained credentials with role's maximum session duration.")
+			} else {
+				return nil, errors.Wrap(err, "Error retrieving STS credentials using SAML.")
+			}
+		} else {
+			return nil, errors.Wrap(err, "Error retrieving STS credentials using SAML.")
+		}
 	}
 
 	return &awsconfig.AWSCredentials{
