@@ -13,7 +13,7 @@ require (
 	github.com/avast/retry-go v3.0.0+incompatible
 	github.com/aws/aws-sdk-go v1.55.6
 	github.com/beevik/etree v1.4.1
-	github.com/danieljoos/wincred v1.2.2
+	github.com/danieljoos/wincred v1.2.3
 	github.com/google/uuid v1.6.0
 	github.com/h2non/gock v1.2.0
 	github.com/keybase/go-keychain v0.0.0-20211119201326-e02f34051621
@@ -23,7 +23,7 @@ require (
 	github.com/playwright-community/playwright-go v0.4702.0
 	github.com/sirupsen/logrus v1.9.3
 	github.com/skratchdot/open-golang v0.0.0-20200116055534-eef842397966
-	github.com/stretchr/testify v1.10.0
+	github.com/stretchr/testify v1.11.1
 	github.com/tidwall/gjson v1.18.0
 	github.com/trimble-oss/go-webauthn-client v0.3.0
 	golang.org/x/net v0.30.0
