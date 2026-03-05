@@ -1,6 +1,7 @@
 package awsconfig
 
 import (
+	"io/fs"
 	"os"
 	"path"
 	"path/filepath"
@@ -72,6 +73,15 @@ func (p *CredentialsProvider) Save(awsCreds *AWSCredentials) error {
 	if err != nil {
 		return err
 	}
+
+	lock, err := newFileLock(filename)
+	if err != nil {
+		return errors.Wrap(err, "unable to create credentials file lock")
+	}
+	if err := lock.Lock(); err != nil {
+		return errors.Wrap(err, "unable to acquire credentials file lock")
+	}
+	defer lock.Unlock()
 
 	err = p.ensureConfigExists()
 	if err != nil {
@@ -246,5 +256,35 @@ func saveProfile(filename, profile string, awsCreds *AWSCredentials) error {
 		return err
 	}
 
-	return config.SaveTo(filename)
+	// Atomic write: write to temp file then rename to prevent partial writes
+	tmpFile, err := os.CreateTemp(filepath.Dir(filename), ".credentials.tmp.*")
+	if err != nil {
+		return errors.Wrap(err, "unable to create temp file")
+	}
+	tmpName := tmpFile.Name()
+
+	_, err = config.WriteTo(tmpFile)
+	if err != nil {
+		tmpFile.Close()
+		os.Remove(tmpName)
+		return errors.Wrap(err, "unable to write credentials to temp file")
+	}
+	if err := tmpFile.Close(); err != nil {
+		os.Remove(tmpName)
+		return errors.Wrap(err, "unable to close temp file")
+	}
+
+	// Preserve permissions of the original file
+	if fi, err := os.Stat(filename); err == nil {
+		_ = os.Chmod(tmpName, fi.Mode()&fs.ModePerm)
+	} else {
+		_ = os.Chmod(tmpName, 0600)
+	}
+
+	if err := os.Rename(tmpName, filename); err != nil {
+		os.Remove(tmpName)
+		return errors.Wrap(err, "unable to rename temp credentials file")
+	}
+
+	return nil
 }
