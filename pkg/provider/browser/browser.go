@@ -115,15 +115,19 @@ func (cl *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 
 	// load saved storageState if present and add to contextOptions
 	userHomeDir, err := os.UserHomeDir()
-	storageStatePath := fmt.Sprintf("%s/.aws/saml2aws/storageState.json", userHomeDir)
 	if err != nil {
 		return "", err
+	}
+	storageStateDir := fmt.Sprintf("%s/.aws/saml2aws", userHomeDir)
+	storageStatePath := fmt.Sprintf("%s/storageState.json", storageStateDir)
+	if err := os.MkdirAll(storageStateDir, 0700); err != nil {
+		logger.Warn("failed to create storageState directory, session state will not be persisted: ", err)
 	}
 	if _, err := os.Stat(storageStatePath); err == nil {
 		contextOptions.StorageStatePath = playwright.String(storageStatePath)
 	}
 
-	// Create new broswer context
+	// Create new browser context
 	context, err := browser.NewContext(contextOptions)
 	if err != nil {
 		return "", err
