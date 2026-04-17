@@ -73,6 +73,7 @@ func (cl *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 	// TODO: provide some overrides for this window
 	launchOptions := playwright.BrowserTypeLaunchOptions{
 		Headless: playwright.Bool(cl.Headless),
+		Proxy:    proxyFromEnv(),
 	}
 
 	validBrowserTypes := []string{"chromium", "firefox", "webkit", "chrome", "chrome-beta", "chrome-dev", "chrome-canary", "msedge", "msedge-beta", "msedge-dev", "msedge-canary"}
@@ -261,6 +262,30 @@ func (cl *Client) Validate(loginDetails *creds.LoginDetails) error {
 		return errors.New("empty URL")
 	}
 
+	return nil
+}
+
+// proxyFromEnv sets the Playwright browser proxy from the first non-empty value among
+// ALL_PROXY, HTTPS_PROXY, HTTP_PROXY (each checked uppercase then lowercase), in that order.
+// Empty or whitespace-only values are ignored. Other saml2aws providers use Go's HTTP client
+// and respect the same variables via http.ProxyFromEnvironment.
+func proxyFromEnv() *playwright.Proxy {
+	keys := []string{
+		"ALL_PROXY", "all_proxy",
+		"HTTPS_PROXY", "https_proxy",
+		"HTTP_PROXY", "http_proxy",
+	}
+	for _, key := range keys {
+		v, ok := os.LookupEnv(key)
+		if !ok {
+			continue
+		}
+		v = strings.TrimSpace(v)
+		if v == "" {
+			continue
+		}
+		return &playwright.Proxy{Server: v}
+	}
 	return nil
 }
 

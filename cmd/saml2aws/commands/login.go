@@ -358,7 +358,8 @@ func resolveRole(awsRoles []*saml2aws.AWSRole, samlAssertion string, account *cf
 func loginToStsUsingRole(account *cfg.IDPAccount, role *saml2aws.AWSRole, samlAssertion string) (*awsconfig.AWSCredentials, error) {
 
 	sess, err := session.NewSession(&aws.Config{
-		Region: &account.Region,
+		Region:   &account.Region,
+		Endpoint: &account.STSEndpoint,
 	})
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to create session.")
