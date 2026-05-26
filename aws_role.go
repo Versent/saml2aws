@@ -13,6 +13,8 @@ type AWSRole struct {
 	Name         string
 }
 
+var awsRoleRe = regexp.MustCompile(`arn:([^:\n]*):([^:\n]*):([^:\n]*):([^:\n]*):(([^:/\n]*)[:/])?([^:,\n]*)`)
+
 // ParseAWSRoles parses and splits the roles while also validating the contents
 func ParseAWSRoles(roles []string) ([]*AWSRole, error) {
 	awsRoles := make([]*AWSRole, len(roles))
@@ -30,8 +32,7 @@ func ParseAWSRoles(roles []string) ([]*AWSRole, error) {
 }
 
 func parseRole(role string) (*AWSRole, error) {
-	r, _ := regexp.Compile("arn:([^:\n]*):([^:\n]*):([^:\n]*):([^:\n]*):(([^:/\n]*)[:/])?([^:,\n]*)")
-	tokens := r.FindAllString(role, -1)
+	tokens := awsRoleRe.FindAllString(role, -1)
 
 	if len(tokens) != 2 {
 		return nil, fmt.Errorf("Invalid role string only %d tokens", len(tokens))
