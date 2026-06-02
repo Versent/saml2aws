@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -136,6 +137,9 @@ func (cl *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 
 	defer func() {
 		logger.Info("saving storage state")
+		if err := os.MkdirAll(filepath.Dir(storageStatePath), 0700); err != nil {
+			logger.Info("Error creating saml2aws directory", err)
+		}
 		_, err := context.StorageState(storageStatePath)
 		if err != nil {
 			logger.Info("Error saving storage state", err)
