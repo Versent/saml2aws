@@ -311,13 +311,14 @@ func selectAwsRole(samlAssertion string, account *cfg.IDPAccount) (*saml2aws.AWS
 func resolveRole(awsRoles []*saml2aws.AWSRole, samlAssertion string, account *cfg.IDPAccount) (*saml2aws.AWSRole, error) {
 	var role = new(saml2aws.AWSRole)
 
-	if len(awsRoles) == 1 {
-		if account.RoleARN != "" {
-			return saml2aws.LocateRole(awsRoles, account.RoleARN)
-		}
-		return awsRoles[0], nil
-	} else if len(awsRoles) == 0 {
+	if len(awsRoles) == 0 {
 		return nil, errors.New("No roles available.")
+	}
+	if account.RoleARN != "" {
+		return saml2aws.LocateRole(awsRoles, account.RoleARN)
+	}
+	if len(awsRoles) == 1 {
+		return awsRoles[0], nil
 	}
 
 	samlAssertionData, err := b64.StdEncoding.DecodeString(samlAssertion)
