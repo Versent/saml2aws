@@ -1,6 +1,8 @@
 package authentik
 
 import (
+	"encoding/base64"
+	"encoding/json"
 	"testing"
 
 	"github.com/h2non/gock"
@@ -8,7 +10,26 @@ import (
 
 	"github.com/versent/saml2aws/v2/pkg/cfg"
 	"github.com/versent/saml2aws/v2/pkg/creds"
+	"github.com/versent/saml2aws/v2/pkg/provider/okta"
 )
+
+// fakeFido is a test double for the FIDO hardware client so WebAuthn tests do
+// not need a real security key.
+type fakeFido struct {
+	assertion *okta.SignedAssertion
+	err       error
+
+	gotChallenge string
+	gotRpID      string
+	gotKeyHandle string
+}
+
+func (f *fakeFido) challengeU2F(challenge, rpID, keyHandle string) (*okta.SignedAssertion, error) {
+	f.gotChallenge = challenge
+	f.gotRpID = rpID
+	f.gotKeyHandle = keyHandle
+	return f.assertion, f.err
+}
 
 func Test_getLoginJSON(t *testing.T) {
 	assert := assert.New(t)
@@ -47,6 +68,52 @@ func Test_getLoginJSON(t *testing.T) {
 		Type:      "native",
 	}
 	_, err = getLoginJSON(loginDetails, payload)
+	assert.NotNil(err)
+}
+
+func Test_signWebAuthnAssertion(t *testing.T) {
+	assert := assert.New(t)
+
+	fake := &fakeFido{assertion: &okta.SignedAssertion{
+		ClientData:        "client-data-base64url",
+		SignatureData:     base64.StdEncoding.EncodeToString([]byte("signature")),
+		AuthenticatorData: base64.StdEncoding.EncodeToString([]byte("authdata")),
+	}}
+	kc := &Client{fido: fake}
+
+	opts := &webAuthnRequestOptions{
+		Challenge:        "Y2hhbGxlbmdl",
+		RpID:             "id.example.com",
+		UserVerification: "preferred",
+		AllowCredentials: []webAuthnCredentialDescriptor{
+			{ID: "cred-id", Type: "public-key", Transports: []string{"usb"}},
+		},
+	}
+
+	b, err := kc.signWebAuthnAssertion("ak-stage-authenticator-validate", opts)
+	assert.Nil(err)
+
+	// The challenge, rpId and credential id are forwarded to the device.
+	assert.Equal("Y2hhbGxlbmdl", fake.gotChallenge)
+	assert.Equal("id.example.com", fake.gotRpID)
+	assert.Equal("cred-id", fake.gotKeyHandle)
+
+	var body webAuthnAssertion
+	assert.Nil(json.Unmarshal(b, &body))
+	assert.Equal("ak-stage-authenticator-validate", body.Component)
+	assert.Equal("cred-id", body.WebAuthn.ID)
+	assert.Equal("cred-id", body.WebAuthn.RawID)
+	assert.Equal("public-key", body.WebAuthn.Type)
+	assert.Equal("client-data-base64url", body.WebAuthn.Response.ClientDataJSON)
+	assert.Equal(base64.RawURLEncoding.EncodeToString([]byte("authdata")), body.WebAuthn.Response.AuthenticatorData)
+	assert.Equal(base64.RawURLEncoding.EncodeToString([]byte("signature")), body.WebAuthn.Response.Signature)
+	assert.Nil(body.WebAuthn.Response.UserHandle)
+}
+
+func Test_signWebAuthnAssertion_noCredentials(t *testing.T) {
+	assert := assert.New(t)
+	kc := &Client{fido: &fakeFido{}}
+	_, err := kc.signWebAuthnAssertion("ak-stage-authenticator-validate", &webAuthnRequestOptions{})
 	assert.NotNil(err)
 }
 
@@ -1068,6 +1135,144 @@ func Test_simplifiedFlowAuthWithSeperatedUsernamePasswordAndAuthenticator(t *tes
 		Username: "user",
 		Password: "pwd",
 		MFAToken: "totp",
+		URL:      "http://127.0.0.1/application/saml/aws/sso/binding/init",
+	}
+	gock.InterceptClient(&client.client.Client)
+	result, err := client.Authenticate(loginDetails)
+
+	assert := assert.New(t)
+	assert.Nil(err)
+	assert.Equal(result, samlResponse)
+}
+
+// Test_authWithWebAuthn drives the authenticator-validate stage with a webauthn
+// device and no MFA token, expecting the provider to sign a FIDO assertion.
+func Test_authWithWebAuthn(t *testing.T) {
+	defer gock.Off()
+	samlResponse := "PHNhbWxwOlJlc3BvbnNlIHhtbG5zOnNhbWxwPSJ1cm46b2FzaX"
+	gock.New("http://127.0.0.1").
+		Get("/application/saml/aws/sso/binding/init").
+		Reply(302).
+		SetHeader("Set-Cookie", "[authentik_session=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzaWQiOiJ6cHI3NGdzMjNnOGNqbmF1bXNheGQ1dXVrc2VtZGZpNyIsImlzcyI6ImF1dGhlbnRpayIsInN1YiI6ImFub255bW91cyIsImF1dGhlbnRpY2F0ZWQiOmZhbHNlLCJhY3IiOiJnb2F1dGhlbnRpay5pby9jb3JlL2RlZmF1bHQifQ.zNiX4pk6G9ABeDip0PLs8-0irm2aQ_Arr_RgTxTGCQM; HttpOnly; Path=/; SameSite=None; Secure]").
+		SetHeader("Location", "/flows/-/default/authentication/?next=/application/saml/aws/sso/binding/init/")
+
+	gock.New("http://127.0.0.1").
+		Get("/flows/-/default/authentication").
+		Reply(302).
+		SetHeader("Location", "/if/flow/default-authentication-flow/?next=%2Fapplication%2Fsaml%2Faws%2Fsso%2Fbinding%2Finit%2F")
+
+	gock.New("http://127.0.0.1").
+		Get("/if/flow/default-authentication-flow").
+		Reply(200).
+		BodyString("")
+
+	gock.New("http://127.0.0.1").
+		Get("/api/v3/flows/executor/default-authentication-flow").
+		Reply(200).
+		JSON(map[string]interface{}{
+			"type":            "native",
+			"flow_info":       map[string]interface{}{"title": "Welcome to authentik!", "background": "/static/dist/assets/images/flow_background.jpg", "cancel_url": "/flows/-/cancel/", "layout": "stacked"},
+			"component":       "ak-stage-identification",
+			"user_fields":     []string{"username", "email"},
+			"password_fields": false,
+		})
+
+	gock.New("http://127.0.0.1").
+		Post("/api/v3/flows/executor/default-authentication-flow").
+		Reply(302).
+		SetHeader("Location", "/api/v3/flows/executor/default-authentication-flow/?query=next%3D%252F")
+
+	gock.New("http://127.0.0.1").
+		Get("api/v3/flows/executor/default-authentication-flow").
+		Reply(200).
+		JSON(map[string]interface{}{
+			"type":         "native",
+			"flow_info":    map[string]interface{}{"title": "Welcome to authentik!", "background": "/static/dist/assets/images/flow_background.jpg", "cancel_url": "/flows/-/cancel/", "layout": "stacked"},
+			"component":    "ak-stage-password",
+			"pending_user": "user",
+		})
+
+	gock.New("http://127.0.0.1").
+		Post("/api/v3/flows/executor/default-authentication-flow").
+		Reply(302).
+		SetHeader("Location", "/api/v3/flows/executor/default-authentication-flow/?query=next%3D%252F")
+
+	gock.New("http://127.0.0.1").
+		Get("api/v3/flows/executor/default-authentication-flow").
+		Reply(200).
+		JSON(map[string]interface{}{
+			"type":         "native",
+			"flow_info":    map[string]interface{}{"title": "Welcome to authentik!", "background": "/static/dist/assets/images/flow_background.jpg", "cancel_url": "/flows/-/cancel/", "layout": "stacked"},
+			"component":    "ak-stage-authenticator-validate",
+			"pending_user": "user",
+			"device_challenges": []map[string]interface{}{
+				{
+					"device_class": "webauthn",
+					"device_uid":   "13",
+					"challenge": map[string]interface{}{
+						"challenge":        "Y2hhbGxlbmdl",
+						"rpId":             "127.0.0.1",
+						"timeout":          60000,
+						"userVerification": "preferred",
+						"allowCredentials": []map[string]interface{}{
+							{"id": "cred-id", "type": "public-key", "transports": []string{"usb"}},
+						},
+					},
+				},
+			},
+			"configuration_stages": []any{},
+		})
+
+	gock.New("http://127.0.0.1").
+		Post("/api/v3/flows/executor/default-authentication-flow").
+		Reply(302).
+		SetHeader("Location", "/api/v3/flows/executor/default-authentication-flow/?query=next%3D%252F")
+
+	gock.New("http://127.0.0.1").
+		Get("/api/v3/flows/executor/default-authentication-flow").
+		Reply(302).
+		SetHeader("Location", "/api/v3/flows/executor/default-authentication-flow/?query=next%3D%252F")
+
+	gock.New("http://127.0.0.1").
+		Get("/api/v3/flows/executor/default-authentication-flow").
+		Reply(200).
+		JSON(map[string]interface{}{
+			"type": "redirect",
+			"to":   "http://127.0.0.1/application/saml/aws/sso/binding/init",
+		})
+
+	gock.New("http://127.0.0.1").
+		Get("/application/saml/aws/sso/binding/init").
+		Reply(302).
+		SetHeader("Location", "/if/flow/default-provider-authorization-implicit-consent/")
+
+	gock.New("http://127.0.0.1").
+		Get("/if/flow/default-provider-authorization-implicit-consent/").
+		Reply(200)
+
+	gock.New("http://127.0.0.1").
+		Get("/api/v3/flows").
+		Reply(200).
+		JSON(map[string]interface{}{
+			"type":      "native",
+			"flow_info": map[string]interface{}{"title": "Redirecting to aws", "background": "/static/dist/assets/images/flow_background.jpg", "cancel_url": "/flows/-/cancel/", "layout": "stacked"},
+			"component": "ak-stage-autosubmit",
+			"url":       "https://signin.amazonaws.com/saml",
+			"attrs": map[string]interface{}{
+				"ACSUrl":       "https://signin.amazonaws.com/saml",
+				"SAMLResponse": samlResponse,
+			},
+		})
+
+	client, _ := New(&cfg.IDPAccount{})
+	client.fido = &fakeFido{assertion: &okta.SignedAssertion{
+		ClientData:        "client-data-base64url",
+		SignatureData:     base64.StdEncoding.EncodeToString([]byte("signature")),
+		AuthenticatorData: base64.StdEncoding.EncodeToString([]byte("authdata")),
+	}}
+	loginDetails := &creds.LoginDetails{
+		Username: "user",
+		Password: "pwd",
 		URL:      "http://127.0.0.1/application/saml/aws/sso/binding/init",
 	}
 	gock.InterceptClient(&client.client.Client)
