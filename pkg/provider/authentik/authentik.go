@@ -22,6 +22,9 @@ type Client struct {
 	provider.ValidateBase
 
 	client *provider.HTTPClient
+	// fido performs WebAuthn (FIDO U2F) assertions against a hardware security
+	// key. It is an interface so tests can substitute a fake device.
+	fido fidoAuthenticator
 }
 
 var logger = logrus.WithField("provider", "authentik")
@@ -40,6 +43,7 @@ func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 	}
 	return &Client{
 		client: client,
+		fido:   u2fAuthenticator{},
 	}, nil
 }
 
@@ -47,6 +51,7 @@ func New(idpAccount *cfg.IDPAccount) (*Client, error) {
 func (kc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error) {
 	ctx := &authentikContext{
 		loginDetails: loginDetails,
+		url:          loginDetails.URL,
 	}
 	samlResponse, err := kc.auth(ctx)
 	if err != nil {
@@ -58,8 +63,8 @@ func (kc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 
 // auth Authentication
 func (kc *Client) auth(ctx *authentikContext) (string, error) {
-	logger.Debug("[GET] ", ctx.loginDetails.URL)
-	res, err := kc.client.Get(ctx.loginDetails.URL)
+	logger.Debug("[GET] ", ctx.url)
+	res, err := kc.client.Get(ctx.url)
 	if err != nil {
 		return "", errors.Wrap(err, "error retrieving initial url")
 	}
@@ -104,7 +109,7 @@ func (kc *Client) processQuery(ctx *authentikContext) (string, error) {
 	var next string
 	var err error
 
-	next, err = queryNextURL(ctx.loginDetails.URL)
+	next, err = queryNextURL(ctx.url)
 	if err != nil {
 		return "", err
 	}
@@ -134,8 +139,8 @@ func (kc *Client) processQuery(ctx *authentikContext) (string, error) {
 
 // queryNext Do query and submit infos
 func (kc *Client) queryNext(ctx *authentikContext) (bool, string, error) {
-	logger.Debug("[GET] ", ctx.loginDetails.URL)
-	res, err := kc.client.Get(ctx.loginDetails.URL)
+	logger.Debug("[GET] ", ctx.url)
+	res, err := kc.client.Get(ctx.url)
 	if err != nil {
 		return false, "", err
 	}
@@ -176,13 +181,34 @@ func (kc *Client) queryNext(ctx *authentikContext) (bool, string, error) {
 
 // doPostQuery For all data setting operations
 func (kc *Client) doPostQuery(ctx *authentikContext, payload *authentikPayload) (string, error) {
-	data, err := getLoginJSON(ctx.loginDetails, payload)
-	if err != nil {
-		return "", err
+	var data []byte
+	var err error
+
+	// Prefer a hardware security key for the authenticator-validate stage when no
+	// explicit MFA token was supplied and the stage offers a webauthn device.
+	if payload.Component == "ak-stage-authenticator-validate" && ctx.loginDetails.MFAToken == "" {
+		var opts *webAuthnRequestOptions
+		opts, err = payload.webAuthnChallenge()
+		if err != nil {
+			return "", err
+		}
+		if opts != nil {
+			data, err = kc.signWebAuthnAssertion(payload.Component, opts)
+			if err != nil {
+				return "", err
+			}
+		}
 	}
 
-	logger.Debug("[POST]", ctx.loginDetails.URL)
-	res, err := kc.client.Post(ctx.loginDetails.URL, "application/json", bytes.NewReader(data))
+	if data == nil {
+		data, err = getLoginJSON(ctx.loginDetails, payload)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	logger.Debug("[POST]", ctx.url)
+	res, err := kc.client.Post(ctx.url, "application/json", bytes.NewReader(data))
 	if err != nil {
 		return "", err
 	}
@@ -203,7 +229,10 @@ func (kc *Client) doPostQuery(ctx *authentikContext, payload *authentikPayload) 
 		return "", errors.New(errMsg)
 	}
 	loc, err := res.Location()
-	return loc.String(), err
+	if err != nil {
+		return "", errors.Wrapf(err, "unexpected response (status %d) from authentik flow", res.StatusCode)
+	}
+	return loc.String(), nil
 }
 
 // getLoginJSON Generate the login json
