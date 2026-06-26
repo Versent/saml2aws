@@ -229,7 +229,10 @@ func (kc *Client) doPostQuery(ctx *authentikContext, payload *authentikPayload) 
 		return "", errors.New(errMsg)
 	}
 	loc, err := res.Location()
-	return loc.String(), err
+	if err != nil {
+		return "", errors.Wrapf(err, "unexpected response (status %d) from authentik flow", res.StatusCode)
+	}
+	return loc.String(), nil
 }
 
 // getLoginJSON Generate the login json

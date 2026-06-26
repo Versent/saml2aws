@@ -117,6 +117,29 @@ func Test_signWebAuthnAssertion_noCredentials(t *testing.T) {
 	assert.NotNil(err)
 }
 
+// Test_doPostQuery_noLocation ensures a non-redirect response without a Location
+// header (e.g. a 403/500 from a WAF or upstream) yields a clean error rather than
+// a nil pointer dereference on res.Location().
+func Test_doPostQuery_noLocation(t *testing.T) {
+	defer gock.Off()
+	gock.New("http://127.0.0.1").
+		Post("/api/v3/flows/executor/default-authentication-flow").
+		Reply(403) // no Location header
+
+	client, _ := New(&cfg.IDPAccount{})
+	gock.InterceptClient(&client.client.Client)
+
+	ctx := &authentikContext{
+		loginDetails: &creds.LoginDetails{Username: "user", Password: "pwd"},
+		url:          "http://127.0.0.1/api/v3/flows/executor/default-authentication-flow/",
+	}
+	payload := &authentikPayload{Component: "ak-stage-password", Type: "native"}
+
+	assert := assert.New(t)
+	_, err := client.doPostQuery(ctx, payload)
+	assert.NotNil(err)
+}
+
 func Test_queryNextURL(t *testing.T) {
 	assert := assert.New(t)
 	url, err := queryNextURL("https://127.0.0.1/if/flow/default-authentication-flow/?next=/application/saml/aws/sso/binding/init/")
