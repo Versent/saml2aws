@@ -6,8 +6,10 @@ import (
 	"github.com/h2non/gock"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/versent/saml2aws/v2/mocks"
 	"github.com/versent/saml2aws/v2/pkg/cfg"
 	"github.com/versent/saml2aws/v2/pkg/creds"
+	"github.com/versent/saml2aws/v2/pkg/prompter"
 )
 
 func Test_getLoginJSON(t *testing.T) {
@@ -48,6 +50,31 @@ func Test_getLoginJSON(t *testing.T) {
 	}
 	_, err = getLoginJSON(loginDetails, payload)
 	assert.NotNil(err)
+}
+
+// Test_getLoginJSONPromptsForMFAToken when no MFA token is provided via the CLI,
+// the user should be prompted for it.
+func Test_getLoginJSONPromptsForMFAToken(t *testing.T) {
+	assert := assert.New(t)
+
+	pr := &mocks.Prompter{}
+	prompter.SetPrompter(pr)
+	pr.Mock.On("RequestSecurityCode", "000000").Return("123456")
+
+	loginDetails := &creds.LoginDetails{
+		Username: "user",
+		Password: "pwd",
+		URL:      "https://127.0.0.1/sso/init",
+	}
+	payload := &authentikPayload{
+		Component: "ak-stage-authenticator-validate",
+		Type:      "native",
+	}
+	b, err := getLoginJSON(loginDetails, payload)
+	assert.Nil(err)
+	assert.Equal(string(b), "{\"code\":\"123456\",\"component\":\"ak-stage-authenticator-validate\"}")
+	assert.Equal("123456", loginDetails.MFAToken)
+	pr.Mock.AssertCalled(t, "RequestSecurityCode", "000000")
 }
 
 func Test_queryNextURL(t *testing.T) {

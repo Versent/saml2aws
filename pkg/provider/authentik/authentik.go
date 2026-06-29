@@ -14,6 +14,7 @@ import (
 
 	"github.com/versent/saml2aws/v2/pkg/cfg"
 	"github.com/versent/saml2aws/v2/pkg/creds"
+	"github.com/versent/saml2aws/v2/pkg/prompter"
 	"github.com/versent/saml2aws/v2/pkg/provider"
 )
 
@@ -222,6 +223,10 @@ func getLoginJSON(loginDetails *creds.LoginDetails, payload *authentikPayload) (
 		m["password"] = loginDetails.Password
 
 	case "ak-stage-authenticator-validate":
+		if loginDetails.MFAToken == "" {
+			loginDetails.MFAToken = prompter.RequestSecurityCode("000000")
+		}
+
 		m["code"] = loginDetails.MFAToken
 	default:
 		return []byte(""), errors.New("unknown component: " + component)
