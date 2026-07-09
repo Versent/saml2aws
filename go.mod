@@ -19,8 +19,8 @@ require (
 	github.com/keybase/go-keychain v0.0.0-20211119201326-e02f34051621
 	github.com/marshallbrekka/go-u2fhost v0.0.0-20210111072507-3ccdec8c8105
 	github.com/mitchellh/go-homedir v1.1.0
-	github.com/mxschmitt/playwright-go v0.6100.0
 	github.com/pkg/errors v0.9.1
+	github.com/playwright-community/playwright-go v0.6000.0
 	github.com/sirupsen/logrus v1.9.3
 	github.com/skratchdot/open-golang v0.0.0-20200116055534-eef842397966
 	github.com/stretchr/testify v1.10.0
