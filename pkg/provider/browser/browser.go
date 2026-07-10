@@ -8,7 +8,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/playwright-community/playwright-go"
+	"github.com/mxschmitt/playwright-go"
 	"github.com/sirupsen/logrus"
 	"github.com/versent/saml2aws/v2/pkg/cfg"
 	"github.com/versent/saml2aws/v2/pkg/creds"
@@ -136,7 +136,9 @@ func (cl *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 
 	defer func() {
 		logger.Info("saving storage state")
-		_, err := context.StorageState(storageStatePath)
+		_, err := context.StorageState(playwright.BrowserContextStorageStateOptions{
+			Path: playwright.String(storageStatePath),
+		})
 		if err != nil {
 			logger.Info("Error saving storage state", err)
 		}
