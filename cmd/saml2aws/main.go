@@ -127,6 +127,7 @@ func main() {
 	cmdLogin.Flag("disable-sessions", "Do not use Okta sessions. Uses Okta sessions by default. (env: SAML2AWS_OKTA_DISABLE_SESSIONS)").Envar("SAML2AWS_OKTA_DISABLE_SESSIONS").BoolVar(&commonFlags.DisableSessions)
 	cmdLogin.Flag("disable-remember-device", "Do not remember Okta MFA device. Remembers MFA device by default. (env: SAML2AWS_OKTA_DISABLE_REMEMBER_DEVICE)").Envar("SAML2AWS_OKTA_DISABLE_REMEMBER_DEVICE").BoolVar(&commonFlags.DisableRememberDevice)
 	cmdLogin.Flag("try-no-prompt", "Only prompt for credentials if they cannot be read from keyring").BoolVar(&loginFlags.TryNoPrompt)
+	cmdLogin.Flag("reup", "Automatically refresh credentials before they expire (similar to aws_okta_keyman --reup)").BoolVar(&loginFlags.Reup)
 
 	// `exec` command and settings
 	cmdExec := app.Command("exec", "Exec the supplied command with env vars from STS token.")
