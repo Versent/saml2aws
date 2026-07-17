@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -25,6 +27,11 @@ import (
 
 // Login login to ADFS
 func Login(loginFlags *flags.LoginExecFlags) error {
+	// If reup mode is enabled, run the continuous refresh loop
+	if loginFlags.Reup {
+		return LoginWithReup(loginFlags)
+	}
+
 	logger := logrus.WithField("command", "login")
 
 	account, err := buildIdpAccount(loginFlags)
@@ -467,4 +474,174 @@ func PrintCredentialProcess(awsCreds *awsconfig.AWSCredentials) error {
 		fmt.Println(jsonData)
 	}
 	return err
+}
+
+// LoginWithReup performs initial login and then continuously refreshes credentials before expiration
+func LoginWithReup(loginFlags *flags.LoginExecFlags) error {
+	logger := logrus.WithField("command", "login --reup")
+
+	// Setup signal handling for graceful shutdown
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+
+	account, err := buildIdpAccount(loginFlags)
+	if err != nil {
+		return errors.Wrap(err, "Error building login details.")
+	}
+
+	// Initial login with user interaction (password + MFA)
+	loginDetails, err := resolveLoginDetails(account, loginFlags)
+	if err != nil {
+		return errors.Wrap(err, "Error resolving login details.")
+	}
+
+	log.Printf("Starting reup mode - credentials will be automatically refreshed.")
+	log.Printf("Press Ctrl+C to exit.")
+
+	// Disable prompts for subsequent logins (after the first one)
+	savedSkipPrompt := loginFlags.CommonFlags.SkipPrompt
+	savedTryNoPrompt := loginFlags.TryNoPrompt
+
+	iteration := 0
+	for {
+		iteration++
+		logger.WithField("iteration", iteration).Debug("Starting login iteration")
+
+		if iteration == 1 {
+			log.Printf("[Iteration %d] Performing initial authentication...", iteration)
+		} else {
+			log.Printf("[Iteration %d] Refreshing credentials...", iteration)
+			// After first login, skip prompts and use saved credentials from keychain
+			loginFlags.CommonFlags.SkipPrompt = true
+			loginFlags.TryNoPrompt = true
+
+			// Reload credentials from keychain for subsequent iterations
+			if !loginFlags.CommonFlags.DisableKeychain {
+				err = credentials.LookupCredentials(loginDetails, account.Provider)
+				if err != nil {
+					logger.WithError(err).Warn("Could not reload credentials from keychain")
+				}
+			}
+		}
+
+		// Perform the login
+		_, expiresAt, err := performLogin(account, loginDetails, loginFlags)
+		if err != nil {
+			log.Printf("Error during login: %v", err)
+			// Restore original prompt settings before returning
+			loginFlags.CommonFlags.SkipPrompt = savedSkipPrompt
+			loginFlags.TryNoPrompt = savedTryNoPrompt
+			return err
+		}
+
+		if iteration == 1 {
+			log.Printf("✓ Authentication successful!")
+		}
+		log.Printf("✓ Credentials saved. Valid until: %v", expiresAt.Format(time.RFC3339))
+
+		// Calculate sleep duration (refresh 10 minutes before expiry, minimum 5 minutes)
+		now := time.Now()
+		timeUntilExpiry := expiresAt.Sub(now)
+		refreshBuffer := 10 * time.Minute
+		sleepDuration := timeUntilExpiry - refreshBuffer
+
+		// Ensure we don't sleep for too short or negative duration
+		if sleepDuration < 5*time.Minute {
+			sleepDuration = 5 * time.Minute
+		}
+
+		nextRefresh := now.Add(sleepDuration)
+		log.Printf("Next refresh scheduled at: %v (in %v)", nextRefresh.Format(time.RFC3339), sleepDuration.Round(time.Second))
+
+		// Sleep until it's time to refresh, or exit on interrupt
+		select {
+		case <-time.After(sleepDuration):
+			log.Println("") // Empty line for readability
+			continue
+		case <-sigChan:
+			log.Println("\nReceived interrupt signal. Exiting gracefully...")
+			// Restore original prompt settings
+			loginFlags.CommonFlags.SkipPrompt = savedSkipPrompt
+			loginFlags.TryNoPrompt = savedTryNoPrompt
+			return nil
+		}
+	}
+}
+
+// performLogin executes a single login operation and returns the credentials and expiration time
+func performLogin(account *cfg.IDPAccount, loginDetails *creds.LoginDetails, loginFlags *flags.LoginExecFlags) (*awsconfig.AWSCredentials, time.Time, error) {
+	logger := logrus.WithField("function", "performLogin")
+
+	sharedCreds := awsconfig.NewSharedCredentials(account.Profile, account.CredentialsFile)
+	cacheProvider := &samlcache.SAMLCacheProvider{
+		Account:  account.Name,
+		Filename: account.SAMLCacheFile,
+	}
+
+	logger.Debug("Building SAML provider")
+	provider, err := saml2aws.NewSAMLClient(account)
+	if err != nil {
+		return nil, time.Time{}, errors.Wrap(err, "Error building IdP client.")
+	}
+
+	err = provider.Validate(loginDetails)
+	if err != nil {
+		return nil, time.Time{}, errors.Wrap(err, "Error validating login details.")
+	}
+
+	var samlAssertion string
+	if account.SAMLCache && cacheProvider.IsValid() {
+		logger.Debug("Using cached SAML assertion")
+		samlAssertion, err = cacheProvider.ReadRaw()
+		if err != nil {
+			logger.Debug("Could not read SAML cache, will authenticate")
+			samlAssertion = ""
+		}
+	}
+
+	if samlAssertion == "" {
+		logger.Debug("Authenticating to IdP")
+		samlAssertion, err = provider.Authenticate(loginDetails)
+		if err != nil {
+			return nil, time.Time{}, errors.Wrap(err, "Error authenticating to IdP.")
+		}
+
+		if account.SAMLCache {
+			err = cacheProvider.WriteRaw(samlAssertion)
+			if err != nil {
+				logger.WithError(err).Warn("Could not write SAML cache")
+			}
+		}
+	}
+
+	if samlAssertion == "" {
+		return nil, time.Time{}, errors.New("Response did not contain a valid SAML assertion")
+	}
+
+	// Save credentials to keychain (only needed on first iteration, but safe to do every time)
+	if !loginFlags.CommonFlags.DisableKeychain {
+		err = credentials.SaveCredentials(loginDetails.URL, loginDetails.Username, loginDetails.Password)
+		if err != nil {
+			logger.WithError(err).Warn("Error storing password in keychain")
+		}
+	}
+
+	role, err := selectAwsRole(samlAssertion, account)
+	if err != nil {
+		return nil, time.Time{}, errors.Wrap(err, "Failed to assume role.")
+	}
+
+	logger.WithField("role", role.RoleARN).Debug("Selected role")
+
+	awsCreds, err := loginToStsUsingRole(account, role, samlAssertion)
+	if err != nil {
+		return nil, time.Time{}, errors.Wrap(err, "Error logging into AWS role using SAML assertion.")
+	}
+
+	err = saveCredentials(awsCreds, sharedCreds)
+	if err != nil {
+		return nil, time.Time{}, errors.Wrap(err, "Error saving credentials.")
+	}
+
+	return awsCreds, awsCreds.Expires, nil
 }
