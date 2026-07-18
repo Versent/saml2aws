@@ -6,15 +6,24 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"regexp"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/pkg/errors"
 )
 
+// accountNameRe matches "Account: alias (123456789012)" capturing alias and number.
+var accountNameRe = regexp.MustCompile(`^Account: (.+) \((\d+)\)$`)
+
+// accountNumberRe matches "Account: 123456789012" capturing just the number.
+var accountNumberRe = regexp.MustCompile(`^Account: (\d+)$`)
+
 // AWSAccount holds the AWS account name and roles
 type AWSAccount struct {
-	Name  string
-	Roles []*AWSRole
+	Name          string
+	AccountNumber string
+	AccountAlias  string
+	Roles         []*AWSRole
 }
 
 // ParseAWSAccounts extract the aws accounts from the saml assertion
@@ -45,6 +54,12 @@ func ExtractAWSAccounts(data []byte) ([]*AWSAccount, error) {
 	doc.Find("fieldset > div.saml-account").Each(func(i int, s *goquery.Selection) {
 		account := new(AWSAccount)
 		account.Name = s.Find("div.saml-account-name").Text()
+		if m := accountNameRe.FindStringSubmatch(account.Name); m != nil {
+			account.AccountAlias = m[1]
+			account.AccountNumber = m[2]
+		} else if m := accountNumberRe.FindStringSubmatch(account.Name); m != nil {
+			account.AccountNumber = m[1]
+		}
 		s.Find("label").Each(func(i int, s *goquery.Selection) {
 			role := new(AWSRole)
 			role.Name = s.Text()

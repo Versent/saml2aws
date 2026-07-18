@@ -17,6 +17,8 @@ func TestExtractAWSAccounts(t *testing.T) {
 
 	account := accounts[0]
 	assert.Equal(t, account.Name, "Account: account-alias (000000000001)")
+	assert.Equal(t, account.AccountNumber, "000000000001")
+	assert.Equal(t, account.AccountAlias, "account-alias")
 
 	assert.Len(t, account.Roles, 2)
 	role := account.Roles[0]
@@ -28,6 +30,8 @@ func TestExtractAWSAccounts(t *testing.T) {
 
 	account = accounts[1]
 	assert.Equal(t, account.Name, "Account: 000000000002")
+	assert.Equal(t, account.AccountNumber, "000000000002")
+	assert.Equal(t, account.AccountAlias, "")
 
 	assert.Len(t, account.Roles, 1)
 	role = account.Roles[0]

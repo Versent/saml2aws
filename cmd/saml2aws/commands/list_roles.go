@@ -2,6 +2,7 @@ package commands
 
 import (
 	b64 "encoding/base64"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -137,6 +138,24 @@ func listRoles(awsRoles []*saml2aws.AWSRole, samlAssertion string, loginFlags *f
 	}
 
 	saml2aws.AssignPrincipals(awsRoles, awsAccounts)
+
+	if loginFlags.JSON {
+		output, err := json.Marshal(awsAccounts)
+		if err != nil {
+			return errors.Wrap(err, "error marshalling accounts to JSON")
+		}
+		fmt.Println(string(output))
+		return nil
+	}
+
+	if loginFlags.JSONPretty {
+		output, err := json.MarshalIndent(awsAccounts, "", "  ")
+		if err != nil {
+			return errors.Wrap(err, "error marshalling accounts to JSON")
+		}
+		fmt.Println(string(output))
+		return nil
+	}
 
 	log.Println("")
 	for _, account := range awsAccounts {

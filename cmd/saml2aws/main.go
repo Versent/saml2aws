@@ -154,6 +154,8 @@ func main() {
 	cmdListRoles.Flag("cache-file", "The location of the SAML cache file (env: SAML2AWS_SAML_CACHE_FILE)").Envar("SAML2AWS_SAML_CACHE_FILE").StringVar(&commonFlags.SAMLCacheFile)
 	listRolesFlags := new(flags.LoginExecFlags)
 	listRolesFlags.CommonFlags = commonFlags
+	cmdListRoles.Flag("json", "Output roles in JSON format (compact).").BoolVar(&listRolesFlags.JSON)
+	cmdListRoles.Flag("json-pretty", "Output roles in JSON format (pretty-printed).").BoolVar(&listRolesFlags.JSONPretty)
 
 	// `script` command and settings
 	cmdScript := app.Command("script", "Emit a script that will export environment variables.")
