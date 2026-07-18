@@ -102,6 +102,7 @@ func TestListRolesTextOutput(t *testing.T) {
 	assert.Contains(t, output, "arn:aws:iam::000000000002:role/Production")
 }
 
+// TestListRolesJSONOutput validates compact JSON output shape and values.
 func TestListRolesJSONOutput(t *testing.T) {
 	defer gock.Off()
 	mockAWSSignIn(t)
@@ -153,6 +154,7 @@ func TestListRolesJSONOutput(t *testing.T) {
 	assert.Equal(t, "arn:aws:iam::000000000002:saml-provider/test-idp", accounts[1].Roles[0].PrincipalARN)
 }
 
+// TestListRolesJSONPrettyOutput validates pretty-printed JSON output shape and values.
 func TestListRolesJSONPrettyOutput(t *testing.T) {
 	defer gock.Off()
 	mockAWSSignIn(t)
@@ -205,6 +207,7 @@ func TestListRolesJSONPrettyOutput(t *testing.T) {
 	assert.Equal(t, "arn:aws:iam::000000000002:saml-provider/test-idp", accounts[1].Roles[0].PrincipalARN)
 }
 
+// TestListRolesReturnsErrorWhenNoRoles validates that listRoles returns an error when no roles are provided.
 func TestListRolesReturnsErrorWhenNoRoles(t *testing.T) {
 	loginFlags := &flags.LoginExecFlags{
 		CommonFlags: &flags.CommonFlags{},
