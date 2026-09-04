@@ -136,7 +136,7 @@ func (cl *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 
 	defer func() {
 		logger.Info("saving storage state")
-		_, err := context.StorageState(storageStatePath)
+		_, err := context.StorageState(playwright.BrowserContextStorageStateOptions{Path: playwright.String(storageStatePath)})
 		if err != nil {
 			logger.Info("Error saving storage state", err)
 		}
