@@ -13,6 +13,7 @@ import (
 	mrand "math/rand"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"strconv"
 	"sync"
@@ -552,6 +553,88 @@ func setupTestClient(t *testing.T, ts *httptest.Server) (Client, *creds.LoginDet
 	}
 	loginDetails := &creds.LoginDetails{URL: ts.URL, Username: fixtureData.UserName, Password: "test123"}
 	return ac, loginDetails
+}
+
+func Test_processMfaAuth(t *testing.T) {
+	testCases := []struct {
+		name                     string
+		authMethodInputFieldName string
+		apiCanary                string
+		sessionID                string
+		expectedForm             url.Values
+		wantError                bool
+	}{
+		{
+			name:                     "submits advertised continuation fields",
+			authMethodInputFieldName: "mfaAuthMethod",
+			apiCanary:                "api-canary",
+			sessionID:                "page-session-id",
+			expectedForm: url.Values{
+				"flowToken":     []string{"completed-flow-token"},
+				"request":       []string{"completed-context"},
+				"login":         []string{"exampleuser@exampledomain.com"},
+				"mfaAuthMethod": []string{"PhoneAppOTP"},
+				"canary":        []string{"api-canary"},
+				"hpgrequestid":  []string{"page-session-id"},
+			},
+		},
+		{
+			name: "omits unavailable continuation fields",
+			expectedForm: url.Values{
+				"flowToken": []string{"completed-flow-token"},
+				"request":   []string{"completed-context"},
+				"login":     []string{"exampleuser@exampledomain.com"},
+			},
+		},
+		{
+			name:                     "rejects conflicting auth method field",
+			authMethodInputFieldName: "flowToken",
+			wantError:                true,
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			type requestResult struct {
+				form url.Values
+				err  error
+			}
+			requestResults := make(chan requestResult, 1)
+			server := httptest.NewTLSServer(http.HandlerFunc(func(responseWriter http.ResponseWriter, request *http.Request) {
+				err := request.ParseForm()
+				requestResults <- requestResult{form: request.PostForm, err: err}
+				responseWriter.WriteHeader(http.StatusOK)
+			}))
+			defer server.Close()
+
+			client, loginDetails := setupTestClient(t, server)
+			mfaResult := mfaResponse{
+				AuthMethodID: "PhoneAppOTP",
+				FlowToken:    "completed-flow-token",
+				Ctx:          "completed-context",
+			}
+			pageConfig := &ConvergedResponse{
+				URLPost:                  server.URL,
+				SFTName:                  "flowToken",
+				SPOSTUsername:            loginDetails.Username,
+				AuthMethodInputFieldName: testCase.authMethodInputFieldName,
+				APICanary:                testCase.apiCanary,
+				SessionID:                testCase.sessionID,
+			}
+
+			response, err := client.processMfaAuth(mfaResult, pageConfig)
+
+			if testCase.wantError {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			defer response.Body.Close()
+			result := <-requestResults
+			require.NoError(t, result.err)
+			require.Equal(t, testCase.expectedForm, result.form)
+		})
+	}
 }
 
 func writeFixtureBytes(t *testing.T, w http.ResponseWriter, r *http.Request, templateFile string, variableFixture FixtureData) {
