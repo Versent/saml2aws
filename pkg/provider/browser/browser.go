@@ -18,6 +18,10 @@ var logger = logrus.WithField("provider", "browser")
 
 const DEFAULT_TIMEOUT float64 = 300000
 
+type pageNavigator interface {
+	Goto(url string, options ...playwright.PageGotoOptions) (playwright.Response, error)
+}
+
 // Client client for browser based Identity Provider
 type Client struct {
 	BrowserType           string
@@ -171,7 +175,7 @@ var getSAMLResponse = func(page playwright.Page, loginDetails *creds.LoginDetail
 			data, dataErr = request.PostData()
 		}
 	})
-	if _, err := page.Goto(loginDetails.URL); err != nil {
+	if err := navigateToLoginPage(page, loginDetails.URL); err != nil {
 		return "", err
 	}
 
@@ -200,6 +204,13 @@ var getSAMLResponse = func(page playwright.Page, loginDetails *creds.LoginDetail
 	}
 
 	return values.Get("SAMLResponse"), nil
+}
+
+func navigateToLoginPage(page pageNavigator, loginURL string) error {
+	_, err := page.Goto(loginURL, playwright.PageGotoOptions{
+		WaitUntil: playwright.WaitUntilStateCommit,
+	})
+	return err
 }
 
 var autoFill = func(page playwright.Page, loginDetails *creds.LoginDetails) error {

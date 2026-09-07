@@ -168,6 +168,30 @@ func TestGetSAMLResponse(t *testing.T) {
 	// assert.Equal(t, samlp, samlResp)
 }
 
+type fakePageNavigator struct {
+	url     string
+	options []playwright.PageGotoOptions
+}
+
+func (f *fakePageNavigator) Goto(url string, options ...playwright.PageGotoOptions) (playwright.Response, error) {
+	f.url = url
+	f.options = options
+	return nil, nil
+}
+
+func TestNavigateToLoginPageWaitsForCommit(t *testing.T) {
+	page := &fakePageNavigator{}
+	loginURL := "https://idp.example.com/login"
+
+	err := navigateToLoginPage(page, loginURL)
+
+	require.NoError(t, err)
+	assert.Equal(t, loginURL, page.url)
+	require.Len(t, page.options, 1)
+	require.NotNil(t, page.options[0].WaitUntil)
+	assert.Equal(t, *playwright.WaitUntilStateCommit, *page.options[0].WaitUntil)
+}
+
 func TestExpectRequestOptions(t *testing.T) {
 	timeout := float64(100000)
 	idpAccount := cfg.IDPAccount{
