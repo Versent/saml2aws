@@ -24,9 +24,13 @@ const (
 	// SAMLAssertionValidityJitter is a small time delta used to avoid the race condition
 	// where a token expires between the time it's validated and re-used.
 	SAMLAssertionValidityJitter = -1 * time.Second
-	SAMLCacheFilePermissions    = 0600
-	SAMLCacheDirPermissions     = 0700
-	SAMLCacheDir                = "saml2aws"
+	// AWSSAMLRedemptionWindow is how long after its IssueInstant AWS STS accepts an
+	// assertion ("Token must be redeemed within 5 minutes of issuance"). It is often
+	// shorter than the NotOnOrAfter the IdP sets on SubjectConfirmationData.
+	AWSSAMLRedemptionWindow  = 5 * time.Minute
+	SAMLCacheFilePermissions = 0600
+	SAMLCacheDirPermissions  = 0700
+	SAMLCacheDir             = "saml2aws"
 )
 
 // SAMLCacheProvider  loads aws credentials file
@@ -88,6 +92,14 @@ func (p *SAMLCacheProvider) IsValid() bool {
 	}
 
 	logger.Debug("MFA Token expiry date:", ValidUntil.Format(time.RFC3339))
+
+	issuedAt, err := saml2aws.ExtractAssertionIssueInstant(data)
+	if err != nil {
+		logger.Debug("Could not extract the assertion IssueInstant", err)
+	} else if redeemBy := issuedAt.Add(AWSSAMLRedemptionWindow); redeemBy.Before(ValidUntil) {
+		logger.Debug("AWS redemption deadline:", redeemBy.Format(time.RFC3339))
+		ValidUntil = redeemBy
+	}
 
 	return time.Now().Before(ValidUntil.Add(SAMLAssertionValidityJitter))
 }

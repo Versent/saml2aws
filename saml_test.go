@@ -95,3 +95,22 @@ func TestExtractMFATokenDuration2(t *testing.T) {
 	t.Log(err)
 	assert.NotNil(t, err)
 }
+
+func TestExtractAssertionIssueInstant(t *testing.T) {
+	data, err := os.ReadFile("testdata/assertion.xml")
+	assert.Nil(t, err)
+
+	issued, err := ExtractAssertionIssueInstant(data)
+
+	assert.Nil(t, err)
+	assert.Equal(t, "2016-09-10T02:54:39.386Z", issued.Format(time.RFC3339Nano))
+}
+
+func TestExtractAssertionIssueInstantFail(t *testing.T) {
+	data, err := os.ReadFile("testdata/notxml.xml")
+	assert.Nil(t, err)
+
+	_, err = ExtractAssertionIssueInstant(data)
+
+	assert.Error(t, err)
+}

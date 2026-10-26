@@ -85,15 +85,21 @@ func TestCanRead(t *testing.T) {
 }
 
 type AssertionTemplateData struct {
-	ExpiryRFC3339Time string
+	ExpiryRFC3339Time       string
+	IssueInstantRFC3339Time string
 }
 
 func templateAssertion(t time.Time) (string, error) {
+	return templateIssuedAssertion(time.Now(), t)
+}
+
+func templateIssuedAssertion(issued, expiry time.Time) (string, error) {
 
 	newfile, _ := os.CreateTemp("", "assert_tmpl_")
 
 	data := AssertionTemplateData{
-		ExpiryRFC3339Time: t.Format(time.RFC3339),
+		ExpiryRFC3339Time:       expiry.Format(time.RFC3339),
+		IssueInstantRFC3339Time: issued.UTC().Format(time.RFC3339Nano),
 	}
 
 	content, _ := os.ReadFile("./assertion_validity_template.gotmpl")
@@ -203,6 +209,46 @@ func TestIsNotValid3(t *testing.T) {
 
 	if p.IsValid() {
 		t.Error("There is no valid cache")
+	}
+
+}
+
+func TestIsNotValidPastAWSRedemptionWindow(t *testing.T) {
+
+	// Issued six minutes ago with an hour of advertised validity: AWS STS would
+	// reject it ("Token must be redeemed within 5 minutes of issuance").
+	issued := time.Now().Add(-6 * time.Minute)
+	tmpFile, err := templateIssuedAssertion(issued, issued.Add(time.Hour))
+	defer os.Remove(tmpFile)
+	if err != nil {
+		t.Error(err)
+	}
+
+	p := SAMLCacheProvider{
+		Filename: tmpFile,
+	}
+
+	if p.IsValid() {
+		t.Error("The assertion is past the AWS redemption window and should be invalid!")
+	}
+
+}
+
+func TestIsValidWithinAWSRedemptionWindow(t *testing.T) {
+
+	issued := time.Now().Add(-4 * time.Minute)
+	tmpFile, err := templateIssuedAssertion(issued, issued.Add(time.Hour))
+	defer os.Remove(tmpFile)
+	if err != nil {
+		t.Error(err)
+	}
+
+	p := SAMLCacheProvider{
+		Filename: tmpFile,
+	}
+
+	if !p.IsValid() {
+		t.Error("The assertion is within the AWS redemption window and should be valid!")
 	}
 
 }

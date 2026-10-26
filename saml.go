@@ -133,6 +133,28 @@ func ExtractMFATokenExpiryTime(data []byte) (time.Time, error) {
 	return time.Parse(time.RFC3339, ValidUntilString)
 }
 
+// ExtractAssertionIssueInstant returns the IssueInstant of the Assertion
+func ExtractAssertionIssueInstant(data []byte) (time.Time, error) {
+	var t time.Time
+
+	doc := etree.NewDocument()
+	if err := doc.ReadFromBytes(data); err != nil {
+		return t, err
+	}
+
+	assertionElement := doc.FindElement(".//Assertion")
+	if assertionElement == nil {
+		return t, ErrMissingAssertion
+	}
+
+	issueInstant := assertionElement.SelectAttrValue("IssueInstant", "")
+	if issueInstant == "" {
+		return t, ErrMissingElement{Tag: "IssueInstant"}
+	}
+
+	return time.Parse(time.RFC3339, issueInstant)
+}
+
 // ExtractAwsRoles given an assertion document extract the aws roles
 func ExtractAwsRoles(data []byte) ([]string, error) {
 
