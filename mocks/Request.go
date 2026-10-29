@@ -3,7 +3,7 @@
 package mocks
 
 import (
-	playwright "github.com/playwright-community/playwright-go"
+	playwright "github.com/mxschmitt/playwright-go"
 	mock "github.com/stretchr/testify/mock"
 )
 
