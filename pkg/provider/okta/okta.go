@@ -14,6 +14,7 @@ import (
 	"net/http/cookiejar"
 	"net/url"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -462,7 +463,19 @@ func (oc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		// if the follow func calls this function (Authenticate), it means the session requires MFA to continue
 		// so don't call authWithSession, instead flow through to create the primary authentication call
 		if oktaSessionCookie != "" && loginDetails.StateToken == "" {
-			return oc.authWithSession(loginDetails)
+			if strings.HasPrefix(oktaSessionCookie, "idx=") {
+				oktaURL, err := url.Parse(loginDetails.URL)
+				if err == nil {
+					baseURL := &url.URL{Scheme: oktaURL.Scheme, Host: oktaURL.Host, Path: "/"}
+					oc.client.Jar.SetCookies(baseURL, []*http.Cookie{{
+						Name:   "idx",
+						Value:  strings.TrimPrefix(oktaSessionCookie, "idx="),
+						Secure: true,
+					}})
+				}
+			} else {
+				return oc.authWithSession(loginDetails)
+			}
 		}
 	}
 
@@ -472,6 +485,18 @@ func (oc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 	}
 
 	oktaOrgHost := oktaURL.Host
+
+	if strings.EqualFold(oc.mfa, "FASTPASS") {
+		return oc.authenticateFastPass(loginDetails)
+	}
+	if strings.EqualFold(oc.mfa, "AUTO") || strings.HasPrefix(loginDetails.StateToken, "eyJ") {
+		if samlResponse, err := oc.authenticateFastPass(loginDetails); err == nil {
+			return samlResponse, nil
+		} else {
+			logger.WithError(err).Debug("FastPass authentication not available, falling back to v1 authn")
+			loginDetails.StateToken = ""
+		}
+	}
 
 	authStatus, oktaSessionToken, primaryAuthResp, err := oc.primaryAuth(loginDetails)
 	if err != nil {
@@ -1622,4 +1647,310 @@ func verifyEndpointHealth(oc *Client, doc *goquery.Document, origURL string, duo
 		return nil, errors.Wrap(err, "error parsing document")
 	}
 	return doc, nil
+}
+
+func fastPassUserAgent() string {
+	if runtime.GOOS == "windows" {
+		return "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36"
+	}
+	return "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36"
+}
+
+func (oc *Client) idxPost(targetURL string, payload interface{}) (string, error) {
+	bodyBytes, err := json.Marshal(payload)
+	if err != nil {
+		return "", errors.Wrap(err, "error encoding IDX request")
+	}
+	req, err := http.NewRequest("POST", targetURL, bytes.NewReader(bodyBytes))
+	if err != nil {
+		return "", errors.Wrap(err, "error building IDX request")
+	}
+	req.Header.Set("Content-Type", "application/json; okta-version=1.0.0")
+	req.Header.Set("Accept", "application/ion+json; okta-version=1.0.0")
+	req.Header.Set("User-Agent", fastPassUserAgent())
+
+	res, err := oc.client.Do(req)
+	if err != nil {
+		return "", errors.Wrap(err, "error executing IDX request")
+	}
+	defer res.Body.Close()
+
+	respBytes, err := io.ReadAll(res.Body)
+	if err != nil {
+		return "", errors.Wrap(err, "error reading IDX response")
+	}
+	return string(respBytes), nil
+}
+
+func findRemediationHref(idxResp, name string) string {
+	for _, item := range gjson.Get(idxResp, "remediation.value").Array() {
+		if item.Get("name").String() == name {
+			return item.Get("href").String()
+		}
+	}
+	return ""
+}
+
+func extractLoopbackChallenge(idxResp string) gjson.Result {
+	if c := gjson.Get(idxResp, "authenticatorChallenge.value"); c.Exists() && c.Get("challengeRequest").String() != "" {
+		return c
+	}
+	if c := gjson.Get(idxResp, "currentAuthenticator.value.contextualData.challenge.value"); c.Exists() && c.Get("challengeRequest").String() != "" {
+		return c
+	}
+	return gjson.Result{}
+}
+
+func findPollHref(idxResp string) (string, string) {
+	for _, name := range []string{"device-challenge-poll", "challenge-poll"} {
+		if href := findRemediationHref(idxResp, name); href != "" {
+			return name, href
+		}
+	}
+	return "", ""
+}
+
+func findFastPassAuthenticator(idxResp string) (string, string) {
+	for _, rem := range gjson.Get(idxResp, "remediation.value").Array() {
+		if rem.Get("name").String() != "select-authenticator-authenticate" {
+			continue
+		}
+		for _, val := range rem.Get("value").Array() {
+			if val.Get("name").String() != "authenticator" {
+				continue
+			}
+			for _, opt := range val.Get("options").Array() {
+				var authID string
+				hasSignedNonce := false
+				for _, field := range opt.Get("value.form.value").Array() {
+					switch field.Get("name").String() {
+					case "id":
+						authID = field.Get("value").String()
+					case "methodType":
+						if field.Get("value").String() == "signed_nonce" {
+							hasSignedNonce = true
+						}
+						for _, mOpt := range field.Get("options").Array() {
+							if mOpt.Get("value").String() == "signed_nonce" {
+								hasSignedNonce = true
+							}
+						}
+					}
+				}
+				if authID != "" && hasSignedNonce {
+					return rem.Get("href").String(), authID
+				}
+			}
+		}
+	}
+	return "", ""
+}
+
+func challengeLocalOktaVerify(domain string, ports []string, oktaOrgHost, challengeRequest string) error {
+	if domain == "" {
+		domain = "http://127.0.0.1"
+	}
+	if len(ports) == 0 {
+		ports = []string{"8769", "65111", "65121", "65131", "65141", "65151"}
+	}
+	origin := "https://" + oktaOrgHost
+	probeClient := &http.Client{Timeout: 1 * time.Second}
+	challengeClient := &http.Client{Timeout: 30 * time.Second}
+
+	payload, err := json.Marshal(map[string]string{"challengeRequest": challengeRequest})
+	if err != nil {
+		return err
+	}
+
+	for _, port := range ports {
+		baseURL := fmt.Sprintf("%s:%s", domain, port)
+		probeReq, err := http.NewRequest("GET", baseURL+"/probe", nil)
+		if err != nil {
+			continue
+		}
+		probeReq.Header.Set("Origin", origin)
+		probeReq.Header.Set("User-Agent", fastPassUserAgent())
+
+		probeRes, err := probeClient.Do(probeReq)
+		if err != nil {
+			continue
+		}
+		_ = probeRes.Body.Close()
+		if probeRes.StatusCode != http.StatusOK {
+			continue
+		}
+
+		chalReq, err := http.NewRequest("POST", baseURL+"/challenge", bytes.NewReader(payload))
+		if err != nil {
+			return err
+		}
+		chalReq.Header.Set("Origin", origin)
+		chalReq.Header.Set("Content-Type", "application/json")
+		chalReq.Header.Set("User-Agent", fastPassUserAgent())
+
+		chalRes, err := challengeClient.Do(chalReq)
+		if err != nil {
+			return errors.Wrap(err, "error sending challenge to local Okta Verify")
+		}
+		_ = chalRes.Body.Close()
+		if chalRes.StatusCode != http.StatusOK {
+			return fmt.Errorf("local Okta Verify returned HTTP %d", chalRes.StatusCode)
+		}
+		return nil
+	}
+
+	return errors.New("local Okta Verify loopback server not reachable")
+}
+
+func (oc *Client) authenticateFastPass(loginDetails *creds.LoginDetails) (string, error) {
+	oktaURL, err := url.Parse(loginDetails.URL)
+	if err != nil {
+		return "", errors.Wrap(err, "error building oktaURL")
+	}
+	oktaOrgHost := oktaURL.Host
+
+	stateToken := loginDetails.StateToken
+	if stateToken == "" {
+		req, err := http.NewRequest("GET", loginDetails.URL, nil)
+		if err != nil {
+			return "", errors.Wrap(err, "error building app request")
+		}
+		req.Header.Set("User-Agent", fastPassUserAgent())
+		res, err := oc.client.Do(req)
+		if err != nil {
+			return "", errors.Wrap(err, "error retrieving app response")
+		}
+		body, err := io.ReadAll(res.Body)
+		_ = res.Body.Close()
+		if err != nil {
+			return "", errors.Wrap(err, "error reading app response")
+		}
+		if doc, errDoc := goquery.NewDocumentFromReader(bytes.NewReader(body)); errDoc == nil && docIsFormRedirectToTarget(doc, oc.targetURL) {
+			if samlResponse, ok := extractSAMLResponse(doc); ok {
+				return samlResponse, nil
+			}
+		}
+		stateToken, err = getStateTokenFromOktaPageBody(string(body))
+		if err != nil {
+			return "", errors.Wrap(err, "error extracting OIE stateToken")
+		}
+	}
+
+	introspectURL := fmt.Sprintf("https://%s/idp/idx/introspect", oktaOrgHost)
+	idxResp, err := oc.idxPost(introspectURL, map[string]string{"stateToken": stateToken})
+	if err != nil {
+		return "", err
+	}
+
+	for step := 0; step < 8; step++ {
+		if successHref := gjson.Get(idxResp, "success.href").String(); successHref != "" {
+			req, err := http.NewRequest("GET", successHref, nil)
+			if err != nil {
+				return "", errors.Wrap(err, "error building success redirect request")
+			}
+			req.Header.Set("User-Agent", fastPassUserAgent())
+			ctx := context.WithValue(context.Background(), ctxKey("login"), loginDetails)
+			samlAssertion, err := oc.follow(ctx, req, loginDetails)
+			if err == nil && !oc.disableSessions {
+				baseURL := &url.URL{Scheme: oktaURL.Scheme, Host: oktaURL.Host, Path: "/"}
+				for _, c := range oc.client.Jar.Cookies(baseURL) {
+					if c.Name == "idx" && c.Value != "" {
+						_ = credentials.SaveCredentials(loginDetails.URL+"/sessionCookie", loginDetails.Username, "idx="+c.Value)
+						break
+					}
+					if c.Name == "sid" && c.Value != "" {
+						_ = credentials.SaveCredentials(loginDetails.URL+"/sessionCookie", loginDetails.Username, c.Value)
+						break
+					}
+				}
+			}
+			return samlAssertion, err
+		}
+
+		stateHandle := gjson.Get(idxResp, "stateHandle").String()
+		if stateHandle == "" {
+			return "", errors.New("missing stateHandle in Okta IDX response")
+		}
+
+		if pollName, pollHref := findPollHref(idxResp); pollHref != "" {
+			challenge := extractLoopbackChallenge(idxResp)
+			if challengeReq := challenge.Get("challengeRequest").String(); challengeReq != "" {
+				domain := challenge.Get("domain").String()
+				var ports []string
+				for _, p := range challenge.Get("ports").Array() {
+					ports = append(ports, p.String())
+				}
+				log.Println("Authenticating with local Okta Verify app ...")
+				if err := challengeLocalOktaVerify(domain, ports, oktaOrgHost, challengeReq); err != nil {
+					return "", err
+				}
+			}
+
+			for pollAttempt := 0; pollAttempt < 15; pollAttempt++ {
+				idxResp, err = oc.idxPost(pollHref, map[string]string{"stateHandle": stateHandle})
+				if err != nil {
+					return "", err
+				}
+				nextPollName, _ := findPollHref(idxResp)
+				if nextPollName != pollName || extractLoopbackChallenge(idxResp).Exists() {
+					break
+				}
+				stateHandle = gjson.Get(idxResp, "stateHandle").String()
+				time.Sleep(2 * time.Second)
+			}
+			continue
+		}
+
+		if launchHref := findRemediationHref(idxResp, "launch-authenticator"); launchHref != "" {
+			idxResp, err = oc.idxPost(launchHref, map[string]string{"stateHandle": stateHandle})
+			if err != nil {
+				return "", err
+			}
+			continue
+		}
+
+		if ansHref := findRemediationHref(idxResp, "challenge-authenticator"); ansHref != "" {
+			authType := gjson.Get(idxResp, "currentAuthenticatorEnrollment.value.type").String()
+			authKey := gjson.Get(idxResp, "currentAuthenticatorEnrollment.value.key").String()
+			if authType == "password" || authKey == "okta_password" {
+				idxResp, err = oc.idxPost(ansHref, map[string]interface{}{
+					"credentials": map[string]string{"passcode": loginDetails.Password},
+					"stateHandle": stateHandle,
+				})
+				if err != nil {
+					return "", err
+				}
+				continue
+			}
+		}
+
+		if idHref := findRemediationHref(idxResp, "identify"); idHref != "" {
+			idxResp, err = oc.idxPost(idHref, map[string]interface{}{
+				"identifier":  loginDetails.Username,
+				"stateHandle": stateHandle,
+			})
+			if err != nil {
+				return "", err
+			}
+			continue
+		}
+
+		if selHref, authID := findFastPassAuthenticator(idxResp); selHref != "" {
+			idxResp, err = oc.idxPost(selHref, map[string]interface{}{
+				"authenticator": map[string]string{
+					"id":         authID,
+					"methodType": "signed_nonce",
+				},
+				"stateHandle": stateHandle,
+			})
+			if err != nil {
+				return "", err
+			}
+			continue
+		}
+
+		return "", errors.New("unsupported Okta IDX remediation step")
+	}
+
+	return "", errors.New("exceeded maximum Okta IDX authentication steps")
 }

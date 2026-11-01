@@ -397,7 +397,7 @@ func TestVerifyMfa_Duo(t *testing.T) {
 	})
 }
 
-func setupTestClient(t *testing.T, ts *httptest.Server, mfa string) (*Client, *creds.LoginDetails) {
+func setupTestClient(_ *testing.T, ts *httptest.Server, mfa string) (*Client, *creds.LoginDetails) {
 	testTransport := http.DefaultTransport.(*http.Transport).Clone()
 	testTransport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 	opts := &provider.HTTPClientOptions{IsWithRetries: false}
@@ -990,4 +990,134 @@ func TestVerifyEndpointHealth(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to verify endpoint health: %v", err)
 	}
+}
+
+func TestAuthenticateFastPass(t *testing.T) {
+	var challengeReceived string
+	ovServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/probe":
+			w.WriteHeader(http.StatusOK)
+		case "/challenge":
+			var req map[string]string
+			_ = json.NewDecoder(r.Body).Decode(&req)
+			challengeReceived = req["challengeRequest"]
+			w.WriteHeader(http.StatusOK)
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer ovServer.Close()
+
+	ovURL, err := url.Parse(ovServer.URL)
+	assert.NoError(t, err)
+	ovPort := strings.Split(ovURL.Host, ":")[1]
+
+	var ts *httptest.Server
+	ts = httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/home/amazon_aws/app/272":
+			_, _ = w.Write([]byte(`var stateToken = 'eyJ_STATE_TOKEN';`))
+		case "/idp/idx/introspect":
+			_, _ = fmt.Fprintf(w, `{
+				"stateHandle": "SH_1",
+				"authenticatorChallenge": {
+					"value": {
+						"challengeRequest": "SIGNED_JWT_CHALLENGE",
+						"domain": "http://127.0.0.1",
+						"ports": ["%s"]
+					}
+				},
+				"remediation": {
+					"value": [
+						{"name": "device-challenge-poll", "href": "%s/idp/idx/authenticators/poll"}
+					]
+				}
+			}`, ovPort, ts.URL)
+		case "/idp/idx/authenticators/poll":
+			_, _ = fmt.Fprintf(w, `{
+				"stateHandle": "SH_2",
+				"currentAuthenticatorEnrollment": {
+					"value": {"type": "password", "key": "okta_password"}
+				},
+				"remediation": {
+					"value": [
+						{"name": "challenge-authenticator", "href": "%s/idp/idx/challenge/answer"}
+					]
+				}
+			}`, ts.URL)
+		case "/idp/idx/challenge/answer":
+			_, _ = fmt.Fprintf(w, `{
+				"stateHandle": "SH_3",
+				"remediation": {
+					"value": [
+						{
+							"name": "select-authenticator-authenticate",
+							"href": "%s/idp/idx/challenge",
+							"value": [
+								{
+									"name": "authenticator",
+									"options": [
+										{
+											"label": "Okta Verify",
+											"value": {
+												"form": {
+													"value": [
+														{"name": "id", "value": "aut_ov"},
+														{"name": "methodType", "options": [{"value": "signed_nonce"}]}
+													]
+												}
+											}
+										}
+									]
+								}
+							]
+						}
+					]
+				}
+			}`, ts.URL)
+		case "/idp/idx/challenge":
+			_, _ = fmt.Fprintf(w, `{
+				"stateHandle": "SH_4",
+				"currentAuthenticator": {
+					"value": {
+						"contextualData": {
+							"challenge": {
+								"value": {
+									"challengeRequest": "STEP_UP_JWT_CHALLENGE",
+									"domain": "http://127.0.0.1",
+									"ports": ["%s"]
+								}
+							}
+						}
+					}
+				},
+				"remediation": {
+					"value": [
+						{"name": "challenge-poll", "href": "%s/idp/idx/authenticators/poll/stepup"}
+					]
+				}
+			}`, ovPort, ts.URL)
+		case "/idp/idx/authenticators/poll/stepup":
+			_, _ = fmt.Fprintf(w, `{
+				"stateHandle": "SH_5",
+				"success": {"href": "%s/login/token/redirect?stateToken=SH_5"}
+			}`, ts.URL)
+		case "/login/token/redirect":
+			_, _ = w.Write([]byte(`<form action="https://signin.aws.amazon.com/saml"><input name="SAMLResponse" value="U0FNTF9BU1NFUlRJT04="/></form>`))
+		default:
+			http.Error(w, "not found", http.StatusNotFound)
+		}
+	}))
+	defer ts.Close()
+
+	oc, loginDetails := setupTestClient(t, ts, "FASTPASS")
+	loginDetails.URL = ts.URL + "/home/amazon_aws/app/272"
+	oc.targetURL = ""
+	oc.disableSessions = true
+
+	samlResp, err := oc.Authenticate(loginDetails)
+	assert.NoError(t, err)
+	assert.Equal(t, "STEP_UP_JWT_CHALLENGE", challengeReceived)
+	assert.Equal(t, "U0FNTF9BU1NFUlRJT04=", samlResp)
 }
