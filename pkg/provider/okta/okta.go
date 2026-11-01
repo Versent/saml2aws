@@ -463,7 +463,19 @@ func (oc *Client) Authenticate(loginDetails *creds.LoginDetails) (string, error)
 		// if the follow func calls this function (Authenticate), it means the session requires MFA to continue
 		// so don't call authWithSession, instead flow through to create the primary authentication call
 		if oktaSessionCookie != "" && loginDetails.StateToken == "" {
-			return oc.authWithSession(loginDetails)
+			if strings.HasPrefix(oktaSessionCookie, "idx=") {
+				oktaURL, err := url.Parse(loginDetails.URL)
+				if err == nil {
+					baseURL := &url.URL{Scheme: oktaURL.Scheme, Host: oktaURL.Host, Path: "/"}
+					oc.client.Jar.SetCookies(baseURL, []*http.Cookie{{
+						Name:   "idx",
+						Value:  strings.TrimPrefix(oktaSessionCookie, "idx="),
+						Secure: true,
+					}})
+				}
+			} else {
+				return oc.authWithSession(loginDetails)
+			}
 		}
 	}
 
@@ -1813,6 +1825,11 @@ func (oc *Client) authenticateFastPass(loginDetails *creds.LoginDetails) (string
 		if err != nil {
 			return "", errors.Wrap(err, "error reading app response")
 		}
+		if doc, errDoc := goquery.NewDocumentFromReader(bytes.NewReader(body)); errDoc == nil && docIsFormRedirectToTarget(doc, oc.targetURL) {
+			if samlResponse, ok := extractSAMLResponse(doc); ok {
+				return samlResponse, nil
+			}
+		}
 		stateToken, err = getStateTokenFromOktaPageBody(string(body))
 		if err != nil {
 			return "", errors.Wrap(err, "error extracting OIE stateToken")
@@ -1837,6 +1854,10 @@ func (oc *Client) authenticateFastPass(loginDetails *creds.LoginDetails) (string
 			if err == nil && !oc.disableSessions {
 				baseURL := &url.URL{Scheme: oktaURL.Scheme, Host: oktaURL.Host, Path: "/"}
 				for _, c := range oc.client.Jar.Cookies(baseURL) {
+					if c.Name == "idx" && c.Value != "" {
+						_ = credentials.SaveCredentials(loginDetails.URL+"/sessionCookie", loginDetails.Username, "idx="+c.Value)
+						break
+					}
 					if c.Name == "sid" && c.Value != "" {
 						_ = credentials.SaveCredentials(loginDetails.URL+"/sessionCookie", loginDetails.Username, c.Value)
 						break
