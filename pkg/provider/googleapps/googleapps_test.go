@@ -269,6 +269,21 @@ func TestExtractDevicePushExtraNumber(t *testing.T) {
 	require.Nil(t, err)
 	require.Equal(t, "89", extractDevicePushExtraNumber(doc1))
 
+	// same page after Google renamed the jsname attributes
+	data1 = bytes.ReplaceAll(data1, []byte(`jsname="feLNVc"`), []byte(`jsname="Xx9yZz"`))
+	doc1, err = goquery.NewDocumentFromReader(bytes.NewReader(data1))
+	require.Nil(t, err)
+	require.Equal(t, "89", extractDevicePushExtraNumber(doc1))
+
+	// current Google markup: number in a samp outside of the challenge form
+	html := `<html><body><span class="oN6qIb" jsname="y02b7d"><figure class="BqYZt sN9fFf"><samp class="IEIJ3d" jsname="feLNVc" translate="no">96</samp></figure></span><section class="aN1Vld S7S4N" jsname="CjGfSd"><p jsname="NhJ5Dd">Google sent a notification to your phone. Tap <strong>Yes</strong> on the notification, then tap <b>96</b> on your phone to verify it’s you.</p></section><form method="post" id="challenge" action="/v3/signin/challenge/dp"></form></body></html>`
+	doc3, err := goquery.NewDocumentFromReader(strings.NewReader(html))
+	require.Nil(t, err)
+	require.Equal(t, "96", extractDevicePushExtraNumber(doc3))
+
+	doc3.Find("[jsname=feLNVc]").Remove()
+	require.Equal(t, "96", extractDevicePushExtraNumber(doc3))
+
 	for _, filename := range []string{"example/challenge-prompt.html", "example/challenge-totp.html"} {
 		data2, err := os.ReadFile(filename)
 		require.Nil(t, err)

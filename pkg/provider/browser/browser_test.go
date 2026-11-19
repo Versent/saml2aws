@@ -208,6 +208,7 @@ func TestAutoFill(t *testing.T) {
 		"example/loginpage.html",
 		"example/loginpage-button-submit.html",
 		"example/loginpage-without-submit.html",
+		"example/loginpage-multi-step.html",
 	}
 	// iterate over each login page
 	for _, pageLocation := range pageLocations {
@@ -230,7 +231,7 @@ func TestAutoFill(t *testing.T) {
 
 		username, _ := page.Locator("input[name='username']").First().InputValue()
 		assert.Equal(t, "golang", username)
-		password, _ := page.Locator("input[type='password']").First().InputValue()
+		password, _ := page.Locator("input[name='password']").First().InputValue()
 		assert.Equal(t, "gopher", password)
 
 		result, _ := page.Locator("div#result").Evaluate("el => el.innerText", nil)
