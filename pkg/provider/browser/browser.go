@@ -202,14 +202,49 @@ var getSAMLResponse = func(page playwright.Page, loginDetails *creds.LoginDetail
 	return values.Get("SAMLResponse"), nil
 }
 
+// visible, user-editable login inputs; Google keeps an aria-hidden password decoy on its username page
+const usernameSelector = "input:is([type='email'], [type='text'], :not([type])):not([aria-hidden='true']):visible"
+const passwordSelector = "input[type='password']:not([aria-hidden='true']):visible"
+
 var autoFill = func(page playwright.Page, loginDetails *creds.LoginDetails) error {
-	passwordField := page.Locator("input[type='password']")
-	err := passwordField.WaitFor(playwright.LocatorWaitForOptions{
+	usernameField := page.Locator(usernameSelector).First()
+	passwordField := page.Locator(passwordSelector).First()
+
+	// single page logins show both fields, multi step logins (e.g. Google) show the username first
+	err := usernameField.Or(passwordField).First().WaitFor(playwright.LocatorWaitForOptions{
 		State: playwright.WaitForSelectorStateVisible,
 	})
-
 	if err != nil {
 		return err
+	}
+
+	passwordVisible, err := passwordField.IsVisible()
+	if err != nil {
+		return err
+	}
+	usernameVisible, err := usernameField.IsVisible()
+	if err != nil {
+		return err
+	}
+
+	if usernameVisible && loginDetails.Username != "" {
+		err = usernameField.Fill(loginDetails.Username)
+		if err != nil {
+			return err
+		}
+	}
+
+	if !passwordVisible {
+		err = submit(page, usernameField)
+		if err != nil {
+			return err
+		}
+		err = passwordField.WaitFor(playwright.LocatorWaitForOptions{
+			State: playwright.WaitForSelectorStateVisible,
+		})
+		if err != nil {
+			return err
+		}
 	}
 
 	err = passwordField.Fill(loginDetails.Password)
@@ -217,22 +252,14 @@ var autoFill = func(page playwright.Page, loginDetails *creds.LoginDetails) erro
 		return err
 	}
 
-	keyboard := page.Keyboard()
+	return submit(page, passwordField)
+}
 
-	// move to username field which is above password field
-	err = keyboard.Press("Shift+Tab")
-	if err != nil {
-		return err
-	}
-
-	err = keyboard.InsertText(loginDetails.Username)
-	if err != nil {
-		return err
-	}
-
-	// Find the submit button or input of the form that the password field is in
+// submit submits the form the field belongs to
+func submit(page playwright.Page, field playwright.Locator) error {
+	// Find the submit button or input of the form that the field is in
 	submitLocator := page.Locator("form", playwright.PageLocatorOptions{
-		Has: passwordField,
+		Has: field,
 	}).Locator("[type='submit']")
 	count, err := submitLocator.Count()
 	if err != nil {
@@ -241,11 +268,26 @@ var autoFill = func(page playwright.Page, loginDetails *creds.LoginDetails) erro
 
 	// when submit locator exists, Click it
 	if count > 0 {
-		return submitLocator.Click()
-	} else { // Use javascript to submit the form when no submit input or button is found
-		_, err := page.Evaluate(`document.querySelector('input[type="password"]').form.submit()`, nil)
+		return submitLocator.First().Click()
+	}
+
+	// pages driven by javascript (e.g. Google) handle Enter on the field
+	err = field.Press("Enter")
+	if err != nil {
 		return err
 	}
+	timeout := float64(2000)
+	err = field.WaitFor(playwright.LocatorWaitForOptions{
+		State:   playwright.WaitForSelectorStateHidden,
+		Timeout: &timeout,
+	})
+	if err == nil {
+		return nil
+	}
+
+	// Use javascript to submit the form when Enter did nothing
+	_, err = field.Evaluate(`el => el.form && el.form.submit()`, nil)
+	return err
 }
 
 func signinRegex() (*regexp.Regexp, error) {

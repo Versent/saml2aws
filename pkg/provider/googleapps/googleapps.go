@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"regexp"
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
@@ -803,10 +804,25 @@ func isAppId(val string) string {
 	return appId
 }
 
+var extraNumberRegex = regexp.MustCompile(`^\d{1,3}$`)
+
 func extractDevicePushExtraNumber(doc *goquery.Document) string {
 	extraNumber := ""
-	doc.Find("div[jsname=feLNVc]").Each(func(_ int, s *goquery.Selection) {
+	doc.Find("[jsname=feLNVc]").Each(func(_ int, s *goquery.Selection) {
 		extraNumber = s.Text()
+	})
+	if extraNumber != "" {
+		return extraNumber
+	}
+
+	// Google renames its jsname attributes, fall back to the element holding only the number
+	doc.Find("samp, b, form#challenge *").Not("script, style, input").EachWithBreak(func(_ int, s *goquery.Selection) bool {
+		text := strings.TrimSpace(s.Text())
+		if s.Children().Length() == 0 && extraNumberRegex.MatchString(text) {
+			extraNumber = text
+			return false
+		}
+		return true
 	})
 	return extraNumber
 }

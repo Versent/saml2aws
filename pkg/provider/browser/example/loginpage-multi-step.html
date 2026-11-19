@@ -1,0 +1,49 @@
+<html>
+<head>
+  <title>Fake Multi Step Login Page</title>
+</head>
+<body>
+<div id="identifier">
+  <label for="username"><b>Email:</b></label>
+  <input type="email" name="username" />
+  <!-- decoy for password managers, like Google's identifier page -->
+  <input type="password" name="hiddenPassword" aria-hidden="true" tabindex="-1" style="width: 1px; height: 1px; opacity: 0" />
+  <button type="button" id="identifierNext">Next</button>
+</div>
+
+<div id="challenge" style="display: none">
+  <label for="password"><b>Password:</b></label>
+  <input type="password" name="password" />
+  <button type="button" id="passwordNext">Next</button>
+</div>
+
+<div id="result" style="display: none">
+  You should not see this as the password step should override this inner
+  text.
+</div>
+
+<script>
+  const identifierSection = document.getElementById("identifier");
+  const challengeSection = document.getElementById("challenge");
+  const resultSection = document.getElementById("result");
+  const username = document.querySelector("input[name=username]");
+  const password = document.querySelector("input[name=password]");
+
+  function identifierNext() {
+    identifierSection.style.display = "none";
+    challengeSection.style.display = "block";
+  }
+
+  function passwordNext() {
+    challengeSection.style.display = "none";
+    resultSection.style.display = "block";
+    resultSection.innerText = `${username.value}:${password.value}`;
+  }
+
+  document.getElementById("identifierNext").onclick = identifierNext;
+  document.getElementById("passwordNext").onclick = passwordNext;
+  username.onkeydown = (e) => e.key === "Enter" && identifierNext();
+  password.onkeydown = (e) => e.key === "Enter" && passwordNext();
+</script>
+</body>
+</html>
